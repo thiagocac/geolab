@@ -1,23 +1,27 @@
-# v4 — Concretagem (central + programacao + caminhoes/CPs + ficha PDF)
+# GEOLAB — Patch v19 (revisão: consistência fck do traço)
 
-## O que entra
-- Central de Concretagens: lista (cliente/obra/fornecedor/status) + Nova concretagem (cliente/obra/traco/fornecedor/data/fck/local).
-- Detalhe: dados + caminhoes; Adicionar caminhao (NF/placa/volume/slump/temp) gera amostra + CPs pelo padrao de moldagem do traco (default: 2 CP de 28 dias).
-- Gerar ficha PDF -> invoca a EF generate-ficha-moldagem-pdf com o JWT da sessao.
-- Rotas /concretagens e /concretagens/:id + navegacao.
+Resultado da revisão minuciosa v8→v18: a camada de dados está **correta** (colunas,
+enums, NOT-NULL, RLS, joins conferidos contra o schema real — nenhum bug encontrado nos
+fluxos centrais). Único ajuste necessário: alinhar o fck.
 
-## Arquivos a commitar (desde v3)
-- src/lib/api/concretagem.ts (novo)
-- src/pages/concreto/ConcretagensPage.tsx, ConcretagemDetalhePage.tsx (novos)
-- src/App.tsx, src/components/Layout.tsx (alterados)
-- public/sw.js (v4), src/lib/telemetry/core.ts (v4)
-- SOURCE_VERSION.md, docs/release-v4.md
+## Ajuste
+Ao escolher um **traço** na Nova concretagem, o `fck_previsto` era deixado em branco —
+então o laudo usava `om.fck_mpa` mas o evento `resultado_abaixo_fck` (que lê
+`conc.fck_previsto`) não disparava. Agora o fck do traço **auto-preenche** o campo
+(se vazio) e aparece no dropdown. Alinha laudo + evento e evita digitar duas vezes.
 
-## Backend — JA APLICADO via MCP. A geracao de CP le operational_materials.padrao_moldagem (jsonb); sem padrao usa default NBR 5739.
+| Arquivo | Mudança |
+|---|---|
+| `src/lib/api/concretagem.ts` | **+ `listTracosComFck`** (id, nome, fck_mpa) |
+| `src/pages/concreto/ConcretagensPage.tsx` | seletor de traço auto-preenche fck_previsto + mostra fck no rótulo |
+| `public/sw.js` · `core.ts` · `Layout.tsx` | `v19` |
 
-## Gate: CACHE = APP_VERSION = v4. check-source OK no sandbox. tsc/vitest/vite no CI.
+## Auditoria — o que foi conferido (e está OK)
+- Escrita concretagem→caminhão→amostra→CP→material_tests: todas as colunas existem,
+  obrigatórias cobertas, `material_kind=concreto` válido, `situacao`/`origem`/`amostras.status` text.
+- Cadastros (clientes/obras/contatos/colaboradores/equipamentos/contratos): field keys
+  batem com colunas reais; required cobre NOT-NULL.
+- RLS: members update exige admin (setMemberActive ok); config_lab/prefs/dispatch_log conferidos.
+- Joins aninhados (concretagens→client_works, material_tests→concretagens, etc.): válidos.
 
-## Smoke pos-deploy
-1. Concretagens -> Nova -> cliente/obra/traco/fornecedor/data -> Salvar.
-2. Abrir -> Adicionar caminhao (NF + slump) -> Salvar (gera amostra + CPs).
-3. Gerar ficha PDF -> baixa o PDF com caminhoes e CPs.
+Build completo (check-source+tsc+vitest+vite) verde. Push em `main`.

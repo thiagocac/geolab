@@ -36,7 +36,7 @@ export function Layout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ marginTop: 'auto', fontSize: 11, color: '#9ca3af' }}>GEOLAB - v18</div>
+        <div style={{ marginTop: 'auto', fontSize: 11, color: '#9ca3af' }}>GEOLAB - v19</div>
       </aside>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #e5e7eb', gap: 12 }}>

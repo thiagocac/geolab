@@ -96,3 +96,10 @@ export async function listCpsDaConcretagem(concId: string): Promise<CpDetalhe[]>
     return { id: String(r.id), codigo: r.codigo ?? null, idade_dias: r.idade_dias ?? null, idade_unidade: String(r.idade_unidade ?? 'dia'), situacao: String(r.situacao ?? 'pendente'), receipt_id: r.receipt_id ?? null, resultado: isFinite(last) ? last : null };
   });
 }
+
+// Traços com fck para o seletor de concretagem (auto-preenche fck_previsto).
+export async function listTracosComFck(): Promise<{ value: string; label: string; fck: number | null }[]> {
+  const { data, error } = await db.from('operational_materials').select('id, nome, fck_mpa').is('deleted_at', null).order('nome', { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, any>[]).map((r) => ({ value: String(r.id), label: String(r.nome ?? r.id), fck: r.fck_mpa != null ? Number(r.fck_mpa) : null }));
+}
