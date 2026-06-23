@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 545 130" role="img" aria-label="Concresoft">
+  <g transform="translate(0 15)">
+    <rect x="0" y="0" width="104" height="24" rx="12" fill="#FFFFFF"></rect>
+    <rect x="0" y="38" width="62" height="24" rx="12" fill="#FFFFFF"></rect>
+    <rect x="0" y="76" width="104" height="24" rx="12" fill="#FFFFFF"></rect>
+  </g>
+  <text x="140" y="92" font-family="&#39;Mona Sans&#39;, sans-serif" font-weight="800" font-size="74" letter-spacing="-2.5" fill="#FFFFFF">Concresoft</text>
+</svg>
