@@ -102,7 +102,7 @@ export function ImportacoesPage() {
       {!concId ? null : pend.isLoading ? <LoadingState /> : pend.isError ? <ErrorState message={(pend.error as Error).message} /> : cps.length === 0 ? <EmptyState /> : mode === 'manual' ? (
         <Card>
           <div style={{ display: 'grid', gap: 6 }}>
-            <div style={{ display: 'flex', gap: 8, fontSize: 11, color: '#6b7280', fontWeight: 700, padding: '0 4px' }}>
+            <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--ink-faint)', fontWeight: 700, padding: '0 4px' }}>
               <span style={{ width: 150 }}>CP</span><span style={{ width: 70 }}>Idade</span><span style={{ width: 90 }}>Carga kN</span><span style={{ width: 70 }}>d mm</span><span style={{ width: 70 }}>h mm</span><span style={{ width: 70 }}>Ruptura</span><span style={{ width: 80 }}>MPa</span>
             </div>
             {cps.map((cp) => {
@@ -111,12 +111,12 @@ export function ImportacoesPage() {
               return (
                 <div key={cp.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{ width: 150, fontSize: 13 }}>{cp.codigo ?? cp.id.slice(0, 8)}</span>
-                  <span style={{ width: 70, fontSize: 12, color: '#6b7280' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
+                  <span style={{ width: 70, fontSize: 12, color: 'var(--ink-faint)' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
                   <input type="number" className="input" style={{ width: 90 }} value={r.carga} onChange={(e) => setRow(cp.id, { carga: e.target.value })} />
                   <input type="number" className="input" style={{ width: 70 }} value={r.d} onChange={(e) => setRow(cp.id, { d: e.target.value })} />
                   <input type="number" className="input" style={{ width: 70 }} value={r.h} onChange={(e) => setRow(cp.id, { h: e.target.value })} />
                   <input className="input" style={{ width: 70 }} value={r.tipo} onChange={(e) => setRow(cp.id, { tipo: e.target.value })} />
-                  <span style={{ width: 80, fontSize: 13, fontWeight: 700, color: '#182863' }}>{prev != null ? prev : '-'}</span>
+                  <span style={{ width: 80, fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{prev != null ? prev : '-'}</span>
                 </div>
               );
             })}
@@ -129,19 +129,19 @@ export function ImportacoesPage() {
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <input type="file" accept="image/*" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
               <Button onClick={() => void lerOcr()} disabled={ocrBusy}>{ocrBusy ? 'Lendo...' : 'Ler com IA'}</Button>
-              {ocrMsg ? <span style={{ fontSize: 12, color: '#6b7280' }}>{ocrMsg}</span> : null}
+              {ocrMsg ? <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{ocrMsg}</span> : null}
             </div>
-            <p style={{ fontSize: 12, color: '#9ca3af', margin: '8px 0 0' }}>Foto/scan da folha de resultados (ate 4 imagens). A IA le os MPa e casa por idade; voce revisa antes de importar.</p>
+            <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '8px 0 0' }}>Foto/scan da folha de resultados (ate 4 imagens). A IA le os MPa e casa por idade; voce revisa antes de importar.</p>
           </Card>
           <Card>
             <div style={{ display: 'grid', gap: 6 }}>
-              <div style={{ display: 'flex', gap: 8, fontSize: 11, color: '#6b7280', fontWeight: 700, padding: '0 4px' }}>
+              <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--ink-faint)', fontWeight: 700, padding: '0 4px' }}>
                 <span style={{ width: 180 }}>CP</span><span style={{ width: 80 }}>Idade</span><span style={{ width: 110 }}>MPa (lido/edit)</span>
               </div>
               {cps.map((cp) => (
                 <div key={cp.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{ width: 180, fontSize: 13 }}>{cp.codigo ?? cp.id.slice(0, 8)}</span>
-                  <span style={{ width: 80, fontSize: 12, color: '#6b7280' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
+                  <span style={{ width: 80, fontSize: 12, color: 'var(--ink-faint)' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
                   <input type="number" className="input" style={{ width: 110 }} value={ocrVals[cp.id] ?? ''} onChange={(e) => setOcrVals((s) => ({ ...s, [cp.id]: e.target.value }))} />
                 </div>
               ))}

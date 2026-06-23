@@ -20,7 +20,7 @@ function Grupo({ titulo, lista, cor, onRomper }: { titulo: string; lista: CpPend
       <div style={{ fontWeight: 700, color: cor, marginBottom: 8 }}>{titulo} ({lista.length})</div>
       <div style={{ display: 'grid', gap: 6 }}>
         {lista.map((c) => (
-          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid #eef0f3', borderRadius: 8 }}>
+          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
             <span style={{ fontSize: 13 }}><strong>{c.codigo ?? c.id.slice(0, 8)}</strong> - {c.idade_dias ?? '-'} {c.idade_unidade === 'hora' ? 'h' : 'd'} - {c.concretagens?.client_works?.nome ?? '-'} - prev {c.data_prevista_rompimento ?? '-'}</span>
             <Button onClick={() => onRomper(c)}>Romper</Button>
           </div>
@@ -75,10 +75,10 @@ export function RompimentosPage() {
       <PageHeader kicker="Concreto" title="Agenda de rompimentos" description="Corpos de prova pendentes de rompimento." />
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <>
-          <Grupo titulo="Atrasados" lista={atrasados} cor="#C5117E" onRomper={abrir} />
-          <Grupo titulo="Hoje" lista={dehoje} cor="#182863" onRomper={abrir} />
-          <Grupo titulo="Proximos" lista={proximos} cor="#6b7280" onRomper={abrir} />
-          <Grupo titulo="Sem data prevista" lista={semData} cor="#6b7280" onRomper={abrir} />
+          <Grupo titulo="Atrasados" lista={atrasados} cor="var(--magenta)" onRomper={abrir} />
+          <Grupo titulo="Hoje" lista={dehoje} cor="var(--ink)" onRomper={abrir} />
+          <Grupo titulo="Proximos" lista={proximos} cor="var(--ink-faint)" onRomper={abrir} />
+          <Grupo titulo="Sem data prevista" lista={semData} cor="var(--ink-faint)" onRomper={abrir} />
         </>
       )}
       <Modal open={!!cp} title={'Romper - ' + (cp?.codigo ?? '')} onClose={() => setCp(null)} footer={<><Button variant="ghost" onClick={() => setCp(null)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Lancar'}</Button></>}>
@@ -92,7 +92,7 @@ export function RompimentosPage() {
           <SelectField label="Equipamento" value={String(form.equipamento_id ?? '')} onChange={(e) => setForm((s) => ({ ...s, equipamento_id: e.target.value }))}><option value="">-</option>{(equips.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
           <SelectField label="Operador" value={String(form.operador_id ?? '')} onChange={(e) => setForm((s) => ({ ...s, operador_id: e.target.value }))}><option value="">-</option>{(operadores.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
           <Field label="Data do rompimento" type="date" value={String(form.data_rompimento ?? '')} onChange={(e) => setForm((s) => ({ ...s, data_rompimento: e.target.value }))} />
-          {previa != null ? <div style={{ fontWeight: 700, color: '#182863' }}>Resistencia estimada: {previa} MPa</div> : null}
+          {previa != null ? <div style={{ fontWeight: 700, color: 'var(--ink)' }}>Resistencia estimada: {previa} MPa</div> : null}
         </div>
       </Modal>
     </div>

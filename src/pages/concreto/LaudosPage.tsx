@@ -56,7 +56,7 @@ export function LaudosPage() {
         <Card>
           <div style={{ display: 'grid', gap: 6 }}>
             {rows.map((r) => (
-              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid #eef0f3', borderRadius: 8 }}>
+              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
                 <span style={{ fontSize: 13 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissao'}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <StatusBadge status={r.status} />
@@ -75,7 +75,7 @@ export function LaudosPage() {
             <option value="">Selecione...</option>
             {(elegiveis.data ?? []).map((c) => <option key={c.id} value={c.id}>{(c.codigo ?? c.id.slice(0, 8)) + ' - ' + (c.work_nome ?? '-')}</option>)}
           </SelectField>
-          <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>O laudo agrupa os exemplares (NF) da concretagem; aceitacao por exemplar na idade de controle. Sai como rascunho ate a aprovacao.</p>
+          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>O laudo agrupa os exemplares (NF) da concretagem; aceitacao por exemplar na idade de controle. Sai como rascunho ate a aprovacao.</p>
         </div>
       </Modal>
     </div>

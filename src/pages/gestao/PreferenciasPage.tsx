@@ -63,7 +63,7 @@ export function PreferenciasPage() {
   return (
     <div style={{ display: 'grid', gap: 16, maxWidth: 760 }}>
       <PageHeader kicker="Gestao" title="Preferencias do laboratorio" description="Dados do laudo, responsavel tecnico e regras de controle." />
-      {!podeEditar ? <Card><p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Apenas o admin do laboratorio edita estas preferencias.</p></Card> : null}
+      {!podeEditar ? <Card><p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Apenas o admin do laboratorio edita estas preferencias.</p></Card> : null}
       <Card>
         <CardHeader kicker="Responsavel tecnico / acreditacao" title="Identificacao no laudo" />
         <div style={{ display: 'grid', gap: 12, padding: 16 }}>
@@ -76,7 +76,7 @@ export function PreferenciasPage() {
             <Field label="Validade da acreditacao" type="date" value={String(f.validade_acreditacao ?? '')} onChange={(e) => set('validade_acreditacao', e.target.value)} disabled={!podeEditar} />
           </div>
           <Field label="Nota de rodape do laudo" value={String(f.nota_rodape ?? '')} onChange={(e) => set('nota_rodape', e.target.value)} disabled={!podeEditar} />
-          <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>Logo do laboratorio: upload em versao futura (por ora o laudo usa o nome do lab).</p>
+          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Logo do laboratorio: upload em versao futura (por ora o laudo usa o nome do lab).</p>
         </div>
       </Card>
       <Card>

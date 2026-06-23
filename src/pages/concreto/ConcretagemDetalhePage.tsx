@@ -50,7 +50,7 @@ export function ConcretagemDetalhePage() {
       <PageHeader kicker="Concretagem" title={c.codigo ?? '(sem codigo)'} description={(c.lab_clients?.razao_social ?? '-') + ' - ' + (c.client_works?.nome ?? '-')} />
       <Card>
         <CardHeader title="Dados" kicker={c.status} />
-        <div style={{ fontSize: 14, color: '#374151', display: 'grid', gap: 4 }}>
+        <div style={{ fontSize: 14, color: 'var(--ink-soft)', display: 'grid', gap: 4 }}>
           <span>Traco: {c.operational_materials?.nome ?? '-'} - fck {c.fck_previsto ?? '-'} MPa</span>
           <span>Fornecedor: {c.fornecedor_texto ?? '-'} - Data: {c.data_programada ?? c.data_real ?? '-'}</span>
           <span>Local: {c.local_texto ?? '-'}</span>
@@ -68,20 +68,20 @@ export function ConcretagemDetalhePage() {
           {(cams.data ?? []).map((cam) => {
             const cpsCam = (cps.data ?? []).filter((cp) => cp.receipt_id === cam.id);
             return (
-              <div key={cam.id} style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14 }}>
+              <div key={cam.id} style={{ padding: 12, border: '1px solid var(--line)', borderRadius: 10, fontSize: 14 }}>
                 <strong>Caminhao {cam.serie}</strong> - NF {cam.nota_fiscal} - {cam.volume_m3 ?? '-'} m3 - slump {cam.slump_medido_cm ?? '-'} cm - {cam.placa ?? '-'}
                 {cpsCam.length ? (
                   <div style={{ marginTop: 8, display: 'grid', gap: 3 }}>
                     {cpsCam.map((cp) => (
                       <div key={cp.id} style={{ display: 'flex', gap: 8, fontSize: 12 }}>
-                        <span style={{ width: 150, color: '#374151' }}>{cp.codigo ?? cp.id.slice(0, 8)}</span>
-                        <span style={{ width: 60, color: '#6b7280' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
+                        <span style={{ width: 150, color: 'var(--ink-soft)' }}>{cp.codigo ?? cp.id.slice(0, 8)}</span>
+                        <span style={{ width: 60, color: 'var(--ink-faint)' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
                         <span style={{ width: 90, fontWeight: 700, color: cp.situacao === 'rompido' ? '#16a34a' : '#d97706' }}>{cp.situacao}</span>
-                        <span style={{ width: 90, fontWeight: 700, color: '#182863' }}>{cp.resultado != null ? cp.resultado + ' MPa' : ''}</span>
+                        <span style={{ width: 90, fontWeight: 700, color: 'var(--ink)' }}>{cp.resultado != null ? cp.resultado + ' MPa' : ''}</span>
                       </div>
                     ))}
                   </div>
-                ) : <div style={{ marginTop: 6, fontSize: 12, color: '#9ca3af' }}>Sem CPs.</div>}
+                ) : <div style={{ marginTop: 6, fontSize: 12, color: 'var(--ink-faint)' }}>Sem CPs.</div>}
               </div>
             );
           })}
@@ -94,7 +94,7 @@ export function ConcretagemDetalhePage() {
           <Field label="Volume (m3)" type="number" value={String(form.volume_m3 ?? '')} onChange={(e) => setForm((s) => ({ ...s, volume_m3: e.target.value === '' ? null : Number(e.target.value) }))} />
           <Field label="Slump (cm)" type="number" value={String(form.slump_medido_cm ?? '')} onChange={(e) => setForm((s) => ({ ...s, slump_medido_cm: e.target.value === '' ? null : Number(e.target.value) }))} />
           <Field label="Temperatura (C)" type="number" value={String(form.temperatura_concreto_c ?? '')} onChange={(e) => setForm((s) => ({ ...s, temperatura_concreto_c: e.target.value === '' ? null : Number(e.target.value) }))} />
-          <div style={{ fontSize: 12, color: '#6b7280' }}>Ao salvar, gera a amostra e os CPs pelo padrao de moldagem do traco (default: 2 CP de 28 dias).</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Ao salvar, gera a amostra e os CPs pelo padrao de moldagem do traco (default: 2 CP de 28 dias).</div>
         </div>
       </Modal>
     </div>

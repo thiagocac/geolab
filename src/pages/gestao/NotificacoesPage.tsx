@@ -13,7 +13,7 @@ const EVENTS: [string, string][] = [
   ['calibracao_vencendo', 'Calibracao de equipamento vencendo (30d)'],
 ];
 const OFF = ['off', 'none', 'disabled'];
-const statusCor = (s: string): string => s === 'sent' ? '#16a34a' : s === 'queued' ? '#6b7280' : s === 'failed' || s === 'suppressed' ? '#C5117E' : '#d97706';
+const statusCor = (s: string): string => s === 'sent' ? '#16a34a' : s === 'queued' ? 'var(--ink-faint)' : s === 'failed' || s === 'suppressed' ? 'var(--magenta)' : '#d97706';
 
 export function NotificacoesPage() {
   const { member } = useAuth();
@@ -48,7 +48,7 @@ export function NotificacoesPage() {
             </label>
           ))}
         </div>
-        <p style={{ fontSize: 12, color: '#6b7280', margin: '10px 0 0' }}>Aplica-se ao seu usuario. Os disparos ainda estao em modo de simulacao (dry-run) no piloto.</p>
+        <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '10px 0 0' }}>Aplica-se ao seu usuario. Os disparos ainda estao em modo de simulacao (dry-run) no piloto.</p>
       </Card>
 
       <Card>
@@ -59,8 +59,8 @@ export function NotificacoesPage() {
               const md = (r.metadata && typeof r.metadata === 'object') ? r.metadata as Record<string, unknown> : {};
               const reason = String(md.reason ?? (md.dry_run ? 'dry-run' : ''));
               return (
-                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '6px 10px', border: '1px solid #eef0f3', borderRadius: 8 }}>
-                  <span style={{ fontSize: 13 }}>{(r.created_at ?? '').slice(0, 16).replace('T', ' ')} - {r.recipient_email} - <span style={{ color: '#6b7280' }}>{r.event_type}</span></span>
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
+                  <span style={{ fontSize: 13 }}>{(r.created_at ?? '').slice(0, 16).replace('T', ' ')} - {r.recipient_email} - <span style={{ color: 'var(--ink-faint)' }}>{r.event_type}</span></span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: statusCor(r.status) }}>
                     <span style={{ width: 7, height: 7, borderRadius: 99, background: statusCor(r.status) }} />{r.status}{reason ? ' (' + reason + ')' : ''}
                   </span>

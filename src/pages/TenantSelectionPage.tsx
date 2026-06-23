@@ -15,9 +15,9 @@ export function TenantSelectionPage() {
             <button
               key={t.tenant_id}
               onClick={() => void selectTenant(t.tenant_id)}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 10, background: '#fff', cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer', textAlign: 'left' }}
             >
-              <span style={{ fontWeight: 600 }}>{t.tenant_name}<small style={{ color: '#6b7280', fontWeight: 400 }}> · {t.role}</small></span>
+              <span style={{ fontWeight: 600 }}>{t.tenant_name}<small style={{ color: 'var(--ink-faint)', fontWeight: 400 }}> · {t.role}</small></span>
               {t.is_selected ? <Check size={18} /> : null}
             </button>
           ))}

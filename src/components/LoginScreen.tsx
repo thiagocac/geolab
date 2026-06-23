@@ -23,13 +23,13 @@ export function LoginScreen() {
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 360, display: 'grid', gap: 14 }}>
         <div style={{ fontSize: 24, fontWeight: 800 }}>
-          <span style={{ color: '#182863' }}>Consulte </span><span style={{ color: '#C5117E' }}>GEO</span>
-          <span style={{ color: '#6b7280', fontWeight: 600 }}> · GEOLAB</span>
+          <span style={{ color: 'var(--ink)' }}>Consulte </span><span style={{ color: 'var(--magenta)' }}>GEO</span>
+          <span style={{ color: 'var(--ink-faint)', fontWeight: 600 }}> · GEOLAB</span>
         </div>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: 13 }}>Controle tecnológico de materiais para laboratórios</p>
+        <p style={{ margin: 0, color: 'var(--ink-faint)', fontSize: 13 }}>Controle tecnológico de materiais para laboratórios</p>
         <Field label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={onEnter} autoComplete="username" />
         <Field label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={onEnter} autoComplete="current-password" />
-        {error ? <div style={{ color: '#C5117E', fontSize: 13 }}>{error}</div> : null}
+        {error ? <div style={{ color: 'var(--magenta)', fontSize: 13 }}>{error}</div> : null}
         <Button onClick={() => void submit()} disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</Button>
       </div>
     </div>

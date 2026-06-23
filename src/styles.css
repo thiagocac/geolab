@@ -115,3 +115,5 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 }
 @media (max-width:640px){.notif-pop{position:fixed;top:64px;right:14px;left:14px;width:auto;max-width:none}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+
+@media(max-width:640px){.hide-sm{display:none}}

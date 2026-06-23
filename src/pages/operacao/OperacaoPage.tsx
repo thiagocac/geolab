@@ -65,8 +65,8 @@ export function OperacaoPage() {
           {membersQ.isLoading ? <LoadingState /> : membersQ.isError ? <ErrorState message={(membersQ.error as Error).message} /> : members.length === 0 ? <EmptyState /> : (
             <Card><div style={{ display: 'grid', gap: 6 }}>
               {members.map((m) => (
-                <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid #eef0f3', borderRadius: 8 }}>
-                  <span style={{ fontSize: 13 }}><strong>{m.full_name ?? m.email}</strong> - {m.email} - <span style={{ color: '#6b7280' }}>{m.role}{m.cargo ? ' / ' + m.cargo : ''}</span>{!m.active ? ' - inativo' : ''}</span>
+                <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
+                  <span style={{ fontSize: 13 }}><strong>{m.full_name ?? m.email}</strong> - {m.email} - <span style={{ color: 'var(--ink-faint)' }}>{m.role}{m.cargo ? ' / ' + m.cargo : ''}</span>{!m.active ? ' - inativo' : ''}</span>
                   <Button variant="ghost" onClick={() => void toggle(m)}>{m.active ? 'Desativar' : 'Ativar'}</Button>
                 </div>
               ))}
@@ -76,7 +76,7 @@ export function OperacaoPage() {
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={() => { setF({}); setLabOpen(true); }}>Novo laboratorio</Button></div>
-          <Card><p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Criacao de laboratorio (tenant + admin) restrita ao Consulte GEO. A listagem de todos os laboratorios depende de policy cross-tenant (proximo bloco).</p></Card>
+          <Card><p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Criacao de laboratorio (tenant + admin) restrita ao Consulte GEO. A listagem de todos os laboratorios depende de policy cross-tenant (proximo bloco).</p></Card>
         </div>
       )}
 
@@ -106,7 +106,7 @@ export function OperacaoPage() {
 
       <Modal open={!!senha} title="Senha provisoria" onClose={() => setSenha(null)} footer={<Button onClick={() => setSenha(null)}>Fechar</Button>}>
         <p style={{ margin: 0, fontSize: 13 }}>Anote e repasse com seguranca - nao sera exibida de novo:</p>
-        <div style={{ marginTop: 8, padding: '10px 12px', background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 8, fontFamily: 'monospace', fontSize: 14 }}>{senha}</div>
+        <div style={{ marginTop: 8, padding: '10px 12px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 8, fontFamily: 'monospace', fontSize: 14 }}>{senha}</div>
       </Modal>
     </div>
   );

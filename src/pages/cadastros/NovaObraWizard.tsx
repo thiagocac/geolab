@@ -87,7 +87,7 @@ export function NovaObraWizard() {
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
               <input type="checkbox" checked={!!f.traco_habilitado} onChange={(e) => set('traco_habilitado', e.target.checked)} /> Habilitar tracos por obra
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, borderTop: '1px solid #eef0f3', paddingTop: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
               <input type="checkbox" checked={!!f.criar_traco} onChange={(e) => set('criar_traco', e.target.checked)} /> Criar um traco inicial para esta obra
             </label>
             {f.criar_traco ? (
@@ -97,7 +97,7 @@ export function NovaObraWizard() {
                 <Field label="Fck (MPa)" type="number" value={String(f.traco_fck ?? '')} onChange={(e) => set('traco_fck', e.target.value)} />
               </div>
             ) : null}
-            <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>O traco inicial sai com padrao 28d x 2 CP (NBR 5739); ajuste depois em Cadastros &gt; Materiais e ensaios.</p>
+            <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>O traco inicial sai com padrao 28d x 2 CP (NBR 5739); ajuste depois em Cadastros &gt; Materiais e ensaios.</p>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Button variant="ghost" onClick={() => setStep(1)}>Voltar</Button>
               <Button onClick={() => void finalizar()} disabled={busy}>{busy ? 'Criando...' : 'Criar obra'}</Button>

@@ -74,7 +74,7 @@ export function MateriaisPage() {
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <Card><div style={{ display: 'grid', gap: 6 }}>
           {rows.map((t) => (
-            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid #eef0f3', borderRadius: 8 }}>
+            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
               <span style={{ fontSize: 13 }}><strong>{t.codigo}</strong> - {t.nome} - fck {t.fck_mpa ?? '-'} MPa - {(t.padrao_moldagem?.length ?? 0)} idade(s){t.bombeado ? ' - bombeado' : ''}</span>
               <div style={{ display: 'flex', gap: 6 }}>
                 <Button variant="ghost" onClick={() => editar(t)}>Editar</Button>
@@ -110,14 +110,14 @@ export function MateriaisPage() {
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <Field label="Metodo de cura" value={String(f.metodo_cura ?? '')} onChange={(e) => setF((s) => ({ ...s, metodo_cura: e.target.value }))} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#374151', marginTop: 18 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)', marginTop: 18 }}>
               <input type="checkbox" checked={!!f.bombeado} onChange={(e) => setF((s) => ({ ...s, bombeado: e.target.checked }))} /> Bombeado
             </label>
           </div>
 
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 10 }}>
+          <div style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <strong style={{ fontSize: 13, color: '#182863' }}>Padrao de moldagem (idades x CP)</strong>
+              <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Padrao de moldagem (idades x CP)</strong>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {ATALHOS.map((a) => <Button key={a.idade + a.unidade} variant="ghost" onClick={() => addIdade({ ...a })}>+{a.idade}{a.unidade === 'hora' ? 'h' : 'd'}</Button>)}
               </div>
@@ -127,13 +127,13 @@ export function MateriaisPage() {
                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input type="number" value={String(p.idade)} onChange={(e) => setIdade(i, { idade: Number(e.target.value) })} className="input" style={{ width: 80 }} />
                   <select value={p.unidade} onChange={(e) => setIdade(i, { unidade: e.target.value === 'hora' ? 'hora' : 'dia' })} className="input" style={{ width: 90 }}><option value="dia">dias</option><option value="hora">horas</option></select>
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>x</span>
+                  <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>x</span>
                   <input type="number" value={String(p.quantidade)} onChange={(e) => setIdade(i, { quantidade: Number(e.target.value) })} className="input" style={{ width: 70 }} />
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>CP</span>
+                  <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>CP</span>
                   <Button variant="ghost" onClick={() => rmIdade(i)}>remover</Button>
                 </div>
               ))}
-              {padrao.length === 0 ? <span style={{ fontSize: 12, color: '#9ca3af' }}>Use os atalhos acima para adicionar idades.</span> : null}
+              {padrao.length === 0 ? <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Use os atalhos acima para adicionar idades.</span> : null}
             </div>
           </div>
 

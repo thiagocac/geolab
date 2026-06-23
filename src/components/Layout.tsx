@@ -1,53 +1,75 @@
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
-import { Button } from './ui/Button';
-import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, ShieldAlert, LogOut, Sun, Moon } from './ui/icons';
+import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, ShieldAlert, LogOut, Sun, Moon, Menu } from './ui/icons';
 
-type NavItem = { to: string; label: string; icon: typeof Home; end: boolean; roles?: string[] };
-const nav: NavItem[] = [
-  { to: '/', label: 'Painel', icon: Home, end: true },
-  { to: '/concretagens', label: 'Concretagens', icon: Truck, end: false },
-  { to: '/rompimentos', label: 'Rompimentos', icon: Flame, end: false },
-  { to: '/laudos', label: 'Laudos', icon: FileText, end: false },
-  { to: '/importacoes', label: 'Importacoes', icon: Import, end: false },
-  { to: '/notificacoes', label: 'Notificacoes', icon: Bell, end: false },
-  { to: '/preferencias', label: 'Preferencias', icon: Gauge, end: false, roles: ['admin', 'admin_consulte'] },
-  { to: '/cadastros', label: 'Cadastros', icon: Boxes, end: false },
-  { to: '/operacao', label: 'Operacao', icon: ShieldAlert, end: false, roles: ['admin', 'admin_consulte'] },
+type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
+type Section = { title?: string; items: Item[] };
+const sections: Section[] = [
+  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }] },
+  { title: 'Concreto', items: [
+    { to: '/concretagens', label: 'Concretagens', icon: Truck },
+    { to: '/rompimentos', label: 'Rompimentos', icon: Flame },
+    { to: '/laudos', label: 'Laudos', icon: FileText },
+    { to: '/importacoes', label: 'Importacoes', icon: Import },
+  ] },
+  { title: 'Cadastros', items: [{ to: '/cadastros', label: 'Cadastros', icon: Boxes }] },
+  { title: 'Gestao', items: [
+    { to: '/notificacoes', label: 'Notificacoes', icon: Bell },
+    { to: '/preferencias', label: 'Preferencias', icon: Gauge, roles: ['admin', 'admin_consulte'] },
+  ] },
+  { title: 'Operacao interna', items: [{ to: '/operacao', label: 'Operacao', icon: ShieldAlert, roles: ['admin', 'admin_consulte'] }] },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
   const { member, signOut, hasRole } = useAuth();
-  const { theme, toggle } = useTheme();
-  const items = nav.filter((n) => !n.roles || hasRole(...n.roles));
+  const { theme, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
+  const can = (it: Item) => !it.roles || hasRole(...it.roles);
   return (
-    <div style={{ minHeight: '100vh', display: 'flex' }}>
-      <aside style={{ width: 220, borderRight: '1px solid #e5e7eb', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ fontSize: 18, fontWeight: 800 }}><span style={{ color: '#182863' }}>Consulte </span><span style={{ color: '#C5117E' }}>GEO</span></div>
-        <nav style={{ display: 'grid', gap: 4 }}>
-          {items.map((n) => {
-            const Icon = n.icon;
+    <div className="app-shell">
+      {open ? <div className="nav-scrim" onClick={() => setOpen(false)} /> : null}
+      <aside className={'sidebar' + (open ? ' open' : '')}>
+        <div className="sidebar-brand">
+          <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, opacity: 0.85 }}>Consulte GEO</div>
+          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>GEOLAB</div>
+        </div>
+        <nav className="sidebar-nav">
+          {sections.map((sec, i) => {
+            const items = sec.items.filter(can);
+            if (!items.length) return null;
             return (
-              <NavLink key={n.to} to={n.to} end={n.end} style={({ isActive }) => ({ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, textDecoration: 'none', fontSize: 14, background: isActive ? '#182863' : 'transparent', color: isActive ? '#ffffff' : '#374151' })}>
-                <Icon size={18} /> {n.label}
-              </NavLink>
+              <div key={i}>
+                {sec.title ? <div className="nav-sect">{sec.title}</div> : null}
+                {items.map((it) => {
+                  const Icon = it.icon;
+                  return (
+                    <NavLink key={it.to} to={it.to} end={it.end} onClick={() => setOpen(false)} className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
+                      <Icon size={18} /> {it.label}
+                    </NavLink>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
-        <div style={{ marginTop: 'auto', fontSize: 11, color: '#9ca3af' }}>GEOLAB - v20</div>
+        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v21</div>
       </aside>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #e5e7eb', gap: 12 }}>
-          <span style={{ fontWeight: 600 }}>{member?.tenant_name}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => toggle()} aria-label="Alternar tema" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#6b7280', display: 'inline-flex' }}>{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
-            <span style={{ fontSize: 13, color: '#6b7280' }}>{member?.email}</span>
-            <Button variant="ghost" leftIcon={<LogOut size={16} />} onClick={() => void signOut()}>Sair</Button>
+      <div className="content-col">
+        <header className="topbar">
+          <button className="icon-btn menu-btn" aria-label="Menu" onClick={() => setOpen((o) => !o)}><Menu size={20} /></button>
+          <span style={{ fontWeight: 700, color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member?.tenant_name}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+            <div className="theme-toggle">
+              <button className={theme === 'light' ? 'on' : ''} aria-label="Tema claro" onClick={() => setTheme('light')}><Sun size={16} /></button>
+              <button className={theme === 'dark' ? 'on' : ''} aria-label="Tema escuro" onClick={() => setTheme('dark')}><Moon size={16} /></button>
+            </div>
+            <span style={{ fontSize: 13, color: 'var(--ink-faint)' }} className="hide-sm">{member?.email}</span>
+            <button className="icon-btn" aria-label="Sair" onClick={() => void signOut()}><LogOut size={18} /></button>
           </div>
         </header>
-        <main id="conteudo" style={{ padding: 24, flex: 1, minWidth: 0 }}>{children}</main>
+        <main id="conteudo" className="page-wrap">{children}</main>
       </div>
     </div>
   );

@@ -47,10 +47,10 @@ export function ConcretagensPage() {
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <div style={{ display: 'grid', gap: 8 }}>
           {rows.map((c) => (
-            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 14, border: '1px solid #e5e7eb', borderRadius: 10 }}>
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 14, border: '1px solid var(--line)', borderRadius: 10 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700 }}>{c.codigo ?? '(sem codigo)'} <small style={{ color: '#6b7280', fontWeight: 400 }}>- {c.status}</small></div>
-                <div style={{ fontSize: 13, color: '#6b7280' }}>{c.lab_clients?.razao_social ?? '-'} - {c.client_works?.nome ?? '-'} - {c.data_programada ?? c.data_real ?? '-'} - {c.fornecedor_texto ?? '-'}</div>
+                <div style={{ fontWeight: 700 }}>{c.codigo ?? '(sem codigo)'} <small style={{ color: 'var(--ink-faint)', fontWeight: 400 }}>- {c.status}</small></div>
+                <div style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{c.lab_clients?.razao_social ?? '-'} - {c.client_works?.nome ?? '-'} - {c.data_programada ?? c.data_real ?? '-'} - {c.fornecedor_texto ?? '-'}</div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <Button variant="ghost" onClick={() => nav('/concretagens/' + c.id)}>Abrir</Button>

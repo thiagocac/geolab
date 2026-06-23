@@ -80,7 +80,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
         <Button onClick={openNew}>Novo</Button>
       </div>
       {query.isLoading ? <LoadingState /> : query.isError ? <ErrorState message={(query.error as Error).message} /> : <DataTable rows={rows} columns={cols} rowKey={(r) => r.id} sort={sort} onSort={setSort} />}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: '#6b7280' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: 'var(--ink-faint)' }}>
         <span>{total} registro(s)</span>
         <span style={{ display: 'flex', gap: 8 }}>
           <Button variant="ghost" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Anterior</Button>
@@ -90,7 +90,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
       <Modal open={editing !== undefined} title={editing ? 'Editar - ' + title : 'Novo - ' + title} onClose={close} footer={<><Button variant="ghost" onClick={close}>Cancelar</Button><Button onClick={() => void save()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           {fields.map((f) => <FieldRenderer key={f.key} spec={f} value={form[f.key]} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />)}
-          {err ? <div style={{ color: '#C5117E', fontSize: 13 }}>{err}</div> : null}
+          {err ? <div style={{ color: 'var(--magenta)', fontSize: 13 }}>{err}</div> : null}
         </div>
       </Modal>
     </div>
