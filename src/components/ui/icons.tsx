@@ -1,0 +1,38 @@
+import type { SVGProps } from 'react';
+type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+function Icon({ size = 20, children, ...props }: IconProps) { return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{children}</svg>; }
+export const Home = (p:IconProps)=><Icon {...p}><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></Icon>;
+export const Layers = (p:IconProps)=><Icon {...p}><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></Icon>;
+export const Truck = (p:IconProps)=><Icon {...p}><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></Icon>;
+export const Boxes = (p:IconProps)=><Icon {...p}><path d="M3 7 12 3l9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></Icon>;
+export const FlaskConical = (p:IconProps)=><Icon {...p}><path d="M10 2h4"/><path d="M11 2v6l-5 9a3 3 0 0 0 3 5h6a3 3 0 0 0 3-5l-5-9V2"/><path d="M8 17h8"/></Icon>;
+export const GripVertical = (p:IconProps)=><Icon {...p}><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></Icon>;
+export const HelpCircle = (p:IconProps)=><Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></Icon>;
+export const Copy = (p:IconProps)=><Icon {...p}><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></Icon>;
+export const FileText = (p:IconProps)=><Icon {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/></Icon>;
+export const ShieldAlert = (p:IconProps)=><Icon {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v5"/><path d="M12 17h.01"/></Icon>;
+export const Gauge = (p:IconProps)=><Icon {...p}><path d="M12 14l4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></Icon>;
+export const Import = (p:IconProps)=><Icon {...p}><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></Icon>;
+export const ClipboardCheck = (p:IconProps)=><Icon {...p}><path d="M9 5h6"/><path d="M9 3h6v4H9z"/><path d="M5 5h2"/><path d="M17 5h2v16H5V5"/><path d="m8 14 2 2 5-5"/></Icon>;
+export const Download = (p:IconProps)=><Icon {...p}><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></Icon>;
+export const Plus = (p:IconProps)=><Icon {...p}><path d="M12 5v14"/><path d="M5 12h14"/></Icon>;
+export const Search = (p:IconProps)=><Icon {...p}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></Icon>;
+export const ArrowDown = (p:IconProps)=><Icon {...p}><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></Icon>;
+export const ArrowUp = (p:IconProps)=><Icon {...p}><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></Icon>;
+export const Bell = (p:IconProps)=><Icon {...p}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></Icon>;
+export const Clock = (p:IconProps)=><Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></Icon>;
+export const Sun = (p:IconProps)=><Icon {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/></Icon>;
+export const Moon = (p:IconProps)=><Icon {...p}><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></Icon>;
+export const Menu = (p:IconProps)=><Icon {...p}><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></Icon>;
+export const X = (p:IconProps)=><Icon {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Icon>;
+export const Check = (p:IconProps)=><Icon {...p}><path d="m20 6-11 11-5-5"/></Icon>;
+export const CheckCircle = (p:IconProps)=><Icon {...p}><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></Icon>;
+export const XCircle = (p:IconProps)=><Icon {...p}><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></Icon>;
+export const AlertTriangle = (p:IconProps)=><Icon {...p}><path d="M10.3 3.3 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.3a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></Icon>;
+export const LogOut = (p:IconProps)=><Icon {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></Icon>;
+export const Building2 = (p:IconProps)=><Icon {...p}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M2 22h20"/><path d="M10 7h.01"/><path d="M14 7h.01"/><path d="M10 11h.01"/><path d="M14 11h.01"/><path d="M10 15h.01"/><path d="M14 15h.01"/></Icon>;
+export const ChevronRight = (p:IconProps)=><Icon {...p}><path d="m9 18 6-6-6-6"/></Icon>;
+export const Pencil = (p:IconProps)=><Icon {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></Icon>;
+export const Beaker = (p:IconProps)=><Icon {...p}><path d="M4.5 3h15"/><path d="M6 3v15a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V3"/><path d="M6 12h12"/></Icon>;
+
+export const Flame = (p:IconProps)=><Icon {...p}><path d="M12 3s-4 4-4 8a4 4 0 0 0 8 0c0-1.5-.7-2.8-1.5-4 0 1.2-.6 2-1.5 2.5C13.5 8 14 5 12 3Z"/><path d="M12 21a7 7 0 0 1-7-7c0-2 1-4 2-5"/><path d="M19 14a7 7 0 0 1-7 7"/></Icon>;

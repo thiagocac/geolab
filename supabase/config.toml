@@ -1,0 +1,7 @@
+project_id = "geolab"
+
+[functions.generate-ficha-moldagem-pdf]
+verify_jwt = true
+
+[functions.generate-laudo-ensaio-pdf]
+verify_jwt = true

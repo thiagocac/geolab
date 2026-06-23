@@ -1,0 +1,12 @@
+import type { ReactNode } from 'react';
+export type SortState = { column: string; direction: 'asc' | 'desc' };
+export type ListState = { page: number; pageSize: number; search: string; sort: SortState; filter?: Record<string, string>; workIn?: string[] };
+export type PageResult<T> = { rows: T[]; count: number };
+export type DomainRow = Record<string, unknown> & { id: string };
+export type MaterialKind = 'concreto' | 'bloco_estrutural' | 'graute' | 'argamassa';
+export type MaterialProduct = DomainRow & { codigo: string; nome: string; material_kind: MaterialKind; unidade_medida: string; fck_mpa?: number; validade_horas?: number; status: string };
+export type ImportIssue = { row: number; field?: string; message: string };
+export type ImportResult = { processed: number; accepted: number; rejected: number; matched_cp?: number; soltos?: number; issues: ImportIssue[] };
+export type Column<T> = { key: string; header: string; sortable?: boolean; align?: 'left' | 'right' | 'center'; render?: (row: T) => ReactNode; type?: 'date' | 'number' | 'text' };
+export type FieldSpec = { key: string; label: string; type?: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'croqui' | 'file' | 'molding' | 'reference' | 'boolean'; options?: { value: string; label: string }[]; required?: boolean; help?: string; bucket?: string; prefix?: string; refTable?: string; refLabel?: string; refFilter?: Record<string, string>; optionsRpc?: { fn: string; args?: Record<string, unknown>; valueKey?: string; labelKey?: string }; mirrorLabelTo?: string };
+export type RowAction<T> = { label: string; run: (row: T) => Promise<void> | void; variant?: 'primary' | 'secondary' | 'danger' | 'ghost'; show?: (row: T) => boolean };
