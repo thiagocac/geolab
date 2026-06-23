@@ -1,30 +1,26 @@
-# GEOLAB — Patch v21 (revisão de UI/design: dark mode + responsivo + tokens)
+# GEOLAB — Patch v22 (validação pública de laudo + numeração da concretagem)
 
-Revisão completa de UI. Achado central: o `src/styles.css` é um **design system rico**
-(tokens via CSS variables que respondem ao dark mode, classes `.card`/`.input`/`.btn`/
-`.table`, e um shell de sidebar/topbar **responsivo** com `.nav-link`/`.nav-sect`/
-`.theme-toggle`/sidebar mobile) — mas o Layout e as telas construídas o **ignoravam**,
-usando inline styles com cores fixas. Resultado: dark mode quebrado e layout não-responsivo.
+Fecha dois gaps de v1: o QR do laudo agora leva a uma página real, e a concretagem
+ganha numeração automática.
 
-## Correções
-1. **Layout reescrito no shell do design system**: `.app-shell` + `.sidebar` (com
-   `.sidebar-brand`, seções `.nav-sect`, `.nav-link` ativos com a barra de acento) +
-   `.topbar` + `.page-wrap`. Agora é **responsivo** (sidebar colapsa no mobile, com
-   botão de menu e scrim) e o **theme-toggle** usa o componente estilizado (claro/escuro).
-2. **Tokenização de cores** (49 nas páginas + 7 em LoginScreen/AdminListPage): hex fixo
-   → CSS var (`#fff`→`var(--surface)`, `#e5e7eb`→`var(--line)`, `#374151`→`var(--ink-soft)`,
-   `#6b7280`→`var(--ink-faint)`, `#182863`→`var(--ink)`, `#C5117E`→`var(--magenta)`…).
-   Agora as telas **respondem ao dark mode**. Verde/âmbar de status (#16a34a/#d97706)
-   preservados (legíveis nos dois temas).
-3. `.hide-sm` (esconde o e-mail no topbar em telas pequenas).
+## Backend já aplicado (via MCP)
+- **Migration `023_concretagem_numbering`** — trigger `set_concretagem_codigo` gera
+  `CONC-AAAA-NNNNNN` por tenant/ano (BEFORE INSERT, se `codigo` vier vazio) + índice
+  único `(tenant_id, codigo)`. Concretagens novas saem numeradas.
+- **EF `validar-laudo`** (v1, `verify_jwt=false`, pública) — recebe o código do QR
+  (`LAU-<codigo da concretagem>`), devolve só info de autenticidade (número, status,
+  data, lab, RT, revisão). Service-role; não expõe dado sensível.
 
-## Arquivos
-Layout, LoginScreen, AdminListPage, styles.css, e 11 páginas (Concreto, Cadastros,
-Gestão, Operação, TenantSelection). Bump v21.
+## Frontend
+| Arquivo | Mudança |
+|---|---|
+| `src/pages/ValidarPage.tsx` | **NOVO** — página pública de validação (sem login, sem Layout) |
+| `src/lib/api/validar.ts` | **NOVO** — chama a EF só com a anon key |
+| `src/App.tsx` | rota `/validar/:codigo` **fora do gate de auth** (detecta o path antes de exigir login) |
+| `public/sw.js` · `core.ts` · `Layout.tsx` | `v22` |
 
-## Limite da revisão
-Feita no nível de **sistema/consistência** (a extensão do Chrome estava offline, não deu
-para inspecionar o render). Pega dark mode, responsividade e divergência de tokens.
-Polimento visual fino (alinhamento, hierarquia, densidade) pede um olhar no app renderizado.
+## Fluxo
+O laudo já imprime o QR para `lab.consultegeo.org/validar/LAU-<codigo>`. Agora esse link
+abre a página pública, que consulta a EF e mostra se o laudo é autêntico/emitido.
 
 Build completo (check-source+tsc+vitest+vite) verde. Push em `main`.

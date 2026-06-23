@@ -11,13 +11,27 @@ import { LaudosPage } from './pages/concreto/LaudosPage';
 import { ImportacoesPage } from './pages/concreto/ImportacoesPage';
 import { NotificacoesPage } from './pages/gestao/NotificacoesPage';
 import { PreferenciasPage } from './pages/gestao/PreferenciasPage';
-import { OperacaoPage } from './pages/operacao/OperacaoPage';
 import { NovaObraWizard } from './pages/cadastros/NovaObraWizard';
+import { OperacaoPage } from './pages/operacao/OperacaoPage';
+import { ValidarPage } from './pages/ValidarPage';
 import { Layout } from './components/Layout';
 
 export function App() {
   const { ready, session, needsTenantSelection, hasRole } = useAuth();
-  if (!ready) return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#6b7280' }}>Carregando...</div>;
+
+  // Rota PUBLICA de validacao (fora do gate de auth) — alvo do QR do laudo.
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/validar')) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/validar/:codigo" element={<ValidarPage />} />
+          <Route path="*" element={<ValidarPage />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
+  if (!ready) return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'var(--ink-faint)' }}>Carregando...</div>;
   if (!session) return <LoginScreen />;
   if (needsTenantSelection) return <TenantSelectionPage />;
   const podeOperacao = hasRole('admin', 'admin_consulte');
