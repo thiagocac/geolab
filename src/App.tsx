@@ -13,6 +13,8 @@ import { NotificacoesPage } from './pages/gestao/NotificacoesPage';
 import { PreferenciasPage } from './pages/gestao/PreferenciasPage';
 import { NovaObraWizard } from './pages/cadastros/NovaObraWizard';
 import { EstruturaPage } from './pages/cadastros/EstruturaPage';
+import { MateriaisPage } from './pages/cadastros/MateriaisPage';
+import { ControleLaudoPage } from './pages/gestao/ControleLaudoPage';
 import { OperacaoPage } from './pages/operacao/OperacaoPage';
 import { ValidarPage } from './pages/ValidarPage';
 import { Layout } from './components/Layout';
@@ -44,6 +46,7 @@ export function App() {
           <Route path="/cadastros" element={<CadastrosPage />} />
           <Route path="/nova-obra" element={<NovaObraWizard />} />
           <Route path="/estrutura" element={<EstruturaPage />} />
+          <Route path="/tracos" element={<MateriaisPage />} />
           <Route path="/concretagens" element={<ConcretagensPage />} />
           <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
           <Route path="/rompimentos" element={<RompimentosPage />} />
@@ -51,6 +54,7 @@ export function App() {
           <Route path="/importacoes" element={<ImportacoesPage />} />
           <Route path="/notificacoes" element={<NotificacoesPage />} />
           <Route path="/preferencias" element={<PreferenciasPage />} />
+          <Route path="/gestao/controle-laudo" element={<ControleLaudoPage />} />
           <Route path="/operacao" element={podeOperacao ? <OperacaoPage /> : <Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

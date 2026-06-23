@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -6,17 +6,101 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { Field, SelectField } from '../../components/ui/Field';
+import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listTracos, saveTraco, softDeleteTraco, type TracoRow, type PadraoIdade } from '../../lib/api/materiais';
+import { listTracos, saveTraco, softDeleteTraco, type TracoRow } from '../../lib/api/materiais';
+import {
+  PADRAO_MOLDAGEM_SHORTCUTS,
+  TIPO_ENSAIO_OPCOES,
+  UNIDADE_IDADE_OPCOES,
+  TRACOS_PADRAO,
+  codigoTracoFromDescricao,
+  linhaDeAtalho,
+  normalizePadroes,
+  padraoMoldagemAgeInHours,
+  padroesMoldagemPadrao,
+  padroesToDb,
+  parseSlumpFromDescricao,
+  toNumber,
+  type PadraoMoldagem,
+  type TipoEnsaioPadrao,
+  type UnidadeIdade,
+  type TracoPadrao,
+} from '../../lib/concreto';
 
-const num = (v: unknown): number | null => { const s = String(v ?? '').trim(); return s === '' ? null : Number(s); };
 const str = (v: unknown): string => String(v ?? '').trim();
-const ATALHOS: PadraoIdade[] = [
-  { idade: 12, unidade: 'hora', quantidade: 2 }, { idade: 24, unidade: 'hora', quantidade: 2 },
-  { idade: 3, unidade: 'dia', quantidade: 2 }, { idade: 7, unidade: 'dia', quantidade: 2 },
-  { idade: 28, unidade: 'dia', quantidade: 2 }, { idade: 63, unidade: 'dia', quantidade: 2 },
-];
+const num = (v: unknown): number | null => toNumber(v as number | string | null | undefined);
+
+type FormState = {
+  descricao: string;
+  aplicacao: string;
+  fck_mpa: string;
+  fcj_mpa: string;
+  desvio_padrao_mpa: string;
+  slump_previsto_cm: string;
+  slump_tolerancia_cm: string;
+  validade_concreto_minutos: string;
+  condicao_preparo: string;
+  brita: string;
+  dmax_agregado_mm: string;
+  fator_ac: string;
+  cimento_tipo: string;
+  consumo_cimento_kg_m3: string;
+  aditivo_tipo: string;
+  metodo_cura: string;
+  especificacao: string;
+  observacoes: string;
+  bombeado: boolean;
+};
+
+function vazio(): FormState {
+  return {
+    descricao: 'FCK 30 | BRITA 1 | SLUMP 10±2 CM', aplicacao: 'Sapata, Cortina, Blocos', fck_mpa: '30', fcj_mpa: '', desvio_padrao_mpa: '',
+    slump_previsto_cm: '10', slump_tolerancia_cm: '2', validade_concreto_minutos: '150', condicao_preparo: 'A', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false,
+  };
+}
+
+function fromRow(t: TracoRow): FormState {
+  return {
+    descricao: t.nome || t.codigo || '',
+    aplicacao: t.aplicacao ?? '',
+    fck_mpa: t.fck_mpa == null ? '' : String(t.fck_mpa),
+    fcj_mpa: t.fcj_mpa == null ? '' : String(t.fcj_mpa),
+    desvio_padrao_mpa: t.desvio_padrao_mpa == null ? '' : String(t.desvio_padrao_mpa),
+    slump_previsto_cm: t.slump_previsto_cm == null ? '' : String(t.slump_previsto_cm),
+    slump_tolerancia_cm: t.slump_tolerancia_cm == null ? '' : String(t.slump_tolerancia_cm),
+    validade_concreto_minutos: t.validade_concreto_minutos == null ? '' : String(t.validade_concreto_minutos),
+    condicao_preparo: t.condicao_preparo ?? 'A',
+    brita: t.brita ?? '',
+    dmax_agregado_mm: t.dmax_agregado_mm == null ? '' : String(t.dmax_agregado_mm),
+    fator_ac: t.fator_ac == null ? '' : String(t.fator_ac),
+    cimento_tipo: t.cimento_tipo ?? '',
+    consumo_cimento_kg_m3: t.consumo_cimento_kg_m3 == null ? '' : String(t.consumo_cimento_kg_m3),
+    aditivo_tipo: t.aditivo_tipo ?? '',
+    metodo_cura: t.metodo_cura ?? '',
+    especificacao: t.especificacao ?? '',
+    observacoes: t.observacoes ?? '',
+    bombeado: !!t.bombeado,
+  };
+}
+
+function parseBrita(descricao: string): string {
+  const m = /BRITA\s*([0-9A-Z]+)/i.exec(descricao);
+  return m?.[1] ?? '';
+}
+
+function aplicarPadrao(p: TracoPadrao, setF: (v: FormState) => void, setPadrao: (v: PadraoMoldagem[]) => void) {
+  const base = vazio();
+  base.descricao = p.descricao;
+  base.aplicacao = p.aplicacao;
+  base.fck_mpa = String(p.fck);
+  base.slump_previsto_cm = String(p.slumpPrevisto);
+  base.slump_tolerancia_cm = String(p.slumpTolerancia);
+  base.validade_concreto_minutos = String(p.validadeMinutos);
+  base.brita = p.brita ?? parseBrita(p.descricao);
+  setF(base);
+  setPadrao(padroesMoldagemPadrao(p.fck));
+}
 
 export function MateriaisPage() {
   const { member } = useAuth();
@@ -24,120 +108,178 @@ export function MateriaisPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [f, setF] = useState<Record<string, unknown>>({});
-  const [padrao, setPadrao] = useState<PadraoIdade[]>([]);
+  const [f, setF] = useState<FormState>(vazio());
+  const [padrao, setPadrao] = useState<PadraoMoldagem[]>(padroesMoldagemPadrao(30));
   const [busy, setBusy] = useState(false);
-
   const q = useQuery({ queryKey: ['tracos'], queryFn: listTracos });
 
-  function novo() { setEditId(null); setF({ condicao_preparo: 'A' }); setPadrao([{ idade: 28, unidade: 'dia', quantidade: 2 }]); setOpen(true); }
-  function editar(t: TracoRow) {
-    setEditId(t.id);
-    setF({ codigo: t.codigo, nome: t.nome, fck_mpa: t.fck_mpa ?? '', condicao_preparo: t.condicao_preparo ?? 'A', slump_previsto_cm: t.slump_previsto_cm ?? '', slump_tolerancia_cm: t.slump_tolerancia_cm ?? '', brita: t.brita ?? '', dmax_agregado_mm: t.dmax_agregado_mm ?? '', fator_ac: t.fator_ac ?? '', cimento_tipo: t.cimento_tipo ?? '', consumo_cimento_kg_m3: t.consumo_cimento_kg_m3 ?? '', aditivo_tipo: t.aditivo_tipo ?? '', metodo_cura: t.metodo_cura ?? '', bombeado: t.bombeado, observacoes: t.observacoes ?? '' });
-    setPadrao(Array.isArray(t.padrao_moldagem) ? t.padrao_moldagem : []);
+  const fckAtual = useMemo(() => num(f.fck_mpa), [f.fck_mpa]);
+
+  function novo() {
+    setEditId(null);
+    setF(vazio());
+    setPadrao(padroesMoldagemPadrao(30));
     setOpen(true);
   }
-  function addIdade(p: PadraoIdade) { setPadrao((s) => [...s, p]); }
-  function setIdade(i: number, patch: Partial<PadraoIdade>) { setPadrao((s) => s.map((r, idx) => idx === i ? { ...r, ...patch } : r)); }
-  function rmIdade(i: number) { setPadrao((s) => s.filter((_, idx) => idx !== i)); }
+
+  function editar(t: TracoRow) {
+    setEditId(t.id);
+    setF(fromRow(t));
+    setPadrao(normalizePadroes(t.padrao_moldagem, t.fck_mpa));
+    setOpen(true);
+  }
+
+  function patch<K extends keyof FormState>(key: K, value: FormState[K]) { setF((s) => ({ ...s, [key]: value })); }
+  function addAtalho(sc: (typeof PADRAO_MOLDAGEM_SHORTCUTS)[number]) { setPadrao((s) => [...s, linhaDeAtalho(sc, fckAtual)]); }
+  function setPm(i: number, patchRow: Partial<PadraoMoldagem>) { setPadrao((s) => s.map((r, idx) => idx === i ? { ...r, ...patchRow } : r)); }
+  function rmPm(i: number) { setPadrao((s) => s.filter((_, idx) => idx !== i)); }
+  function ordenar() { setPadrao((s) => [...s].sort((a, b) => padraoMoldagemAgeInHours(a) - padraoMoldagemAgeInHours(b))); }
 
   async function salvar() {
     if (!member) return;
     setBusy(true);
     try {
-      if (!str(f.codigo) || !str(f.nome)) throw new Error('Codigo e nome sao obrigatorios.');
+      if (!str(f.descricao)) throw new Error('Descrição é obrigatória.');
+      const slump = parseSlumpFromDescricao(f.descricao);
+      const descricao = str(f.descricao);
       const payload = {
-        codigo: str(f.codigo), nome: str(f.nome), fck_mpa: num(f.fck_mpa), condicao_preparo: str(f.condicao_preparo) || null,
-        slump_previsto_cm: num(f.slump_previsto_cm), slump_tolerancia_cm: num(f.slump_tolerancia_cm),
-        brita: str(f.brita) || null, dmax_agregado_mm: num(f.dmax_agregado_mm), fator_ac: num(f.fator_ac),
-        cimento_tipo: str(f.cimento_tipo) || null, consumo_cimento_kg_m3: num(f.consumo_cimento_kg_m3),
-        aditivo_tipo: str(f.aditivo_tipo) || null, metodo_cura: str(f.metodo_cura) || null,
-        bombeado: !!f.bombeado, observacoes: str(f.observacoes) || null,
-        padrao_moldagem: padrao.map((p) => ({ idade: Number(p.idade) || 0, unidade: p.unidade === 'hora' ? 'hora' : 'dia', quantidade: Number(p.quantidade) || 1 })),
+        codigo: codigoTracoFromDescricao(descricao),
+        nome: descricao,
+        aplicacao: str(f.aplicacao) || null,
+        fck_mpa: num(f.fck_mpa),
+        fcj_mpa: num(f.fcj_mpa),
+        desvio_padrao_mpa: num(f.desvio_padrao_mpa),
+        condicao_preparo: str(f.condicao_preparo) || null,
+        slump_previsto_cm: num(f.slump_previsto_cm) ?? slump?.previsto ?? null,
+        slump_tolerancia_cm: num(f.slump_tolerancia_cm) ?? slump?.tolerancia ?? null,
+        validade_concreto_minutos: num(f.validade_concreto_minutos),
+        brita: str(f.brita) || parseBrita(descricao) || null,
+        dmax_agregado_mm: num(f.dmax_agregado_mm),
+        fator_ac: num(f.fator_ac),
+        cimento_tipo: str(f.cimento_tipo) || null,
+        consumo_cimento_kg_m3: num(f.consumo_cimento_kg_m3),
+        aditivo_tipo: str(f.aditivo_tipo) || null,
+        metodo_cura: str(f.metodo_cura) || null,
+        especificacao: str(f.especificacao) || null,
+        bombeado: f.bombeado,
+        observacoes: str(f.observacoes) || null,
+        padrao_moldagem: padroesToDb(padrao),
+        schema_campos: { origem_ui: 'geolab-v23-geomat-tracos' },
       };
       await saveTraco(member.tenant_id, editId, payload);
       await qc.invalidateQueries({ queryKey: ['tracos'] });
-      toast('Traco salvo.', 'success'); setOpen(false);
+      await qc.invalidateQueries({ queryKey: ['tracos_ref'] });
+      toast('Traço salvo.', 'success');
+      setOpen(false);
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
+
   async function excluir(t: TracoRow) {
-    if (!window.confirm('Excluir o traco ' + t.codigo + '?')) return;
-    try { await softDeleteTraco(t.id); await qc.invalidateQueries({ queryKey: ['tracos'] }); toast('Excluido.', 'success'); }
+    if (!window.confirm('Excluir o traço ' + t.codigo + '?')) return;
+    try { await softDeleteTraco(t.id); await qc.invalidateQueries({ queryKey: ['tracos'] }); toast('Excluído.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); }
   }
 
   const rows = q.data ?? [];
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Cadastros" title="Materiais e ensaios" description="Tracos de concreto (fck, abatimento, padrao de moldagem)." />
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={novo}>Novo traco</Button></div>
+    <div className="space-y-4">
+      <PageHeader kicker="Cadastros" title="Traços de concreto" description="Cadastro de traços, slump, validade e padrão de moldagem no mesmo modelo do GEOMAT / Nova obra." />
+      <div className="flex justify-end"><Button onClick={novo}>+ Adicionar traço</Button></div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
-        <Card><div style={{ display: 'grid', gap: 6 }}>
-          {rows.map((t) => (
-            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
-              <span style={{ fontSize: 13 }}><strong>{t.codigo}</strong> - {t.nome} - fck {t.fck_mpa ?? '-'} MPa - {(t.padrao_moldagem?.length ?? 0)} idade(s){t.bombeado ? ' - bombeado' : ''}</span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <Button variant="ghost" onClick={() => editar(t)}>Editar</Button>
-                <Button variant="ghost" onClick={() => void excluir(t)}>Excluir</Button>
+        <Card>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {rows.map((t) => (
+              <div key={t.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="font-black text-slate-950 dark:text-slate-50">{t.nome}</div>
+                  <div className="mt-1 text-xs text-slate-500">{t.aplicacao || '-'} · FCK {t.fck_mpa ?? '-'} MPa · slump {t.slump_previsto_cm ?? '-'}±{t.slump_tolerancia_cm ?? '-'} cm · validade {t.validade_concreto_minutos ?? '-'} min · {normalizePadroes(t.padrao_moldagem, t.fck_mpa).length} idade(s)</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" onClick={() => editar(t)}>Editar</Button>
+                  <Button variant="ghost" onClick={() => void excluir(t)}>Excluir</Button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div></Card>
+            ))}
+          </div>
+        </Card>
       )}
 
-      <Modal open={open} title={editId ? 'Editar traco' : 'Novo traco'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <Field label="Codigo*" value={String(f.codigo ?? '')} onChange={(e) => setF((s) => ({ ...s, codigo: e.target.value }))} />
-            <Field label="Nome*" value={String(f.nome ?? '')} onChange={(e) => setF((s) => ({ ...s, nome: e.target.value }))} />
-          </div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <Field label="Fck (MPa)" type="number" value={String(f.fck_mpa ?? '')} onChange={(e) => setF((s) => ({ ...s, fck_mpa: e.target.value }))} />
-            <SelectField label="Condicao de preparo" value={String(f.condicao_preparo ?? 'A')} onChange={(e) => setF((s) => ({ ...s, condicao_preparo: e.target.value }))}>{['A', 'B', 'C'].map((x) => <option key={x} value={x}>{x}</option>)}</SelectField>
-          </div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <Field label="Abatimento (cm)" type="number" value={String(f.slump_previsto_cm ?? '')} onChange={(e) => setF((s) => ({ ...s, slump_previsto_cm: e.target.value }))} />
-            <Field label="Tolerancia (cm)" type="number" value={String(f.slump_tolerancia_cm ?? '')} onChange={(e) => setF((s) => ({ ...s, slump_tolerancia_cm: e.target.value }))} />
-          </div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <Field label="Brita / agregado" value={String(f.brita ?? '')} onChange={(e) => setF((s) => ({ ...s, brita: e.target.value }))} />
-            <Field label="Dmax (mm)" type="number" value={String(f.dmax_agregado_mm ?? '')} onChange={(e) => setF((s) => ({ ...s, dmax_agregado_mm: e.target.value }))} />
-            <Field label="Fator a/c" type="number" value={String(f.fator_ac ?? '')} onChange={(e) => setF((s) => ({ ...s, fator_ac: e.target.value }))} />
-          </div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <Field label="Cimento" value={String(f.cimento_tipo ?? '')} onChange={(e) => setF((s) => ({ ...s, cimento_tipo: e.target.value }))} />
-            <Field label="Consumo cimento (kg/m3)" type="number" value={String(f.consumo_cimento_kg_m3 ?? '')} onChange={(e) => setF((s) => ({ ...s, consumo_cimento_kg_m3: e.target.value }))} />
-          </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <Field label="Metodo de cura" value={String(f.metodo_cura ?? '')} onChange={(e) => setF((s) => ({ ...s, metodo_cura: e.target.value }))} />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)', marginTop: 18 }}>
-              <input type="checkbox" checked={!!f.bombeado} onChange={(e) => setF((s) => ({ ...s, bombeado: e.target.checked }))} /> Bombeado
-            </label>
+      <Modal open={open} wide title={editId ? 'Editar traço de concreto' : 'Novo traço de concreto'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar traço'}</Button></>}>
+        <div className="space-y-4">
+          <div>
+            <div className="text-xs font-bold text-slate-500">Traços-padrão:</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {TRACOS_PADRAO.map((p) => <button type="button" key={p.descricao} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" onClick={() => aplicarPadrao(p, setF, setPadrao)}>{p.descricao}</button>)}
+            </div>
           </div>
 
-          <div style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Padrao de moldagem (idades x CP)</strong>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {ATALHOS.map((a) => <Button key={a.idade + a.unidade} variant="ghost" onClick={() => addIdade({ ...a })}>+{a.idade}{a.unidade === 'hora' ? 'h' : 'd'}</Button>)}
+          <Card className="p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="font-black text-slate-900 dark:text-slate-100">Concreto 1</div>
+              {editId ? null : <button type="button" className="text-xl text-slate-400" onClick={() => setOpen(false)}>×</button>}
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Descrição *" value={f.descricao} onChange={(e) => patch('descricao', e.target.value)} />
+              <Field label="Aplicação" value={f.aplicacao} onChange={(e) => patch('aplicacao', e.target.value)} />
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              <Field label="FCK (MPa) *" type="number" value={f.fck_mpa} onChange={(e) => patch('fck_mpa', e.target.value)} />
+              <Field label="Slump prev. (cm)" type="number" value={f.slump_previsto_cm} onChange={(e) => patch('slump_previsto_cm', e.target.value)} />
+              <Field label="Tolerância (±cm)" type="number" value={f.slump_tolerancia_cm} onChange={(e) => patch('slump_tolerancia_cm', e.target.value)} />
+              <Field label="Validade (min)" type="number" value={f.validade_concreto_minutos} onChange={(e) => patch('validade_concreto_minutos', e.target.value)} />
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              <SelectField label="Cond. preparo" value={f.condicao_preparo} onChange={(e) => patch('condicao_preparo', e.target.value)}>{['A', 'B', 'C'].map((x) => <option key={x} value={x}>{x}</option>)}</SelectField>
+              <Field label="FCJ (MPa)" type="number" value={f.fcj_mpa} onChange={(e) => patch('fcj_mpa', e.target.value)} />
+              <Field label="Desvio padrão (MPa)" type="number" value={f.desvio_padrao_mpa} onChange={(e) => patch('desvio_padrao_mpa', e.target.value)} />
+              <Field label="Brita" value={f.brita} onChange={(e) => patch('brita', e.target.value)} />
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              <Field label="Dmáx agregado (mm)" type="number" value={f.dmax_agregado_mm} onChange={(e) => patch('dmax_agregado_mm', e.target.value)} />
+              <Field label="Fator a/c" type="number" value={f.fator_ac} onChange={(e) => patch('fator_ac', e.target.value)} />
+              <Field label="Cimento" value={f.cimento_tipo} onChange={(e) => patch('cimento_tipo', e.target.value)} />
+              <Field label="Consumo cimento" type="number" value={f.consumo_cimento_kg_m3} onChange={(e) => patch('consumo_cimento_kg_m3', e.target.value)} />
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <Field label="Aditivo" value={f.aditivo_tipo} onChange={(e) => patch('aditivo_tipo', e.target.value)} />
+              <Field label="Método de cura" value={f.metodo_cura} onChange={(e) => patch('metodo_cura', e.target.value)} />
+              <label className="mt-7 flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200"><input type="checkbox" checked={f.bombeado} onChange={(e) => patch('bombeado', e.target.checked)} /> Bombeado</label>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <TextArea label="Especificação / composição" value={f.especificacao} onChange={(e) => patch('especificacao', e.target.value)} />
+              <TextArea label="Observações" value={f.observacoes} onChange={(e) => patch('observacoes', e.target.value)} />
+            </div>
+
+            <div className="mt-5">
+              <div className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-200">Padrão de moldagem</div>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {PADRAO_MOLDAGEM_SHORTCUTS.map((a) => <button type="button" key={a.label} onClick={() => addAtalho(a)} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{a.label}</button>)}
+                <button type="button" onClick={ordenar} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">Ordenar</button>
               </div>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                <table className="min-w-[760px] w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                    <tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Idade</th><th className="px-3 py-2">Unidade</th><th className="px-3 py-2">Tipo de ensaio</th><th className="px-3 py-2">Valor esp. (MPa)</th><th className="px-3 py-2">Cresc. %</th><th className="px-3 py-2">Qtd CP</th><th /></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {padrao.map((p, i) => (
+                      <tr key={p.id}>
+                        <td className="px-3 py-2 text-xs font-bold text-slate-500">{i + 1}</td>
+                        <td className="px-3 py-2"><input className="input" type="number" value={String(p.idadeControle)} onChange={(e) => setPm(i, { idadeControle: e.target.value })} /></td>
+                        <td className="px-3 py-2"><select className="input" value={p.unidadeIdade} onChange={(e) => setPm(i, { unidadeIdade: e.target.value as UnidadeIdade })}>{UNIDADE_IDADE_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
+                        <td className="px-3 py-2"><select className="input" value={p.tipoEnsaio} onChange={(e) => setPm(i, { tipoEnsaio: e.target.value as TipoEnsaioPadrao })}>{TIPO_ENSAIO_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
+                        <td className="px-3 py-2"><input className="input" type="number" value={String(p.valorEsperado)} onChange={(e) => setPm(i, { valorEsperado: e.target.value })} /></td>
+                        <td className="px-3 py-2"><input className="input" type="number" value={String(p.crescimentoPct)} onChange={(e) => setPm(i, { crescimentoPct: e.target.value })} /></td>
+                        <td className="px-3 py-2"><input className="input" type="number" value={String(p.quantidadeCp)} onChange={(e) => setPm(i, { quantidadeCp: e.target.value })} /></td>
+                        <td className="px-3 py-2"><button type="button" className="text-slate-400 hover:text-red-600" onClick={() => rmPm(i)}>×</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3"><Button variant="ghost" onClick={() => setPadrao((s) => [...s, linhaDeAtalho(PADRAO_MOLDAGEM_SHORTCUTS[0], fckAtual)])}>+ Adicionar traço</Button></div>
             </div>
-            <div style={{ display: 'grid', gap: 6 }}>
-              {padrao.map((p, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input type="number" value={String(p.idade)} onChange={(e) => setIdade(i, { idade: Number(e.target.value) })} className="input" style={{ width: 80 }} />
-                  <select value={p.unidade} onChange={(e) => setIdade(i, { unidade: e.target.value === 'hora' ? 'hora' : 'dia' })} className="input" style={{ width: 90 }}><option value="dia">dias</option><option value="hora">horas</option></select>
-                  <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>x</span>
-                  <input type="number" value={String(p.quantidade)} onChange={(e) => setIdade(i, { quantidade: Number(e.target.value) })} className="input" style={{ width: 70 }} />
-                  <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>CP</span>
-                  <Button variant="ghost" onClick={() => rmIdade(i)}>remover</Button>
-                </div>
-              ))}
-              {padrao.length === 0 ? <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Use os atalhos acima para adicionar idades.</span> : null}
-            </div>
-          </div>
-
-          <Field label="Observacoes" value={String(f.observacoes ?? '')} onChange={(e) => setF((s) => ({ ...s, observacoes: e.target.value }))} />
+          </Card>
         </div>
       </Modal>
     </div>

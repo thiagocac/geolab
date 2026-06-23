@@ -6,11 +6,11 @@ const db = supabase as unknown as { from: (t: string) => any };
 
 export type ConfigLab = {
   responsavel_tecnico: string | null; crea_rt: string | null; acreditacao_inmetro: string | null; validade_acreditacao: string | null;
-  idade_controle_default: number; cp_overdue_days: number; nota_rodape: string | null; logo_path: string | null; laudo_campos: Record<string, boolean> | null;
+  idade_controle_default: number; cp_overdue_days: number; nota_rodape: string | null; logo_path: string | null; ensaio_campos: Record<string, boolean> | null; laudo_campos: Record<string, boolean> | null;
 };
 
 export async function getConfigLab(tenantId: string): Promise<ConfigLab | null> {
-  const { data, error } = await db.from('config_lab').select('responsavel_tecnico, crea_rt, acreditacao_inmetro, validade_acreditacao, idade_controle_default, cp_overdue_days, nota_rodape, logo_path, laudo_campos').eq('tenant_id', tenantId).maybeSingle();
+  const { data, error } = await db.from('config_lab').select('responsavel_tecnico, crea_rt, acreditacao_inmetro, validade_acreditacao, idade_controle_default, cp_overdue_days, nota_rodape, logo_path, ensaio_campos, laudo_campos').eq('tenant_id', tenantId).maybeSingle();
   if (error) throw new Error(error.message);
   return data as ConfigLab | null;
 }
