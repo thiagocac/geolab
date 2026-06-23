@@ -45,9 +45,16 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="app-shell">
       {open ? <div className="nav-scrim" onClick={() => setOpen(false)} /> : null}
       <aside className={'sidebar' + (open ? ' open' : '')}>
-        <div className="sidebar-brand">
-          <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, opacity: 0.85 }}>Consulte GEO</div>
-          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>GEOLAB</div>
+        <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <svg viewBox="0 0 104 100" width="30" height="29" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <rect x="0" y="0" width="104" height="24" rx="12" fill="#fff" />
+            <rect x="0" y="38" width="62" height="24" rx="12" fill="#fff" />
+            <rect x="0" y="76" width="104" height="24" rx="12" fill="#fff" />
+          </svg>
+          <div>
+            <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, opacity: 0.85 }}>Consulte GEO</div>
+            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, letterSpacing: '-.01em', lineHeight: 1 }}>GEOLAB</div>
+          </div>
         </div>
         <nav className="sidebar-nav">
           {sections.map((sec, i) => {
@@ -68,7 +75,7 @@ export function Layout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v29</div>
+        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v30</div>
       </aside>
       <div className="content-col">
         <header className="topbar">

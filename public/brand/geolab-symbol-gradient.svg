@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 104 100" role="img" aria-label="GEOLAB">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="104" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#182863"></stop>
+      <stop offset="0.55" stop-color="#3E2D71"></stop>
+      <stop offset="1" stop-color="#C5117E"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="104" height="24" rx="12" fill="url(#g)"></rect>
+  <rect x="0" y="38" width="62" height="24" rx="12" fill="url(#g)"></rect>
+  <rect x="0" y="76" width="104" height="24" rx="12" fill="url(#g)"></rect>
+</svg>

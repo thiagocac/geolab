@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="GEOLAB">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#182863"></stop>
+      <stop offset="0.55" stop-color="#3E2D71"></stop>
+      <stop offset="1" stop-color="#C5117E"></stop>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"></rect>
+  <g transform="translate(150 156)">
+    <rect x="0" y="0" width="212" height="48" rx="24" fill="#FFFFFF"></rect>
+    <rect x="0" y="76" width="126" height="48" rx="24" fill="#FFFFFF"></rect>
+    <rect x="0" y="152" width="212" height="48" rx="24" fill="#FFFFFF"></rect>
+  </g>
+</svg>

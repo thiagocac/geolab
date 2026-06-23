@@ -1,7 +1,7 @@
-# GEOLAB — SOURCE VERSION v29
-CACHE_NAME: consultegeo-geolab-v29 · APP_VERSION: v29
+# GEOLAB — SOURCE VERSION v30
+CACHE_NAME: consultegeo-geolab-v30 · APP_VERSION: v30
 
-Frontend (acumulado v2→v29): login + selecao de laboratorio + shell (v2) · Cadastros (v3) ·
+Frontend (acumulado v2→v30): login + selecao de laboratorio + shell (v2) · Cadastros (v3) ·
 Concretagem (v4) · Rompimentos — carga→MPa NBR 5739 (v5) · Laudos (v6) · gatilho de e-mail
 laudo_pronto (v7) · hotfix login/config.js (v8) · Operacao Interna — usuarios + criar laboratorio
 (v9) · Materiais e ensaios + padrao de moldagem (v10) · assistente Nova obra (v11) · Importacoes
@@ -13,19 +13,26 @@ validacao publica de laudo + numeracao da concretagem (v22) · Colaboradores + c
 concretagem retroativa (v24) · upload de logo do laboratorio no laudo (v25) ·
 Estrutura da obra — Grupos/Tipos/Pecas (v26) · peca da estrutura na concretagem (v27) ·
 integracao GEOMAT — rompimentos/controle-laudo/tracos (v28) ·
-programacao + concretagem 2-etapas + campos dinamicos + Portal do Cliente (v29).
+programacao + concretagem 2-etapas + campos dinamicos + Portal do Cliente (v29) ·
+Brand Kit GEOLAB — fontes/simbolo/favicon/login (v30).
 
-## v29 — Programacao + campos dinamicos + Portal do Cliente
-- Frontend: concretagem em 2 etapas (ConcretagemDetalhePage), ProgramacoesPage (fila do lab),
-  CamposConcretagemPage/CamposRecebimentoPage (toggles dinamicos), MoldingStandardEditor. Portal do
-  Cliente: ClientePortalPage (grid de programacao→EF, consulta de concretagens/laudos, download via EF
-  segura) + ClienteUsuariosPage (criar usuario cliente + vincular obras). Rotas /programacoes,
-  /gestao/campos-recebimento, /gestao/campos-concretagem, /portal-cliente, /portal/usuarios-clientes.
-- Backend (vivo): migration 029 (config_lab.concretagem_campos, member_obras.deleted_at, defaults de
-  campos, helper member_can_access_work) + 030 (isolamento do papel cliente: is_tenant_member exclui
-  cliente, leituras escopadas por obra via member_can_access_work). EFs NOVAS: portal-laudo-url
-  (download de laudo escopado, service-role), admin-create-client-user, client-portal-submit-programacoes.
-  generate-laudo/ficha com campos dinamicos + texto v4 (NBR 12655/fck,est).
+## v30 — Brand Kit GEOLAB (identidade da marca)
+- Fontes self-hosted (public/fonts): Mona Sans (variavel, display/corpo) + JetBrains Mono
+  (numerais/kickers/labels). @font-face em styles.css; font-family da marca no body e mono nas labels
+  (.kicker · .nav-sect · .table th).
+- Tokens: --grad-brand (linear-gradient 135deg · #182863 0% · #3E2D71 55% · #C5117E 100%) em
+  .btn-primary / .sidebar-brand / login; + --magenta-light (#E8459E). Paleta navy/purple/magenta e
+  paper (#FAF9F7) ja batiam com a marca.
+- Simbolo "C" de 3 barras (oficial) na sidebar e no login; SVGs oficiais em public/brand/
+  (symbol/lockup/appicon/favicon nas variantes cor/gradiente/navy/branco).
+- index.html: favicon (public/favicon.svg) + apple-touch-icon + meta theme-color + link do manifest.
+- PWA manifest corrigido: nome "GEOLAB — Controle Tecnologico" (era "Consulte GEO Materiais", herdado
+  do fork GEOMAT) + icones (app icon SVG).
+- LoginScreen redesenhada (split-panel da marca): painel gradiente (simbolo + wordmark + tagline +
+  assinatura mono) e card de acesso (kicker mono + Mona Sans). Preserva o fluxo de auth — sem <form>,
+  submit por Enter/botao, mesmos Field/Button/useAuth.
+- Build completo (check-source + tsc + vitest + vite) verde. Sem backend novo. Origem: handoff
+  "GEOLAB Brand Kit" (Claude Design). Aplicado por cima da v29 (Portal do Cliente).
 
 ## Backend (vivo via MCP em xbdvyvvxvzmcosnekmfv): migrations 001-030 (025 storage logo · 026 unit_link ·
 027 rompimento RPCs · 028 gate · 029 programacao/campos · 030 cliente isolation RLS); EFs: PDF ficha +
