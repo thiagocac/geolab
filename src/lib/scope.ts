@@ -9,10 +9,10 @@ import { useAuth } from './auth';
 export type WorkScope = { loading: boolean; restricted: boolean; workIds: string[] };
 
 export function useWorkScope(): WorkScope {
-  const { member, demo } = useAuth();
+  const { member } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ['work-scope', member?.id ?? 'none'],
-    enabled: !demo && !!member?.id,
+    enabled: !!member?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data: rows, error } = await supabase

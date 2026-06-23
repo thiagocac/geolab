@@ -3,12 +3,13 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { Button } from './ui/Button';
-import { Home, Truck, Flame, Boxes, LogOut, Sun, Moon } from './ui/icons';
+import { Home, Truck, Flame, FileText, Boxes, LogOut, Sun, Moon } from './ui/icons';
 
 const nav = [
   { to: '/', label: 'Painel', icon: Home, end: true },
   { to: '/concretagens', label: 'Concretagens', icon: Truck, end: false },
   { to: '/rompimentos', label: 'Rompimentos', icon: Flame, end: false },
+  { to: '/laudos', label: 'Laudos', icon: FileText, end: false },
   { to: '/cadastros', label: 'Cadastros', icon: Boxes, end: false },
 ];
 
@@ -29,7 +30,7 @@ export function Layout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ marginTop: 'auto', fontSize: 11, color: '#9ca3af' }}>GEOLAB - v5</div>
+        <div style={{ marginTop: 'auto', fontSize: 11, color: '#9ca3af' }}>GEOLAB - v6</div>
       </aside>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #e5e7eb', gap: 12 }}>

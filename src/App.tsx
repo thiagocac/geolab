@@ -7,6 +7,7 @@ import { CadastrosPage } from './pages/cadastros/CadastrosPage';
 import { ConcretagensPage } from './pages/concreto/ConcretagensPage';
 import { ConcretagemDetalhePage } from './pages/concreto/ConcretagemDetalhePage';
 import { RompimentosPage } from './pages/concreto/RompimentosPage';
+import { LaudosPage } from './pages/concreto/LaudosPage';
 import { Layout } from './components/Layout';
 
 export function App() {
@@ -23,6 +24,7 @@ export function App() {
           <Route path="/concretagens" element={<ConcretagensPage />} />
           <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
           <Route path="/rompimentos" element={<RompimentosPage />} />
+          <Route path="/laudos" element={<LaudosPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
