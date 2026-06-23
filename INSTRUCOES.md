@@ -1,30 +1,33 @@
-# GEOLAB — Patch v28 (integração GEOMAT: rompimentos + controle-laudo + traços)
+# GEOLAB — Patch v29 (programação + concretagem 2-etapas + campos dinâmicos + PORTAL DO CLIENTE seguro)
 
-Integração avaliada e mesclada do fork GPT/Claude no nosso tronco v27 (preservando
-Estrutura, Colaboradores, validação pública, numeração, logo e os 10 EFs).
+Integração avaliada do v29 do GPT no nosso tronco. O v29 do GPT era superset do meu v28 (forkou dele),
+então foi adotado como base; reconciliei segurança e o download de laudo.
 
-## Backend já aplicado (via MCP)
-- **Migration `027`** (era 023 no fork) — `corpos_prova.numeracao_lab`, índices, RPCs
-  `lancar_rompimento_cp` (calcula MPa no banco, re-lançamento c/ substitui_resultado_id,
-  trilha em metadata.rompimento_log), `lancar_situacao_cp` (Falha/Ausente/Descarte),
-  `gerar_contraprova_cp`, `set_numeracao_cp`; defaults de ensaio_campos/laudo_campos.
-- **Migration `028`** — revoga execute das RPCs de anon/public (gate = authenticated + is_tenant_writer).
+## Backend já aplicado no banco vivo (via MCP)
+- **029_programacao_campos_dinamicos** — config_lab.concretagem_campos, member_obras.deleted_at + índice único parcial,
+  defaults de concretagem/recebimento/laudo_campos, helper member_can_access_work.
+- **030_cliente_isolation_rls** — **isolamento do papel `cliente`**: `is_tenant_member` passa a EXCLUIR cliente
+  (bloqueia o cliente nas ~40 políticas sel_), self-read em members/member_obras/tenants, leituras escopadas por obra
+  (client_works/concretagens/lab_reports/lab_clients via member_can_access_work). **Testado**: cliente só enxerga a obra
+  vinculada; bloqueado de resultados, CPs, colaboradores e dados de outras obras/clientes.
 
-## Frontend (mesclado)
-| Arquivo | Origem |
-|---|---|
-| `src/lib/concreto/cp.ts`, `camposEnsaioLaudo.ts`, `src/lib/concreto.ts` | NOVOS (fork) — cálculo CP + catálogo de campos |
-| `src/lib/api/rompimento.ts` | fork (superset: RPCs + fallback + maybeNotifyAbaixoFck) |
-| `src/pages/concreto/RompimentosPage.tsx` | fork — **tela estilo GEOMAT `/concreto/controle/resultados`** (sem Portal): filtros, lote/linha, carga→MPa, badges, XLSX, trilha, contraprova, numeração lab |
-| `src/pages/gestao/ControleLaudoPage.tsx` | NOVO (fork) — Campos do ensaio e do laudo (dinâmico, salva em config_lab) |
-| `src/pages/cadastros/MateriaisPage.tsx` + `materiais.ts` | fork — traços ricos estilo Nova obra GEOMAT (chips, padrão de moldagem) |
-| `src/lib/api/preferencias.ts` | MESCLADO — meu (logo) + `ensaio_campos` |
-| `src/App.tsx`, `Layout.tsx` | MESCLADO — rotas `/tracos` e `/gestao/controle-laudo` + nav |
+> A migration 029 que o GPT entregou NÃO isolava o cliente (RLS é OR-permissivo; políticas adicionais só ampliam).
+> Foi descartada e refeita como 029+030 acima.
 
-## Mantido NOSSO (não veio do fork)
-concretagem.ts (superset c/ listPecasObra), importacao.ts, Estrutura, Colaboradores+certificações,
-ValidarPage, logo upload, numeração de concretagem.
+## Edge Functions (deploy via MCP)
+- **portal-laudo-url** (NOVA, minha) — assina download de laudo só após verificar escopo (cliente não tem policy de
+  storage para `laudos/`, e policy de storage não escopa por obra → vazaria; por isso EF service-role).
+- **admin-create-client-user**, **client-portal-submit-programacoes** — auditadas e deployadas (gates + escopo server-side).
+- **generate-laudo-ensaio-pdf** — campos dinâmicos (recebimento_campos/concretagem_campos) + texto v4 (NBR 12655/fck,est).
+- **generate-ficha-moldagem-pdf** — respeita campos dinâmicos.
 
-## PENDENTE (próximo passo, via MCP)
-Deploy do **laudo EF v4** (linguagem NBR 12655 · fck,est) e do **generate-agenda-rompimento-pdf**.
-Build completo (check-source+tsc+vitest+vite) verde. Push em `main`.
+## Frontend (v29)
+Concretagem em 2 etapas (ConcretagemDetalhePage), ProgramacoesPage (fila do lab), CamposConcretagemPage/CamposRecebimentoPage
+(toggles dinâmicos), MoldingStandardEditor, **Portal do cliente** (ClientePortalPage: grid de programação→EF, consulta de
+concretagens/laudos, download via EF segura) e **ClienteUsuariosPage** (criar usuário cliente + vincular obras).
+Rotas: /programacoes, /gestao/campos-recebimento, /gestao/campos-concretagem, /portal-cliente, /portal/usuarios-clientes.
+Build completo (check-source+tsc+vitest+vite) verde. CACHE_NAME/APP_VERSION = v29.
+
+## Segurança do portal (resumo)
+O cliente é um usuário Auth real com `role='cliente'`, **read-only no nível de tabela**, escopado por `member_obras`.
+Programação e download de laudo passam por EF service-role com verificação server-side. Sem magic link (v1.1).

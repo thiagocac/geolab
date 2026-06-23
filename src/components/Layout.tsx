@@ -2,26 +2,38 @@ import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
-import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu } from './ui/icons';
+import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
+const labRoles = ['admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro'];
+const adminRoles = ['admin', 'admin_consulte'];
 const sections: Section[] = [
   { items: [{ to: '/', label: 'Painel', icon: Home, end: true }] },
   { title: 'Concreto', items: [
-    { to: '/concretagens', label: 'Concretagens', icon: Truck },
-    { to: '/rompimentos', label: 'Rompimentos', icon: Flame },
-    { to: '/laudos', label: 'Laudos', icon: FileText },
-    { to: '/importacoes', label: 'Importacoes', icon: Import },
-    { to: '/tracos', label: 'Tracos', icon: Beaker },
+    { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
+    { to: '/concretagens', label: 'Concretagens', icon: Truck, roles: labRoles },
+    { to: '/rompimentos', label: 'Rompimentos', icon: Flame, roles: labRoles },
+    { to: '/laudos', label: 'Laudos', icon: FileText, roles: labRoles },
+    { to: '/importacoes', label: 'Importações', icon: Import, roles: labRoles },
+    { to: '/tracos', label: 'Traços', icon: Beaker, roles: labRoles },
   ] },
-  { title: 'Cadastros', items: [{ to: '/cadastros', label: 'Cadastros', icon: Boxes }, { to: '/estrutura', label: 'Estrutura', icon: Layers }] },
-  { title: 'Gestao', items: [
-    { to: '/notificacoes', label: 'Notificacoes', icon: Bell },
-    { to: '/preferencias', label: 'Preferencias', icon: Gauge, roles: ['admin', 'admin_consulte'] },
-    { to: '/gestao/controle-laudo', label: 'Controle do laudo', icon: ClipboardCheck, roles: ['admin', 'admin_consulte'] },
+  { title: 'Cadastros', items: [
+    { to: '/cadastros', label: 'Cadastros', icon: Boxes, roles: labRoles },
+    { to: '/estrutura', label: 'Estrutura', icon: Layers, roles: labRoles },
+    { to: '/portal/usuarios-clientes', label: 'Usuários de clientes', icon: Building2, roles: adminRoles },
   ] },
-  { title: 'Operacao interna', items: [{ to: '/operacao', label: 'Operacao', icon: ShieldAlert, roles: ['admin', 'admin_consulte'] }] },
+  { title: 'Portal', items: [
+    { to: '/portal-cliente', label: 'Portal do cliente', icon: Building2, roles: ['cliente', 'admin', 'admin_consulte'] },
+  ] },
+  { title: 'Gestão', items: [
+    { to: '/notificacoes', label: 'Notificações', icon: Bell, roles: labRoles },
+    { to: '/preferencias', label: 'Preferências', icon: Gauge, roles: adminRoles },
+    { to: '/gestao/controle-laudo', label: 'Campos do ensaio e laudo', icon: ClipboardCheck, roles: adminRoles },
+    { to: '/gestao/campos-recebimento', label: 'Campos recebimento', icon: ClipboardCheck, roles: adminRoles },
+    { to: '/gestao/campos-concretagem', label: 'Campos concretagem', icon: ClipboardCheck, roles: adminRoles },
+  ] },
+  { title: 'Operação interna', items: [{ to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles }] },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -56,7 +68,7 @@ export function Layout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v28</div>
+        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v29</div>
       </aside>
       <div className="content-col">
         <header className="topbar">

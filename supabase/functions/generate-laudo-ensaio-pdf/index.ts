@@ -6,7 +6,7 @@ import { PDFDocument, StandardFonts, rgb, PDFImage } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
 
-const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'access-control-allow-methods': 'POST,OPTIONS' };
+const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'access-control-allow-methods': 'POST,OPTIONS', 'access-control-expose-headers': 'x-lab-report-id' };
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...cors } });
 
 const NAVY = rgb(0.094, 0.157, 0.388);
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     if (!ures?.user) return json({ error: 'nao autenticado' }, 401);
 
     const { data: conc, error: e1 } = await sb.from('concretagens')
-      .select('id, codigo, data_real, data_programada, work_id, client_id, tenant_id, fck_previsto, operational_material_id, fornecedor_texto, volume_lancado_m3, dimensao_cp, observacoes, moldador_id')
+      .select('id, codigo, data_real, data_programada, hora_programada, hora_inicio, hora_fim, work_id, client_id, tenant_id, fck_previsto, operational_material_id, traco_texto, fornecedor_texto, volume_programado_m3, volume_lancado_m3, dimensao_cp, local_texto, clima, temperatura_ambiente_c, bombeado, observacoes, moldador_id')
       .eq('id', concretagemId).is('deleted_at', null).maybeSingle();
     if (e1) return json({ error: e1.message }, 403);
     if (!conc) return json({ error: 'concretagem nao encontrada' }, 404);
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       sb.from('lab_clients').select('razao_social, nome_fantasia, email, telefone').eq('id', conc.client_id).maybeSingle(),
       sb.from('tenants').select('name').eq('id', conc.tenant_id).maybeSingle(),
       conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_cm, slump_tolerancia_cm, bombeado').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
-      sb.from('config_lab').select('laudo_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape').eq('tenant_id', conc.tenant_id).maybeSingle(),
+      sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape').eq('tenant_id', conc.tenant_id).maybeSingle(),
     ]);
     const { data: moldador } = conc.moldador_id ? await sb.from('colaboradores').select('nome').eq('id', conc.moldador_id).maybeSingle() : { data: null };
 
@@ -71,17 +71,25 @@ Deno.serve(async (req) => {
     const eqIds = [...new Set(tlist.map((t) => t.equipamento_id).filter(Boolean))] as string[];
     const [{ data: cps }, { data: receipts }, { data: equips }] = await Promise.all([
       cpIds.length ? sb.from('corpos_prova').select('id, codigo, data_moldagem').in('id', cpIds) : Promise.resolve({ data: [] }),
-      rcIds.length ? sb.from('material_receipts').select('id, nota_fiscal, serie, external_key, volume_m3, slump_medido_cm, temperatura_concreto_c, elementos_concretados').in('id', rcIds) : Promise.resolve({ data: [] }),
+      rcIds.length ? sb.from('material_receipts').select('id, nota_fiscal, serie, external_key, placa, motorista, volume_m3, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, slump_medido_cm, temperatura_concreto_c, houve_adicao_agua, agua_litros, rejeitado, motivo_rejeicao, elementos_concretados, observacoes').in('id', rcIds) : Promise.resolve({ data: [] }),
       eqIds.length ? sb.from('equipamentos').select('id, marca_modelo, numero_serie, classe, numero_certificado, validade_calibracao, lab_calibrador, incerteza_mpa').in('id', eqIds) : Promise.resolve({ data: [] }),
     ]);
     const cpById = new Map((cps ?? []).map((r: Record<string, unknown>) => [r.id, r]));
     const rcById = new Map((receipts ?? []).map((r: Record<string, unknown>) => [r.id, r]));
 
     const LC = (cfg?.laudo_campos ?? {}) as Record<string, unknown>;
+    const RC = (cfg?.recebimento_campos ?? {}) as Record<string, unknown>;
+    const CC = (cfg?.concretagem_campos ?? {}) as Record<string, unknown>;
     const ON: Record<string, boolean> = {};
+    const RON: Record<string, boolean> = {};
+    const CON: Record<string, boolean> = {};
     const defOn = (k: string, d: boolean) => (LC[k] === undefined ? d : LC[k] !== false);
-    ['dim_hd', 'tipo_ruptura', 'dados_concreto', 'cimento', 'cura', 'equipamentos', 'responsavel_tecnico', 'qr_validacao', 'logo_laboratorio', 'elemento', 'usina'].forEach((k) => (ON[k] = defOn(k, true)));
+    const defRon = (k: string, d: boolean) => (RC[k] === undefined ? d : RC[k] !== false);
+    const defCon = (k: string, d: boolean) => (CC[k] === undefined ? d : CC[k] !== false);
+    ['dim_hd', 'tipo_ruptura', 'dados_concreto', 'cimento', 'cura', 'equipamentos', 'responsavel_tecnico', 'qr_validacao', 'logo_laboratorio', 'elemento', 'usina', 'recebimento'].forEach((k) => (ON[k] = defOn(k, true)));
     ['aditivo', 'acreditacao', 'dmax', 'carga', 'temperatura', 'ficha_moldagem', 'observacoes', 'incerteza', 'moldador'].forEach((k) => (ON[k] = defOn(k, false)));
+    ['nota_fiscal', 'placa', 'motorista', 'volume_m3', 'horarios_transporte', 'horarios_descarga', 'hora_moldagem', 'slump', 'temperatura_concreto', 'agua_adicionada', 'rejeicao', 'elementos_concretados', 'observacoes_caminhao'].forEach((k) => (RON[k] = defRon(k, true)));
+    ['traco_fck', 'fornecedor', 'data_hora', 'local_peca', 'volume_programado', 'dimensao_cp', 'moldador', 'clima', 'temperatura_ambiente', 'bombeado', 'observacoes', 'padrao_moldagem'].forEach((k) => (CON[k] = defCon(k, true)));
 
     const idade = (t: Record<string, unknown>) => Number(t.idade_dias ?? 0);
     const isCtrl = (t: Record<string, unknown>) => idade(t) === 28 && String(t.idade_unidade ?? 'dia') !== 'hora';
@@ -143,16 +151,55 @@ Deno.serve(async (req) => {
     if (ON.moldador && moldador?.nome) { y -= 22; kv('RESP. MOLDAGEM', String(moldador.nome), MX); }
     y -= 22; hline(MX, y, RIGHT, LINE); y -= 12;
 
-    if (ON.dados_concreto && om) {
-      sec('Dados do concreto');
-      const pares: [string, string][] = [['Material', 'Concreto'], ['Fck (MPa)', fmt(fck, 1)], ['Condicao de preparo', String(om.condicao_preparo || '-')], ['Abatimento prev. (cm)', om.slump_previsto_cm != null ? `${fmt(Number(om.slump_previsto_cm), 1)} +/- ${fmt(Number(om.slump_tolerancia_cm ?? 0), 1)}` : '-'], ['Brita / agregado', String(om.brita || '-')], ['A/C projeto', om.fator_ac != null ? fmt(Number(om.fator_ac), 2) : '-'], ['Lancamento', om.bombeado ? 'Bombeado' : 'Convencional'], ['Volume (m3)', fmt(Number(conc.volume_lancado_m3 ?? 0), 1)], ['Traco', String(om.nome || '-')], ['Dimensao CP', String(conc.dimensao_cp || '100x200')]];
-      if (ON.usina) pares.push(['Central / usina', String(conc.fornecedor_texto || '-')]);
-      if (ON.cimento) { pares.push(['Cimento', String(om.cimento_tipo || '-')]); pares.push(['Consumo cimento', om.consumo_cimento_kg_m3 != null ? `${fmt(Number(om.consumo_cimento_kg_m3), 0)} kg/m3` : '-']); }
-      if (ON.cura) pares.push(['Cura', String(om.metodo_cura || '-')]);
-      if (ON.aditivo) pares.push(['Aditivo', String(om.aditivo_tipo || '-')]);
-      if (ON.dmax) pares.push(['Dmax agregado (mm)', om.dmax_agregado_mm != null ? fmt(Number(om.dmax_agregado_mm), 0) : '-']);
+    if (ON.dados_concreto) {
+      sec('Dados do concreto e da concretagem');
+      const tracoNome = om?.nome ? String(om.nome) : String(conc.traco_texto || '-');
+      const pares: [string, string][] = [['Material', 'Concreto']];
+      if (CON.traco_fck) { pares.push(['Traco', tracoNome]); pares.push(['Fck (MPa)', fmt(fck, 1)]); }
+      if (om?.condicao_preparo) pares.push(['Condicao de preparo', String(om.condicao_preparo || '-')]);
+      if (om?.slump_previsto_cm != null) pares.push(['Abatimento prev. (cm)', `${fmt(Number(om.slump_previsto_cm), 1)} +/- ${fmt(Number(om.slump_tolerancia_cm ?? 0), 1)}`]);
+      if (om?.brita) pares.push(['Brita / agregado', String(om.brita || '-')]);
+      if (om?.fator_ac != null) pares.push(['A/C projeto', fmt(Number(om.fator_ac), 2)]);
+      if (CON.bombeado) pares.push(['Lancamento', conc.bombeado || om?.bombeado ? 'Bombeado' : 'Convencional']);
+      if (CON.volume_programado) { pares.push(['Volume prog. (m3)', conc.volume_programado_m3 != null ? fmt(Number(conc.volume_programado_m3), 1) : '-']); pares.push(['Volume lancado (m3)', conc.volume_lancado_m3 != null ? fmt(Number(conc.volume_lancado_m3), 1) : '-']); }
+      if (CON.dimensao_cp) pares.push(['Dimensao CP', String(conc.dimensao_cp || '100x200')]);
+      if (CON.data_hora) { pares.push(['Data moldagem', dbr(conc.data_real || conc.data_programada)]); pares.push(['Horario', String(conc.hora_inicio || conc.hora_programada || '-') + (conc.hora_fim ? ' a ' + String(conc.hora_fim) : '')]); }
+      if (CON.local_peca || ON.elemento) pares.push(['Local / peca', String(conc.local_texto || '-')]);
+      if (ON.usina && CON.fornecedor) pares.push(['Central / usina', String(conc.fornecedor_texto || '-')]);
+      if (CON.clima) pares.push(['Clima', String(conc.clima || '-')]);
+      if (CON.temperatura_ambiente) pares.push(['Temp. ambiente', conc.temperatura_ambiente_c != null ? `${fmt(Number(conc.temperatura_ambiente_c), 1)} C` : '-']);
+      if (ON.cimento && om) { pares.push(['Cimento', String(om.cimento_tipo || '-')]); pares.push(['Consumo cimento', om.consumo_cimento_kg_m3 != null ? `${fmt(Number(om.consumo_cimento_kg_m3), 0)} kg/m3` : '-']); }
+      if (ON.cura && om) pares.push(['Cura', String(om.metodo_cura || '-')]);
+      if (ON.aditivo && om) pares.push(['Aditivo', String(om.aditivo_tipo || '-')]);
+      if (ON.dmax && om) pares.push(['Dmax agregado (mm)', om.dmax_agregado_mm != null ? fmt(Number(om.dmax_agregado_mm), 0) : '-']);
       const colW = CW / 4;
       for (let i = 0; i < pares.length; i += 4) { need(20, false); for (let j = 0; j < 4 && i + j < pares.length; j++) { const [l, v] = pares[i + j]; const x = MX + j * colW; T(l, x, y, 6.2, F, FAINT); T(v, x, y - 9, 7.6, F, INK); } y -= 21; }
+      y -= 4;
+    }
+
+    if (ON.recebimento && (receipts ?? []).length) {
+      sec('Recebimento e caminhões');
+      const rows = (receipts ?? []) as Record<string, unknown>[];
+      for (const rc of rows) {
+        need(28, true);
+        const head = `Caminhao ${String(rc.serie ?? '-')}  -  NF ${String(rc.nota_fiscal ?? '-')}`;
+        rect(MX, y - 10, CW, 12, NAVYL); T(head, MX + 5, y - 7.6, 6.8, FB, NAVY); y -= 13;
+        const partes: string[] = [];
+        if (RON.placa && rc.placa) partes.push('Placa ' + String(rc.placa));
+        if (RON.motorista && rc.motorista) partes.push('Motorista ' + String(rc.motorista));
+        if (RON.volume_m3 && rc.volume_m3 != null) partes.push('Vol. ' + fmt(Number(rc.volume_m3), 1) + ' m3');
+        if (RON.horarios_transporte) partes.push('Transp. ' + String(rc.hora_saida_usina || '-') + ' -> ' + String(rc.hora_chegada_obra || '-'));
+        if (RON.horarios_descarga) partes.push('Desc. ' + String(rc.hora_inicio_descarga || '-') + ' -> ' + String(rc.hora_fim_descarga || '-'));
+        if (RON.hora_moldagem && rc.hora_moldagem) partes.push('Mold. ' + String(rc.hora_moldagem));
+        if (RON.slump && rc.slump_medido_cm != null) partes.push('Slump ' + fmt(Number(rc.slump_medido_cm), 1) + ' cm');
+        if ((ON.temperatura || RON.temperatura_concreto) && rc.temperatura_concreto_c != null) partes.push('Temp. concreto ' + fmt(Number(rc.temperatura_concreto_c), 0) + ' C');
+        if (RON.agua_adicionada && rc.houve_adicao_agua) partes.push('Agua adicionada ' + fmt(Number(rc.agua_litros ?? 0), 0) + ' L');
+        if (RON.rejeicao && rc.rejeitado) partes.push('Rejeitado: ' + String(rc.motivo_rejeicao || '-'));
+        const line = partes.join('  |  ') || 'Sem campos opcionais habilitados';
+        T(line.slice(0, 170), MX + 5, y - 7, 6.2, F, MUTED); y -= 11;
+        if (RON.elementos_concretados && rc.elementos_concretados) { T(('Elementos: ' + String(rc.elementos_concretados)).slice(0, 170), MX + 5, y - 7, 6.2, F, MUTED); y -= 10; }
+        if (RON.observacoes_caminhao && rc.observacoes) { T(('Obs.: ' + String(rc.observacoes)).slice(0, 170), MX + 5, y - 7, 6.2, F, MUTED); y -= 10; }
+      }
       y -= 4;
     }
 
@@ -172,9 +219,9 @@ Deno.serve(async (req) => {
       const ctrl = arr.filter(isCtrl).map((t) => Number(t.resultado_valor)).filter(isFinite);
       const rexVal = ctrl.length ? Math.max(...ctrl) : null;
       need(13, true); rect(MX, y - 11, CW, 12, NAVYL);
-      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m3` : '') + (rc?.slump_medido_cm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_cm), 1)} cm` : '') + (ON.temperatura && rc?.temperatura_concreto_c != null ? `  -  Temp ${fmt(Number(rc.temperatura_concreto_c), 0)}C` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '');
+      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m3` : '') + (RON.slump && rc?.slump_medido_cm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_cm), 1)} cm` : '') + (ON.temperatura && RON.temperatura_concreto && rc?.temperatura_concreto_c != null ? `  -  Temp ${fmt(Number(rc.temperatura_concreto_c), 0)}C` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '');
       T(faixa, MX + 5, y - 8, 6.8, FB, NAVY); y -= 12;
-      if (ON.elemento && rc?.elementos_concretados) { need(10, true); T(('Local: ' + String(rc.elementos_concretados)).slice(0, 150), MX + 5, y - 7, 6.2, F, MUTED); y -= 11; }
+      if (ON.elemento && RON.elementos_concretados && rc?.elementos_concretados) { need(10, true); T(('Local: ' + String(rc.elementos_concretados)).slice(0, 150), MX + 5, y - 7, 6.2, F, MUTED); y -= 11; }
       let first = true;
       for (let i = 0; i < arr.length; i++) {
         const t = arr[i]; need(12, true);
@@ -188,9 +235,9 @@ Deno.serve(async (req) => {
     y -= 8;
 
     need(22, false); rect(MX, y - 16, CW, 18, NAVY);
-    T('ACEITACAO POR EXEMPLAR - idade de controle 28 dias', MX + 6, y - 10.5, 8, FB, WHITE);
-    const aceTxt = menorExemplar != null ? `menor exemplar ${fmt(menorExemplar, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa` : `${n} exemplar(es) na idade de controle`;
-    T(aceTxt, MX + CW * 0.42, y - 10.5, 8, FB, WHITE);
+    T('Aceitacao (ABNT NBR 12655 - amostragem total - condicao A)', MX + 6, y - 10.5, 8, FB, WHITE);
+    const aceTxt = menorExemplar != null ? `fck,est = ${fmt(menorExemplar, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa` : `${n} exemplar(es) na idade de controle`;
+    T(aceTxt, MX + CW * 0.46, y - 10.5, 8, FB, WHITE);
     TR(statusTxt, RIGHT - 8, y - 10.5, 8.5, FB, conforme == null ? WHITE : conforme ? rgb(0.6, 1, 0.78) : rgb(1, 0.8, 0.8));
     y -= 26;
 
