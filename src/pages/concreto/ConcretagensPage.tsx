@@ -62,6 +62,7 @@ export function ConcretagensPage() {
       )}
       <Modal open={open} title="Nova concretagem" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
+          <SelectField label="Tipo" value={String(form.origem ?? 'programada')} onChange={(e) => setForm((s) => ({ ...s, origem: e.target.value }))}><option value="programada">Programada</option><option value="retroativa">Retroativa (registro de evento passado)</option></SelectField>
           <SelectField label="Cliente" value={String(form.client_id ?? '')} onChange={(e) => setForm((s) => ({ ...s, client_id: e.target.value || null, work_id: null }))}><option value="">-</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
           <SelectField label="Obra" value={String(form.work_id ?? '')} onChange={(e) => setForm((s) => ({ ...s, work_id: e.target.value || null }))}><option value="">-</option>{(obras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
           <SelectField label="Traco (opcional)" value={String(form.operational_material_id ?? '')} onChange={(e) => { const id = e.target.value || null; const t = (tracos.data ?? []).find((x) => x.value === id); setForm((s) => ({ ...s, operational_material_id: id, fck_previsto: (s.fck_previsto == null || s.fck_previsto === '') && t?.fck != null ? t.fck : s.fck_previsto })); }}><option value="">-</option>{(tracos.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}{o.fck != null ? ' (fck ' + o.fck + ')' : ''}</option>)}</SelectField>
@@ -69,6 +70,7 @@ export function ConcretagensPage() {
           <Field label="Data programada" type="date" value={String(form.data_programada ?? '')} onChange={(e) => setForm((s) => ({ ...s, data_programada: e.target.value || null }))} />
           <Field label="fck previsto (MPa)" type="number" value={String(form.fck_previsto ?? '')} onChange={(e) => setForm((s) => ({ ...s, fck_previsto: e.target.value === '' ? null : Number(e.target.value) }))} />
           <Field label="Local/peca" value={String(form.local_texto ?? '')} onChange={(e) => setForm((s) => ({ ...s, local_texto: e.target.value }))} />
+          {form.origem === 'retroativa' ? <Field label="Justificativa (retroativa)" value={String(form.retroativa_justificativa ?? '')} onChange={(e) => setForm((s) => ({ ...s, retroativa_justificativa: e.target.value }))} /> : null}
         </div>
       </Modal>
     </div>
