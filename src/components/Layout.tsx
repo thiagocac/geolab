@@ -54,7 +54,7 @@ export function Layout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v24</div>
+        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v25</div>
       </aside>
       <div className="content-col">
         <header className="topbar">

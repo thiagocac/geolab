@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -7,7 +7,7 @@ import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { LoadingState, ErrorState } from '../../components/ui/State';
-import { getConfigLab, saveConfigLab } from '../../lib/api/preferencias';
+import { getConfigLab, saveConfigLab, uploadLogo, logoSignedUrl } from '../../lib/api/preferencias';
 
 const num = (v: unknown, d: number): number => { const s = String(v ?? '').trim(); const n = Number(s); return s === '' || !isFinite(n) ? d : n; };
 const str = (v: unknown) => String(v ?? '').trim();
@@ -30,6 +30,19 @@ export function PreferenciasPage() {
   const [busy, setBusy] = useState(false);
 
   const q = useQuery({ queryKey: ['config-lab', member?.tenant_id], queryFn: () => getConfigLab(member!.tenant_id), enabled: !!member?.tenant_id });
+  const qc = useQueryClient();
+  const [logoBusy, setLogoBusy] = useState(false);
+  const logoUrl = useQuery({ queryKey: ['logo-url', q.data?.logo_path], queryFn: () => logoSignedUrl(q.data!.logo_path!), enabled: !!q.data?.logo_path });
+  async function handleLogo(file?: File) {
+    if (!file || !member) return;
+    setLogoBusy(true);
+    try { const path = await uploadLogo(member.tenant_id, file); await saveConfigLab(member.tenant_id, { logo_path: path }); await qc.invalidateQueries({ queryKey: ['config-lab', member.tenant_id] }); toast('Logo atualizado.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setLogoBusy(false); }
+  }
+  async function removeLogo() {
+    if (!member) return;
+    try { await saveConfigLab(member.tenant_id, { logo_path: null }); await qc.invalidateQueries({ queryKey: ['config-lab', member.tenant_id] }); toast('Logo removido.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
+  }
 
   useEffect(() => {
     const c = q.data;
@@ -76,7 +89,13 @@ export function PreferenciasPage() {
             <Field label="Validade da acreditacao" type="date" value={String(f.validade_acreditacao ?? '')} onChange={(e) => set('validade_acreditacao', e.target.value)} disabled={!podeEditar} />
           </div>
           <Field label="Nota de rodape do laudo" value={String(f.nota_rodape ?? '')} onChange={(e) => set('nota_rodape', e.target.value)} disabled={!podeEditar} />
-          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Logo do laboratorio: upload em versao futura (por ora o laudo usa o nome do lab).</p>
+          <div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)' }}>Logo do laboratorio</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 6 }}>
+              {q.data?.logo_path && logoUrl.data ? <img src={logoUrl.data} alt="Logo" style={{ height: 48, maxWidth: 180, objectFit: 'contain', border: '1px solid var(--line)', borderRadius: 8, padding: 4, background: 'var(--surface)' }} /> : <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Sem logo (o laudo usa o nome do lab).</span>}
+              {podeEditar ? <><input type="file" accept="image/png,image/jpeg" disabled={logoBusy} onChange={(e) => void handleLogo(e.target.files?.[0] ?? undefined)} />{q.data?.logo_path ? <Button variant="ghost" onClick={() => void removeLogo()}>Remover</Button> : null}</> : null}
+            </div>
+          </div>
         </div>
       </Card>
       <Card>
