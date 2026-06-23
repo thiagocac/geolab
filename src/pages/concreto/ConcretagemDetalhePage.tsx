@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Field } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { getConcretagem, listCaminhoes, addCaminhao, invokeFicha } from '../../lib/api/concretagem';
+import { getConcretagem, listCaminhoes, listCpsDaConcretagem, addCaminhao, invokeFicha } from '../../lib/api/concretagem';
 
 function dl(blob: Blob, name: string) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); URL.revokeObjectURL(u); }
 
@@ -25,6 +25,7 @@ export function ConcretagemDetalhePage() {
 
   const conc = useQuery({ queryKey: ['concretagem', id], queryFn: () => getConcretagem(id), enabled: !!id });
   const cams = useQuery({ queryKey: ['caminhoes', id], queryFn: () => listCaminhoes(id), enabled: !!id });
+  const cps = useQuery({ queryKey: ['cps', id], queryFn: () => listCpsDaConcretagem(id), enabled: !!id });
 
   async function salvar() {
     const c = conc.data;
@@ -34,7 +35,7 @@ export function ConcretagemDetalhePage() {
       if (!form.nota_fiscal) throw new Error('Nota fiscal e obrigatoria.');
       const serie = (cams.data?.length ?? 0) + 1;
       await addCaminhao(member.tenant_id, c, serie, form);
-      await qc.invalidateQueries({ queryKey: ['caminhoes', id] });
+      await Promise.all([qc.invalidateQueries({ queryKey: ['caminhoes', id] }), qc.invalidateQueries({ queryKey: ['cps', id] })]);
       toast('Caminhao + amostra + CPs adicionados.', 'success'); setOpen(false); setForm({});
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
@@ -64,11 +65,26 @@ export function ConcretagemDetalhePage() {
       </div>
       {cams.isLoading ? <LoadingState /> : (cams.data?.length ?? 0) === 0 ? <EmptyState /> : (
         <div style={{ display: 'grid', gap: 8 }}>
-          {(cams.data ?? []).map((cam) => (
-            <div key={cam.id} style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14 }}>
-              <strong>Caminhao {cam.serie}</strong> - NF {cam.nota_fiscal} - {cam.volume_m3 ?? '-'} m3 - slump {cam.slump_medido_cm ?? '-'} cm - {cam.placa ?? '-'}
-            </div>
-          ))}
+          {(cams.data ?? []).map((cam) => {
+            const cpsCam = (cps.data ?? []).filter((cp) => cp.receipt_id === cam.id);
+            return (
+              <div key={cam.id} style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14 }}>
+                <strong>Caminhao {cam.serie}</strong> - NF {cam.nota_fiscal} - {cam.volume_m3 ?? '-'} m3 - slump {cam.slump_medido_cm ?? '-'} cm - {cam.placa ?? '-'}
+                {cpsCam.length ? (
+                  <div style={{ marginTop: 8, display: 'grid', gap: 3 }}>
+                    {cpsCam.map((cp) => (
+                      <div key={cp.id} style={{ display: 'flex', gap: 8, fontSize: 12 }}>
+                        <span style={{ width: 150, color: '#374151' }}>{cp.codigo ?? cp.id.slice(0, 8)}</span>
+                        <span style={{ width: 60, color: '#6b7280' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
+                        <span style={{ width: 90, fontWeight: 700, color: cp.situacao === 'rompido' ? '#16a34a' : '#d97706' }}>{cp.situacao}</span>
+                        <span style={{ width: 90, fontWeight: 700, color: '#182863' }}>{cp.resultado != null ? cp.resultado + ' MPa' : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <div style={{ marginTop: 6, fontSize: 12, color: '#9ca3af' }}>Sem CPs.</div>}
+              </div>
+            );
+          })}
         </div>
       )}
       <Modal open={open} title="Adicionar caminhao" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>

@@ -62,3 +62,15 @@ export async function reabrirLaudo(id: string): Promise<void> {
   const { error } = await rpc.rpc('reabrir_laudo', { p_lab_report_id: id });
   if (error) throw new Error(error.message);
 }
+
+// Dispara o evento laudo_pronto (notify-event resolve gestor/RT + admin e faz fan-out
+// para send-notification). Best-effort: a notificacao nunca derruba a geracao do laudo.
+export async function notifyLaudoPronto(tenantId: string, labReportId: string, reference?: string): Promise<void> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  await fetch(env.supabaseUrl + '/functions/v1/notify-event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ tenant_id: tenantId, event_type: 'laudo_pronto', entity_type: 'lab_report', entity_id: labReportId, reference: reference ?? '', deep_link: '/laudos' }),
+  });
+}

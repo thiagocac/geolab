@@ -83,3 +83,16 @@ export async function invokeFicha(concId: string): Promise<Blob> {
   if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
   return resp.blob();
 }
+
+export type CpDetalhe = { id: string; codigo: string | null; idade_dias: number | null; idade_unidade: string; situacao: string; receipt_id: string | null; resultado: number | null };
+export async function listCpsDaConcretagem(concId: string): Promise<CpDetalhe[]> {
+  const { data, error } = await db.from('corpos_prova')
+    .select('id, codigo, idade_dias, idade_unidade, situacao, receipt_id, ordem, material_tests(resultado_valor)')
+    .eq('concretagem_id', concId).is('deleted_at', null).order('ordem', { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, any>[]).map((r) => {
+    const mts = Array.isArray(r.material_tests) ? r.material_tests : [];
+    const last = mts.length ? Number(mts[mts.length - 1].resultado_valor) : NaN;
+    return { id: String(r.id), codigo: r.codigo ?? null, idade_dias: r.idade_dias ?? null, idade_unidade: String(r.idade_unidade ?? 'dia'), situacao: String(r.situacao ?? 'pendente'), receipt_id: r.receipt_id ?? null, resultado: isFinite(last) ? last : null };
+  });
+}

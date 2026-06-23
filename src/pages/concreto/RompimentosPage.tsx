@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listAgenda, lancarResultado, calcMPa, type CpPendente } from '../../lib/api/rompimento';
+import { listAgenda, lancarResultado, maybeNotifyAbaixoFck, calcMPa, type CpPendente } from '../../lib/api/rompimento';
 import { listReference } from '../../lib/api/client';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -56,6 +56,7 @@ export function RompimentosPage() {
         equipamento_id: form.equipamento_id ? String(form.equipamento_id) : null, operador_id: form.operador_id ? String(form.operador_id) : null,
         data_rompimento: String(form.data_rompimento || hoje()),
       });
+      await maybeNotifyAbaixoFck(member.tenant_id, cp, cp.concretagens?.fck_previsto ?? null);
       await qc.invalidateQueries({ queryKey: ['agenda'] });
       toast('Resultado: ' + mpa + ' MPa.', 'success'); setCp(null); setForm({});
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }

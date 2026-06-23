@@ -8,23 +8,34 @@ import { ConcretagensPage } from './pages/concreto/ConcretagensPage';
 import { ConcretagemDetalhePage } from './pages/concreto/ConcretagemDetalhePage';
 import { RompimentosPage } from './pages/concreto/RompimentosPage';
 import { LaudosPage } from './pages/concreto/LaudosPage';
+import { ImportacoesPage } from './pages/concreto/ImportacoesPage';
+import { NotificacoesPage } from './pages/gestao/NotificacoesPage';
+import { PreferenciasPage } from './pages/gestao/PreferenciasPage';
+import { OperacaoPage } from './pages/operacao/OperacaoPage';
+import { NovaObraWizard } from './pages/cadastros/NovaObraWizard';
 import { Layout } from './components/Layout';
 
 export function App() {
-  const { ready, session, needsTenantSelection } = useAuth();
+  const { ready, session, needsTenantSelection, hasRole } = useAuth();
   if (!ready) return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#6b7280' }}>Carregando...</div>;
   if (!session) return <LoginScreen />;
   if (needsTenantSelection) return <TenantSelectionPage />;
+  const podeOperacao = hasRole('admin', 'admin_consulte');
   return (
     <BrowserRouter>
       <Layout>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/cadastros" element={<CadastrosPage />} />
+          <Route path="/nova-obra" element={<NovaObraWizard />} />
           <Route path="/concretagens" element={<ConcretagensPage />} />
           <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
           <Route path="/rompimentos" element={<RompimentosPage />} />
           <Route path="/laudos" element={<LaudosPage />} />
+          <Route path="/importacoes" element={<ImportacoesPage />} />
+          <Route path="/notificacoes" element={<NotificacoesPage />} />
+          <Route path="/preferencias" element={<PreferenciasPage />} />
+          <Route path="/operacao" element={podeOperacao ? <OperacaoPage /> : <Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

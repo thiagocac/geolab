@@ -9,10 +9,10 @@ import { Modal } from '../../components/ui/Modal';
 import { SelectField } from '../../components/ui/Field';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo } from '../../lib/api/laudo';
+import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto } from '../../lib/api/laudo';
 
 export function LaudosPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const podeAprovar = hasRole('admin', 'admin_consulte', 'gestor_qualidade');
@@ -28,7 +28,12 @@ export function LaudosPage() {
   async function gerar() {
     if (!concId) { toast('Selecione uma concretagem.', 'error'); return; }
     setBusy(true);
-    try { const { blob } = await gerarLaudo(concId); abrirBlob(blob); await qc.invalidateQueries({ queryKey: ['laudos'] }); toast('Laudo gerado.', 'success'); setNovo(false); setConcId(''); }
+    try {
+      const { blob, labReportId } = await gerarLaudo(concId);
+      abrirBlob(blob);
+      if (labReportId && member) { try { await notifyLaudoPronto(member.tenant_id, labReportId); } catch { /* notificacao e best-effort */ } }
+      await qc.invalidateQueries({ queryKey: ['laudos'] }); toast('Laudo gerado.', 'success'); setNovo(false); setConcId('');
+    }
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function baixar(path: string | null) {

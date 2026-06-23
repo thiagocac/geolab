@@ -11,6 +11,7 @@ const searchFields: Record<string, string[]> = {
   client_contacts: ['nome', 'email'],
   colaboradores: ['nome', 'documento'],
   equipamentos: ['marca_modelo', 'numero_serie'],
+  lab_contracts: ['numero', 'descricao'],
 };
 const esc = (s: string) => s.replace(/[%_]/g, (m) => '\\' + m);
 

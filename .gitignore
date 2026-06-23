@@ -1,0 +1,3 @@
+# corpus de validação do leitor de laudos (dados de cliente — não versionar)
+corpus/
+.corpus-build/

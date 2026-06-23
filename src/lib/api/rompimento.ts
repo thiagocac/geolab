@@ -1,9 +1,10 @@
 import { supabase } from '../supabase';
+import { env } from '../env';
 
 const db = supabase as unknown as { from: (t: string) => any };
 
 export type CpPendente = {
-  id: string; codigo: string | null; idade_dias: number | null; idade_unidade: string;
+  id: string; codigo: string | null; amostra_id: string | null; idade_dias: number | null; idade_unidade: string;
   data_prevista_rompimento: string | null; data_moldagem: string | null;
   concretagem_id: string | null; material_test_type_id: string | null;
   concretagens?: { codigo: string | null; fck_previsto: number | null; client_works?: { nome: string } | null } | null;
@@ -11,7 +12,7 @@ export type CpPendente = {
 
 export async function listAgenda(): Promise<CpPendente[]> {
   const { data, error } = await db.from('corpos_prova')
-    .select('id, codigo, idade_dias, idade_unidade, data_prevista_rompimento, data_moldagem, concretagem_id, material_test_type_id, concretagens(codigo, fck_previsto, client_works(nome))')
+    .select('id, codigo, amostra_id, idade_dias, idade_unidade, data_prevista_rompimento, data_moldagem, concretagem_id, material_test_type_id, concretagens(codigo, fck_previsto, client_works(nome))')
     .eq('situacao', 'pendente').is('deleted_at', null)
     .order('data_prevista_rompimento', { ascending: true });
   if (error) throw new Error(error.message);
@@ -51,4 +52,36 @@ export async function lancarResultado(tenantId: string, cp: CpPendente, v: Lanca
   const { error: e2 } = await db.from('corpos_prova').update({ situacao: 'rompido', data_real_rompimento: v.data_rompimento }).eq('id', cp.id);
   if (e2) throw new Error(e2.message);
   return mpa;
+}
+
+// E1 — aceitacao por exemplar na idade de controle (28d). Dispara resultado_abaixo_fck
+// SE o exemplar (maior do par no 28d) < fck. Idades menores nao reprovam (acompanhamento).
+// Best-effort: nunca derruba o lancamento. Dedupe por amostra (exemplar).
+const dbm = supabase as unknown as { from: (t: string) => any };
+export async function maybeNotifyAbaixoFck(
+  tenantId: string,
+  cp: { id: string; amostra_id: string | null; idade_dias: number | null; idade_unidade: string; codigo?: string | null },
+  fck: number | null,
+): Promise<void> {
+  try {
+    const isControle = Number(cp.idade_dias) === 28 && cp.idade_unidade !== 'hora';
+    if (!isControle || !cp.amostra_id || !fck || fck <= 0) return;
+    const { data: sibs } = await dbm.from('corpos_prova').select('id').eq('amostra_id', cp.amostra_id).is('deleted_at', null);
+    const ids = ((sibs ?? []) as Record<string, unknown>[]).map((r) => r.id).filter(Boolean);
+    if (!ids.length) return;
+    const { data: mts } = await dbm.from('material_tests').select('resultado_valor, idade_dias, idade_unidade').in('corpo_prova_id', ids).is('deleted_at', null);
+    const vals = ((mts ?? []) as Record<string, unknown>[])
+      .filter((r) => Number(r.idade_dias) === 28 && String(r.idade_unidade) !== 'hora')
+      .map((r) => Number(r.resultado_valor)).filter((v) => isFinite(v));
+    if (!vals.length) return;
+    const exemplar = Math.max(...vals);
+    if (exemplar >= fck) return;
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token ?? '';
+    await fetch(env.supabaseUrl + '/functions/v1/notify-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ tenant_id: tenantId, event_type: 'resultado_abaixo_fck', entity_type: 'amostra', entity_id: cp.amostra_id, reference: cp.codigo ?? '', deep_link: '/laudos', body: 'Exemplar abaixo do fck na idade de controle: ' + exemplar.toFixed(1) + ' < ' + fck.toFixed(1) + ' MPa.' }),
+    });
+  } catch { /* best-effort */ }
 }

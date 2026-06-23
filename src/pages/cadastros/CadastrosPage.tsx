@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AdminListPage } from '../../components/patterns/AdminListPage';
 import { Button } from '../../components/ui/Button';
 import type { Column, FieldSpec, DomainRow } from '../../lib/api/types';
+import { MateriaisPage } from './MateriaisPage';
 
 const ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map((u) => ({ value: u, label: u }));
 
@@ -20,6 +21,9 @@ const tabs: Tab[] = [
   { key: 'colaboradores', label: 'Colaboradores', table: 'colaboradores', description: 'Moldadores, laboratoristas, RT.', sort: 'nome',
     columns: [{ key: 'nome', header: 'Nome', sortable: true }, { key: 'documento', header: 'CPF' }, { key: 'registro_profissional', header: 'Registro' }],
     fields: [{ key: 'nome', label: 'Nome', required: true }, { key: 'documento', label: 'CPF' }, { key: 'registro_profissional', label: 'Registro (CREA/CRQ/TER)' }] },
+  { key: 'contratos', label: 'Contratos', table: 'lab_contracts', description: 'Contratos (referencia: anexo + vinculo).', sort: 'numero',
+    columns: [{ key: 'numero', header: 'Numero', sortable: true }, { key: 'descricao', header: 'Descricao' }, { key: 'vigencia_inicio', header: 'Inicio', type: 'date' }, { key: 'vigencia_fim', header: 'Fim', type: 'date' }, { key: 'status', header: 'Status' }],
+    fields: [{ key: 'client_id', label: 'Cliente', type: 'reference', refTable: 'lab_clients', refLabel: 'razao_social', required: true }, { key: 'numero', label: 'Numero' }, { key: 'descricao', label: 'Descricao', type: 'textarea' }, { key: 'vigencia_inicio', label: 'Vigencia inicio', type: 'date' }, { key: 'vigencia_fim', label: 'Vigencia fim', type: 'date' }, { key: 'status', label: 'Status' }] },
   { key: 'equipamentos', label: 'Equipamentos', table: 'equipamentos', description: 'Equipamentos e calibracao.', sort: 'tipo',
     columns: [{ key: 'tipo', header: 'Tipo', sortable: true }, { key: 'marca_modelo', header: 'Marca/Modelo' }, { key: 'numero_serie', header: 'No serie' }, { key: 'validade_calibracao', header: 'Validade calib.', type: 'date' }],
     fields: [{ key: 'tipo', label: 'Tipo', type: 'select', required: true, options: [{ value: 'prensa', label: 'Prensa' }, { value: 'balanca', label: 'Balanca' }, { value: 'molde', label: 'Molde' }, { value: 'paquimetro', label: 'Paquimetro' }, { value: 'outro', label: 'Outro' }] }, { key: 'marca_modelo', label: 'Marca/Modelo' }, { key: 'numero_serie', label: 'No serie' }, { key: 'capacidade_kn', label: 'Capacidade (kN)', type: 'number' }, { key: 'classe', label: 'Classe' }, { key: 'numero_certificado', label: 'No certificado' }, { key: 'data_calibracao', label: 'Data calibracao', type: 'date' }, { key: 'validade_calibracao', label: 'Validade calibracao', type: 'date' }, { key: 'lab_calibrador', label: 'Lab. calibrador' }, { key: 'incerteza_mpa', label: 'Incerteza (MPa)', type: 'number' }] },
@@ -27,13 +31,18 @@ const tabs: Tab[] = [
 
 export function CadastrosPage() {
   const [active, setActive] = useState(0);
-  const t = tabs[active];
+  const MATERIAIS = tabs.length;
+  const isMateriais = active === MATERIAIS;
+  const t = tabs[Math.min(active, tabs.length - 1)];
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {tabs.map((tab, i) => <Button key={tab.key} variant={i === active ? 'primary' : 'ghost'} onClick={() => setActive(i)}>{tab.label}</Button>)}
+        <Button variant={isMateriais ? 'primary' : 'ghost'} onClick={() => setActive(MATERIAIS)}>Materiais e ensaios</Button>
       </div>
-      <AdminListPage key={t.key} title={t.label} kicker="Cadastros" description={t.description} table={t.table} columns={t.columns} fields={t.fields} initialSort={t.sort} canDelete />
+      {isMateriais
+        ? <MateriaisPage />
+        : <AdminListPage key={t.key} title={t.label} kicker="Cadastros" description={t.description} table={t.table} columns={t.columns} fields={t.fields} initialSort={t.sort} canDelete />}
     </div>
   );
 }
