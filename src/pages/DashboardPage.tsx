@@ -15,7 +15,7 @@ export function DashboardPage() {
   const k = q.data;
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="GEOLAB" title="Painel" description={'Laboratorio: ' + (member?.tenant_name ?? '-')} />
+      <PageHeader kicker="Concresoft" title="Painel" description={'Laboratorio: ' + (member?.tenant_name ?? '-')} />
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : k ? (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>

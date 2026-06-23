@@ -29,14 +29,14 @@ export function LoginScreen() {
             <rect x="0" y="38" width="62" height="24" rx="12" fill="#fff" />
             <rect x="0" y="76" width="104" height="24" rx="12" fill="#fff" />
           </svg>
-          <span style={{ fontWeight: 800, fontSize: 24, letterSpacing: '-.02em' }}>GEOLAB</span>
+          <span style={{ fontWeight: 800, fontSize: 24, letterSpacing: '-.02em' }}>Concresoft</span>
         </div>
         <div style={{ position: 'relative' }}>
           <div style={{ fontWeight: 800, fontSize: 28, lineHeight: 1.12, letterSpacing: '-.02em', maxWidth: '18ch' }}>
             Controle tecnológico que vale como documento.
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.18em', color: 'rgba(255,255,255,.6)', marginTop: 18 }}>
-            CONSULTE GEO · CONCRESOFT · © 2026
+            CONCRESOFT · © 2026
           </div>
         </div>
       </aside>

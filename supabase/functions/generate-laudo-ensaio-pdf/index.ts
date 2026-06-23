@@ -131,9 +131,9 @@ Deno.serve(async (req) => {
     if (ON.logo_laboratorio && logoImg) { const iw = logoImg.width, ih = logoImg.height; const sc = Math.min(150 / iw, 30 / ih); page.drawImage(logoImg, { x: MX, y: topo - ih * sc, width: iw * sc, height: ih * sc }); }
     else if (ON.logo_laboratorio) { rect(MX, topo - 26, 150, 26, undefined, LINE); T(String(tenant?.name || 'LABORATORIO'), MX + 8, topo - 16, 8, FB, MUTED); }
     rect(RIGHT - 86, topo - 19, 15, 15, MAG);
-    page.drawText('G', { x: RIGHT - 81.5, y: topo - 15.4, size: 9, font: FB, color: WHITE });
-    const gw = FB.widthOfTextAtSize('GEO', 13), cwid = FB.widthOfTextAtSize('Consulte ', 13);
-    T('GEO', RIGHT - gw, topo - 15.6, 13, FB, MAG); T('Consulte ', RIGHT - gw - cwid, topo - 15.6, 13, FB, NAVY);
+    page.drawText('C', { x: RIGHT - 81.5, y: topo - 15.4, size: 9, font: FB, color: WHITE });
+    const sw2 = FB.widthOfTextAtSize('soft', 13), cw2 = FB.widthOfTextAtSize('Concre', 13);
+    T('soft', RIGHT - sw2, topo - 15.6, 13, FB, MAG); T('Concre', RIGHT - sw2 - cw2, topo - 15.6, 13, FB, NAVY);
     T('Relatorio de Ensaio', MX, PH - 66, 17, FB, NAVY);
     T('Resistencia a compressao de corpos de prova cilindricos - ABNT NBR 5739', MX, PH - 77, 8.2, F, MUTED);
     TR('RELATORIO No', RIGHT, PH - 54, 6.4, F, FAINT); TR(numero, RIGHT, PH - 69, 15, FB, NAVY);

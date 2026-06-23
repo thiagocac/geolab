@@ -19,8 +19,8 @@ export function ValidarPage() {
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--paper)' }}>
       <div style={{ width: '100%', maxWidth: 520, display: 'grid', gap: 16 }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, color: 'var(--magenta)' }}>Consulte GEO</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--ink)' }}>GEOLAB</div>
+          <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, color: 'var(--magenta)' }}>Controle Tecnológico</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--ink)' }}>Concresoft</div>
           <div style={{ fontSize: 13, color: 'var(--ink-faint)' }}>Validacao publica de laudo</div>
         </div>
         <div className="card" style={{ padding: 20 }}>

@@ -200,7 +200,7 @@ export function MateriaisPage() {
   const rows = q.data ?? [];
   return (
     <div className="space-y-4">
-      <PageHeader kicker="Cadastros" title="Traços de concreto" description="Cadastro de traços, slump, validade e padrão de moldagem no mesmo modelo do GEOMAT / Nova obra." />
+      <PageHeader kicker="Cadastros" title="Traços de concreto" description="Cadastro de traços, slump, validade e padrão de moldagem no mesmo modelo da Nova obra." />
       <div className="flex justify-end"><Button onClick={novo}>+ Adicionar traço</Button></div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <Card>

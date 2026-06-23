@@ -1,17 +1,22 @@
-# GEOLAB — Patch v31 (laudo dinâmico: ligar toggles + paridade v4 + telas de cadastro)
+# GEOLAB→Concresoft — Patch v32 (rebrand de texto P1, sobre o v30)
 
-Parte do v30 (brand kit). Backend (migration 031 + laudo EF v4) já aplicado no banco vivo via MCP.
+Parte do v30 (remoto). Inclui o que ainda não foi pro GitHub: **v31** (laudo v4 + migration 031) **e v32** (rebrand de texto Concresoft).
 
-## Backend já aplicado
-- **Migration 031** — config_lab (+local_ensaio, art_numero, gerente_qualidade, crea_gq) + operational_materials.componentes (jsonb).
-- **EF generate-laudo-ensaio-pdf v4** (sha 0778a594...) — 5 toggles antes mortos LIGADOS (amostragem c/ condição A/B; contato=Solicitante; local_ensaio/incerteza; componentes) + paridade v4 (capeamento "Bases"; ART; 2ª assinatura Gerente da Qualidade; legenda de normas).
+## v31 (laudo dinâmico v4) — backend já aplicado via MCP
+- Migration 031 (config_lab +local_ensaio/art/gerente/crea_gq; operational_materials.componentes).
+- EF generate-laudo-ensaio-pdf v4 (5 toggles + paridade v4). Telas Preferências/Traços atualizadas.
 
-## Frontend (este patch)
-- **Preferências** (config_lab): + Local de ensaios, ART do RT, Gerente da Qualidade, CREA do GQ.
-- **Traços** (operational_materials.componentes): sub-bloco Composição — marca/procedência (cimento/brita/areia/aditivo + água).
-- **Rompimentos**: já capturava capeamento + prensa (ensaio_campos) — sem mudança necessária.
-- Bump CACHE_NAME/APP_VERSION = v31.
+## v32 (Concresoft P1 — texto/nome)
+Substituído todo texto visível **Consulte GEO + GEOLAB + GEOMAT → Concresoft**, mantendo o sistema visual do brand kit (símbolo de barras, paleta navy/magenta/roxo + gradiente, fontes Mona Sans/JetBrains):
+- index.html title, manifest (name/short_name), Layout (sidebar + rodapé), LoginScreen (nome + rodapé), Dashboard, ValidarPage, OperacaoPage, MateriaisPage (remove GEOMAT). aria-labels e lockups SVG → Concresoft.
+- Bump CACHE_NAME/APP_VERSION = v32. Build completo verde.
 
-## Validação
-Build completo (check-source+tsc+vitest+vite) verde. Push em main → Netlify.
-Gerar laudo com todos os toggles ligados e comparar com MODELO-Laudo-Resistencia-Compressao-v4.pdf.
+## PENDENTE do rebrand (próximas fases)
+- **P3** — EFs: laudo ainda desenha o wordmark "Consulte GEO" e usa o domínio `lab.consultegeo.org` (laudo/ficha); send-notification (subject/wordmark/remetente). Precisam de redeploy.
+- **P4 (você)** — domínio novo (DNS+Netlify) + Resend (domínio + RESEND_FROM). Sem isso, os hardcodes de domínio ficam.
+- **P5** — internos (package name, prefixo de cache, comentários) — opcional.
+
+## P3 — EFs rebrandeadas (deployadas via MCP)
+- generate-laudo-ensaio-pdf v5 (sha c9da8996): wordmark "Consulte GEO" -> "Concresoft" (caixa C + Concre/soft).
+- send-notification v2 (sha 51eed16d): subject [Concresoft], wordmark do e-mail (Controle Tecnológico / Concresoft), textos "na Concresoft".
+- Domínio lab.consultegeo.org MANTIDO no laudo/ficha (QR aponta pro app vivo) — troca no P4 quando houver domínio Concresoft.

@@ -52,8 +52,8 @@ export function Layout({ children }: { children: ReactNode }) {
             <rect x="0" y="76" width="104" height="24" rx="12" fill="#fff" />
           </svg>
           <div>
-            <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, opacity: 0.85 }}>Consulte GEO</div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, letterSpacing: '-.01em', lineHeight: 1 }}>GEOLAB</div>
+            <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, opacity: 0.85 }}>Controle Tecnológico</div>
+            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, letterSpacing: '-.01em', lineHeight: 1 }}>Concresoft</div>
           </div>
         </div>
         <nav className="sidebar-nav">
@@ -75,7 +75,7 @@ export function Layout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v31</div>
+        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>Concresoft v32</div>
       </aside>
       <div className="content-col">
         <header className="topbar">

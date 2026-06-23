@@ -53,7 +53,7 @@ export function OperacaoPage() {
   const members = membersQ.data ?? [];
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Operacao interna" title="Operacao" description="Usuarios do laboratorio e (Consulte GEO) criacao de laboratorios." />
+      <PageHeader kicker="Operacao interna" title="Operacao" description="Usuarios do laboratorio e (Concresoft) criacao de laboratorios." />
       <div style={{ display: 'flex', gap: 8 }}>
         <Button variant={tab === 'usuarios' ? 'primary' : 'ghost'} onClick={() => setTab('usuarios')}>Usuarios</Button>
         {isConsulte ? <Button variant={tab === 'labs' ? 'primary' : 'ghost'} onClick={() => setTab('labs')}>Laboratorios</Button> : null}
@@ -76,7 +76,7 @@ export function OperacaoPage() {
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={() => { setF({}); setLabOpen(true); }}>Novo laboratorio</Button></div>
-          <Card><p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Criacao de laboratorio (tenant + admin) restrita ao Consulte GEO. A listagem de todos os laboratorios depende de policy cross-tenant (proximo bloco).</p></Card>
+          <Card><p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Criacao de laboratorio (tenant + admin) restrita à Concresoft. A listagem de todos os laboratorios depende de policy cross-tenant (proximo bloco).</p></Card>
         </div>
       )}
 
