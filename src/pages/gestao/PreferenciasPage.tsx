@@ -47,7 +47,7 @@ export function PreferenciasPage() {
   useEffect(() => {
     const c = q.data;
     if (c === undefined) return;
-    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, nota_rodape: c?.nota_rodape ?? '' });
+    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '' });
     const cur = (c?.laudo_campos ?? {}) as Record<string, boolean>;
     const init: Record<string, boolean> = {};
     for (const [k, , def] of TOGGLES) init[k] = cur[k] ?? def;
@@ -65,7 +65,7 @@ export function PreferenciasPage() {
         responsavel_tecnico: str(f.responsavel_tecnico) || null, crea_rt: str(f.crea_rt) || null,
         acreditacao_inmetro: str(f.acreditacao_inmetro) || null, validade_acreditacao: str(f.validade_acreditacao) || null,
         idade_controle_default: num(f.idade_controle_default, 28), cp_overdue_days: num(f.cp_overdue_days, 2),
-        nota_rodape: str(f.nota_rodape) || null, laudo_campos: { ...existing, ...lc },
+        nota_rodape: str(f.nota_rodape) || null, local_ensaio: str(f.local_ensaio) || null, art_numero: str(f.art_numero) || null, gerente_qualidade: str(f.gerente_qualidade) || null, crea_gq: str(f.crea_gq) || null, laudo_campos: { ...existing, ...lc },
       });
       toast('Preferencias salvas.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
@@ -89,6 +89,10 @@ export function PreferenciasPage() {
             <Field label="Validade da acreditacao" type="date" value={String(f.validade_acreditacao ?? '')} onChange={(e) => set('validade_acreditacao', e.target.value)} disabled={!podeEditar} />
           </div>
           <Field label="Nota de rodape do laudo" value={String(f.nota_rodape ?? '')} onChange={(e) => set('nota_rodape', e.target.value)} disabled={!podeEditar} />
+          <Field label="ART do RT" value={String(f.art_numero ?? '')} onChange={(e) => set('art_numero', e.target.value)} disabled={!podeEditar} />
+          <Field label="Gerente da qualidade (2a assinatura)" value={String(f.gerente_qualidade ?? '')} onChange={(e) => set('gerente_qualidade', e.target.value)} disabled={!podeEditar} />
+          <Field label="CREA do gerente da qualidade" value={String(f.crea_gq ?? '')} onChange={(e) => set('crea_gq', e.target.value)} disabled={!podeEditar} />
+          <Field label="Local de realizacao dos ensaios" value={String(f.local_ensaio ?? '')} onChange={(e) => set('local_ensaio', e.target.value)} disabled={!podeEditar} />
           <div>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)' }}>Logo do laboratorio</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 6 }}>

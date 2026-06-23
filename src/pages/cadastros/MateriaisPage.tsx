@@ -51,16 +51,27 @@ type FormState = {
   especificacao: string;
   observacoes: string;
   bombeado: boolean;
+  comp_cimento_marca: string;
+  comp_cimento_proc: string;
+  comp_brita_marca: string;
+  comp_brita_proc: string;
+  comp_areia_marca: string;
+  comp_areia_proc: string;
+  comp_aditivo_marca: string;
+  comp_aditivo_proc: string;
+  comp_agua_proc: string;
 };
 
 function vazio(): FormState {
   return {
     descricao: 'FCK 30 | BRITA 1 | SLUMP 10±2 CM', aplicacao: 'Sapata, Cortina, Blocos', fck_mpa: '30', fcj_mpa: '', desvio_padrao_mpa: '',
-    slump_previsto_cm: '10', slump_tolerancia_cm: '2', validade_concreto_minutos: '150', condicao_preparo: 'A', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false,
+    slump_previsto_cm: '10', slump_tolerancia_cm: '2', validade_concreto_minutos: '150', condicao_preparo: 'A', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false, comp_cimento_marca: '', comp_cimento_proc: '', comp_brita_marca: '', comp_brita_proc: '', comp_areia_marca: '', comp_areia_proc: '', comp_aditivo_marca: '', comp_aditivo_proc: '', comp_agua_proc: '',
   };
 }
 
 function fromRow(t: TracoRow): FormState {
+  const cmp = (t.componentes ?? {}) as Record<string, any>;
+  const compVal = (k: string, a: string) => String((cmp?.[k] as Record<string, unknown> | undefined)?.[a] ?? '');
   return {
     descricao: t.nome || t.codigo || '',
     aplicacao: t.aplicacao ?? '',
@@ -81,6 +92,11 @@ function fromRow(t: TracoRow): FormState {
     especificacao: t.especificacao ?? '',
     observacoes: t.observacoes ?? '',
     bombeado: !!t.bombeado,
+    comp_cimento_marca: compVal('cimento','marca'), comp_cimento_proc: compVal('cimento','procedencia'),
+    comp_brita_marca: compVal('brita','marca'), comp_brita_proc: compVal('brita','procedencia'),
+    comp_areia_marca: compVal('areia','marca'), comp_areia_proc: compVal('areia','procedencia'),
+    comp_aditivo_marca: compVal('aditivo','marca'), comp_aditivo_proc: compVal('aditivo','procedencia'),
+    comp_agua_proc: compVal('agua','procedencia'),
   };
 }
 
@@ -164,6 +180,7 @@ export function MateriaisPage() {
         bombeado: f.bombeado,
         observacoes: str(f.observacoes) || null,
         padrao_moldagem: padroesToDb(padrao),
+        componentes: (() => { const c: Record<string, unknown> = {}; const add = (k: string, m: unknown, pr: unknown) => { const mm = str(m), pp = str(pr); if (mm || pp) c[k] = { marca: mm || null, procedencia: pp || null }; }; add('cimento', f.comp_cimento_marca, f.comp_cimento_proc); add('brita', f.comp_brita_marca, f.comp_brita_proc); add('areia', f.comp_areia_marca, f.comp_areia_proc); add('aditivo', f.comp_aditivo_marca, f.comp_aditivo_proc); { const pp = str(f.comp_agua_proc); if (pp) c['agua'] = { procedencia: pp }; } return c; })(),
         schema_campos: { origem_ui: 'geolab-v23-geomat-tracos' },
       };
       await saveTraco(member.tenant_id, editId, payload);
@@ -244,6 +261,20 @@ export function MateriaisPage() {
               <Field label="Aditivo" value={f.aditivo_tipo} onChange={(e) => patch('aditivo_tipo', e.target.value)} />
               <Field label="Método de cura" value={f.metodo_cura} onChange={(e) => patch('metodo_cura', e.target.value)} />
               <label className="mt-7 flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200"><input type="checkbox" checked={f.bombeado} onChange={(e) => patch('bombeado', e.target.checked)} /> Bombeado</label>
+            </div>
+            <div className="mt-5 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <div className="mb-2 text-sm font-bold text-slate-600 dark:text-slate-300">Composição — marca / procedência (sai no laudo se habilitado)</div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Cimento — marca" value={f.comp_cimento_marca} onChange={(e) => patch('comp_cimento_marca', e.target.value)} />
+                <Field label="Cimento — procedência" value={f.comp_cimento_proc} onChange={(e) => patch('comp_cimento_proc', e.target.value)} />
+                <Field label="Brita — marca" value={f.comp_brita_marca} onChange={(e) => patch('comp_brita_marca', e.target.value)} />
+                <Field label="Brita — procedência" value={f.comp_brita_proc} onChange={(e) => patch('comp_brita_proc', e.target.value)} />
+                <Field label="Areia — marca" value={f.comp_areia_marca} onChange={(e) => patch('comp_areia_marca', e.target.value)} />
+                <Field label="Areia — procedência" value={f.comp_areia_proc} onChange={(e) => patch('comp_areia_proc', e.target.value)} />
+                <Field label="Aditivo — marca" value={f.comp_aditivo_marca} onChange={(e) => patch('comp_aditivo_marca', e.target.value)} />
+                <Field label="Aditivo — procedência" value={f.comp_aditivo_proc} onChange={(e) => patch('comp_aditivo_proc', e.target.value)} />
+                <Field label="Água — procedência/fonte" value={f.comp_agua_proc} onChange={(e) => patch('comp_agua_proc', e.target.value)} />
+              </div>
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <TextArea label="Especificação / composição" value={f.especificacao} onChange={(e) => patch('especificacao', e.target.value)} />

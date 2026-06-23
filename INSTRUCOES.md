@@ -1,33 +1,17 @@
-# GEOLAB — Patch v29 (programação + concretagem 2-etapas + campos dinâmicos + PORTAL DO CLIENTE seguro)
+# GEOLAB — Patch v31 (laudo dinâmico: ligar toggles + paridade v4 + telas de cadastro)
 
-Integração avaliada do v29 do GPT no nosso tronco. O v29 do GPT era superset do meu v28 (forkou dele),
-então foi adotado como base; reconciliei segurança e o download de laudo.
+Parte do v30 (brand kit). Backend (migration 031 + laudo EF v4) já aplicado no banco vivo via MCP.
 
-## Backend já aplicado no banco vivo (via MCP)
-- **029_programacao_campos_dinamicos** — config_lab.concretagem_campos, member_obras.deleted_at + índice único parcial,
-  defaults de concretagem/recebimento/laudo_campos, helper member_can_access_work.
-- **030_cliente_isolation_rls** — **isolamento do papel `cliente`**: `is_tenant_member` passa a EXCLUIR cliente
-  (bloqueia o cliente nas ~40 políticas sel_), self-read em members/member_obras/tenants, leituras escopadas por obra
-  (client_works/concretagens/lab_reports/lab_clients via member_can_access_work). **Testado**: cliente só enxerga a obra
-  vinculada; bloqueado de resultados, CPs, colaboradores e dados de outras obras/clientes.
+## Backend já aplicado
+- **Migration 031** — config_lab (+local_ensaio, art_numero, gerente_qualidade, crea_gq) + operational_materials.componentes (jsonb).
+- **EF generate-laudo-ensaio-pdf v4** (sha 0778a594...) — 5 toggles antes mortos LIGADOS (amostragem c/ condição A/B; contato=Solicitante; local_ensaio/incerteza; componentes) + paridade v4 (capeamento "Bases"; ART; 2ª assinatura Gerente da Qualidade; legenda de normas).
 
-> A migration 029 que o GPT entregou NÃO isolava o cliente (RLS é OR-permissivo; políticas adicionais só ampliam).
-> Foi descartada e refeita como 029+030 acima.
+## Frontend (este patch)
+- **Preferências** (config_lab): + Local de ensaios, ART do RT, Gerente da Qualidade, CREA do GQ.
+- **Traços** (operational_materials.componentes): sub-bloco Composição — marca/procedência (cimento/brita/areia/aditivo + água).
+- **Rompimentos**: já capturava capeamento + prensa (ensaio_campos) — sem mudança necessária.
+- Bump CACHE_NAME/APP_VERSION = v31.
 
-## Edge Functions (deploy via MCP)
-- **portal-laudo-url** (NOVA, minha) — assina download de laudo só após verificar escopo (cliente não tem policy de
-  storage para `laudos/`, e policy de storage não escopa por obra → vazaria; por isso EF service-role).
-- **admin-create-client-user**, **client-portal-submit-programacoes** — auditadas e deployadas (gates + escopo server-side).
-- **generate-laudo-ensaio-pdf** — campos dinâmicos (recebimento_campos/concretagem_campos) + texto v4 (NBR 12655/fck,est).
-- **generate-ficha-moldagem-pdf** — respeita campos dinâmicos.
-
-## Frontend (v29)
-Concretagem em 2 etapas (ConcretagemDetalhePage), ProgramacoesPage (fila do lab), CamposConcretagemPage/CamposRecebimentoPage
-(toggles dinâmicos), MoldingStandardEditor, **Portal do cliente** (ClientePortalPage: grid de programação→EF, consulta de
-concretagens/laudos, download via EF segura) e **ClienteUsuariosPage** (criar usuário cliente + vincular obras).
-Rotas: /programacoes, /gestao/campos-recebimento, /gestao/campos-concretagem, /portal-cliente, /portal/usuarios-clientes.
-Build completo (check-source+tsc+vitest+vite) verde. CACHE_NAME/APP_VERSION = v29.
-
-## Segurança do portal (resumo)
-O cliente é um usuário Auth real com `role='cliente'`, **read-only no nível de tabela**, escopado por `member_obras`.
-Programação e download de laudo passam por EF service-role com verificação server-side. Sem magic link (v1.1).
+## Validação
+Build completo (check-source+tsc+vitest+vite) verde. Push em main → Netlify.
+Gerar laudo com todos os toggles ligados e comparar com MODELO-Laudo-Resistencia-Compressao-v4.pdf.

@@ -27,13 +27,14 @@ export type TracoRow = {
   metodo_cura: string | null;
   especificacao: string | null;
   schema_campos: Record<string, unknown> | null;
+  componentes: Record<string, unknown> | null;
   bombeado: boolean;
   observacoes: string | null;
   padrao_moldagem: PadraoMoldagem[] | PadraoIdade[];
   ativo: boolean;
 };
 
-const SELECT_TRACO = 'id, codigo, nome, aplicacao, fck_mpa, fcj_mpa, desvio_padrao_mpa, condicao_preparo, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, brita, dmax_agregado_mm, fator_ac, cimento_tipo, consumo_cimento_kg_m3, aditivo_tipo, metodo_cura, especificacao, schema_campos, bombeado, observacoes, padrao_moldagem, ativo';
+const SELECT_TRACO = 'id, codigo, nome, aplicacao, fck_mpa, fcj_mpa, desvio_padrao_mpa, condicao_preparo, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, brita, dmax_agregado_mm, fator_ac, cimento_tipo, consumo_cimento_kg_m3, aditivo_tipo, metodo_cura, especificacao, schema_campos, bombeado, observacoes, padrao_moldagem, componentes, ativo';
 
 export async function listTracos(): Promise<TracoRow[]> {
   const { data, error } = await db.from('operational_materials')

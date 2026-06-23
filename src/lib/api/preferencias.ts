@@ -9,6 +9,10 @@ export type ConfigLab = {
   crea_rt: string | null;
   acreditacao_inmetro: string | null;
   validade_acreditacao: string | null;
+  local_ensaio: string | null;
+  art_numero: string | null;
+  gerente_qualidade: string | null;
+  crea_gq: string | null;
   idade_controle_default: number;
   cp_overdue_days: number;
   nota_rodape: string | null;
@@ -19,7 +23,7 @@ export type ConfigLab = {
   concretagem_campos: Record<string, boolean> | null;
 };
 
-const SELECT_FULL = 'responsavel_tecnico, crea_rt, acreditacao_inmetro, validade_acreditacao, idade_controle_default, cp_overdue_days, nota_rodape, logo_path, ensaio_campos, laudo_campos, recebimento_campos, concretagem_campos';
+const SELECT_FULL = 'responsavel_tecnico, crea_rt, acreditacao_inmetro, validade_acreditacao, idade_controle_default, cp_overdue_days, nota_rodape, logo_path, ensaio_campos, laudo_campos, recebimento_campos, concretagem_campos, local_ensaio, art_numero, gerente_qualidade, crea_gq';
 const SELECT_LEGADO = 'responsavel_tecnico, crea_rt, acreditacao_inmetro, validade_acreditacao, idade_controle_default, cp_overdue_days, nota_rodape, logo_path, ensaio_campos, laudo_campos, recebimento_campos';
 
 export async function getConfigLab(tenantId: string): Promise<ConfigLab | null> {

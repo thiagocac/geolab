@@ -1,7 +1,7 @@
-# GEOLAB — SOURCE VERSION v30
-CACHE_NAME: consultegeo-geolab-v30 · APP_VERSION: v30
+# GEOLAB — SOURCE VERSION v31
+CACHE_NAME: consultegeo-geolab-v31 · APP_VERSION: v31
 
-Frontend (acumulado v2→v30): login + selecao de laboratorio + shell (v2) · Cadastros (v3) ·
+Frontend (acumulado v2→v31): login + selecao de laboratorio + shell (v2) · Cadastros (v3) ·
 Concretagem (v4) · Rompimentos — carga→MPa NBR 5739 (v5) · Laudos (v6) · gatilho de e-mail
 laudo_pronto (v7) · hotfix login/config.js (v8) · Operacao Interna — usuarios + criar laboratorio
 (v9) · Materiais e ensaios + padrao de moldagem (v10) · assistente Nova obra (v11) · Importacoes
@@ -14,31 +14,27 @@ concretagem retroativa (v24) · upload de logo do laboratorio no laudo (v25) ·
 Estrutura da obra — Grupos/Tipos/Pecas (v26) · peca da estrutura na concretagem (v27) ·
 integracao GEOMAT — rompimentos/controle-laudo/tracos (v28) ·
 programacao + concretagem 2-etapas + campos dinamicos + Portal do Cliente (v29) ·
-Brand Kit GEOLAB — fontes/simbolo/favicon/login (v30).
+Brand Kit GEOLAB — fontes/simbolo/favicon/login (v30) ·
+laudo dinamico v4 — toggles + paridade NBR + campos de cadastro (v31).
 
-## v30 — Brand Kit GEOLAB (identidade da marca)
-- Fontes self-hosted (public/fonts): Mona Sans (variavel, display/corpo) + JetBrains Mono
-  (numerais/kickers/labels). @font-face em styles.css; font-family da marca no body e mono nas labels
-  (.kicker · .nav-sect · .table th).
-- Tokens: --grad-brand (linear-gradient 135deg · #182863 0% · #3E2D71 55% · #C5117E 100%) em
-  .btn-primary / .sidebar-brand / login; + --magenta-light (#E8459E). Paleta navy/purple/magenta e
-  paper (#FAF9F7) ja batiam com a marca.
-- Simbolo "C" de 3 barras (oficial) na sidebar e no login; SVGs oficiais em public/brand/
-  (symbol/lockup/appicon/favicon nas variantes cor/gradiente/navy/branco).
-- index.html: favicon (public/favicon.svg) + apple-touch-icon + meta theme-color + link do manifest.
-- PWA manifest corrigido: nome "GEOLAB — Controle Tecnologico" (era "Consulte GEO Materiais", herdado
-  do fork GEOMAT) + icones (app icon SVG).
-- LoginScreen redesenhada (split-panel da marca): painel gradiente (simbolo + wordmark + tagline +
-  assinatura mono) e card de acesso (kicker mono + Mona Sans). Preserva o fluxo de auth — sem <form>,
-  submit por Enter/botao, mesmos Field/Button/useAuth.
-- Build completo (check-source + tsc + vitest + vite) verde. Sem backend novo. Origem: handoff
-  "GEOLAB Brand Kit" (Claude Design). Aplicado por cima da v29 (Portal do Cliente).
+## v31 — Laudo dinamico (ligar toggles + paridade v4)
+- Preferencias (config_lab): + Local de ensaios, ART do RT, Gerente da Qualidade, CREA do GQ.
+- Tracos (operational_materials.componentes): sub-bloco Composicao — marca/procedencia do cimento,
+  brita, areia, aditivo + agua.
+- Rompimentos: sem mudanca (capeamento + prensa ja vinham de ensaio_campos).
+- Backend (vivo): migration 031 (config_lab +local_ensaio/art_numero/gerente_qualidade/crea_gq;
+  operational_materials.componentes jsonb) + EF generate-laudo-ensaio-pdf v4 — 5 toggles antes mortos
+  LIGADOS (amostragem condicao A/B; contato=Solicitante; local_ensaio/incerteza; componentes) +
+  paridade v4 (capeamento "Bases"; ART; 2a assinatura Gerente da Qualidade; legenda de normas).
+- Build completo (check-source + tsc + vitest + vite) verde. Aplicado por cima da v30 (Brand Kit).
 
-## Backend (vivo via MCP em xbdvyvvxvzmcosnekmfv): migrations 001-030 (025 storage logo · 026 unit_link ·
-027 rompimento RPCs · 028 gate · 029 programacao/campos · 030 cliente isolation RLS); EFs: PDF ficha +
-laudo (campos dinamicos, texto v4), notificacao (send-notification/notify-event/resend-webhook), admin
-(create-lab/invite-member/create-client-user), OCR extract-laudo-vision, validacao publica validar-laudo,
-portal (portal-laudo-url · client-portal-submit-programacoes); 5 buckets; e-mail em dry-run.
+## Backend (vivo via MCP em xbdvyvvxvzmcosnekmfv): migrations 001-031 (025 storage logo · 026 unit_link ·
+027 rompimento RPCs · 028 gate · 029 programacao/campos · 030 cliente isolation RLS · 031 laudo v4 campos);
+EFs: PDF ficha + laudo v4 (toggles + paridade NBR 12655/fck,est), notificacao (send-notification/
+notify-event/resend-webhook), admin (create-lab/invite-member/create-client-user), OCR
+extract-laudo-vision, validacao publica validar-laudo, portal (portal-laudo-url ·
+client-portal-submit-programacoes); 5 buckets; e-mail em dry-run.
 
-## Proximo: fechar a v1 (crons + CRON_SECRET, VISION_API_KEY do OCR, ligar e-mail real) e itens
-v1.1 (medicao, motor de NC, formas). Detalhe em docs/ · 07-backlog · 08-changelog.
+## Proximo: fechar a v1 (crons + CRON_SECRET, VISION_API_KEY do OCR, ligar e-mail real,
+generate-agenda-rompimento-pdf) e itens v1.1 (medicao, motor de NC, formas). Detalhe em docs/ ·
+07-backlog · 08-changelog.
