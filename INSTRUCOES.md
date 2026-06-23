@@ -1,22 +1,26 @@
-# GEOLAB — Patch v25 (upload de logo do laboratório)
+# GEOLAB — Patch v26 (Estrutura/Peças da obra)
 
-Gap de v1 fechado: o admin sobe o **logo** do lab em Preferências; o laudo passa a
-imprimir a marca (a EF já lia `config_lab.logo_path`).
+Último gap de peso fechado: gestão da **estrutura** de uma obra (opcional, para obras com
+`estrutura_habilitada`), em 3 níveis — **Grupos → Tipos → Peças** (tabelas `unit_groups`/
+`unit_types`/`units`, já existentes desde a migration 008).
 
-## Backend já aplicado (via MCP)
-- **Migration `025_storage_lab_logo_policy`** — policy de Storage escopada: membro do
-  tenant lê/grava SÓ `lab-reports/{tenant_id}/logos/` (laudos seguem só via service-role).
+## Sem backend novo (RLS por tenant; work_id escopa por obra)
 
-## Frontend
 | Arquivo | Mudança |
 |---|---|
-| `src/lib/api/preferencias.ts` | `logo_path` no tipo/select + `uploadLogo` + `logoSignedUrl` |
-| `src/pages/gestao/PreferenciasPage.tsx` | seção de logo (preview + upload PNG/JPEG + remover) |
-| `public/sw.js` · `core.ts` · `Layout.tsx` | `v25` |
+| `src/lib/api/estrutura.ts` | **NOVO** — listObrasEstrutura, listGrupos/Tipos/Pecas, addEstrutura, delEstrutura |
+| `src/pages/cadastros/EstruturaPage.tsx` | **NOVO** — seletor de obra + 3 seções (lista + adicionar/remover por nível) |
+| `src/App.tsx` | rota `/estrutura` |
+| `src/components/Layout.tsx` | nav "Estrutura" (Layers) na seção Cadastros |
+| `public/sw.js` · `core.ts` | `v26` |
 
-## Notas
-- Upload aceita PNG/JPEG (o laudo embute via pdf-lib; sem WOFF2/outros formatos).
-- Caminho: `{tenant_id}/logos/logo.{png|jpg}`; `config_lab.logo_path` atualizado.
-- Toggle "logo_laboratorio" do laudo já vem ligado por padrão (Preferências › laudo).
+## Modelo
+- **Grupos**: ex. Torre A, Bloco 1 (codigo, nome, tipo de edificação).
+- **Tipos**: ex. Pilar P1, Laje L2 — etapa, volume de projeto e **traço** (operational_material),
+  de onde o fck do tipo deriva.
+- **Peças (units)**: a peça concreta, ligando grupo + tipo, com volume.
 
-Build completo (check-source+tsc+vitest+vite) verde. Push em `main`.
+## Nota
+A página só lista obras com **estrutura habilitada** (ligue em Cadastros › Obras ou na Nova obra).
+Consumo na concretagem (escolher a peça em vez de digitar o local) é o próximo passo de wiring;
+hoje a concretagem usa `local_texto` livre. Build completo verde. Push em `main`.

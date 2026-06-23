@@ -12,6 +12,7 @@ import { ImportacoesPage } from './pages/concreto/ImportacoesPage';
 import { NotificacoesPage } from './pages/gestao/NotificacoesPage';
 import { PreferenciasPage } from './pages/gestao/PreferenciasPage';
 import { NovaObraWizard } from './pages/cadastros/NovaObraWizard';
+import { EstruturaPage } from './pages/cadastros/EstruturaPage';
 import { OperacaoPage } from './pages/operacao/OperacaoPage';
 import { ValidarPage } from './pages/ValidarPage';
 import { Layout } from './components/Layout';
@@ -42,6 +43,7 @@ export function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/cadastros" element={<CadastrosPage />} />
           <Route path="/nova-obra" element={<NovaObraWizard />} />
+          <Route path="/estrutura" element={<EstruturaPage />} />
           <Route path="/concretagens" element={<ConcretagensPage />} />
           <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
           <Route path="/rompimentos" element={<RompimentosPage />} />

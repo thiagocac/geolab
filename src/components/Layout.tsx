@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
-import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, ShieldAlert, LogOut, Sun, Moon, Menu } from './ui/icons';
+import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, ShieldAlert, LogOut, Sun, Moon, Menu } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
@@ -14,7 +14,7 @@ const sections: Section[] = [
     { to: '/laudos', label: 'Laudos', icon: FileText },
     { to: '/importacoes', label: 'Importacoes', icon: Import },
   ] },
-  { title: 'Cadastros', items: [{ to: '/cadastros', label: 'Cadastros', icon: Boxes }] },
+  { title: 'Cadastros', items: [{ to: '/cadastros', label: 'Cadastros', icon: Boxes }, { to: '/estrutura', label: 'Estrutura', icon: Layers }] },
   { title: 'Gestao', items: [
     { to: '/notificacoes', label: 'Notificacoes', icon: Bell },
     { to: '/preferencias', label: 'Preferencias', icon: Gauge, roles: ['admin', 'admin_consulte'] },
@@ -54,7 +54,7 @@ export function Layout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v25</div>
+        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>GEOLAB v26</div>
       </aside>
       <div className="content-col">
         <header className="topbar">
