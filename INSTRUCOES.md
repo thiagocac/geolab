@@ -1,26 +1,21 @@
-# GEOLAB — Patch v22 (validação pública de laudo + numeração da concretagem)
+# GEOLAB — Patch v23 (Colaboradores + certificações)
 
-Fecha dois gaps de v1: o QR do laudo agora leva a uma página real, e a concretagem
-ganha numeração automática.
+Gap de v1 fechado: cadastro de colaborador agora gerencia **certificações** (NBR 15146-1/2,
+CREA/CRQ/TER) com **número e validade**, e mostra um **indicador visual de validade**
+(válida / vence em breve ≤30d / vencida) — em vez do cadastro básico (só nome/doc/registro).
 
-## Backend já aplicado (via MCP)
-- **Migration `023_concretagem_numbering`** — trigger `set_concretagem_codigo` gera
-  `CONC-AAAA-NNNNNN` por tenant/ano (BEFORE INSERT, se `codigo` vier vazio) + índice
-  único `(tenant_id, codigo)`. Concretagens novas saem numeradas.
-- **EF `validar-laudo`** (v1, `verify_jwt=false`, pública) — recebe o código do QR
-  (`LAU-<codigo da concretagem>`), devolve só info de autenticidade (número, status,
-  data, lab, RT, revisão). Service-role; não expõe dado sensível.
+## Sem backend novo (tabela `colaborador_certificacoes` já existe, migration 005; RLS por tenant)
 
-## Frontend
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/ValidarPage.tsx` | **NOVO** — página pública de validação (sem login, sem Layout) |
-| `src/lib/api/validar.ts` | **NOVO** — chama a EF só com a anon key |
-| `src/App.tsx` | rota `/validar/:codigo` **fora do gate de auth** (detecta o path antes de exigir login) |
-| `public/sw.js` · `core.ts` · `Layout.tsx` | `v22` |
+| `src/lib/api/colaboradores.ts` | **NOVO** — listColaboradores (com certs embed), save, addCert, softDeleteCert |
+| `src/pages/cadastros/ColaboradoresPage.tsx` | **NOVO** — lista com chips de validade + modal (dados + certificações) |
+| `src/pages/cadastros/CadastrosPage.tsx` | aba "Colaboradores" agora é a página custom (saiu do AdminListPage) |
+| `public/sw.js` · `core.ts` · `Layout.tsx` | `v23` |
 
-## Fluxo
-O laudo já imprime o QR para `lab.consultegeo.org/validar/LAU-<codigo>`. Agora esse link
-abre a página pública, que consulta a EF e mostra se o laudo é autêntico/emitido.
+## Notas
+- Alerta visual na v1 (chip colorido). Alerta por e-mail de certificação vencendo pode
+  reusar o cron-watchdog num próximo passo (hoje o cron faz só calibração de equipamento).
+- Tipos sugeridos: NBR 15146-1 (Moldagem), NBR 15146-2 (Rompimento), CREA, CRQ, TER, Outro.
 
 Build completo (check-source+tsc+vitest+vite) verde. Push em `main`.
