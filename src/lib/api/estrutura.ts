@@ -34,3 +34,10 @@ export async function delEstrutura(table: string, id: string): Promise<void> {
   const { error } = await db.from(table).update({ deleted_at: new Date().toISOString() }).eq('id', id);
   if (error) throw new Error(error.message);
 }
+
+// Peças de uma obra para o seletor na concretagem (label amigável).
+export async function listPecasObra(workId: string): Promise<{ id: string; label: string }[]> {
+  const { data, error } = await db.from('units').select('id, codigo, nome, unidade_completa, ativa, ordem').eq('work_id', workId).is('deleted_at', null).order('ordem', { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, any>[]).filter((r) => r.ativa !== false).map((r) => ({ id: String(r.id), label: String(r.unidade_completa || ((r.codigo ? r.codigo + ' - ' : '') + (r.nome ?? r.id))) }));
+}

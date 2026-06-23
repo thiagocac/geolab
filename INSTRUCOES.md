@@ -1,26 +1,20 @@
-# GEOLAB — Patch v26 (Estrutura/Peças da obra)
+# GEOLAB — Patch v27 (wiring da peça na concretagem)
 
-Último gap de peso fechado: gestão da **estrutura** de uma obra (opcional, para obras com
-`estrutura_habilitada`), em 3 níveis — **Grupos → Tipos → Peças** (tabelas `unit_groups`/
-`unit_types`/`units`, já existentes desde a migration 008).
+Fecha o ciclo da estrutura: na Nova concretagem, se a obra tem peças cadastradas
+(Estrutura), aparece um seletor **Peça (estrutura)**. Escolher a peça:
+- grava o vínculo estruturado em `concretagens.unit_id`, e
+- popula `local_texto` com o nome da peça (que o laudo/ficha já imprimem).
+Sem estrutura, segue digitando o local livremente.
 
-## Sem backend novo (RLS por tenant; work_id escopa por obra)
+## Backend já aplicado (via MCP)
+- **Migration `026_concretagem_unit_link`** — `concretagens.unit_id uuid` (FK → units,
+  nullable) + índice. Aditivo.
 
+## Frontend
 | Arquivo | Mudança |
 |---|---|
-| `src/lib/api/estrutura.ts` | **NOVO** — listObrasEstrutura, listGrupos/Tipos/Pecas, addEstrutura, delEstrutura |
-| `src/pages/cadastros/EstruturaPage.tsx` | **NOVO** — seletor de obra + 3 seções (lista + adicionar/remover por nível) |
-| `src/App.tsx` | rota `/estrutura` |
-| `src/components/Layout.tsx` | nav "Estrutura" (Layers) na seção Cadastros |
-| `public/sw.js` · `core.ts` | `v26` |
+| `src/lib/api/estrutura.ts` | **+ `listPecasObra`** (peças ativas da obra, label amigável) |
+| `src/pages/concreto/ConcretagensPage.tsx` | seletor de peça (aparece se a obra tem peças) → `unit_id` + `local_texto`; reset de `unit_id` ao trocar de obra |
+| `public/sw.js` · `core.ts` · `Layout.tsx` | `v27` |
 
-## Modelo
-- **Grupos**: ex. Torre A, Bloco 1 (codigo, nome, tipo de edificação).
-- **Tipos**: ex. Pilar P1, Laje L2 — etapa, volume de projeto e **traço** (operational_material),
-  de onde o fck do tipo deriva.
-- **Peças (units)**: a peça concreta, ligando grupo + tipo, com volume.
-
-## Nota
-A página só lista obras com **estrutura habilitada** (ligue em Cadastros › Obras ou na Nova obra).
-Consumo na concretagem (escolher a peça em vez de digitar o local) é o próximo passo de wiring;
-hoje a concretagem usa `local_texto` livre. Build completo verde. Push em `main`.
+Build completo (check-source+tsc+vitest+vite) verde. Push em `main`.
