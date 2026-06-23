@@ -45,7 +45,15 @@ export async function gerarLaudo(concId: string): Promise<{ blob: Blob; labRepor
     body: JSON.stringify({ concretagem_id: concId, persist: true }),
   });
   if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
-  return { blob: await resp.blob(), labReportId: resp.headers.get('x-lab-report-id') ?? '' };
+  const blob = await resp.blob();
+  let labReportId = resp.headers.get('x-lab-report-id') ?? '';
+  if (!labReportId) {
+    // Fallback: o header x-lab-report-id pode nao estar exposto via CORS no browser.
+    // Sem ele, busca o laudo recem-persistido da concretagem para disparar o laudo_pronto.
+    const { data } = await db.from('lab_reports').select('id').eq('concretagem_id', concId).is('deleted_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    labReportId = data?.id ? String(data.id) : '';
+  }
+  return { blob, labReportId };
 }
 
 export async function downloadUrl(path: string): Promise<string> {
