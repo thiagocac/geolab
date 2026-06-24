@@ -1,22 +1,25 @@
-# GEOLAB v41 — Motor de NC (Fase C): mais gatilhos automáticos
+# GEOLAB v42 — Motor de NC (Fase C): telas de configuração
 
-**Backend-only.** Sem mudança de frontend → cache permanece `consultegeo-geolab-v40` (nada a rebuildar no Netlify). As NCs geradas aparecem na caixa já existente (Concreto → Não-conformidades).
+Frontend-only (sem mudança de banco; usa nc_parameters / nc_action_templates / nc_action_transitions já existentes).
 
-## O que entra (migration 041, JÁ aplicada via MCP em xbdvyvvxvzmcosnekmfv)
-Novos gatilhos automáticos, re-derivados do GEOMAT e adaptados ao GEOLAB:
+## O que entra
+Tela nova **Gestão → Config de NC** (`/gestao/nc-config`), com duas seções:
 
-- **T-14 Calibração vencida** — rompimento com prensa (`material_tests.equipamento_id`) de calibração vencida na data → NC alta.
-- **T-05 Slump fora** — recebimento com `slump_medido_cm` fora de `slump_previsto_cm ± tolerância` do traço.
-- **T-11 Água adicionada** — água adicionada na obra (NBR 7212).
-- **T-01 Concreto vencido** — tempo de transporte > validade (gateado por `nc_parameters.validade_concreto_h`; dormente até configurar).
-- **Reversão por contraprova** — contraprova satisfatória (resultado ≥ fck) **conclui automaticamente** as NCs abertas do CP original; insatisfatória registra escalada para tratativa manual.
+- **Tolerâncias** (`nc_parameters`) — editor dos parâmetros lidos pelos gatilhos: **validade do concreto (h)** (em uso hoje, gatilho T-01), tolerância de slump/flow, % de conclusão automática, % de ação imediata, tolerância de lançamento. Grava uma linha "geral" por laboratório. Edição por admin/gestor (RLS is_tenant_writer).
+- **Fluxo de tratativa** (`nc_action_templates` + `nc_action_transitions`) — por classificação: lista as ações do workflow (nome, situação destino, conclui, ativo, mensagem) e as transições permitidas. Edição leve dos campos seguros (nome, mensagem, ativo, múltipla aplicação) restrita ao **admin** (RLS is_tenant_admin).
 
-Junto com o T-02 (resultado < fck na idade de controle) e T-08 (alteração após aceite) da Fase A.
+## Arquivos (frontend → GitHub)
+- src/lib/api/ncConfig.ts (novo), src/pages/gestao/NcConfigPage.tsx (novo)
+- src/App.tsx (rota /gestao/nc-config), src/components/Layout.tsx (nav "Config de NC", Gestão)
+- public/sw.js + src/lib/telemetry/core.ts — bump **v42** (v41 foi backend-only, sem cache).
 
-Adaptações vs GEOMAT: `laboratorio_id`→`tenant_id`; `work_id`/traço resolvidos via concretagem; sem flow / volume NF×recebido / desforma (falta de dado no GEOLAB v1).
-
-## Validação
-DO + rollback atômico: slump 20 vs 10±2 → T-05; 15 L água → T-11; prensa vencida → T-14; contraprova 33≥30 conclui a NC do original. T-02 não dispara com resultado ≥ fck.
+## Passos
+1. Subir o frontend no GitHub. Sem backend a aplicar.
+2. Confirmar CACHE_NAME=`consultegeo-geolab-v42` / APP_VERSION=`v42`.
+3. Validar in-app: Gestão → Config de NC → setar "validade do concreto" → conferir que o gatilho T-01 passa a valer; abrir uma classificação e editar a mensagem de uma ação.
 
 ## Pendente (Fase C restante)
-RAC + `generate-nc-report-pdf`; telas de configuração (tolerâncias `nc_parameters` / editor de templates); anexos nas ações; CP atrasado→NC (no cron); autoconclusão por tolerância; e-mail de NC.
+Editor de grafo de transições (rotear o fluxo); RAC + generate-nc-report-pdf; anexos nas ações; CP atrasado→NC (cron); autoconclusão por tolerância; e-mail de NC.
+
+## Build
+check-source OK · tsc(0) · vitest(1/1) · vite build OK.

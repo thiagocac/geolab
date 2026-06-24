@@ -36,6 +36,7 @@ const sections: Section[] = [
     { to: '/gestao/controle-laudo', label: 'Campos do ensaio e laudo', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/campos-recebimento', label: 'Campos recebimento', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/campos-concretagem', label: 'Campos concretagem', icon: ClipboardCheck, roles: adminRoles },
+    { to: '/gestao/nc-config', label: 'Config de NC', icon: ClipboardCheck, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
   ] },
   { title: 'Operação interna', items: [{ to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles }] },
 ];
