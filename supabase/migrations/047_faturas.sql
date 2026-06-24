@@ -1,0 +1,5 @@
+-- Financeiro: faturamento (emissao/baixa) em cima da medicao. Papel 'financeiro' ja existe (is_tenant_writer o inclui).
+-- Corpo completo aplicado via MCP. Tabela faturas (medicao_id/client/numero FAT-AAAA-NNNNNN/valor/status
+-- emitida|paga|cancelada/data_emissao/vencimento/pagamento/forma) + RLS (sel is_tenant_member, ins/upd is_tenant_writer).
+-- emitir_fatura(p_medicao_id uuid, p_vencimento date) returns faturas (SECURITY DEFINER): cria a fatura da medicao
+-- (1 ativa por medicao), numero sequencial; baixa/cancelamento via update (FE). grant authenticated.

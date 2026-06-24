@@ -33,6 +33,7 @@ const sections: Section[] = [
     { to: '/preferencias', label: 'Preferências', icon: Gauge, roles: adminRoles },
     { to: '/medicoes', label: 'Medição', icon: FileText, roles: adminRoles },
     { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
+    { to: '/faturas', label: 'Faturas', icon: FileText, roles: ['admin', 'admin_consulte', 'financeiro'] },
     { to: '/formas', label: 'Fôrmas', icon: Boxes, roles: labRoles },
     { to: '/gestao/controle-laudo', label: 'Campos do ensaio e laudo', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/campos-recebimento', label: 'Campos recebimento', icon: ClipboardCheck, roles: adminRoles },
