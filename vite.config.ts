@@ -1,14 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+
+// React Compiler 1.0 — memoizacao automatica (build-time via Babel).
+// target '19': usa o runtime embutido do React 19 (sem pacote react-compiler-runtime).
+const reactCompiler: [string, Record<string, unknown>] = ['babel-plugin-react-compiler', { target: '19' }];
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react({ babel: { plugins: [reactCompiler] } })],
   build: {
     sourcemap: true,
     chunkSizeWarningLimit: 180,
     rollupOptions: {
       output: {
-        // Forma de função: robusta ao layout de módulos do React 19
-        // (a forma de objeto ['react','react-dom'] deixou de capturar o react-dom 19).
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
           if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/')) return 'vendor';
