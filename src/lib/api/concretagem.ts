@@ -152,7 +152,7 @@ export async function listCpsDaConcretagem(concId: string): Promise<CpDetalhe[]>
   return ((data ?? []) as Record<string, any>[]).map((r) => {
     const mts = Array.isArray(r.material_tests) ? r.material_tests : [];
     const last = mts.length ? Number(mts[mts.length - 1].resultado_valor) : NaN;
-    return { id: String(r.id), codigo: r.codigo ?? null, idade_dias: r.idade_dias ?? null, idade_unidade: String(r.idade_unidade ?? 'dia'), situacao: String(r.situacao ?? 'pendente'), receipt_id: r.receipt_id ?? null, data_prevista_rompimento: r.data_prevista_rompimento ?? null, resultado: isFinite(last) ? last : null };
+    return { id: String(r.id), codigo: r.codigo ?? null, idade_dias: r.idade_dias ?? null, idade_unidade: String(r.idade_unidade ?? 'dia'), situacao: String(r.situacao ?? 'pendente'), receipt_id: r.receipt_id ?? null, data_prevista_rompimento: r.data_prevista_rompimento ?? null, resultado: Number.isFinite(last) ? last : null };
   });
 }
 

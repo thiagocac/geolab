@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { emit, flushTelemetry, installTelemetry, captureException } from './instrument';
+import { emit, flushTelemetry, installTelemetry } from './instrument';
 import { installVitals } from './vitals';
-import { addBreadcrumb, newTrace, setContext, currentTraceId, type TelemetryLevel } from './core';
+import { addBreadcrumb, newTrace, setContext, type TelemetryLevel } from './core';
 
 export { emit, captureException } from './instrument';
 export { addBreadcrumb, setContext, newTrace, currentTraceId, type TelemetryLevel } from './core';

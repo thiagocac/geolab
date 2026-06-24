@@ -85,15 +85,15 @@ export function Layout({ children }: { children: ReactNode }) {
       </aside>
       <div className="content-col">
         <header className="topbar">
-          <button className="icon-btn menu-btn" aria-label="Menu" onClick={() => setOpen((o) => !o)}><Menu size={20} /></button>
+          <button type="button" className="icon-btn menu-btn" aria-label="Menu" onClick={() => setOpen((o) => !o)}><Menu size={20} /></button>
           <span style={{ fontWeight: 700, color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member?.tenant_name}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
             <div className="theme-toggle">
-              <button className={theme === 'light' ? 'on' : ''} aria-label="Tema claro" onClick={() => setTheme('light')}><Sun size={16} /></button>
-              <button className={theme === 'dark' ? 'on' : ''} aria-label="Tema escuro" onClick={() => setTheme('dark')}><Moon size={16} /></button>
+              <button type="button" className={theme === 'light' ? 'on' : ''} aria-label="Tema claro" onClick={() => setTheme('light')}><Sun size={16} /></button>
+              <button type="button" className={theme === 'dark' ? 'on' : ''} aria-label="Tema escuro" onClick={() => setTheme('dark')}><Moon size={16} /></button>
             </div>
             <span style={{ fontSize: 13, color: 'var(--ink-faint)' }} className="hide-sm">{member?.email}</span>
-            <button className="icon-btn" aria-label="Sair" onClick={() => void signOut()}><LogOut size={18} /></button>
+            <button type="button" className="icon-btn" aria-label="Sair" onClick={() => void signOut()}><LogOut size={18} /></button>
           </div>
         </header>
         <main id="conteudo" className="page-wrap">{children}</main>

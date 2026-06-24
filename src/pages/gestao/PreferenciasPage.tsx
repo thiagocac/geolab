@@ -9,7 +9,7 @@ import { Field } from '../../components/ui/Field';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { getConfigLab, saveConfigLab, uploadLogo, logoSignedUrl } from '../../lib/api/preferencias';
 
-const num = (v: unknown, d: number): number => { const s = String(v ?? '').trim(); const n = Number(s); return s === '' || !isFinite(n) ? d : n; };
+const num = (v: unknown, d: number): number => { const s = String(v ?? '').trim(); const n = Number(s); return s === '' || !Number.isFinite(n) ? d : n; };
 const str = (v: unknown) => String(v ?? '').trim();
 const TOGGLES: [string, string, boolean][] = [
   ['usina', 'Mostrar central/usina', true],

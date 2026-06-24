@@ -94,7 +94,7 @@ export async function excluirNc(id: string): Promise<void> {
 }
 
 export async function uploadAnexo(tenantId: string, ncId: string, file: File): Promise<{ path: string; nome: string }> {
-  const safe = file.name.replace(/[^\w.\-]+/g, '_');
+  const safe = file.name.replace(/[^\w.-]+/g, '_');
   const path = tenantId + '/' + ncId + '/' + Date.now() + '-' + safe;
   const { error } = await supabase.storage.from('anexos').upload(path, file, { upsert: false, contentType: file.type || undefined });
   if (error) throw new Error(error.message);

@@ -1,13 +1,14 @@
-# GEOLAB → Concresoft — SOURCE VERSION v50
-CACHE_NAME: consultegeo-geolab-v50 · APP_VERSION: v50
+# GEOLAB → Concresoft — SOURCE VERSION v51
+CACHE_NAME: consultegeo-geolab-v51 · APP_VERSION: v51
 
-## v50 — Code-splitting por rota + xlsx sob demanda (Fase 0 da modernização de frontend)
-- src/App.tsx: as ~27 páginas de rota agora carregam via React.lazy() + <Suspense fallback={<LoadingState/>}>
-  (antes: imports estáticos => bundle único). As rotas pública /validar e principal têm cada uma seu Suspense.
-  O shell (LoginScreen, TenantSelectionPage, Layout) segue eager.
-- xlsx: import estático trocado por `await import('xlsx')` nos 4 pontos de uso (ProdutividadePage.exportar,
-  MedicaoPage.exportar, RompimentosPage.exportarModelo e o reader.onload de importacao). xlsx (~143 kB gzip)
-  vira chunk proprio, carregado so na acao de exportar/importar — fora do load inicial.
-- pdfjs-dist: nao e usado no frontend (dep orfa) — sem mudanca.
-- Sem mudanca visual, sem backend, sem deps novas. Bump CACHE_NAME+APP_VERSION => v50.
-- Gate verde no sandbox: check-source + tsc --noEmit + vitest + vite build (chunks separados por rota).
+## v51 — Biome (lint) no toolchain + gate (Fase 0 da modernizacao de frontend)
+- Adiciona @biomejs/biome ^2.5.1 (devDep) + biome.json calibrado. Antes nao havia linter/formatter (so tsc + check-source).
+- Postura lint-first: formatter e organizeImports DESLIGADOS (sem reformatacao/diff cosmetico).
+  Regras estilisticas/intencionais OFF (useTemplate, noNonNullAssertion, noExplicitAny, noArrayIndexKey,
+  noUnknownAtRules p/ @tailwind, noImportantStyles). a11y/hooks de baixo volume como warning.
+- Corrigidos achados reais (erro): imports nao usados (validar.ts, telemetry/index.ts, ConcretagemDetalhePage),
+  variaveis nao usadas (NcPage, RompimentosPage), let->const (rompimento.ts), escape inutil em regex (nc.ts),
+  isFinite->Number.isFinite (concretagem/rompimento/Preferencias — todos sobre Number(...), sem mudanca de
+  comportamento), type="button" em 6 botoes (Layout, Medicao, TenantSelection).
+- Gate de build: check-source && biome lint src && tsc --noEmit && vitest run && vite build. Script novo: npm run lint.
+- Sem mudanca visual, sem backend. Bump => v51. npm run build verde no sandbox.

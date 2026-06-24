@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/check-source.mjs && tsc --noEmit && vitest run && vite build",
+    "build": "node scripts/check-source.mjs && biome lint src && tsc --noEmit && vitest run && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -17,7 +17,8 @@
     "deploy:supabase": "bash scripts/deploy-supabase.sh",
     "bump": "node scripts/bump-version.mjs",
     "bundle:ef": "node scripts/bundle-ef.cjs",
-    "valida:corpus": "node scripts/valida-corpus.mjs"
+    "valida:corpus": "node scripts/valida-corpus.mjs",
+    "lint": "biome lint src"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
@@ -30,6 +31,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

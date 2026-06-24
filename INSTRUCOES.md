@@ -1,32 +1,41 @@
-# Patches v50 — Code-splitting por rota + xlsx sob demanda
+# Patches v51 — Biome (lint) no toolchain + gate de build
 
-Aplicar estes arquivos sobre o repositorio (substituindo os existentes), commitar e deixar o Netlify buildar.
+Aplicar por cima da v50, commitar, deixar o Netlify buildar.
+IMPORTANTE: inclui package.json + package-lock.json (nova devDep @biomejs/biome). `npm ci` no Netlify instala a dep.
 
-## Arquivos alterados (7)
-- src/App.tsx                              (lazy() + Suspense nas rotas)
-- src/pages/gestao/ProdutividadePage.tsx   (import('xlsx') dinamico)
-- src/pages/gestao/MedicaoPage.tsx         (import('xlsx') dinamico)
-- src/pages/concreto/RompimentosPage.tsx   (import('xlsx') dinamico — exportar modelo + importar)
-- src/lib/telemetry/core.ts                (APP_VERSION = 'v50')
-- public/sw.js                             (CACHE_NAME = 'consultegeo-geolab-v50')
-- SOURCE_VERSION.md                        (nota da release)
+## Arquivos (19)
+NOVO:
+- biome.json                                     (config calibrada; formatter/organizeImports OFF)
+ALTERADOS:
+- package.json                                   (+devDep biome; script "lint"; gate inclui "biome lint src")
+- package-lock.json                              (biome 2.5.1)
+- src/lib/telemetry/core.ts                      (APP_VERSION = 'v51')
+- public/sw.js                                   (CACHE_NAME = 'consultegeo-geolab-v51')
+- src/lib/api/validar.ts                         (remove import nao usado: supabase)
+- src/lib/telemetry/index.ts                     (remove imports nao usados: captureException, currentTraceId)
+- src/pages/concreto/ConcretagemDetalhePage.tsx  (remove import nao usado: EmptyState)
+- src/pages/concreto/NcPage.tsx                  (remove const toast nao usado — 1a ocorrencia)
+- src/pages/concreto/RompimentosPage.tsx         (remove useMemo idsFiltrados nao usado)
+- src/lib/api/concretagem.ts                     (isFinite -> Number.isFinite)
+- src/lib/api/rompimento.ts                      (isFinite -> Number.isFinite; let -> const)
+- src/pages/gestao/PreferenciasPage.tsx          (isFinite -> Number.isFinite)
+- src/lib/api/nc.ts                              (escape inutil em regex)
+- src/components/Layout.tsx                       (type="button" em 4 botoes)
+- src/pages/gestao/MedicaoPage.tsx               (type="button" em 1 botao)
+- src/pages/TenantSelectionPage.tsx              (type="button" em 1 botao)
+- SOURCE_VERSION.md / INSTRUCOES.md
 
 ## O que muda
-- As 27 paginas de rota carregam sob demanda (code-splitting). O bundle de entrada cai bastante.
-  Cada rota baixa seu proprio chunk ao navegar.
-- A lib xlsx (~143 kB gzip) sai do load inicial e so baixa quando o usuario exporta/importa planilha.
-- Nenhuma mudanca visual, de backend ou de dependencias.
+- Passa a existir lint (Biome) e o gate de build roda `biome lint src` (entre check-source e tsc).
+- Lint-first: formatter e organizacao de imports DESLIGADOS — nenhum reformat/diff cosmetico.
+  So bugs reais corrigidos (imports/vars mortos, isFinite, type de botao). Sem mudanca visual.
+- Debt deixado de proposito como warning/info (NAO bloqueia): noExplicitAny (70), useTemplate (113),
+  onClick em <div> (a11y), useExhaustiveDependencies. Tratar em PR dedicado depois.
 
-## Validacao ja executada (sandbox)
-- node scripts/check-source.mjs  -> OK
-- tsc --noEmit                   -> 0 erros
-- vitest run                     -> 1/1 passou
-- vite build                     -> OK; chunks separados (DashboardPage, RompimentosPage, xlsx isolado, etc.)
-  Obs.: warning de "chunk > 180 kB" para supabase/xlsx e informativo (vendor/lazy) — build passa (exit 0).
+## Validacao ja executada (sandbox) — gate completo
+- npm run build => check-source OK · biome lint 0 erros (7 warn/1 info) · tsc 0 erros · vitest 1/1 · vite build OK · EXIT 0.
 
-## Verificar no Deploy Preview
-1. Login + navegacao por todas as secoes (cada rota baixa 1 chunk — ver aba Network).
-2. Abrir Rompimentos/Medicao/Produtividade e clicar Exportar -> o chunk xlsx baixa nesse momento.
-3. Importar planilha em Rompimentos funciona normalmente.
+## Reverter o gate (caso queira o lint nao-bloqueante)
+- Em package.json, script "build": remova " biome lint src &&". O `npm run lint` segue disponivel manual.
 
-Bump: este patch ja vem com APP_VERSION/CACHE_NAME = v50.
+Bump: este patch ja vem com APP_VERSION/CACHE_NAME = v51.

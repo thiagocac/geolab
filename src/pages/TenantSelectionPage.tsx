@@ -14,6 +14,7 @@ export function TenantSelectionPage() {
           {tenants.map((t) => (
             <button
               key={t.tenant_id}
+              type="button"
               onClick={() => void selectTenant(t.tenant_id)}
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer', textAlign: 'left' }}
             >

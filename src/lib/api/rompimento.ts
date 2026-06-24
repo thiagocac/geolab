@@ -60,7 +60,7 @@ const SELECT_CP = 'id, codigo, numeracao_lab, external_key, amostra_id, idade_di
 const SELECT_CP_SEM_NUM = SELECT_CP.replace('numeracao_lab, ', '');
 
 export async function listCpsRompimento(): Promise<CpRompimento[]> {
-  let q = db.from('corpos_prova').select(SELECT_CP).is('deleted_at', null).order('data_prevista_rompimento', { ascending: true });
+  const q = db.from('corpos_prova').select(SELECT_CP).is('deleted_at', null).order('data_prevista_rompimento', { ascending: true });
   let { data, error } = await q;
   if (error && /numeracao_lab/i.test(error.message)) {
     const retry = await db.from('corpos_prova').select(SELECT_CP_SEM_NUM).is('deleted_at', null).order('data_prevista_rompimento', { ascending: true });
@@ -237,7 +237,7 @@ export async function maybeNotifyAbaixoFck(
     const { data: mts } = await db.from('material_tests').select('resultado_valor, idade_dias, idade_unidade').in('corpo_prova_id', ids).is('deleted_at', null);
     const vals = ((mts ?? []) as Rec[])
       .filter((r) => Number(r.idade_dias) === 28 && String(r.idade_unidade) !== 'hora')
-      .map((r) => Number(r.resultado_valor)).filter((v) => isFinite(v));
+      .map((r) => Number(r.resultado_valor)).filter((v) => Number.isFinite(v));
     if (!vals.length) return;
     const exemplar = Math.max(...vals);
     if (exemplar >= fck) return;

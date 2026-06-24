@@ -19,7 +19,6 @@ const STBADGE: Record<string, { label: string; color: string }> = {
 
 export function NcPage() {
   const { member, hasRole } = useAuth();
-  const toast = useToast();
   const qc = useQueryClient();
   const podeTratar = hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista');
   const [status, setStatus] = useState('');

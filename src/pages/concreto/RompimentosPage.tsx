@@ -135,7 +135,6 @@ export function RompimentosPage() {
     return true;
   }), [rows, tipoFiltro, idadeFiltro, nfFiltro, janela, dataRef, mostrarLancados, mostrarInsatisf]);
 
-  const idsFiltrados = useMemo(() => new Set(filtradas.map((r) => r.id)), [filtradas]);
   const countPend = rows.filter((r) => !resultadoAtual(r) && r.situacao === 'pendente').length;
   const countAtr = rows.filter((r) => isAtrasado(r, dataRef)).length;
   const countRom = rows.filter((r) => resultadoAtual(r)).length;

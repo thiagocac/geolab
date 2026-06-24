@@ -1,4 +1,3 @@
-import { supabase } from '../supabase';
 import { env } from '../env';
 
 // Validacao publica do laudo (sem login). Chama a EF validar-laudo so com a anon key.
