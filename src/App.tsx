@@ -1,35 +1,39 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import { LoginScreen } from './components/LoginScreen';
 import { TenantSelectionPage } from './pages/TenantSelectionPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { CadastrosPage } from './pages/cadastros/CadastrosPage';
-import { ConcretagensPage } from './pages/concreto/ConcretagensPage';
-import { ProgramacoesPage } from './pages/concreto/ProgramacoesPage';
-import { ConcretagemDetalhePage } from './pages/concreto/ConcretagemDetalhePage';
-import { RompimentosPage } from './pages/concreto/RompimentosPage';
-import { LaudosPage } from './pages/concreto/LaudosPage';
-import { ImportacoesPage } from './pages/concreto/ImportacoesPage';
-import { NotificacoesPage } from './pages/gestao/NotificacoesPage';
-import { PreferenciasPage } from './pages/gestao/PreferenciasPage';
-import { MedicaoPage } from './pages/gestao/MedicaoPage';
-import { ProdutividadePage } from './pages/gestao/ProdutividadePage';
-import { FaturasPage } from './pages/gestao/FaturasPage';
-import { FormasPage } from './pages/gestao/FormasPage';
-import { LotesPage } from './pages/concreto/LotesPage';
-import { NcPage } from './pages/concreto/NcPage';
-import { NcConfigPage } from './pages/gestao/NcConfigPage';
-import { NovaObraWizard } from './pages/cadastros/NovaObraWizard';
-import { EstruturaPage } from './pages/cadastros/EstruturaPage';
-import { MateriaisPage } from './pages/cadastros/MateriaisPage';
-import { ControleLaudoPage } from './pages/gestao/ControleLaudoPage';
-import { CamposRecebimentoPage } from './pages/gestao/CamposRecebimentoPage';
-import { CamposConcretagemPage } from './pages/gestao/CamposConcretagemPage';
-import { ClientePortalPage } from './pages/portal/ClientePortalPage';
-import { ClienteUsuariosPage } from './pages/portal/ClienteUsuariosPage';
-import { OperacaoPage } from './pages/operacao/OperacaoPage';
-import { ValidarPage } from './pages/ValidarPage';
 import { Layout } from './components/Layout';
+import { LoadingState } from './components/ui/State';
+
+// Páginas carregadas sob demanda (code-splitting por rota) — exports nomeados.
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const CadastrosPage = lazy(() => import('./pages/cadastros/CadastrosPage').then((m) => ({ default: m.CadastrosPage })));
+const NovaObraWizard = lazy(() => import('./pages/cadastros/NovaObraWizard').then((m) => ({ default: m.NovaObraWizard })));
+const EstruturaPage = lazy(() => import('./pages/cadastros/EstruturaPage').then((m) => ({ default: m.EstruturaPage })));
+const MateriaisPage = lazy(() => import('./pages/cadastros/MateriaisPage').then((m) => ({ default: m.MateriaisPage })));
+const ProgramacoesPage = lazy(() => import('./pages/concreto/ProgramacoesPage').then((m) => ({ default: m.ProgramacoesPage })));
+const ConcretagensPage = lazy(() => import('./pages/concreto/ConcretagensPage').then((m) => ({ default: m.ConcretagensPage })));
+const ConcretagemDetalhePage = lazy(() => import('./pages/concreto/ConcretagemDetalhePage').then((m) => ({ default: m.ConcretagemDetalhePage })));
+const RompimentosPage = lazy(() => import('./pages/concreto/RompimentosPage').then((m) => ({ default: m.RompimentosPage })));
+const LaudosPage = lazy(() => import('./pages/concreto/LaudosPage').then((m) => ({ default: m.LaudosPage })));
+const ImportacoesPage = lazy(() => import('./pages/concreto/ImportacoesPage').then((m) => ({ default: m.ImportacoesPage })));
+const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
+const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
+const NcConfigPage = lazy(() => import('./pages/gestao/NcConfigPage').then((m) => ({ default: m.NcConfigPage })));
+const NotificacoesPage = lazy(() => import('./pages/gestao/NotificacoesPage').then((m) => ({ default: m.NotificacoesPage })));
+const PreferenciasPage = lazy(() => import('./pages/gestao/PreferenciasPage').then((m) => ({ default: m.PreferenciasPage })));
+const MedicaoPage = lazy(() => import('./pages/gestao/MedicaoPage').then((m) => ({ default: m.MedicaoPage })));
+const ProdutividadePage = lazy(() => import('./pages/gestao/ProdutividadePage').then((m) => ({ default: m.ProdutividadePage })));
+const FaturasPage = lazy(() => import('./pages/gestao/FaturasPage').then((m) => ({ default: m.FaturasPage })));
+const FormasPage = lazy(() => import('./pages/gestao/FormasPage').then((m) => ({ default: m.FormasPage })));
+const ControleLaudoPage = lazy(() => import('./pages/gestao/ControleLaudoPage').then((m) => ({ default: m.ControleLaudoPage })));
+const CamposRecebimentoPage = lazy(() => import('./pages/gestao/CamposRecebimentoPage').then((m) => ({ default: m.CamposRecebimentoPage })));
+const CamposConcretagemPage = lazy(() => import('./pages/gestao/CamposConcretagemPage').then((m) => ({ default: m.CamposConcretagemPage })));
+const ClientePortalPage = lazy(() => import('./pages/portal/ClientePortalPage').then((m) => ({ default: m.ClientePortalPage })));
+const ClienteUsuariosPage = lazy(() => import('./pages/portal/ClienteUsuariosPage').then((m) => ({ default: m.ClienteUsuariosPage })));
+const OperacaoPage = lazy(() => import('./pages/operacao/OperacaoPage').then((m) => ({ default: m.OperacaoPage })));
+const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
 
 export function App() {
   const { ready, session, needsTenantSelection, hasRole } = useAuth();
@@ -38,10 +42,12 @@ export function App() {
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/validar')) {
     return (
       <BrowserRouter>
-        <Routes>
-          <Route path="/validar/:codigo" element={<ValidarPage />} />
-          <Route path="*" element={<ValidarPage />} />
-        </Routes>
+        <Suspense fallback={<LoadingState />}>
+          <Routes>
+            <Route path="/validar/:codigo" element={<ValidarPage />} />
+            <Route path="*" element={<ValidarPage />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     );
   }
@@ -54,35 +60,37 @@ export function App() {
   return (
     <BrowserRouter>
       <Layout>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/cadastros" element={<CadastrosPage />} />
-          <Route path="/nova-obra" element={<NovaObraWizard />} />
-          <Route path="/estrutura" element={<EstruturaPage />} />
-          <Route path="/tracos" element={<MateriaisPage />} />
-          <Route path="/programacoes" element={<ProgramacoesPage />} />
-          <Route path="/concretagens" element={<ConcretagensPage />} />
-          <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
-          <Route path="/rompimentos" element={<RompimentosPage />} />
-          <Route path="/laudos" element={<LaudosPage />} />
-          <Route path="/lotes" element={<LotesPage />} />
-          <Route path="/nao-conformidades" element={<NcPage />} />
-          <Route path="/gestao/nc-config" element={<NcConfigPage />} />
-          <Route path="/importacoes" element={<ImportacoesPage />} />
-          <Route path="/notificacoes" element={<NotificacoesPage />} />
-          <Route path="/preferencias" element={<PreferenciasPage />} />
-          <Route path="/medicoes" element={<MedicaoPage />} />
-          <Route path="/produtividade" element={<ProdutividadePage />} />
-          <Route path="/faturas" element={<FaturasPage />} />
-          <Route path="/formas" element={<FormasPage />} />
-          <Route path="/gestao/controle-laudo" element={<ControleLaudoPage />} />
-          <Route path="/gestao/campos-recebimento" element={<CamposRecebimentoPage />} />
-          <Route path="/gestao/campos-concretagem" element={<CamposConcretagemPage />} />
-          <Route path="/portal-cliente" element={<ClientePortalPage />} />
-          <Route path="/portal/usuarios-clientes" element={podeGerirClientes ? <ClienteUsuariosPage /> : <Navigate to="/portal-cliente" replace />} />
-          <Route path="/operacao" element={podeOperacao ? <OperacaoPage /> : <Navigate to="/" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<LoadingState />}>
+          <Routes>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/cadastros" element={<CadastrosPage />} />
+            <Route path="/nova-obra" element={<NovaObraWizard />} />
+            <Route path="/estrutura" element={<EstruturaPage />} />
+            <Route path="/tracos" element={<MateriaisPage />} />
+            <Route path="/programacoes" element={<ProgramacoesPage />} />
+            <Route path="/concretagens" element={<ConcretagensPage />} />
+            <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
+            <Route path="/rompimentos" element={<RompimentosPage />} />
+            <Route path="/laudos" element={<LaudosPage />} />
+            <Route path="/lotes" element={<LotesPage />} />
+            <Route path="/nao-conformidades" element={<NcPage />} />
+            <Route path="/gestao/nc-config" element={<NcConfigPage />} />
+            <Route path="/importacoes" element={<ImportacoesPage />} />
+            <Route path="/notificacoes" element={<NotificacoesPage />} />
+            <Route path="/preferencias" element={<PreferenciasPage />} />
+            <Route path="/medicoes" element={<MedicaoPage />} />
+            <Route path="/produtividade" element={<ProdutividadePage />} />
+            <Route path="/faturas" element={<FaturasPage />} />
+            <Route path="/formas" element={<FormasPage />} />
+            <Route path="/gestao/controle-laudo" element={<ControleLaudoPage />} />
+            <Route path="/gestao/campos-recebimento" element={<CamposRecebimentoPage />} />
+            <Route path="/gestao/campos-concretagem" element={<CamposConcretagemPage />} />
+            <Route path="/portal-cliente" element={<ClientePortalPage />} />
+            <Route path="/portal/usuarios-clientes" element={podeGerirClientes ? <ClienteUsuariosPage /> : <Navigate to="/portal-cliente" replace />} />
+            <Route path="/operacao" element={podeOperacao ? <OperacaoPage /> : <Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </Layout>
     </BrowserRouter>
   );

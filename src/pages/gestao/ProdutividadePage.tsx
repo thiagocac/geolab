@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import * as XLSX from 'xlsx';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -20,8 +19,9 @@ export function ProdutividadePage() {
   const linhas = q.data?.linhas ?? [];
   const tot = linhas.reduce((a, r) => ({ c: a.c + r.concretagens, cp: a.cp + r.cps_moldados, ro: a.ro + r.rompimentos }), { c: 0, cp: 0, ro: 0 });
 
-  function exportar() {
+  async function exportar() {
     if (!linhas.length) return;
+    const XLSX = await import('xlsx');
     const rows = linhas.map((r) => ({ Colaborador: r.nome, Funcoes: r.funcoes.join(', '), Concretagens: r.concretagens, 'CPs moldados': r.cps_moldados, Rompimentos: r.rompimentos }));
     const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Produtividade');
     XLSX.writeFile(wb, 'produtividade_' + (params?.inicio ?? '') + '_' + (params?.fim ?? '') + '.xlsx');

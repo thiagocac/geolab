@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import * as XLSX from 'xlsx';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -72,8 +71,9 @@ export function MedicaoPage() {
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function gerarPdf(id: string) { setBusy(true); try { window.open(await pdfMedicaoUrl(id), '_blank', 'noopener,noreferrer'); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); } }
-  function exportar() {
+  async function exportar() {
     if (!itens) return;
+    const XLSX = await import('xlsx');
     const rows: Record<string, unknown>[] = [
       ...itens.map((i) => ({ Item: i.label, Quantidade: i.quantidade, 'Preco unitario': i.preco_unit, Subtotal: i.subtotal })),
       ...adicionais.map((a) => ({ Item: 'Adicional: ' + a.descricao, Quantidade: 1, 'Preco unitario': a.valor, Subtotal: a.valor })),

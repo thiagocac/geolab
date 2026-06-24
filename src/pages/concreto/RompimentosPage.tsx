@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import * as XLSX from 'xlsx';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -212,7 +211,8 @@ export function RompimentosPage() {
     try { setAuditItems(await listRompimentoAudit(cp.id)); } catch (e) { toast((e as Error).message, 'error'); }
   }
 
-  function exportarModelo() {
+  async function exportarModelo() {
+    const XLSX = await import('xlsx');
     const data = filtradas.map((r) => ({
       corpo_prova_id: r.id,
       numeracao: cpNumero(r),
@@ -243,8 +243,9 @@ export function RompimentosPage() {
   function importarArquivo(file: File | null) {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
+        const XLSX = await import('xlsx');
         const wb = XLSX.read(reader.result, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
