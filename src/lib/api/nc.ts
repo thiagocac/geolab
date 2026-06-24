@@ -92,3 +92,16 @@ export async function excluirNc(id: string): Promise<void> {
   const { error } = await db.from('non_conformities').update({ deleted_at: new Date().toISOString() }).eq('id', id);
   if (error) throw new Error(error.message);
 }
+
+export async function uploadAnexo(tenantId: string, ncId: string, file: File): Promise<{ path: string; nome: string }> {
+  const safe = file.name.replace(/[^\w.\-]+/g, '_');
+  const path = tenantId + '/' + ncId + '/' + Date.now() + '-' + safe;
+  const { error } = await supabase.storage.from('anexos').upload(path, file, { upsert: false, contentType: file.type || undefined });
+  if (error) throw new Error(error.message);
+  return { path, nome: file.name };
+}
+export async function signedAnexo(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('anexos').createSignedUrl(path, 300);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
+}

@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State';
-import { listNcs, listAcoes, listTemplates, listTransitions, listSituacoes, listClassificacoes, listTipos, listObrasRef, abrirNcManual, registrarAcao, excluirNc, type NcRow } from '../../lib/api/nc';
+import { listNcs, listAcoes, listTemplates, listTransitions, listSituacoes, listTipos, listObrasRef, abrirNcManual, registrarAcao, excluirNc, uploadAnexo, signedAnexo, type NcRow } from '../../lib/api/nc';
 
 const dataBR = (s: string) => (s && s.length === 10 ? s.split('-').reverse().join('/') : s);
 const SEV: Record<string, string> = { alta: 'var(--magenta)', media: '#d97706', baixa: 'var(--ink-faint)' };
@@ -33,7 +33,7 @@ export function NcPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Controle tecnologico" title="Nao-conformidades" description="Registro e tratativa de NCs (engine configuravel). Geradas automaticamente (resultado abaixo do fck na idade de controle) ou abertas manualmente; tratadas por acoes com transicoes." />
+      <PageHeader kicker="Controle tecnologico" title="Nao-conformidades" description="Registro e tratativa de NCs (engine configuravel). Geradas automaticamente (resultado abaixo do fck na idade de controle, slump, calibracao, CP atrasado) ou abertas manualmente; tratadas por acoes com transicoes." />
 
       <Card className="p-5">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
@@ -84,6 +84,7 @@ export function NcPage() {
 }
 
 function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; situ: Record<string, string>; podeTratar: boolean; onClose: () => void; onChange: () => void }) {
+  const { member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const cls = nc.classification_code ?? '';
@@ -93,6 +94,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
   const [tmpl, setTmpl] = useState('');
   const [descricao, setDescricao] = useState('');
   const [anotacao, setAnotacao] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
   const concluida = nc.status === 'concluida';
@@ -106,16 +108,21 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
   const tmplObj = (templates.data ?? []).find((t) => t.id === tmpl);
 
   async function registrar() {
-    if (!tmpl) { toast('Escolha a acao.', 'error'); return; }
+    if (!tmpl || !member) { toast('Escolha a acao.', 'error'); return; }
     setBusy(true);
     try {
       const cd: Record<string, unknown> = {}; if (anotacao.trim()) cd.anotacao = anotacao.trim();
+      if (file) { const up = await uploadAnexo(member.tenant_id, nc.id, file); cd.arquivo = up.path; cd.arquivo_nome = up.nome; }
       const r = await registrarAcao({ nc_id: nc.id, action_template_id: tmpl, descricao: descricao || undefined, campos_dinamicos: cd });
       await qc.invalidateQueries({ queryKey: ['nc-acoes', nc.id] });
       onChange();
-      setTmpl(''); setDescricao(''); setAnotacao('');
+      setTmpl(''); setDescricao(''); setAnotacao(''); setFile(null);
       toast(r?.concluida ? 'Acao registrada — NC concluida.' : 'Acao registrada.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
+  }
+  async function baixar(path: string) {
+    try { const url = await signedAnexo(path); window.open(url, '_blank'); }
+    catch (e) { toast((e as Error).message, 'error'); }
   }
   async function excluir() {
     if (!window.confirm('Excluir esta NC?')) return;
@@ -145,6 +152,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{a.template_nome} <span style={{ fontWeight: 400, color: 'var(--ink-faint)' }}>· {situ[a.situacao_codigo ?? ''] ?? a.situacao_codigo} · {dataBR(String(a.executada_em ?? a.created_at).slice(0, 10))}</span></div>
                   {a.descricao ? <div style={{ fontSize: 13 }}>{a.descricao}</div> : null}
                   {a.campos_dinamicos?.anotacao ? <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{String(a.campos_dinamicos.anotacao)}</div> : null}
+                  {a.campos_dinamicos?.arquivo ? <button type="button" onClick={() => void baixar(String(a.campos_dinamicos.arquivo))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--magenta)', fontWeight: 700, fontSize: 12, padding: 0 }}>Baixar anexo{a.campos_dinamicos.arquivo_nome ? ' (' + String(a.campos_dinamicos.arquivo_nome) + ')' : ''}</button> : null}
                 </div>
               ))}
             </div>
@@ -160,6 +168,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
             {tmplObj?.mensagem ? <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>{tmplObj.mensagem}</p> : null}
             <Field label="Descricao (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
             <TextArea label="Anotacao" value={anotacao} onChange={(e) => setAnotacao(e.target.value)} />
+            <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (opcional)</span><input className="input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
             <div><Button onClick={() => void registrar()} disabled={busy || !tmpl}>{busy ? 'Registrando...' : 'Registrar acao'}</Button></div>
           </div>
         ) : concluida ? <p className="text-sm" style={{ color: '#16a34a', fontWeight: 700 }}>NC concluida.</p> : null}

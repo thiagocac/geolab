@@ -1,0 +1,7 @@
+-- Motor de NC (Fase C+): CP atrasado -> NC T-10 (funcao SQL + cron) + policy de storage do bucket anexos.
+-- Corpo completo aplicado via MCP em xbdvyvvxvzmcosnekmfv (banco vivo = fonte de verdade).
+-- gerar_ncs_cp_atrasado(): CP na idade de controle, nao rompido, alem do prazo
+--   (data_prevista_rompimento + config_lab.cp_overdue_days < hoje) -> NC T-10 (CLS-007), dedup por CP.
+-- cron 'concresoft-nc-cp-atrasado' (30 9 * * *) chama a funcao via SQL direto (sem EF/CRON_SECRET).
+-- storage policy nc_anexos_rw no bucket 'anexos': leitura/escrita escopada por tenant
+--   (pasta raiz = tenant_id; is_tenant_member exclui cliente). Usado pelos anexos das acoes de NC.

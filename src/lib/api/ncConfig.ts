@@ -6,7 +6,7 @@ const db = supabase as unknown as { from: (t: string) => any };
 
 export type NcParams = { id: string | null; nome: string; validade_concreto_h: string; slump_tol_mm: string; flow_tol_mm: string; conclusao_auto_pct: string; acao_imediata_pct: string; tolerancia_lancamento_min: string };
 export type TemplateFull = { id: string; nome: string; classification_code: string; situacao_destino: string | null; conclui_nc: boolean; ativo: boolean; mensagem: string | null; permite_multipla_acao: boolean; permissao_requerida: string | null };
-export type Transition = { from_action_id: string; to_action_id: string };
+export type Transition = { id: string; from_action_id: string; to_action_id: string };
 
 const s = (v: unknown) => (v == null ? '' : String(v));
 const num = (v: string) => (v.trim() === '' ? null : Number(v));
@@ -41,7 +41,20 @@ export async function updateTemplate(id: string, v: { nome: string; mensagem: st
 }
 
 export async function listTransitions(): Promise<Transition[]> {
-  const { data, error } = await db.from('nc_action_transitions').select('from_action_id, to_action_id').eq('ativo', true);
+  const { data, error } = await db.from('nc_action_transitions').select('id, from_action_id, to_action_id').eq('ativo', true);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as any[]).map((r) => ({ from_action_id: String(r.from_action_id), to_action_id: String(r.to_action_id) }));
+  return ((data ?? []) as any[]).map((r) => ({ id: String(r.id), from_action_id: String(r.from_action_id), to_action_id: String(r.to_action_id) }));
+}
+
+export async function addTransition(tenantId: string, from: string, to: string): Promise<void> {
+  const { data, error } = await db.from('nc_action_transitions').update({ ativo: true }).eq('from_action_id', from).eq('to_action_id', to).select('id');
+  if (error) throw new Error(error.message);
+  if (!data || (data as any[]).length === 0) {
+    const { error: e2 } = await db.from('nc_action_transitions').insert({ tenant_id: tenantId, from_action_id: from, to_action_id: to, ativo: true });
+    if (e2) throw new Error(e2.message);
+  }
+}
+export async function removeTransition(id: string): Promise<void> {
+  const { error } = await db.from('nc_action_transitions').update({ ativo: false }).eq('id', id);
+  if (error) throw new Error(error.message);
 }

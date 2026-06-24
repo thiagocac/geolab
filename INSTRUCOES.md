@@ -1,25 +1,22 @@
-# GEOLAB v42 — Motor de NC (Fase C): telas de configuração
+# GEOLAB v43 — Motor de NC (Fase C): grafo de transições + anexos + CP atrasado→NC
 
-Frontend-only (sem mudança de banco; usa nc_parameters / nc_action_templates / nc_action_transitions já existentes).
+## Backend (migration 042, JÁ aplicada via MCP em xbdvyvvxvzmcosnekmfv)
+- **CP atrasado → NC T-10**: função `gerar_ncs_cp_atrasado()` (CP na idade de controle, não rompido, além de `data_prevista_rompimento + config_lab.cp_overdue_days`) + cron diário `concresoft-nc-cp-atrasado` (30 9, SQL direto, sem EF). Validado: 1 CP vencido → NC-…-T-10 (CLS-007).
+- **Storage `anexos`**: policy `nc_anexos_rw` escopada por tenant (pasta raiz = tenant_id; exclui cliente via is_tenant_member) — para os anexos das ações.
 
-## O que entra
-Tela nova **Gestão → Config de NC** (`/gestao/nc-config`), com duas seções:
-
-- **Tolerâncias** (`nc_parameters`) — editor dos parâmetros lidos pelos gatilhos: **validade do concreto (h)** (em uso hoje, gatilho T-01), tolerância de slump/flow, % de conclusão automática, % de ação imediata, tolerância de lançamento. Grava uma linha "geral" por laboratório. Edição por admin/gestor (RLS is_tenant_writer).
-- **Fluxo de tratativa** (`nc_action_templates` + `nc_action_transitions`) — por classificação: lista as ações do workflow (nome, situação destino, conclui, ativo, mensagem) e as transições permitidas. Edição leve dos campos seguros (nome, mensagem, ativo, múltipla aplicação) restrita ao **admin** (RLS is_tenant_admin).
-
-## Arquivos (frontend → GitHub)
-- src/lib/api/ncConfig.ts (novo), src/pages/gestao/NcConfigPage.tsx (novo)
-- src/App.tsx (rota /gestao/nc-config), src/components/Layout.tsx (nav "Config de NC", Gestão)
-- public/sw.js + src/lib/telemetry/core.ts — bump **v42** (v41 foi backend-only, sem cache).
+## Frontend (vai pro GitHub)
+- **Editor de grafo de transições** (Gestão → Config de NC): por classificação, chips de transição removíveis (×) + "Adicionar transição" (de/para entre as ações). Insert/reativa em `nc_action_transitions`; remove = `ativo=false`. Só admin (RLS is_tenant_admin).
+- **Anexos nas ações** (Não-conformidades → detalhe): campo de arquivo na ação → upload ao bucket `anexos` (`{tenant}/{nc}/...`) gravando `campos_dinamicos.arquivo`; timeline mostra "Baixar anexo" via signed URL (5 min).
+- Arquivos: src/lib/api/nc.ts (uploadAnexo/signedAnexo), src/lib/api/ncConfig.ts (addTransition/removeTransition), src/pages/concreto/NcPage.tsx, src/pages/gestao/NcConfigPage.tsx.
+- public/sw.js + src/lib/telemetry/core.ts — bump **v43**.
 
 ## Passos
-1. Subir o frontend no GitHub. Sem backend a aplicar.
-2. Confirmar CACHE_NAME=`consultegeo-geolab-v42` / APP_VERSION=`v42`.
-3. Validar in-app: Gestão → Config de NC → setar "validade do concreto" → conferir que o gatilho T-01 passa a valer; abrir uma classificação e editar a mensagem de uma ação.
+1. Subir o frontend no GitHub. Backend já aplicado.
+2. Confirmar CACHE_NAME=`consultegeo-geolab-v43` / APP_VERSION=`v43`.
+3. Validar in-app: Config de NC → adicionar/remover transição numa classificação; numa NC, registrar ação com anexo e baixar.
 
 ## Pendente (Fase C restante)
-Editor de grafo de transições (rotear o fluxo); RAC + generate-nc-report-pdf; anexos nas ações; CP atrasado→NC (cron); autoconclusão por tolerância; e-mail de NC.
+RAC + generate-nc-report-pdf; autoconclusão por tolerância; e-mail de NC.
 
 ## Build
 check-source OK · tsc(0) · vitest(1/1) · vite build OK.

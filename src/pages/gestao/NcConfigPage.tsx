@@ -9,7 +9,7 @@ import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { listClassificacoes } from '../../lib/api/nc';
-import { getParametros, salvarParametros, listTemplatesFull, updateTemplate, listTransitions, type NcParams, type TemplateFull } from '../../lib/api/ncConfig';
+import { getParametros, salvarParametros, listTemplatesFull, updateTemplate, listTransitions, addTransition, removeTransition, type NcParams, type TemplateFull } from '../../lib/api/ncConfig';
 
 export function NcConfigPage() {
   const { member, hasRole } = useAuth();
@@ -64,22 +64,38 @@ export function NcConfigPage() {
             </SelectField>
           </div>
         </div>
-        {clsAtivo ? <FluxoClassificacao cls={clsAtivo} podeEditar={podeTpl} /> : null}
-        {!podeTpl ? <p className="text-sm" style={{ color: 'var(--ink-faint)', marginTop: 10 }}>Edicao de templates restrita ao administrador.</p> : null}
+        {clsAtivo ? <FluxoClassificacao cls={clsAtivo} tenantId={member?.tenant_id ?? ''} podeEditar={podeTpl} /> : null}
+        {!podeTpl ? <p className="text-sm" style={{ color: 'var(--ink-faint)', marginTop: 10 }}>Edicao do fluxo restrita ao administrador.</p> : null}
       </Card>
     </div>
   );
 }
 
-function FluxoClassificacao({ cls, podeEditar }: { cls: string; podeEditar: boolean }) {
+function FluxoClassificacao({ cls, tenantId, podeEditar }: { cls: string; tenantId: string; podeEditar: boolean }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const tpls = useQuery({ queryKey: ['nc-tpls', cls], queryFn: () => listTemplatesFull(cls) });
   const trans = useQuery({ queryKey: ['nc-trans'], queryFn: listTransitions });
   const [edit, setEdit] = useState<TemplateFull | null>(null);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const nameById = useMemo(() => { const m: Record<string, string> = {}; for (const t of tpls.data ?? []) m[t.id] = t.nome; return m; }, [tpls.data]);
-  const ids = useMemo(() => new Set((tpls.data ?? []).map((t) => t.id)), [tpls.data]);
+  const lista = tpls.data ?? [];
+  const nameById = useMemo(() => { const m: Record<string, string> = {}; for (const t of lista) m[t.id] = t.nome; return m; }, [lista]);
+  const ids = useMemo(() => new Set(lista.map((t) => t.id)), [lista]);
   const edges = useMemo(() => (trans.data ?? []).filter((e) => ids.has(e.from_action_id) && ids.has(e.to_action_id)), [trans.data, ids]);
+
+  async function add() {
+    if (!from || !to || from === to) { toast('Escolha origem e destino diferentes.', 'error'); return; }
+    setBusy(true);
+    try { await addTransition(tenantId, from, to); await qc.invalidateQueries({ queryKey: ['nc-trans'] }); setFrom(''); setTo(''); toast('Transicao adicionada.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
+  }
+  async function rem(id: string) {
+    try { await removeTransition(id); await qc.invalidateQueries({ queryKey: ['nc-trans'] }); toast('Transicao removida.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); }
+  }
 
   if (tpls.isLoading) return <LoadingState />;
   if (tpls.isError) return <ErrorState message={(tpls.error as Error).message} />;
@@ -89,7 +105,7 @@ function FluxoClassificacao({ cls, podeEditar }: { cls: string; podeEditar: bool
       <div className="table-scroll">
         <table className="table">
           <thead><tr><th>Acao</th><th>Situacao destino</th><th>Conclui</th><th>Multipla</th><th>Ativo</th><th></th></tr></thead>
-          <tbody>{(tpls.data ?? []).map((t) => (
+          <tbody>{lista.map((t) => (
             <tr key={t.id} style={{ opacity: t.ativo ? 1 : 0.5 }}>
               <td style={{ fontWeight: 700 }}>{t.nome}{t.mensagem ? <div className="text-sm" style={{ fontWeight: 400, color: 'var(--ink-faint)' }}>{t.mensagem}</div> : null}</td>
               <td>{t.situacao_destino ?? '—'}</td>
@@ -101,14 +117,28 @@ function FluxoClassificacao({ cls, podeEditar }: { cls: string; podeEditar: bool
           ))}</tbody>
         </table>
       </div>
+
       <div>
         <div className="text-sm font-black" style={{ marginBottom: 6 }}>Transicoes permitidas</div>
         {edges.length === 0 ? <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>Sem transicoes.</p> : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {edges.map((e, i) => <span key={i} className="text-sm" style={{ border: '1px solid var(--line)', borderRadius: 999, padding: '3px 10px' }}>{nameById[e.from_action_id]} → {nameById[e.to_action_id]}</span>)}
+            {edges.map((e) => (
+              <span key={e.id} className="text-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid var(--line)', borderRadius: 999, padding: '3px 6px 3px 10px' }}>
+                {nameById[e.from_action_id]} → {nameById[e.to_action_id]}
+                {podeEditar ? <button type="button" onClick={() => void rem(e.id)} title="Remover" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--magenta)', fontWeight: 800, lineHeight: 1 }}>×</button> : null}
+              </span>
+            ))}
           </div>
         )}
+        {podeEditar ? (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 10 }}>
+            <div style={{ minWidth: 200 }}><SelectField label="De" value={from} onChange={(e) => setFrom(e.target.value)}><option value="">-</option>{lista.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</SelectField></div>
+            <div style={{ minWidth: 200 }}><SelectField label="Para" value={to} onChange={(e) => setTo(e.target.value)}><option value="">-</option>{lista.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</SelectField></div>
+            <Button variant="secondary" onClick={() => void add()} disabled={busy || !from || !to}>Adicionar transicao</Button>
+          </div>
+        ) : null}
       </div>
+
       {edit ? <EditTemplate t={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); void qc.invalidateQueries({ queryKey: ['nc-tpls', cls] }); }} /> : null}
     </div>
   );
@@ -133,7 +163,7 @@ function EditTemplate({ t, onClose, onSaved }: { t: TemplateFull; onClose: () =>
         <TextArea label="Mensagem (orientacao ao tratar)" value={msg} onChange={(e) => setMsg(e.target.value)} />
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, fontSize: 14 }}><input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} /> Ativo</label>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, fontSize: 14 }}><input type="checkbox" checked={multi} onChange={(e) => setMulti(e.target.checked)} /> Permite multipla aplicacao</label>
-        <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>Situacao destino e transicoes (rota do fluxo) sao editaveis em fase futura.</p>
+        <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>Situacao destino e editavel em fase futura.</p>
       </div>
     </Modal>
   );
