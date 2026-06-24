@@ -1,29 +1,22 @@
-# GEOLAB v40 — Motor de NC (não-conformidades) — engine configurável
+# GEOLAB v41 — Motor de NC (Fase C): mais gatilhos automáticos
 
-Re-derivado do GEOMAT. Engine completo: catálogos + workflow de ações configurável + gatilho automático.
+**Backend-only.** Sem mudança de frontend → cache permanece `consultegeo-geolab-v40` (nada a rebuildar no Netlify). As NCs geradas aparecem na caixa já existente (Concreto → Não-conformidades).
 
-## Backend (JÁ aplicado via MCP em xbdvyvvxvzmcosnekmfv)
-- **migration 039** — tabela-cabeça `non_conformities` (estava ausente) + seed dos catálogos globais (8 classificações, 18 situações, 14 tipos) + `nc_action_templates.acao_projetista`.
-- **migration 040** — `seed_nc_action_engine`/`seed_nc_rac_padrao` (6 ações × classificação + 8 transições + RAC padrão, semeados para o tenant), `abrir_nc_manual`, `registrar_acao_nc` (valida transição+permissão, conclui a NC), e o **gatilho** `create_nc_from_test_result` no `material_tests` (cria NC T-02 quando resultado < fck **na idade de controle**; T-08 alteração após aceite).
-- Validado: ensaio 25<30 a 28d → NC T-02 automática; a 7d → não gera (idade de acompanhamento não reprova).
+## O que entra (migration 041, JÁ aplicada via MCP em xbdvyvvxvzmcosnekmfv)
+Novos gatilhos automáticos, re-derivados do GEOMAT e adaptados ao GEOLAB:
 
-## Frontend (vai pro GitHub)
-- src/lib/api/nc.ts (novo) + src/pages/concreto/NcPage.tsx (novo) — caixa de NC + detalhe/tratativa.
-- src/App.tsx (rota /nao-conformidades), src/components/Layout.tsx (nav "Não-conformidades", Concreto).
-- public/sw.js + src/lib/telemetry/core.ts — bump v40.
+- **T-14 Calibração vencida** — rompimento com prensa (`material_tests.equipamento_id`) de calibração vencida na data → NC alta.
+- **T-05 Slump fora** — recebimento com `slump_medido_cm` fora de `slump_previsto_cm ± tolerância` do traço.
+- **T-11 Água adicionada** — água adicionada na obra (NBR 7212).
+- **T-01 Concreto vencido** — tempo de transporte > validade (gateado por `nc_parameters.validade_concreto_h`; dormente até configurar).
+- **Reversão por contraprova** — contraprova satisfatória (resultado ≥ fck) **conclui automaticamente** as NCs abertas do CP original; insatisfatória registra escalada para tratativa manual.
 
-## Tela (Concreto → Não-conformidades)
-- Lista filtrável por status/obra; abertura automática (gatilho) ou manual.
-- Detalhe: timeline de ações + registrar próxima ação (só as transições permitidas pelo engine) + concluir. Nova NC manual.
+Junto com o T-02 (resultado < fck na idade de controle) e T-08 (alteração após aceite) da Fase A.
 
-## Passos
-1. Subir o frontend no GitHub. Backend já aplicado.
-2. Confirmar CACHE_NAME=`consultegeo-geolab-v40` / APP_VERSION=`v40`.
-3. Validar in-app: romper um CP abaixo do fck na idade de controle → a NC aparece em Não-conformidades; tratar registrando ações até concluir.
+Adaptações vs GEOMAT: `laboratorio_id`→`tenant_id`; `work_id`/traço resolvidos via concretagem; sem flow / volume NF×recebido / desforma (falta de dado no GEOLAB v1).
 
-## Pendente (próximas fases)
-- Fase C: telas de config (parâmetros de tolerância, editor de templates), anexos nas ações (campo 'arquivo'), RAC (relatório de ação corretiva), `generate-nc-report-pdf`.
-- Outros gatilhos automáticos (slump, calibração, CP atrasado→NC) e e-mail de NC.
+## Validação
+DO + rollback atômico: slump 20 vs 10±2 → T-05; 15 L água → T-11; prensa vencida → T-14; contraprova 33≥30 conclui a NC do original. T-02 não dispara com resultado ≥ fck.
 
-## Build
-check-source OK · tsc(0) · vitest(1/1) · vite build OK.
+## Pendente (Fase C restante)
+RAC + `generate-nc-report-pdf`; telas de configuração (tolerâncias `nc_parameters` / editor de templates); anexos nas ações; CP atrasado→NC (no cron); autoconclusão por tolerância; e-mail de NC.

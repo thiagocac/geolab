@@ -1,0 +1,14 @@
+-- Motor de NC (Fase C): mais gatilhos automaticos, re-derivados do GEOMAT e adaptados ao GEOLAB.
+-- Corpo completo aplicado via MCP em xbdvyvvxvzmcosnekmfv (banco vivo = fonte de verdade). Backend-only.
+-- create_nc_calibracao_from_test() + trigger material_tests_nc_calibracao:
+--   T-14 quando rompimento usa prensa (material_tests.equipamento_id) com calibracao vencida na data.
+-- reverter_nc_por_contraprova() + trigger material_tests_contraprova_reversao:
+--   contraprova satisfatoria (resultado>=fck) conclui as NCs abertas do CP original (via contraprova_de_id);
+--   insatisfatoria registra escalada (SIT-01) 1x por NC.
+-- create_nc_from_receipt_slump() + trigger material_receipts_nc:
+--   T-05 Slump fora (slump_medido_cm vs operational_materials.slump_previsto_cm +/- tolerancia),
+--   T-11 Agua adicionada (houve_adicao_agua + agua_litros>0, NBR 7212),
+--   T-01 Concreto vencido (tempo_transporte_min > nc_parameters.validade_concreto_h*60; gateado por config).
+-- Adaptacoes vs GEOMAT: laboratorio_id->tenant_id; work_id/traco via concretagem; sem flow/volume-NF/desforma (falta dado).
+-- Validado (DO+rollback): receipt slump 20 vs 10+/-2 -> T-05; agua 15L -> T-11; prensa vencida -> T-14;
+--   contraprova 33>=30 conclui a NC do original. T-02 nao dispara com resultado>=fck.
