@@ -13,6 +13,7 @@ import { ImportacoesPage } from './pages/concreto/ImportacoesPage';
 import { NotificacoesPage } from './pages/gestao/NotificacoesPage';
 import { PreferenciasPage } from './pages/gestao/PreferenciasPage';
 import { MedicaoPage } from './pages/gestao/MedicaoPage';
+import { ProdutividadePage } from './pages/gestao/ProdutividadePage';
 import { FormasPage } from './pages/gestao/FormasPage';
 import { LotesPage } from './pages/concreto/LotesPage';
 import { NcPage } from './pages/concreto/NcPage';
@@ -70,6 +71,7 @@ export function App() {
           <Route path="/notificacoes" element={<NotificacoesPage />} />
           <Route path="/preferencias" element={<PreferenciasPage />} />
           <Route path="/medicoes" element={<MedicaoPage />} />
+          <Route path="/produtividade" element={<ProdutividadePage />} />
           <Route path="/formas" element={<FormasPage />} />
           <Route path="/gestao/controle-laudo" element={<ControleLaudoPage />} />
           <Route path="/gestao/campos-recebimento" element={<CamposRecebimentoPage />} />
