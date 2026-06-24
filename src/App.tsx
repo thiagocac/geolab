@@ -15,6 +15,7 @@ import { PreferenciasPage } from './pages/gestao/PreferenciasPage';
 import { MedicaoPage } from './pages/gestao/MedicaoPage';
 import { FormasPage } from './pages/gestao/FormasPage';
 import { LotesPage } from './pages/concreto/LotesPage';
+import { NcPage } from './pages/concreto/NcPage';
 import { NovaObraWizard } from './pages/cadastros/NovaObraWizard';
 import { EstruturaPage } from './pages/cadastros/EstruturaPage';
 import { MateriaisPage } from './pages/cadastros/MateriaisPage';
@@ -62,6 +63,7 @@ export function App() {
           <Route path="/rompimentos" element={<RompimentosPage />} />
           <Route path="/laudos" element={<LaudosPage />} />
           <Route path="/lotes" element={<LotesPage />} />
+          <Route path="/nao-conformidades" element={<NcPage />} />
           <Route path="/importacoes" element={<ImportacoesPage />} />
           <Route path="/notificacoes" element={<NotificacoesPage />} />
           <Route path="/preferencias" element={<PreferenciasPage />} />

@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
-import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle } from './ui/icons';
+import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
@@ -16,6 +16,7 @@ const sections: Section[] = [
     { to: '/rompimentos', label: 'Rompimentos', icon: Flame, roles: labRoles },
     { to: '/laudos', label: 'Laudos', icon: FileText, roles: labRoles },
     { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
+    { to: '/nao-conformidades', label: 'Não-conformidades', icon: AlertTriangle, roles: labRoles },
     { to: '/importacoes', label: 'Importações', icon: Import, roles: labRoles },
     { to: '/tracos', label: 'Traços', icon: Beaker, roles: labRoles },
   ] },

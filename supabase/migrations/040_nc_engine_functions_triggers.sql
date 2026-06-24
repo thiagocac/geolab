@@ -1,0 +1,10 @@
+-- Motor de NC (Fase A.2): seed do engine por tenant + RPCs + gatilho automatico.
+-- Corpo completo aplicado via MCP em xbdvyvvxvzmcosnekmfv (banco vivo = fonte de verdade).
+-- seed_nc_action_engine(uuid): 6 acoes de tratativa x classificacao (Registrar tratativa / Encaminhar
+--   projetista / Solicitar extracao / Anexar laudo / Concluir / Justificar) + 8 transicoes; chama seed_nc_rac_padrao.
+-- abrir_nc_manual(...): abre NC manual (works->client_works). registrar_acao_nc(jsonb): valida transicao+permissao,
+--   insere nc_action, conclui a NC se conclui_nc.
+-- create_nc_from_test_result() + trigger material_tests_nc (AFTER INS/UPD): cria NC T-02 quando
+--   resultado_valor < fck_referencia_mpa NA IDADE DE CONTROLE (gate via material_test_types.idade_controle /
+--   config_lab.idade_controle_default; work_id via concretagem). + T-08 alteracao apos aceite.
+-- Seed executado para todos os tenants no fim da migration.

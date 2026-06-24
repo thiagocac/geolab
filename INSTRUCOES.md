@@ -1,33 +1,29 @@
-# GEOLAB — Patch v29 (programação + concretagem 2-etapas + campos dinâmicos + PORTAL DO CLIENTE seguro)
+# GEOLAB v40 — Motor de NC (não-conformidades) — engine configurável
 
-Integração avaliada do v29 do GPT no nosso tronco. O v29 do GPT era superset do meu v28 (forkou dele),
-então foi adotado como base; reconciliei segurança e o download de laudo.
+Re-derivado do GEOMAT. Engine completo: catálogos + workflow de ações configurável + gatilho automático.
 
-## Backend já aplicado no banco vivo (via MCP)
-- **029_programacao_campos_dinamicos** — config_lab.concretagem_campos, member_obras.deleted_at + índice único parcial,
-  defaults de concretagem/recebimento/laudo_campos, helper member_can_access_work.
-- **030_cliente_isolation_rls** — **isolamento do papel `cliente`**: `is_tenant_member` passa a EXCLUIR cliente
-  (bloqueia o cliente nas ~40 políticas sel_), self-read em members/member_obras/tenants, leituras escopadas por obra
-  (client_works/concretagens/lab_reports/lab_clients via member_can_access_work). **Testado**: cliente só enxerga a obra
-  vinculada; bloqueado de resultados, CPs, colaboradores e dados de outras obras/clientes.
+## Backend (JÁ aplicado via MCP em xbdvyvvxvzmcosnekmfv)
+- **migration 039** — tabela-cabeça `non_conformities` (estava ausente) + seed dos catálogos globais (8 classificações, 18 situações, 14 tipos) + `nc_action_templates.acao_projetista`.
+- **migration 040** — `seed_nc_action_engine`/`seed_nc_rac_padrao` (6 ações × classificação + 8 transições + RAC padrão, semeados para o tenant), `abrir_nc_manual`, `registrar_acao_nc` (valida transição+permissão, conclui a NC), e o **gatilho** `create_nc_from_test_result` no `material_tests` (cria NC T-02 quando resultado < fck **na idade de controle**; T-08 alteração após aceite).
+- Validado: ensaio 25<30 a 28d → NC T-02 automática; a 7d → não gera (idade de acompanhamento não reprova).
 
-> A migration 029 que o GPT entregou NÃO isolava o cliente (RLS é OR-permissivo; políticas adicionais só ampliam).
-> Foi descartada e refeita como 029+030 acima.
+## Frontend (vai pro GitHub)
+- src/lib/api/nc.ts (novo) + src/pages/concreto/NcPage.tsx (novo) — caixa de NC + detalhe/tratativa.
+- src/App.tsx (rota /nao-conformidades), src/components/Layout.tsx (nav "Não-conformidades", Concreto).
+- public/sw.js + src/lib/telemetry/core.ts — bump v40.
 
-## Edge Functions (deploy via MCP)
-- **portal-laudo-url** (NOVA, minha) — assina download de laudo só após verificar escopo (cliente não tem policy de
-  storage para `laudos/`, e policy de storage não escopa por obra → vazaria; por isso EF service-role).
-- **admin-create-client-user**, **client-portal-submit-programacoes** — auditadas e deployadas (gates + escopo server-side).
-- **generate-laudo-ensaio-pdf** — campos dinâmicos (recebimento_campos/concretagem_campos) + texto v4 (NBR 12655/fck,est).
-- **generate-ficha-moldagem-pdf** — respeita campos dinâmicos.
+## Tela (Concreto → Não-conformidades)
+- Lista filtrável por status/obra; abertura automática (gatilho) ou manual.
+- Detalhe: timeline de ações + registrar próxima ação (só as transições permitidas pelo engine) + concluir. Nova NC manual.
 
-## Frontend (v29)
-Concretagem em 2 etapas (ConcretagemDetalhePage), ProgramacoesPage (fila do lab), CamposConcretagemPage/CamposRecebimentoPage
-(toggles dinâmicos), MoldingStandardEditor, **Portal do cliente** (ClientePortalPage: grid de programação→EF, consulta de
-concretagens/laudos, download via EF segura) e **ClienteUsuariosPage** (criar usuário cliente + vincular obras).
-Rotas: /programacoes, /gestao/campos-recebimento, /gestao/campos-concretagem, /portal-cliente, /portal/usuarios-clientes.
-Build completo (check-source+tsc+vitest+vite) verde. CACHE_NAME/APP_VERSION = v29.
+## Passos
+1. Subir o frontend no GitHub. Backend já aplicado.
+2. Confirmar CACHE_NAME=`consultegeo-geolab-v40` / APP_VERSION=`v40`.
+3. Validar in-app: romper um CP abaixo do fck na idade de controle → a NC aparece em Não-conformidades; tratar registrando ações até concluir.
 
-## Segurança do portal (resumo)
-O cliente é um usuário Auth real com `role='cliente'`, **read-only no nível de tabela**, escopado por `member_obras`.
-Programação e download de laudo passam por EF service-role com verificação server-side. Sem magic link (v1.1).
+## Pendente (próximas fases)
+- Fase C: telas de config (parâmetros de tolerância, editor de templates), anexos nas ações (campo 'arquivo'), RAC (relatório de ação corretiva), `generate-nc-report-pdf`.
+- Outros gatilhos automáticos (slump, calibração, CP atrasado→NC) e e-mail de NC.
+
+## Build
+check-source OK · tsc(0) · vitest(1/1) · vite build OK.
