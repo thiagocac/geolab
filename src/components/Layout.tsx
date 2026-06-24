@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
-import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock } from './ui/icons';
+import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
@@ -15,6 +15,7 @@ const sections: Section[] = [
     { to: '/concretagens', label: 'Concretagens', icon: Truck, roles: labRoles },
     { to: '/rompimentos', label: 'Rompimentos', icon: Flame, roles: labRoles },
     { to: '/laudos', label: 'Laudos', icon: FileText, roles: labRoles },
+    { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
     { to: '/importacoes', label: 'Importações', icon: Import, roles: labRoles },
     { to: '/tracos', label: 'Traços', icon: Beaker, roles: labRoles },
   ] },
@@ -29,6 +30,8 @@ const sections: Section[] = [
   { title: 'Gestão', items: [
     { to: '/notificacoes', label: 'Notificações', icon: Bell, roles: labRoles },
     { to: '/preferencias', label: 'Preferências', icon: Gauge, roles: adminRoles },
+    { to: '/medicoes', label: 'Medição', icon: FileText, roles: adminRoles },
+    { to: '/formas', label: 'Fôrmas', icon: Boxes, roles: labRoles },
     { to: '/gestao/controle-laudo', label: 'Campos do ensaio e laudo', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/campos-recebimento', label: 'Campos recebimento', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/campos-concretagem', label: 'Campos concretagem', icon: ClipboardCheck, roles: adminRoles },
@@ -52,7 +55,6 @@ export function Layout({ children }: { children: ReactNode }) {
             <rect x="0" y="76" width="104" height="24" rx="12" fill="#fff" />
           </svg>
           <div>
-            <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', fontWeight: 800, opacity: 0.85 }}>Controle Tecnológico</div>
             <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, letterSpacing: '-.01em', lineHeight: 1 }}>Concresoft</div>
           </div>
         </div>
@@ -75,7 +77,7 @@ export function Layout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>Concresoft v33</div>
+        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>Concresoft v36</div>
       </aside>
       <div className="content-col">
         <header className="topbar">

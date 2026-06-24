@@ -10,6 +10,7 @@ import { PageHeader } from '../ui/PageHeader';
 import { LoadingState, ErrorState } from '../ui/State';
 import { listRows, listReference } from '../../lib/api/client';
 import { createRow, updateRow, softDelete } from '../../lib/api/mutations';
+import { consultaFiscal } from '../../lib/api/fiscal';
 import type { Column, FieldSpec, RowAction, DomainRow, SortState } from '../../lib/api/types';
 
 type Props<T extends DomainRow> = {
@@ -31,6 +32,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
   const [form, setForm] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [lookupBusy, setLookupBusy] = useState<string | null>(null);
 
   const query = useQuery({ queryKey: [table, page, search, sort, filter], queryFn: () => listRows<T>(table, { page, pageSize: PAGE, search, sort, filter }) });
   const rows = query.data?.rows ?? [];
@@ -39,6 +41,18 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
   function openNew() { setForm({ ...(filter ?? {}) }); setEditing(null); setErr(null); }
   function openEdit(row: T) { const f: Record<string, unknown> = {}; for (const fs of fields) f[fs.key] = (row as Record<string, unknown>)[fs.key]; setForm(f); setEditing(row); setErr(null); }
   function close() { setEditing(undefined); setForm({}); setErr(null); }
+
+  async function runLookup(spec: FieldSpec) {
+    if (!spec.lookup) return;
+    const raw = String(form[spec.key] ?? '').trim();
+    if (!raw) { toast('Informe o ' + spec.lookup.kind.toUpperCase() + ' primeiro.', 'error'); return; }
+    setLookupBusy(spec.key);
+    try {
+      const data = await consultaFiscal(spec.lookup.kind, raw);
+      setForm((s) => { const next = { ...s }; for (const [src, dest] of Object.entries(spec.lookup!.map)) { const v = (data as Record<string, unknown>)[src]; if (v != null && v !== '') next[dest] = v; } return next; });
+      toast('Dados preenchidos.', 'success');
+    } catch (e) { toast((e as Error).message, 'error'); } finally { setLookupBusy(null); }
+  }
 
   async function save() {
     if (!member) return;
@@ -89,7 +103,14 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
       </div>
       <Modal open={editing !== undefined} title={editing ? 'Editar - ' + title : 'Novo - ' + title} onClose={close} footer={<><Button variant="ghost" onClick={close}>Cancelar</Button><Button onClick={() => void save()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
-          {fields.map((f) => <FieldRenderer key={f.key} spec={f} value={form[f.key]} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />)}
+          {fields.map((f) => f.lookup ? (
+            <div key={f.key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
+              <FieldRenderer spec={f} value={form[f.key]} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
+              <Button variant="secondary" disabled={lookupBusy === f.key} onClick={() => void runLookup(f)}>{lookupBusy === f.key ? '...' : 'Buscar'}</Button>
+            </div>
+          ) : (
+            <FieldRenderer key={f.key} spec={f} value={form[f.key]} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
+          ))}
           {err ? <div style={{ color: 'var(--magenta)', fontSize: 13 }}>{err}</div> : null}
         </div>
       </Modal>

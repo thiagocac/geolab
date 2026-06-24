@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.generate-laudo-ensaio-pdf]
 verify_jwt = true
+
+[functions.consulta-fiscal]
+verify_jwt = true

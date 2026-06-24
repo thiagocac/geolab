@@ -1,0 +1,5 @@
+-- 033: agenda os 4 crons (watchdog/backup/digest/telemetria) via pg_cron+pg_net. Aplicada via MCP.
+-- CRON_SECRET lido do vault em runtime; fail-closed na EF se ausente. cron.schedule por nome = idempotente.
+-- ATIVAÇÃO (G1, Thiago): vault.create_secret('<valor>','CRON_SECRET') + MESMO valor no secret da EF (Deno.env).
+-- Jobs: concresoft-watchdog '0 9 * * *', -backup '15 3 * * *', -digest '0 10 * * *', -telemetria '0 * * * *'.
+-- (corpo completo aplicado no banco vivo via apply_migration; net.http_post p/ /functions/v1/<ef> com apikey anon + x-cron-secret do vault)

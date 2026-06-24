@@ -12,6 +12,9 @@ import { LaudosPage } from './pages/concreto/LaudosPage';
 import { ImportacoesPage } from './pages/concreto/ImportacoesPage';
 import { NotificacoesPage } from './pages/gestao/NotificacoesPage';
 import { PreferenciasPage } from './pages/gestao/PreferenciasPage';
+import { MedicaoPage } from './pages/gestao/MedicaoPage';
+import { FormasPage } from './pages/gestao/FormasPage';
+import { LotesPage } from './pages/concreto/LotesPage';
 import { NovaObraWizard } from './pages/cadastros/NovaObraWizard';
 import { EstruturaPage } from './pages/cadastros/EstruturaPage';
 import { MateriaisPage } from './pages/cadastros/MateriaisPage';
@@ -58,9 +61,12 @@ export function App() {
           <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
           <Route path="/rompimentos" element={<RompimentosPage />} />
           <Route path="/laudos" element={<LaudosPage />} />
+          <Route path="/lotes" element={<LotesPage />} />
           <Route path="/importacoes" element={<ImportacoesPage />} />
           <Route path="/notificacoes" element={<NotificacoesPage />} />
           <Route path="/preferencias" element={<PreferenciasPage />} />
+          <Route path="/medicoes" element={<MedicaoPage />} />
+          <Route path="/formas" element={<FormasPage />} />
           <Route path="/gestao/controle-laudo" element={<ControleLaudoPage />} />
           <Route path="/gestao/campos-recebimento" element={<CamposRecebimentoPage />} />
           <Route path="/gestao/campos-concretagem" element={<CamposConcretagemPage />} />
