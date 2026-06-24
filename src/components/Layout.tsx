@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
+import { APP_VERSION } from '../lib/telemetry/core';
 import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
@@ -81,7 +82,7 @@ export function Layout({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>Concresoft v36</div>
+        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-faint)' }}>Concresoft {APP_VERSION}</div>
       </aside>
       <div className="content-col">
         <header className="topbar">
