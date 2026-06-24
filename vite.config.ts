@@ -7,10 +7,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 180,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          supabase: ['@supabase/supabase-js'],
-          query: ['@tanstack/react-query']
+        // Forma de função: robusta ao layout de módulos do React 19
+        // (a forma de objeto ['react','react-dom'] deixou de capturar o react-dom 19).
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/')) return 'vendor';
+          if (id.includes('@supabase')) return 'supabase';
+          if (id.includes('@tanstack')) return 'query';
         }
       }
     }
