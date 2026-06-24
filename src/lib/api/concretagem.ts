@@ -162,3 +162,22 @@ export async function listTracosComFck(): Promise<{ value: string; label: string
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, any>[]).map((r) => ({ value: String(r.id), label: String(r.nome ?? r.id), fck: r.fck_mpa != null ? Number(r.fck_mpa) : null, padrao_moldagem: Array.isArray(r.padrao_moldagem) ? r.padrao_moldagem : [], slump: r.slump_previsto_cm == null ? null : Number(r.slump_previsto_cm), tolerancia: r.slump_tolerancia_cm == null ? null : Number(r.slump_tolerancia_cm), validade: r.validade_concreto_minutos == null ? null : Number(r.validade_concreto_minutos) }));
 }
+
+// OCR da NF/DANFE do caminhao (EF extract-nf-vision). Retorna campos ja nomeados p/ o recebimento.
+async function fileToBase64(file: File): Promise<{ base64: string; mime: string }> {
+  const dataUrl: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(new Error('Falha ao ler arquivo')); r.readAsDataURL(file); });
+  return { base64: dataUrl.split(',')[1] ?? '', mime: file.type || 'image/jpeg' };
+}
+export async function lerNfImagem(file: File): Promise<{ enabled: boolean; dados: Record<string, unknown>; reason?: string }> {
+  const { base64, mime } = await fileToBase64(file);
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/extract-nf-vision', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ image_base64: base64, mime }),
+  });
+  const out = (await resp.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; dados?: Record<string, unknown>; reason?: string; error?: string };
+  if (!resp.ok || out.ok === false) throw new Error(out.error ?? out.reason ?? 'Falha ao ler a NF.');
+  return { enabled: out.enabled !== false, dados: out.dados ?? {}, reason: out.reason };
+}

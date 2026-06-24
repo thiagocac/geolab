@@ -10,7 +10,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
-import { getConcretagem, listCaminhoes, listCpsDaConcretagem, addCaminhao, invokeFicha, updateConcretagem, listTracosComFck, padraoMoldagemDaConcretagem, type ConcretagemRow } from '../../lib/api/concretagem';
+import { getConcretagem, listCaminhoes, listCpsDaConcretagem, addCaminhao, invokeFicha, updateConcretagem, listTracosComFck, padraoMoldagemDaConcretagem, lerNfImagem, type ConcretagemRow } from '../../lib/api/concretagem';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { listColaboradores } from '../../lib/api/colaboradores';
 import { listPecasObra } from '../../lib/api/estrutura';
@@ -61,6 +61,7 @@ export function ConcretagemDetalhePage() {
   const [padrao, setPadrao] = useState<PadraoMoldagem[]>([]);
   const [open, setOpen] = useState(false);
   const [camForm, setCamForm] = useState<Record<string, unknown>>({});
+  const [lendoNf, setLendoNf] = useState(false);
   const [camPadrao, setCamPadrao] = useState<PadraoMoldagem[]>([]);
   const [busy, setBusy] = useState(false);
   const [busyStep, setBusyStep] = useState(false);
@@ -94,6 +95,17 @@ export function ConcretagemDetalhePage() {
 
   function patch(k: string, v: unknown) { setForm((s) => ({ ...s, [k]: v })); }
   function patchCam(k: string, v: unknown) { setCamForm((s) => ({ ...s, [k]: v })); }
+  async function lerNf(file: File) {
+    setLendoNf(true);
+    try {
+      const r = await lerNfImagem(file);
+      if (!r.enabled) { toast(r.reason ?? 'Leitura por IA indisponivel.', 'error'); return; }
+      const keys = Object.keys(r.dados);
+      if (!keys.length) { toast('Nada legivel na imagem da NF.', 'error'); return; }
+      setCamForm((s) => ({ ...s, ...r.dados }));
+      toast('NF lida: ' + keys.length + ' campo(s) preenchido(s). Confira antes de salvar.', 'success');
+    } catch (e) { toast((e as Error).message, 'error'); } finally { setLendoNf(false); }
+  }
   function carregarPadraoTraco() {
     const t = (tracos.data ?? []).find((x) => x.value === form.operational_material_id);
     if (!t) { toast('Selecione um traço cadastrado ou mantenha o padrão manual da concretagem.', 'warning'); return; }
@@ -223,6 +235,10 @@ export function ConcretagemDetalhePage() {
 
       <Modal open={open} wide title="Adicionar caminhão + CPs" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvarCaminhao()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar caminhão e gerar CPs'}</Button></>}>
         <div className="space-y-4">
+          <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
+            <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Ler NF (foto):</span><input type="file" accept="image/*" disabled={lendoNf} onChange={(e) => { const f = e.target.files?.[0]; if (f) void lerNf(f); e.currentTarget.value = ''; }} />{lendoNf ? <span className="text-xs text-slate-500">lendo...</span> : null}</label>
+            <p className="mt-1 text-xs text-slate-500">Fotografe a DANFE/nota do caminhao para preencher os campos. Requer VISION_API_KEY; confira antes de salvar.</p>
+          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="Nota fiscal*" value={val(camForm.nota_fiscal)} onChange={(e) => patchCam('nota_fiscal', e.target.value)} />
             {onR('placa') ? <Field label="Placa" value={val(camForm.placa)} onChange={(e) => patchCam('placa', e.target.value)} /> : null}

@@ -1,22 +1,22 @@
-# GEOLAB v46 — Fôrmas → Medição: cobrança automática
+# GEOLAB v47 — OCR de DANFE/NF por caminhão
 
-Conecta o controle de fôrmas ao faturamento. A `computar_medicao` **já somava** `forma_movimentacoes` de `tipo='cobranca'`, mas o CHECK da tabela só permitia `entrega`/`coleta` — então nunca casava (forma = sempre 0). Agora liberamos o evento de cobrança.
+Complementa o OCR da ficha (`extract-laudo-vision`). Lê a nota fiscal do caminhão por foto e pré-preenche o recebimento.
 
-## Backend (migration 045, JÁ aplicada via MCP)
-- `forma_movimentacoes.tipo` passa a aceitar **`cobranca`** (além de entrega/coleta). Nada mais muda: a `v_formas_saldo` já trata qualquer tipo ≠ entrega como −quantidade (cobrança **reduz o saldo**), e a `computar_medicao` já conta `sum(quantidade) where tipo='cobranca'` no período × preço da forma.
-- Validado (atômico): entrega 10 → saldo 10; cobrança 4 → saldo 6; soma de cobrança no período = 4 (o que a medição fatura).
+## Backend (EF nova, JÁ deployada via MCP)
+- **`extract-nf-vision`** (v1, verify_jwt=true, sha 36f33ccc) — re-derivada do GEOMAT, padrão GEOLAB (auth de member, **fail-safe** sem `VISION_API_KEY`). Aceita `{ image_base64, mime }` (foto da DANFE) ou `{ xml }` (NF-e). Retorna `dados` com campos já nomeados para o recebimento: nota_fiscal, serie, placa, motorista, volume_m3, fornecedor, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, slump_medido_cm, temperatura_concreto_c. **Ociosa para foto até o `VISION_API_KEY` estar no vault** (a leitura de NF-e XML funciona sem chave).
 
 ## Frontend (vai pro GitHub)
-- src/pages/gestao/FormasPage.tsx — novo tipo **Cobrança (fôrma faturada / não devolvida)** no lançamento de movimento; render distinto (magenta, reduz saldo). Descrição da tela atualizada.
-- public/sw.js + src/lib/telemetry/core.ts — bump **v46** (v45 foi backend-only EF → cache pulou v44→v46).
+- src/lib/api/concretagem.ts — `lerNfImagem(file)` (foto→base64→EF).
+- src/pages/concreto/ConcretagemDetalhePage.tsx — botão **"Ler NF (foto)"** no topo do formulário do caminhão (etapa 2): lê a foto e preenche os campos para conferência antes de salvar.
+- public/sw.js + src/lib/telemetry/core.ts — bump **v47**.
 
 ## Como usar
-1. Em **Gestão → Fôrmas**, lançar um movimento **Cobrança** com a quantidade de fôrmas a faturar (não devolvidas/perdidas). Reduz o saldo da obra.
-2. Em **Gestão → Medição**, ao calcular o período, a linha **"Formas (cobrança)"** já traz a quantidade somada × o preço de forma do escopo. Sem digitar nada.
+Concretagem → etapa 2 (caminhões) → "Adicionar caminhão" → **Ler NF (foto)** → fotografar a DANFE → os campos (NF, placa, volume, horários, slump…) vêm preenchidos para revisão. Salvar normalmente.
 
 ## Passos
-1. Subir o frontend no GitHub. Backend já aplicado.
-2. Confirmar CACHE_NAME=`consultegeo-geolab-v46` / APP_VERSION=`v46`.
+1. Subir o frontend no GitHub. Backend já deployado.
+2. Confirmar CACHE_NAME=`consultegeo-geolab-v47` / APP_VERSION=`v47`.
+3. Para ativar a leitura por foto: `VISION_API_KEY` no vault (mesma chave do OCR da ficha).
 
 ## Build
 check-source OK · tsc(0) · vitest(1/1) · vite build OK.
