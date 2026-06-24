@@ -1,22 +1,20 @@
-# GEOLAB v43 — Motor de NC (Fase C): grafo de transições + anexos + CP atrasado→NC
+# GEOLAB v44 — Motor de NC (Fase C final): autoconclusão por tolerância + e-mail de NC
 
-## Backend (migration 042, JÁ aplicada via MCP em xbdvyvvxvzmcosnekmfv)
-- **CP atrasado → NC T-10**: função `gerar_ncs_cp_atrasado()` (CP na idade de controle, não rompido, além de `data_prevista_rompimento + config_lab.cp_overdue_days`) + cron diário `concresoft-nc-cp-atrasado` (30 9, SQL direto, sem EF). Validado: 1 CP vencido → NC-…-T-10 (CLS-007).
-- **Storage `anexos`**: policy `nc_anexos_rw` escopada por tenant (pasta raiz = tenant_id; exclui cliente via is_tenant_member) — para os anexos das ações.
+## Backend (JÁ aplicado/deployado via MCP)
+- **migration 043** — autoconclusão por tolerância: template automático (CLS-002, `acao_automatica`, permissão 'sistema') + trigger `nc_autoconclude_tolerancia` (AFTER INSERT em non_conformities). Para NC automática T-02: pct = resultado/fck; se ≥ `conclusao_auto_pct` conclui automaticamente (Liberada com Ressalvas), senão se ≥ `acao_imediata_pct` rebaixa severidade p/ média. Lê `nc_parameters` (config na tela de Config de NC). **Dormente até o lab configurar os %.** Validado: 28/30 (93% ≥ 90) → concluída; 20/30 (67%) → aberta/alta.
+- **EF cron-nc-digest** (nova, verify_jwt=false, sha 51e398f8) + **migration 044** (cron `concresoft-nc-digest`, 0 11) — digest diário das NCs abertas nas últimas 24h por tenant → admins/gestores via send-notification. **Armado, ocioso até G1** (CRON_SECRET no vault) e H3 (sair do dry-run), como os demais crons/e-mails.
 
 ## Frontend (vai pro GitHub)
-- **Editor de grafo de transições** (Gestão → Config de NC): por classificação, chips de transição removíveis (×) + "Adicionar transição" (de/para entre as ações). Insert/reativa em `nc_action_transitions`; remove = `ativo=false`. Só admin (RLS is_tenant_admin).
-- **Anexos nas ações** (Não-conformidades → detalhe): campo de arquivo na ação → upload ao bucket `anexos` (`{tenant}/{nc}/...`) gravando `campos_dinamicos.arquivo`; timeline mostra "Baixar anexo" via signed URL (5 min).
-- Arquivos: src/lib/api/nc.ts (uploadAnexo/signedAnexo), src/lib/api/ncConfig.ts (addTransition/removeTransition), src/pages/concreto/NcPage.tsx, src/pages/gestao/NcConfigPage.tsx.
-- public/sw.js + src/lib/telemetry/core.ts — bump **v43**.
+- src/lib/api/nc.ts — esconde o template automático (`permissao_requerida='sistema'`) do seletor manual de ações.
+- public/sw.js + src/lib/telemetry/core.ts — bump **v44**.
 
 ## Passos
-1. Subir o frontend no GitHub. Backend já aplicado.
-2. Confirmar CACHE_NAME=`consultegeo-geolab-v43` / APP_VERSION=`v43`.
-3. Validar in-app: Config de NC → adicionar/remover transição numa classificação; numa NC, registrar ação com anexo e baixar.
+1. Subir o frontend no GitHub. Backend já aplicado/deployado.
+2. Confirmar CACHE_NAME=`consultegeo-geolab-v44` / APP_VERSION=`v44`.
+3. Para ligar a autoconclusão: Config de NC → setar "Conclusão automática (% do fck)" (ex.: 90). E-mail de NC dispara quando o CRON_SECRET estiver no vault e o dispatch sair do dry-run.
 
-## Pendente (Fase C restante)
-RAC + generate-nc-report-pdf; autoconclusão por tolerância; e-mail de NC.
+## Fase C — COMPLETA exceto RAC
+Falta só: **RAC + generate-nc-report-pdf** (relatório de ação corretiva auditável). Demais pendências v1.1: laudo↔lote; fôrmas→medição.
 
 ## Build
 check-source OK · tsc(0) · vitest(1/1) · vite build OK.

@@ -65,10 +65,10 @@ export async function listAcoes(ncId: string): Promise<NcAcao[]> {
 
 export async function listTemplates(classificationCode: string): Promise<Template[]> {
   const { data, error } = await db.from('nc_action_templates')
-    .select('id, nome, classification_code, situacao_destino, conclui_nc, campos, mensagem')
+    .select('id, nome, classification_code, situacao_destino, conclui_nc, campos, mensagem, permissao_requerida')
     .eq('classification_code', classificationCode).eq('ativo', true).is('deleted_at', null).order('nome');
   if (error) throw new Error(error.message);
-  return ((data ?? []) as any[]).map((r) => ({
+  return ((data ?? []) as any[]).filter((r) => r.permissao_requerida !== 'sistema').map((r) => ({
     id: String(r.id), nome: String(r.nome), classification_code: String(r.classification_code), situacao_destino: r.situacao_destino ?? null,
     conclui_nc: !!r.conclui_nc, campos: Array.isArray(r.campos) ? r.campos : [], mensagem: r.mensagem ?? null,
   }));
