@@ -1,32 +1,32 @@
-# Patches v54 — React Compiler 1.0 (memoizacao automatica)
+# Patches v55 — rolldown-vite 7.3.1 (bundler Rust, ponte p/ Vite 8)
 
-Aplicar por cima da v53, commitar, deixar o Netlify buildar.
-IMPORTANTE: package.json + package-lock.json mudaram (devDep babel-plugin-react-compiler). `npm ci` instala.
+Aplicar por cima da v54, commitar, deixar o Netlify buildar.
+IMPORTANTE: package.json + package-lock.json mudaram. `npm ci` instala rolldown-vite 7.3.1
+(+ um vite 5.4.21 aninhado para o vitest — esperado, nao e erro).
 
-## Arquivos (7)
-- package.json              (+devDep babel-plugin-react-compiler ^1.0.0)
+## Arquivos (6)
+- package.json              ("vite": "npm:rolldown-vite@^7.3.1")
 - package-lock.json
-- vite.config.ts            (compiler via @vitejs/plugin-react babel.plugins, target '19')
-- src/lib/telemetry/core.ts (APP_VERSION = 'v54')
-- public/sw.js              (CACHE_NAME = 'consultegeo-geolab-v54')
+- src/lib/telemetry/core.ts (APP_VERSION = 'v55')
+- public/sw.js              (CACHE_NAME = 'consultegeo-geolab-v55')
 - SOURCE_VERSION.md / INSTRUCOES.md
 
 ## O que muda
-- React Compiler 1.0 ligado no build (memoizacao automatica — menos re-render, sem useMemo/useCallback manual).
-  Build-time apenas; NENHUMA mudanca de codigo de componente. Em React 19 usa o runtime embutido.
-- Healthcheck: 69/69 componentes otimizados, 0 violacao das Regras do React, StrictMode ok.
-- Build fica mais lento (~13s vs ~8s) porque o Babel passa em cada arquivo — esperado.
+- O bundler passa de Rollup/esbuild (Vite 5) para Rolldown/Oxc (Rust), via o pacote-ponte rolldown-vite.
+  Config e plugins ficam IGUAIS (drop-in). E o passo recomendado antes do Vite 8.
+- vitest continua no proprio vite 5.4.21 (npm resolveu o peer) — build em Rolldown, testes em vite 5.
+  Sera unificado quando subirmos Vite 8 + vitest 3.
+- React Compiler (v54) intacto — roda no transform do plugin-react; o bundler nao interfere.
 
 ## Validacao (sandbox)
-- npx react-compiler-healthcheck => 69/69 compilados, sem violacao, sem lib incompativel.
-- npm run build => check-source OK · biome lint 0 erros · tsc 0 erros · vitest 1/1 · vite build OK · EXIT 0.
-- Prova: cache do compiler ($[n]) nos chunks + react/compiler-runtime no vendor.
+- npm run build => check-source OK · biome lint 0 erros · tsc 0 erros · vitest 1/1 · vite build (Rolldown) OK · EXIT 0.
+- Compiler confirmado sob Rolldown: 815 memo-slots $[n] no chunk index.
+- Chunks: vendor ~182kB (React), supabase ~202kB, xlsx ~425kB isolado (lazy), paginas separadas.
 
 ## Verificar no Deploy Preview
-- Clicar nos fluxos pesados (Rompimentos, ConcretagemDetalhe, Medicao): comportamento identico
-  (o compiler so memoiza o que prova seguro). React DevTools mostra o selo "Memo".
+- App identico; conferir que o build do Netlify roda (1a vez com Rolldown) e o tempo de build.
 
 ## Rollback
-- Remover o babel.plugins do vite.config.ts (volta ao React 19 sem compiler).
+- Voltar package.json "vite" para "^5.4.1" e restaurar o package-lock.
 
-Bump: APP_VERSION/CACHE_NAME = v54.
+Bump: APP_VERSION/CACHE_NAME = v55.
