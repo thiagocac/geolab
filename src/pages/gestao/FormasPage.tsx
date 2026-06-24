@@ -60,7 +60,7 @@ export function FormasPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Gestao" title="Formas" description="Controle logistico dos moldes de corpo de prova por obra: entregas, coletas e saldo em campo. Desvinculado da concretagem." />
+      <PageHeader kicker="Gestao" title="Formas" description="Controle logistico dos moldes de corpo de prova por obra: entregas, coletas e saldo em campo. A cobranca (forma faturada/nao devolvida) reduz o saldo e entra automaticamente na medicao. Desvinculado da concretagem." />
 
       <Card className="p-5">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
@@ -98,13 +98,13 @@ export function FormasPage() {
             <table className="table">
               <thead><tr><th>Data</th><th>Obra</th><th>Tipo</th><th style={{ textAlign: 'right' }}>Qtd</th><th>Colaborador</th><th>Observacoes</th><th></th></tr></thead>
               <tbody>{(movs.data ?? []).map((m) => {
-                const entrega = m.tipo === 'entrega';
+                const meta = m.tipo === 'entrega' ? { lbl: 'Entrega', cor: VERDE, sinal: '+' } : m.tipo === 'cobranca' ? { lbl: 'Cobranca', cor: 'var(--magenta)', sinal: '−' } : { lbl: 'Coleta', cor: 'var(--ink-faint)', sinal: '−' };
                 return (
                   <tr key={m.id}>
                     <td>{dataBR(m.data)}</td>
                     <td>{m.obra}</td>
-                    <td style={{ fontWeight: 700, color: entrega ? VERDE : 'var(--ink-faint)' }}>{entrega ? 'Entrega' : 'Coleta'}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: entrega ? VERDE : 'var(--ink-faint)' }}>{entrega ? '+' : '−'}{m.quantidade}</td>
+                    <td style={{ fontWeight: 700, color: meta.cor }}>{meta.lbl}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: meta.cor }}>{meta.sinal}{m.quantidade}</td>
                     <td>{m.colaborador ?? '—'}</td>
                     <td className="text-sm" style={{ color: 'var(--ink-faint)' }}>{m.observacoes ?? ''}</td>
                     <td style={{ textAlign: 'right' }}>{podeEditar ? <Button variant="ghost" onClick={() => void excluir(m.id)}>Excluir</Button> : null}</td>
@@ -125,6 +125,7 @@ export function FormasPage() {
           <SelectField label="Tipo" value={form.tipo} onChange={(e) => setForm((s) => ({ ...s, tipo: e.target.value }))}>
             <option value="entrega">Entrega (formas para a obra)</option>
             <option value="coleta">Coleta (devolucao ao laboratorio)</option>
+            <option value="cobranca">Cobranca (forma faturada / nao devolvida)</option>
           </SelectField>
           <Field label="Quantidade" type="number" min={1} step={1} value={form.quantidade} onChange={(e) => setForm((s) => ({ ...s, quantidade: e.target.value }))} />
           <Field label="Data" type="date" value={form.data} onChange={(e) => setForm((s) => ({ ...s, data: e.target.value }))} />
