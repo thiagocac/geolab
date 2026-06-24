@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const concretagemId = String(body.concretagem_id ?? '');
+    const loteId = String(body.lote_id ?? '');
     if (!concretagemId) return json({ error: 'concretagem_id obrigatorio' }, 400);
     const url = Deno.env.get('SUPABASE_URL') ?? '';
     const anon = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -101,7 +102,17 @@ Deno.serve(async (req) => {
     const fck = Number(om?.fck_mpa ?? conc.fck_previsto ?? 0);
     const n = resExemplar.length;
     const menorExemplar = n ? Math.min(...resExemplar) : null;
-    const conforme = menorExemplar != null && fck > 0 ? menorExemplar >= fck : null;
+    // Aceitacao estatistica de lote (NBR 12655): casa o lote da obra/fck (ou lote_id explicito) com fck,est real.
+    let lote: Record<string, unknown> | null = null;
+    try {
+      let lq = sb.from('lotes_aceitacao').select('id, numero, n_exemplares, fcm, sd, fck_est, status').eq('tenant_id', conc.tenant_id).eq('work_id', conc.work_id).is('deleted_at', null);
+      lq = loteId ? lq.eq('id', loteId) : lq.eq('fck_mpa', fck);
+      const lr = await lq.order('created_at', { ascending: false }).limit(1).maybeSingle();
+      lote = (lr.data as Record<string, unknown>) ?? null;
+    } catch { lote = null; }
+    const loteFckEst = lote && lote.fck_est != null ? Number(lote.fck_est) : null;
+    const usaLote = loteFckEst != null;
+    const conforme = usaLote ? (fck > 0 ? (loteFckEst as number) >= fck : null) : (menorExemplar != null && fck > 0 ? menorExemplar >= fck : null);
     const statusTxt = conforme == null ? 'AGUARDANDO IDADE DE CONTROLE' : conforme ? 'CONFORME' : 'NAO CONFORME';
     const statusCor = conforme == null ? FAINT : conforme ? OKG : DANGER;
     const numero = `${String(conc.codigo ?? '').replace(/[^0-9]/g, '').slice(-6).padStart(6, '0')}/${String(conc.data_real ?? conc.data_programada ?? '').slice(0, 4) || '2026'}`;
@@ -242,8 +253,8 @@ Deno.serve(async (req) => {
     y -= 8;
 
     need(22, false); rect(MX, y - 16, CW, 18, NAVY);
-    T(ON.amostragem ? 'Aceitacao (ABNT NBR 12655 - amostragem total - condicao ' + condicao + ')' : 'Aceitacao (ABNT NBR 12655)', MX + 6, y - 10.5, 8, FB, WHITE);
-    const aceTxt = menorExemplar != null ? `fck,est = ${fmt(menorExemplar, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa` : `${n} exemplar(es) na idade de controle`;
+    T(usaLote ? 'Aceitacao estatistica de lote (ABNT NBR 12655)' : (ON.amostragem ? 'Aceitacao (ABNT NBR 12655 - amostragem total - condicao ' + condicao + ')' : 'Aceitacao (ABNT NBR 12655)'), MX + 6, y - 10.5, 8, FB, WHITE);
+    const aceTxt = usaLote ? `fck,est = ${fmt(loteFckEst as number, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} (n=${lote!.n_exemplares}, Sd ${fmt(Number(lote!.sd), 1)})` : (menorExemplar != null ? `fck,est = ${fmt(menorExemplar, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa` : `${n} exemplar(es) na idade de controle`);
     T(aceTxt, MX + CW * 0.46, y - 10.5, 8, FB, WHITE);
     TR(statusTxt, RIGHT - 8, y - 10.5, 8.5, FB, conforme == null ? WHITE : conforme ? rgb(0.6, 1, 0.78) : rgb(1, 0.8, 0.8));
     y -= 26;
@@ -259,7 +270,7 @@ Deno.serve(async (req) => {
     }
 
     need(40, false); sec('Comentarios e observacoes');
-    const obs = (ON.observacoes && conc.observacoes ? String(conc.observacoes).trim() + ' ' : '') + 'Os resultados tem significado restrito e aplicam-se somente a amostra ensaiada. Aceitacao por exemplar na idade de controle (resistencia do exemplar = maior do par). Estatistica de lote (fck,est ABNT NBR 12655) nao integra esta versao. Coleta na obra; moldagem, cura e ruptura conforme NBR 5738/5739.' + (ON.contato && contatoEmail ? ' Solicitante: ' + contatoEmail + '.' : '') + (ON.local_ensaio && localEnsaio ? ' Ensaios realizados em: ' + localEnsaio + '.' : '') + (ON.incerteza ? ' Incerteza de medicao declarada no certificado de calibracao da prensa.' : '') + (cfg?.nota_rodape ? ' ' + String(cfg.nota_rodape) : '');
+    const obs = (ON.observacoes && conc.observacoes ? String(conc.observacoes).trim() + ' ' : '') + 'Os resultados tem significado restrito e aplicam-se somente a amostra ensaiada. ' + (usaLote ? ('Aceitacao estatistica por lote ' + String(lote!.numero ?? '') + ' (ABNT NBR 12655): n=' + String(lote!.n_exemplares) + ', fcm=' + fmt(Number(lote!.fcm), 1) + ', Sd=' + fmt(Number(lote!.sd), 1) + ', fck,est=' + fmt(loteFckEst as number, 1) + ' MPa. ') : 'Aceitacao por exemplar na idade de controle (resistencia do exemplar = maior do par); lote ainda sem amostragem suficiente para fck,est estatistico (NBR 12655). ') + 'Coleta na obra; moldagem, cura e ruptura conforme NBR 5738/5739.' + (ON.contato && contatoEmail ? ' Solicitante: ' + contatoEmail + '.' : '') + (ON.local_ensaio && localEnsaio ? ' Ensaios realizados em: ' + localEnsaio + '.' : '') + (ON.incerteza ? ' Incerteza de medicao declarada no certificado de calibracao da prensa.' : '') + (cfg?.nota_rodape ? ' ' + String(cfg.nota_rodape) : '');
     const words = obs.split(' '); let lineS = '';
     for (const w of words) { const test = lineS ? lineS + ' ' + w : w; if (F.widthOfTextAtSize(test, 7) > CW) { T(lineS, MX, y, 7, F, MUTED); y -= 9.5; lineS = w; } else lineS = test; }
     if (lineS) { T(lineS, MX, y, 7, F, MUTED); y -= 9.5; }

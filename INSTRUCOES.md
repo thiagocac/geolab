@@ -1,20 +1,24 @@
-# GEOLAB v44 — Motor de NC (Fase C final): autoconclusão por tolerância + e-mail de NC
+# GEOLAB v45 — Laudo ↔ Lote: fck,est estatístico (NBR 12655) no laudo
 
-## Backend (JÁ aplicado/deployado via MCP)
-- **migration 043** — autoconclusão por tolerância: template automático (CLS-002, `acao_automatica`, permissão 'sistema') + trigger `nc_autoconclude_tolerancia` (AFTER INSERT em non_conformities). Para NC automática T-02: pct = resultado/fck; se ≥ `conclusao_auto_pct` conclui automaticamente (Liberada com Ressalvas), senão se ≥ `acao_imediata_pct` rebaixa severidade p/ média. Lê `nc_parameters` (config na tela de Config de NC). **Dormente até o lab configurar os %.** Validado: 28/30 (93% ≥ 90) → concluída; 20/30 (67%) → aberta/alta.
-- **EF cron-nc-digest** (nova, verify_jwt=false, sha 51e398f8) + **migration 044** (cron `concresoft-nc-digest`, 0 11) — digest diário das NCs abertas nas últimas 24h por tenant → admins/gestores via send-notification. **Armado, ocioso até G1** (CRON_SECRET no vault) e H3 (sair do dry-run), como os demais crons/e-mails.
+**Backend-only** (EF redeployada; sem mudança de frontend → cache permanece `consultegeo-geolab-v44`).
 
-## Frontend (vai pro GitHub)
-- src/lib/api/nc.ts — esconde o template automático (`permissao_requerida='sistema'`) do seletor manual de ações.
-- public/sw.js + src/lib/telemetry/core.ts — bump **v44**.
+## O que muda
+A EF `generate-laudo-ensaio-pdf` (redeployada **v6, sha 05ff0c12…**) passa a imprimir a **aceitação estatística de lote** quando existe um lote:
 
-## Passos
-1. Subir o frontend no GitHub. Backend já aplicado/deployado.
-2. Confirmar CACHE_NAME=`consultegeo-geolab-v44` / APP_VERSION=`v44`.
-3. Para ligar a autoconclusão: Config de NC → setar "Conclusão automática (% do fck)" (ex.: 90). E-mail de NC dispara quando o CRON_SECRET estiver no vault e o dispatch sair do dry-run.
+- **Auto-match**: ao gerar o laudo de uma concretagem, a EF procura um `lotes_aceitacao` da **mesma obra + mesmo fck** (mais recente, não excluído). Aceita também um **`lote_id` explícito** no corpo da requisição (seleção manual — picker no front é follow-up pequeno).
+- **Quando há lote com fck,est** (n ≥ 6): a faixa de Aceitação mostra `fck,est = <valor> MPa ≥/< fck` com `n` e `Sd`, o veredito CONFORME/NÃO CONFORME vira o do lote, e a observação detalha `lote, n, fcm, Sd, fck,est` (ABNT NBR 12655).
+- **Quando não há lote (ou n < 6)**: cai no comportamento por exemplar (maior do par), agora com texto **honesto** — "lote ainda sem amostragem suficiente para fck,est estatístico", sem fingir um fck,est.
 
-## Fase C — COMPLETA exceto RAC
-Falta só: **RAC + generate-nc-report-pdf** (relatório de ação corretiva auditável). Demais pendências v1.1: laudo↔lote; fôrmas→medição.
+A mudança degrada com segurança: a query do lote está em try/catch; se não houver lote, o laudo sai como antes.
+
+## Arquivos
+- supabase/functions/generate-laudo-ensaio-pdf/index.ts — redeployada via MCP (não passa pelo Netlify). Incluída aqui para versionar.
+
+## Validação
+Deploy limpo (v6, sha mudou). **Validação visual fica in-app** (gerar laudo de uma obra COM lote criado em /lotes → conferir a faixa de Aceitação e a observação; e de uma obra SEM lote → conferir o texto por-exemplar honesto).
+
+## Pendente
+Picker de lote no disparo do laudo (passar `lote_id`) — opcional. Demais v1.1: fôrmas→medição; RAC (NC).
 
 ## Build
-check-source OK · tsc(0) · vitest(1/1) · vite build OK.
+check-source OK (sem mudança de front).
