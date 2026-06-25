@@ -108,6 +108,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .input{width:100%;min-height:44px;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);padding:10px 12px}
 .input::placeholder{color:var(--ink-faint)}
 .input:focus{border-color:var(--magenta);box-shadow:0 0 0 3px rgb(197 17 126 / .16);outline:none}
+.input[aria-invalid="true"]{border-color:var(--magenta)}
 .btn{min-height:44px;border-radius:14px;border:1px solid transparent;padding:10px 14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2),box-shadow var(--dur-3),transform var(--dur-1) var(--ease-out)}
 .btn:disabled{cursor:not-allowed;opacity:.55}
 .btn-primary{background:var(--grad-brand);color:white}

@@ -1,24 +1,31 @@
-# v64 — Cadastro em Drawer lateral (padrão A) · Fase 3 (2/n)
+# v65 — Validação com React Hook Form + Zod no cadastro · Fase 3 (3/n)
 
-Aplica o **padrão de cadastro aprovado**: o modal central branco do `AdminListPage` vira um **DRAWER LATERAL**
-(desliza da direita, mantém a lista visível) usando o **Base UI Dialog** (foco preso, Escape, scroll-lock e
-ARIA corretos). Como o `AdminListPage` é o pattern **compartilhado**, **todos os cadastros** (clientes, obras,
-contatos, equipamentos, materiais, etc.) ganham o drawer de uma vez. Gate completo verde.
+Fecha o **tripé do padrão de cadastro** (drawer + form + validação). O `AdminListPage` passa a gerenciar o
+form com **React Hook Form** (`Controller`, mantendo os Fields controlados) e validar com **Zod** via um
+**resolver customizado** de ~10 linhas (`safeParse` → erros do RHF) — **sem `@hookform/resolvers`**, robusto
+à versão do Zod 4. Erros aparecem **por campo** (borda magenta + mensagem); submit inválido é bloqueado. Gate verde.
+
+## Dep nova
+- `+ react-hook-form@^7` (7.80; peer React 19 ok). Zod já existia (v57). **Após o pull: `npm install`.**
 
 ## Arquivos alterados (sobrescrever no repo)
-- **NOVO** `src/components/ui/Drawer.tsx` — Base UI Dialog como painel lateral; **API igual à do Modal**
-  (`open/title/onClose/children/footer/wide`), então a troca no AdminListPage foi 1:1
-- `src/styles.css` — `.bui-drawer` (+ `-head`/`-body`/`-foot`; slide via `data-starting/ending-style`;
-  reusa o `.bui-backdrop` do v63). 460px (wide 680px), full-width no mobile, corpo rola e cabeçalho/rodapé fixos
-- `src/components/patterns/AdminListPage.tsx` — `<Modal>` → `<Drawer>` (só o container muda; render dos
-  campos, lookup fiscal e save são idênticos)
+- `src/components/patterns/AdminListPage.tsx` — form manual (`useState` form/setForm) → `useForm` + `Controller`;
+  schema Zod derivado do `FieldSpec` (required + tipo); **resolver custom** (`safeParse`); `openNew`/`openEdit`→`reset`;
+  `runLookup`→`setValue`; `save`→`handleSubmit(onValid)`; erro por campo via `formState.errors`
+- `src/components/ui/Field.tsx` — `Field`/`TextArea`/`SelectField` ganham prop `error` (mensagem + `aria-invalid`)
+- `src/styles.css` — `.input[aria-invalid="true"]` borda magenta
 - `core.ts` / `public/sw.js` / `SOURCE_VERSION.md`
 
-## Notas
-- **Sem dep nova** (o Base UI veio no v63) — só `git pull` + deploy.
-- `Modal.tsx` **continua** (ainda usado por `NovaNcModal`, `ConcretagemDetalhe`, etc.) — não foi removido.
-  Outros usos podem migrar p/ Drawer (curto/médio) ou virar página (longo) incrementalmente.
+## Como funciona o resolver Zod (sem @hookform/resolvers)
+- `const r = schema.safeParse(values)` → sucesso `{values, errors:{}}`; falha → mapeia `r.error.issues` p/ o
+  formato do RHF `{campo: {type, message}}`. **Version-proof** (não depende da compat resolver×Zod).
+- O schema valida hoje obrigatoriedade + tipo (number/string). Dá p/ enriquecer por `FieldSpec`
+  (min/max/email/regex) incrementalmente, sem mexer no wiring.
 
-## Próximo (v65)
-- **RHF + Zod** na validação do `AdminListPage` (esquema por `FieldSpec`, erro por campo, bloqueia submit inválido).
-- Depois: **página dedicada (padrão C)** p/ o form longo (Nova Programação) + Popover/Select/Tabs/Tooltip do Base UI.
+## Padrão de cadastro — núcleo da Fase 3 fechado
+- **v63** ConfirmDialog (AlertDialog) · **v64** Drawer lateral (padrão A) · **v65** RHF + Zod.
+  Todos os cadastros do `AdminListPage` agora: abrem em drawer, validam por campo e confirmam exclusão com diálogo acessível.
+
+## Próximo (v66)
+- **Página dedicada (padrão C)** p/ o form LONGO (Nova Programação) + Popover/Select/Tabs/Tooltip do Base UI;
+  migrar `Modal.tsx` → Base UI Dialog (a11y) onde fizer sentido.

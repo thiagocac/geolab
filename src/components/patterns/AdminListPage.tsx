@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useForm, Controller, type Resolver } from 'react-hook-form';
+import { z } from 'zod';
 import { useConfirm } from '../ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
@@ -20,6 +22,7 @@ type Props<T extends DomainRow> = {
   initialSort?: string; filter?: Record<string, string>; canDelete?: boolean;
 };
 
+type FormVals = Record<string, unknown>;
 const PAGE = 20;
 
 export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, description, table, columns, fields, rowActions, initialSort, filter, canDelete }: Props<T>) {
@@ -31,41 +34,62 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortState>({ column: initialSort ?? 'created_at', direction: 'asc' });
   const [editing, setEditing] = useState<T | null | undefined>(undefined);
-  const [form, setForm] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [lookupBusy, setLookupBusy] = useState<string | null>(null);
+
+  // Esquema Zod derivado dos campos (obrigatoriedade + tipo)
+  const schema = useMemo(() => {
+    const shape: Record<string, z.ZodTypeAny> = {};
+    for (const f of fields) {
+      if (f.required && f.type !== 'boolean') {
+        shape[f.key] = f.type === 'number'
+          ? z.number({ error: 'Campo obrigatório' })
+          : z.string({ error: 'Campo obrigatório' }).trim().min(1, 'Campo obrigatório');
+      } else {
+        shape[f.key] = z.any();
+      }
+    }
+    return z.object(shape);
+  }, [fields]);
+
+  // Resolver Zod customizado (sem @hookform/resolvers — robusto a versao do Zod)
+  const resolver = useCallback<Resolver<FormVals>>((values) => {
+    const r = schema.safeParse(values);
+    if (r.success) return { values, errors: {} };
+    const errors: Record<string, { type: string; message: string }> = {};
+    for (const issue of r.error.issues) { const k = String(issue.path[0] ?? ''); if (k && !errors[k]) errors[k] = { type: String(issue.code), message: issue.message }; }
+    return { values: {}, errors };
+  }, [schema]);
+
+  const { control, handleSubmit, reset, setValue, getValues, formState: { errors } } = useForm<FormVals>({ resolver });
 
   const query = useQuery({ queryKey: [table, page, search, sort, filter], queryFn: () => listRows<T>(table, { page, pageSize: PAGE, search, sort, filter }) });
   const rows = query.data?.rows ?? [];
   const total = query.data?.count ?? 0;
 
-  function openNew() { setForm({ ...(filter ?? {}) }); setEditing(null); setErr(null); }
-  function openEdit(row: T) { const f: Record<string, unknown> = {}; for (const fs of fields) f[fs.key] = (row as Record<string, unknown>)[fs.key]; setForm(f); setEditing(row); setErr(null); }
-  function close() { setEditing(undefined); setForm({}); setErr(null); }
+  function openNew() { reset({ ...(filter ?? {}) }); setEditing(null); setErr(null); }
+  function openEdit(row: T) { const f: FormVals = {}; for (const fs of fields) f[fs.key] = (row as Record<string, unknown>)[fs.key]; reset(f); setEditing(row); setErr(null); }
+  function close() { setEditing(undefined); reset({}); setErr(null); }
 
   async function runLookup(spec: FieldSpec) {
     if (!spec.lookup) return;
-    const raw = String(form[spec.key] ?? '').trim();
+    const raw = String(getValues(spec.key) ?? '').trim();
     if (!raw) { toast('Informe o ' + spec.lookup.kind.toUpperCase() + ' primeiro.', 'error'); return; }
     setLookupBusy(spec.key);
     try {
       const data = await consultaFiscal(spec.lookup.kind, raw);
-      setForm((s) => { const next = { ...s }; for (const [src, dest] of Object.entries(spec.lookup!.map)) { const v = (data as Record<string, unknown>)[src]; if (v != null && v !== '') next[dest] = v; } return next; });
+      for (const [src, dest] of Object.entries(spec.lookup.map)) { const v = (data as Record<string, unknown>)[src]; if (v != null && v !== '') setValue(dest, v, { shouldDirty: true, shouldValidate: true }); }
       toast('Dados preenchidos.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setLookupBusy(null); }
   }
 
-  async function save() {
+  async function onValid(values: FormVals) {
     if (!member) return;
     setBusy(true); setErr(null);
     try {
       const payload: Record<string, unknown> = {};
-      for (const f of fields) {
-        const val = form[f.key];
-        if (f.required && (val === undefined || val === '' || val === null)) throw new Error('Campo obrigatorio: ' + f.label);
-        if (val !== undefined) payload[f.key] = val === '' ? null : val;
-      }
+      for (const f of fields) { const val = values[f.key]; if (val !== undefined) payload[f.key] = val === '' ? null : val; }
       if (editing) await updateRow(table, editing.id, payload); else await createRow(table, member.tenant_id, payload);
       await qc.invalidateQueries({ queryKey: [table] });
       toast(editing ? 'Registro atualizado.' : 'Registro criado.', 'success');
@@ -103,15 +127,17 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
           <Button variant="ghost" disabled={page * PAGE >= total} onClick={() => setPage((p) => p + 1)}>Proxima</Button>
         </span>
       </div>
-      <Drawer open={editing !== undefined} title={editing ? 'Editar - ' + title : 'Novo - ' + title} onClose={close} footer={<><Button variant="ghost" onClick={close}>Cancelar</Button><Button onClick={() => void save()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
+      <Drawer open={editing !== undefined} title={editing ? 'Editar - ' + title : 'Novo - ' + title} onClose={close} footer={<><Button variant="ghost" onClick={close}>Cancelar</Button><Button onClick={() => void handleSubmit(onValid)()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
-          {fields.map((f) => f.lookup ? (
-            <div key={f.key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
-              <FieldRenderer spec={f} value={form[f.key]} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
-              <Button variant="secondary" disabled={lookupBusy === f.key} onClick={() => void runLookup(f)}>{lookupBusy === f.key ? '...' : 'Buscar'}</Button>
-            </div>
-          ) : (
-            <FieldRenderer key={f.key} spec={f} value={form[f.key]} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
+          {fields.map((f) => (
+            <Controller key={f.key} name={f.key} control={control} render={({ field }) => f.lookup ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
+                <FieldRenderer spec={f} value={field.value} onChange={field.onChange} error={errors[f.key]?.message as string | undefined} />
+                <Button variant="secondary" disabled={lookupBusy === f.key} onClick={() => void runLookup(f)}>{lookupBusy === f.key ? '...' : 'Buscar'}</Button>
+              </div>
+            ) : (
+              <FieldRenderer spec={f} value={field.value} onChange={field.onChange} error={errors[f.key]?.message as string | undefined} />
+            )} />
           ))}
           {err ? <div style={{ color: 'var(--magenta)', fontSize: 13 }}>{err}</div> : null}
         </div>
@@ -120,16 +146,16 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
   );
 }
 
-function FieldRenderer({ spec, value, onChange }: { spec: FieldSpec; value: unknown; onChange: (v: unknown) => void }) {
-  if (spec.type === 'reference') return <ReferenceField spec={spec} value={value == null ? '' : String(value)} onChange={onChange} />;
-  if (spec.type === 'select') return <SelectField label={spec.label} value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value || null)}><option value="">-</option>{(spec.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>;
-  if (spec.type === 'textarea') return <TextArea label={spec.label} value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value)} />;
+function FieldRenderer({ spec, value, onChange, error }: { spec: FieldSpec; value: unknown; onChange: (v: unknown) => void; error?: string }) {
+  if (spec.type === 'reference') return <ReferenceField spec={spec} value={value == null ? '' : String(value)} onChange={onChange} error={error} />;
+  if (spec.type === 'select') return <SelectField label={spec.label} error={error} value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value || null)}><option value="">-</option>{(spec.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>;
+  if (spec.type === 'textarea') return <TextArea label={spec.label} error={error} value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value)} />;
   if (spec.type === 'boolean') return <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, fontSize: 14 }}><input type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} /> {spec.label}</label>;
   const t = spec.type === 'number' ? 'number' : spec.type === 'date' ? 'date' : 'text';
-  return <Field label={spec.label} type={t} value={value == null ? '' : String(value)} onChange={(e) => onChange(spec.type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value)} />;
+  return <Field label={spec.label} hint={spec.help} error={error} type={t} value={value == null ? '' : String(value)} onChange={(e) => onChange(spec.type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value)} />;
 }
 
-function ReferenceField({ spec, value, onChange }: { spec: FieldSpec; value: string; onChange: (v: unknown) => void }) {
+function ReferenceField({ spec, value, onChange, error }: { spec: FieldSpec; value: string; onChange: (v: unknown) => void; error?: string }) {
   const q = useQuery({ queryKey: ['ref', spec.refTable, spec.refFilter], queryFn: () => listReference(spec.refTable as string, spec.refLabel ?? 'nome', spec.refFilter) });
-  return <SelectField label={spec.label} value={value} onChange={(e) => onChange(e.target.value || null)}><option value="">-</option>{(q.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>;
+  return <SelectField label={spec.label} error={error} value={value} onChange={(e) => onChange(e.target.value || null)}><option value="">-</option>{(q.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>;
 }
