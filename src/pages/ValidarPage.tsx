@@ -45,7 +45,7 @@ export function ValidarPage() {
               </div>
             )}
         </div>
-        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-faint)' }}>lab.consultegeo.org</p>
+        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-faint)' }}>app.concresoft.io</p>
       </div>
     </div>
   );

@@ -1,31 +1,31 @@
-# Patch v76 — UX dos modais de cadastro (scroll, alinhamento, foco)
+# v77 — Reconciliação: modernização (v60→v74) + "v72 modais" + domínio (v52)
 
-Release **v76** (sobre o source v75). Mesma correção preparada como v72 (nunca chegou a entrar; os 7 arquivos
-de código seguiam idênticos ao v71) — **re-aplicada sobre o v75** e bumpada para v76. Corrige: sem barra de
-rolagem, título/rodapé cortados, "cursor sai da tela" ao digitar e campos desalinhados nos modais de cadastro.
-Diagnóstico completo por tela em `GEOLAB-Revisao-Modais-Cadastro-v72.md`.
+Release **UNIFICADA** que junta as duas trilhas que forkavam no v71:
+- **A (minha modernização v60→v74):** Tailwind v4/OKLCH, Base UI (ConfirmDialog/Drawer/Modal/Tooltip/⌘K), RHF+Zod,
+  TanStack Table+Virtual, Recharts, página dedicada (C), auditoria.
+- **B ("v72 modais"):** Modal com corpo rolável (head/body/foot) + `Field` min-w-0 + grids nas telas de cadastro.
+- **C (domínio v52):** app.concresoft.io.
+Base = **meu v74 (superset)** + re-aplicada a B (do doc `GEOLAB-Revisao-Modais-Cadastro-v72.md`) + domínio. Gate verde.
+**v77 ⊇ v76** (v76 = v71+modais; v77 = v71 + Recharts/auditoria + modais). Use o **completo** como árvore canônica.
 
-## Arquivos alterados (este zip = só os alterados)
-- `src/components/ui/Modal.tsx` — cabeçalho fixo + corpo rolável + rodapé fixo (espelha o `Drawer`).
-- `src/styles.css` — `.bui-modal` flex-column + `.bui-modal-head/-body/-foot`; `wide` 768→860px.
-- `src/components/ui/Field.tsx` — `min-w-0` nas labels.
-- `src/pages/cadastros/ColaboradoresPage.tsx` — pares de campo em grid (CPF/Registro, certificação).
-- `src/pages/operacao/OperacaoPage.tsx` — Cargo/Telefone e Slug/CNPJ em grid.
-- `src/pages/portal/ClienteUsuariosPage.tsx` — linha senha + botão (campo cresce, botão fixo).
-- `src/pages/cadastros/MateriaisPage.tsx` — removido o `×` duplicado ("Concreto 1").
-- `public/sw.js` + `src/lib/telemetry/core.ts` — bump `consultegeo-geolab-v76` / `v76`.
-- `SOURCE_VERSION.md` — seção v76.
+## O que a "v72 modais" trouxe (re-aplicado sobre o v74)
+- `src/components/ui/Modal.tsx` — Base UI Dialog com `.bui-modal-head` (fixo) / `-body` (rolável) / `-foot` (fixo) —
+  resolve o "cursor sai da tela" em formulário alto; **mantém z-index 71 + a transição do meu v66**.
+- `src/styles.css` — bloco `.bui-modal*` da v72 (flex-column, max-h min(90vh,760px), overflow hidden, head/body/foot,
+  `.bui-modal-wide` 768→**860px**); **TODO o resto do styles.css preservado** (OKLCH/slate/motion/cmdk/vt/tooltip/backdrop-top…).
+- `src/components/ui/Field.tsx` — `min-w-0` nas labels (inputs encolhem em grid/flex; **mantém a prop `error` do v65**).
+- `src/pages/cadastros/ColaboradoresPage.tsx` — CPF/Registro → grid auto-fit (mantém `useConfirm`).
+- `src/pages/cadastros/MateriaisPage.tsx` — removido o `×` duplicado (mantém `useConfirm`).
+- `src/pages/operacao/OperacaoPage.tsx` — Cargo/Telefone + Slug/CNPJ → grid auto-fit.
+- `src/pages/portal/ClienteUsuariosPage.tsx` — senha cresce (`flex-1 min-w-0`), botão "Gerar" fixo.
 
-## Como aplicar
-1. Copie estes arquivos por cima do repo (mantendo caminhos), **sobrescrevendo**.
-2. `git add -A && git commit -m "v76: UX dos modais de cadastro (scroll/alinhamento/foco)" && git push` → Netlify builda.
-3. Opcional local: `npm run build` (gate: check-source → tsc --noEmit → vitest → vite build).
+## Domínio (v52)
+- `src/pages/ValidarPage.tsx` — `lab.consultegeo.org` → `app.concresoft.io`.
 
-## Smoke test pós-deploy (hard refresh: SW troca cache v75→v76)
-- Cadastros → **Colaboradores** → Novo: digitar em Nome/CPF/Registro sem perda de foco; CPF e Registro alinhados; rolar com cabeçalho/rodapé fixos.
-- Cadastros → **Traços** (modal largo): rolar o formulário longo — "Salvar traço" sempre visível; sem `×` fantasma.
-- **Operação** → Novo usuário / Novo laboratório: Cargo/Telefone e Slug/CNPJ alinhados.
-- Portal → **Usuários de clientes** → Novo: linha senha + "Gerar" alinhada.
+## `core.ts` / `public/sw.js` — v77.
 
-> Se ainda houver perda **real** de foco em algum modal específico (re-render do Dialog por estado na página),
-> o passo seguinte é isolar o estado num componente-filho (padrão de `FaturasPage`/`NcConfigPage`). Ver §7 do documento.
+## Sem dep nova. Só `git pull` + deploy. (Deps das fases anteriores — base-ui/rhf/tanstack/recharts — já no completo; `npm install`.)
+
+## Conflitos resolvidos (ref. GEOLAB-Reconciliacao-Trilhas-2026-06-25.md)
+- `Modal.tsx`: fiquei com a v72 (evolução do meu Modal). `styles.css`: troquei só o bloco `.bui-modal*`.
+  `Field`/`Colaboradores`/`Materiais`: mesclados (v72 + meu `useConfirm`/`error`). `sw.js`/`core.ts`: renumerados → v77.

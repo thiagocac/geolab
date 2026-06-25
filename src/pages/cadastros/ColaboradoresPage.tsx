@@ -93,7 +93,7 @@ export function ColaboradoresPage() {
       <Modal open={open} title={editId ? 'Editar colaborador' : 'Novo colaborador'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar dados'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           <Field label="Nome*" value={String(f.nome ?? '')} onChange={(e) => setF((s) => ({ ...s, nome: e.target.value }))} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
             <Field label="CPF" value={String(f.documento ?? '')} onChange={(e) => setF((s) => ({ ...s, documento: e.target.value }))} />
             <Field label="Registro (CREA/CRQ/TER)" value={String(f.registro_profissional ?? '')} onChange={(e) => setF((s) => ({ ...s, registro_profissional: e.target.value }))} />
           </div>
@@ -107,7 +107,7 @@ export function ColaboradoresPage() {
                     <Button variant="ghost" onClick={() => void removerCert(ct.id)}>remover</Button>
                   </div>
                 ); })}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, alignItems: 'end' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <SelectField label="Tipo" value={String(cf.tipo ?? '')} onChange={(e) => setCf((s) => ({ ...s, tipo: e.target.value }))}><option value="">-</option>{TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}</SelectField>
                   <Field label="Numero" value={String(cf.numero ?? '')} onChange={(e) => setCf((s) => ({ ...s, numero: e.target.value }))} />
                   <Field label="Validade" type="date" value={String(cf.validade ?? '')} onChange={(e) => setCf((s) => ({ ...s, validade: e.target.value }))} />

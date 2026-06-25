@@ -85,7 +85,7 @@ export function OperacaoPage() {
           <Field label="Nome*" value={String(f.full_name ?? '')} onChange={(e) => setF((s) => ({ ...s, full_name: e.target.value }))} />
           <Field label="E-mail*" type="email" value={String(f.email ?? '')} onChange={(e) => setF((s) => ({ ...s, email: e.target.value }))} />
           <SelectField label="Perfil" value={String(f.role ?? 'operador_campo')} onChange={(e) => setF((s) => ({ ...s, role: e.target.value }))}>{PERFIS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</SelectField>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
             <Field label="Cargo" value={String(f.cargo ?? '')} onChange={(e) => setF((s) => ({ ...s, cargo: e.target.value }))} />
             <Field label="Telefone" value={String(f.telefone ?? '')} onChange={(e) => setF((s) => ({ ...s, telefone: e.target.value }))} />
           </div>
@@ -95,7 +95,7 @@ export function OperacaoPage() {
       <Modal open={labOpen} title="Novo laboratorio" onClose={() => setLabOpen(false)} footer={<><Button variant="ghost" onClick={() => setLabOpen(false)}>Cancelar</Button><Button onClick={() => void criarLab()} disabled={busy}>{busy ? 'Criando...' : 'Criar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           <Field label="Nome do laboratorio*" value={String(f.lab_nome ?? '')} onChange={(e) => setF((s) => ({ ...s, lab_nome: e.target.value }))} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
             <Field label="Slug (opcional)" value={String(f.lab_slug ?? '')} onChange={(e) => setF((s) => ({ ...s, lab_slug: e.target.value }))} />
             <Field label="CNPJ (opcional)" value={String(f.cnpj ?? '')} onChange={(e) => setF((s) => ({ ...s, cnpj: e.target.value }))} />
           </div>
