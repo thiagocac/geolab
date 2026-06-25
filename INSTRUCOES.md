@@ -1,34 +1,31 @@
-# v75 — Cadastro de "Tipos de ensaio" (catalogo material_test_types)
+# Patch v76 — UX dos modais de cadastro (scroll, alinhamento, foco)
 
-> **Numeracao:** a v74 ja estava ocupada por outra release ("v74 — Correcoes da auditoria v60->v73":
-> DashboardCharts lazy + handlePaste tab-safe). Para nao colidir/sobrescrever, esta entrega saiu como **v75**.
-> Se preferir que a tela de Tipos de ensaio seja v74, descarte os zips v74 atuais e eu regero com bump em v74.
+Release **v76** (sobre o source v75). Mesma correção preparada como v72 (nunca chegou a entrar; os 7 arquivos
+de código seguiam idênticos ao v71) — **re-aplicada sobre o v75** e bumpada para v76. Corrige: sem barra de
+rolagem, título/rodapé cortados, "cursor sai da tela" ao digitar e campos desalinhados nos modais de cadastro.
+Diagnóstico completo por tela em `GEOLAB-Revisao-Modais-Cadastro-v72.md`.
 
-Adiciona a tela de cadastro do catalogo de tipos de ensaio, que faltava no frontend. Reusa o
-`AdminListPage` (CRUD declarativo) — **1 arquivo de codigo alterado** + bump. **Sem migration, sem Edge Function.**
+## Arquivos alterados (este zip = só os alterados)
+- `src/components/ui/Modal.tsx` — cabeçalho fixo + corpo rolável + rodapé fixo (espelha o `Drawer`).
+- `src/styles.css` — `.bui-modal` flex-column + `.bui-modal-head/-body/-foot`; `wide` 768→860px.
+- `src/components/ui/Field.tsx` — `min-w-0` nas labels.
+- `src/pages/cadastros/ColaboradoresPage.tsx` — pares de campo em grid (CPF/Registro, certificação).
+- `src/pages/operacao/OperacaoPage.tsx` — Cargo/Telefone e Slug/CNPJ em grid.
+- `src/pages/portal/ClienteUsuariosPage.tsx` — linha senha + botão (campo cresce, botão fixo).
+- `src/pages/cadastros/MateriaisPage.tsx` — removido o `×` duplicado ("Concreto 1").
+- `public/sw.js` + `src/lib/telemetry/core.ts` — bump `consultegeo-geolab-v76` / `v76`.
+- `SOURCE_VERSION.md` — seção v76.
 
-## Arquivos alterados (sobrescrever no repo)
-- `src/pages/cadastros/CadastrosPage.tsx`:
-  - NOVO `Tab.filter?` e nova aba **"Tipos de ensaio"** (`table: material_test_types`,
-    `filter: { material_kind: 'concreto' }`), repassada ao `AdminListPage` via `filter={t.filter}`.
-  - Campos: codigo*, descricao* (nome), material* (select concreto), grupo* (endurecido/fresco -> `ensaio_grupo`),
-    unidade* (`unidade_resultado`), resultado consolidado* (maximo/minimo/media), idade de controle (`idade_controle`),
-    ensaio padrao (`padrao`), observacao. Colunas: codigo, descricao, unidade, idade ctrl., grupo, padrao.
-- `public/sw.js` + `src/lib/telemetry/core.ts` + `SOURCE_VERSION.md`: bump v75.
+## Como aplicar
+1. Copie estes arquivos por cima do repo (mantendo caminhos), **sobrescrevendo**.
+2. `git add -A && git commit -m "v76: UX dos modais de cadastro (scroll/alinhamento/foco)" && git push` → Netlify builda.
+3. Opcional local: `npm run build` (gate: check-source → tsc --noEmit → vitest → vite build).
 
-## Por que assim (decisoes)
-- `material_test_types` ja existia (migration 006) como SUPERSET da tela equivalente do produto de origem;
-  o gap era so a UI. Logo, **nada de banco**: INSERT/UPDATE direto via PostgREST sob RLS `is_tenant_writer`,
-  exclusao por soft-delete (`deleted_at`).
-- `material_kind` e `ensaio_grupo` entram como **fields** (nao so `filter`): o `AdminListPage` monta o payload
-  do INSERT a partir dos fields e essas colunas sao NOT NULL sem default, entao precisam ir no payload.
-- Colunas NOT NULL **com default** (`idade_controle_unidade='dia'`, `gera_nc=true`, `ativo=true`,
-  `descarte_automatico`, `enviar_email`) ficam FORA do form para o default do banco agir (nao enviar null).
+## Smoke test pós-deploy (hard refresh: SW troca cache v75→v76)
+- Cadastros → **Colaboradores** → Novo: digitar em Nome/CPF/Registro sem perda de foco; CPF e Registro alinhados; rolar com cabeçalho/rodapé fixos.
+- Cadastros → **Traços** (modal largo): rolar o formulário longo — "Salvar traço" sempre visível; sem `×` fantasma.
+- **Operação** → Novo usuário / Novo laboratório: Cargo/Telefone e Slug/CNPJ alinhados.
+- Portal → **Usuários de clientes** → Novo: linha senha + "Gerar" alinhada.
 
-## Escopo v1 (enxuto)
-- Fora da v1 (ja suportado no banco, fica para v1.1): toggle bidirecional Endurecido/Fresco no topo,
-  sub-lista de "idades de e-mail" (`email_idades`), descarte automatico e gatilho de config de e-mail do contrato.
-
-## Gate
-- `node scripts/check-source.mjs` -> OK (guard CACHE_NAME==APP_VERSION==v75; sem proibicoes).
-- `tsc --noEmit` / `vitest` / `vite build` no Netlify CI (mudanca e config declarativa; build verde esperado).
+> Se ainda houver perda **real** de foco em algum modal específico (re-render do Dialog por estado na página),
+> o passo seguinte é isolar o estado num componente-filho (padrão de `FaturasPage`/`NcConfigPage`). Ver §7 do documento.

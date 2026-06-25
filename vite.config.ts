@@ -20,6 +20,7 @@ export default defineConfig({
           if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/')) return 'vendor';
           if (id.includes('@supabase')) return 'supabase';
           if (id.includes('@tanstack')) return 'query';
+          if (id.includes('recharts') || id.includes('/d3-') || id.includes('victory-vendor')) return 'charts';
         }
       }
     }
