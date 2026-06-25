@@ -1,0 +1,4 @@
+# SPA fallback (Netlify): toda rota serve index.html para o React Router (BrowserRouter)
+# resolver no cliente. Sem isto, refresh/acesso direto em /laudos etc. cai no 404 do Netlify.
+# Arquivos estaticos existentes (assets, fontes) tem precedencia e nao sao afetados.
+/*    /index.html   200

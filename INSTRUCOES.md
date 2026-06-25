@@ -1,32 +1,36 @@
-# Concresoft — Patch v78 — Revisão dos ícones do menu lateral
+# GEOLAB v79 — Correcao: 404 do Netlify ao atualizar a pagina (SPA fallback)
 
-## O que mudou (somente front-end; sem banco/EF/rota)
-Revisão de todos os ícones da sidebar. Trocas:
+## Bug
+App usa `BrowserRouter` (history API): rotas como `/laudos`, `/concretagens` etc. sao
+virtuais, resolvidas no cliente. O repo **nao tinha** `public/_redirects` nem `netlify.toml`,
+entao em **refresh** ou **acesso direto** a uma rota o Netlify procurava um arquivo fisico
+naquele caminho, nao achava, e servia a pagina **"Page not found"** dele. So a raiz `/` abria.
 
-| Item do menu          | Antes (ícone)        | Depois (ícone)               |
-|-----------------------|---------------------|------------------------------|
-| Concretagens          | Truck (genérico)    | **MixerTruck** (betoneira)   |
-| Rompimentos           | Flame (chama)       | **Compress** (prensa)        |
-| Preferências           | Gauge               | **Settings** (engrenagem)    |
-| Medição               | FileText            | **Ruler** (régua)            |
-| Faturas               | FileText            | **Receipt** (recibo)         |
-| Fôrmas                | Boxes               | **Mold** (molde cilíndrico) |
-| Usuários de clientes  | Building2           | **Users** (pessoas)          |
-| Config de NC          | ClipboardCheck      | **Sliders**                  |
+## Correcao
+Adicionado `public/_redirects` com o fallback canonico de SPA. O Vite copia `public/` para
+`dist/`, entao o arquivo chega na pasta publicada e o Netlify reescreve toda rota para
+`index.html` (HTTP 200). Arquivos estaticos existentes (assets/fontes) tem precedencia e
+nao sao afetados.
 
-Motivos: a chama não representa rompimento à compressão; o caminhão genérico não é betoneira; e havia colisões (FileText em Laudos/Medição/Faturas; Boxes em Cadastros/Fôrmas; Building2 em Portal/Usuários; Gauge em Preferências/Produtividade). As 3 telas "Campos…" seguem com ClipboardCheck de propósito (família). `Truck` e `Flame` continuam exportados em icons.tsx (não quebram nada).
+```
+/*    /index.html   200
+```
 
-## Arquivos (substituir no repo)
-- src/components/ui/icons.tsx       (8 novos componentes SVG)
-- src/components/Layout.tsx         (import + mapeamento dos itens)
-- public/sw.js                      (CACHE_NAME consultegeo-geolab-v78)
-- src/lib/telemetry/core.ts         (APP_VERSION v78)
-- SOURCE_VERSION.md
+## Arquivos alterados (3)
+- `public/_redirects` — **novo**. SPA fallback.
+- `public/sw.js` — bump CACHE_NAME -> consultegeo-geolab-v79.
+- `src/lib/telemetry/core.ts` — bump APP_VERSION -> v79.
 
-## Como aplicar
-1. Copie os 5 arquivos sobre o working copy do repo.
-2. git add -A && git commit -m "v78: revisão dos ícones do menu (betoneira, prensa, etc.)"
-3. git push → Netlify (geo-labs) builda.
+(CACHE_NAME + APP_VERSION bumpados juntos via `npm run bump v79`; check-source passou.)
 
-## Gate validado no sandbox
-check-source OK · biome lint (0 erros; 2 warnings de a11y pré-existentes no nav-scrim, não relacionados) · tsc --noEmit OK · vitest run 18/18.
+## Deploy
+1. Copiar os arquivos deste zip para a raiz do repo (preservando caminhos).
+2. git add public/_redirects public/sw.js src/lib/telemetry/core.ts
+3. git commit -m "fix: SPA fallback _redirects (404 no refresh) + bump v79"
+4. git push -> Netlify (geo-labs) builda e publica.
+
+## Validacao pos-deploy
+- Abrir https://app.concresoft.io/laudos direto (ou F5 nela) -> deve carregar a tela,
+  nao o 404 do Netlify.
+- Repetir em outra rota profunda (ex.: /concretagens).
+- Rodape do menu deve mostrar "Concresoft v79".
