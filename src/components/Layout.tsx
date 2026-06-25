@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { APP_VERSION } from '../lib/telemetry/core';
 import { Tooltip } from './ui/Tooltip';
+import { CommandPalette, type Command } from './ui/CommandPalette';
 import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
@@ -50,6 +51,13 @@ export function Layout({ children }: { children: ReactNode }) {
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const can = (it: Item) => !it.roles || hasRole(...it.roles);
+  const nav = useNavigate();
+  const [cmdkOpen, setCmdkOpen] = useState(false);
+  const commands: Command[] = [
+    { id: 'a-prog', label: 'Nova programação', group: 'Ações', run: () => nav('/programacoes/nova', { viewTransition: true }) },
+    { id: 'a-obra', label: 'Nova obra', group: 'Ações', run: () => nav('/nova-obra', { viewTransition: true }) },
+    ...sections.flatMap((sec) => sec.items.filter(can).map((it) => ({ id: 'n-' + it.to, label: it.label, group: sec.title ?? 'Geral', run: () => nav(it.to, { viewTransition: true }) }))),
+  ];
   return (
     <div className="app-shell">
       {open ? <div className="nav-scrim" onClick={() => setOpen(false)} /> : null}
@@ -90,6 +98,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <Tooltip label="Menu"><button type="button" className="icon-btn menu-btn" aria-label="Menu" onClick={() => setOpen((o) => !o)}><Menu size={20} /></button></Tooltip>
           <span style={{ fontWeight: 700, color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member?.tenant_name}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+            <button type="button" className="topbar-search" onClick={() => setCmdkOpen(true)} aria-label="Buscar (Ctrl+K)"><span className="hide-sm">Buscar</span><kbd>⌘K</kbd></button>
             <div className="theme-toggle">
               <Tooltip label="Tema claro"><button type="button" className={theme === 'light' ? 'on' : ''} aria-label="Tema claro" onClick={() => setTheme('light')}><Sun size={16} /></button></Tooltip>
               <Tooltip label="Tema escuro"><button type="button" className={theme === 'dark' ? 'on' : ''} aria-label="Tema escuro" onClick={() => setTheme('dark')}><Moon size={16} /></button></Tooltip>
@@ -99,6 +108,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main id="conteudo" className="page-wrap">{children}</main>
+        <CommandPalette commands={commands} open={cmdkOpen} onOpenChange={setCmdkOpen} />
       </div>
     </div>
   );

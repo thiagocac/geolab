@@ -1,23 +1,23 @@
-# v68 — Tooltip do Base UI nos botões de ícone (fecha os primitivos da Fase 3) · Fase 3 (6/6)
+# v69 — ⌘K Command Palette (início da FASE 4) · Fase 4 (1/n)
 
-Fecha a adoção de primitivos da Fase 3 **onde agrega**: Tooltip acessível do Base UI nos botões só-ícone da
-topbar (menu, tema claro/escuro, sair), que antes tinham só `aria-label`. Hover/foco mostram o rótulo. Gate verde.
+Primeiro PR da Fase 4: **paleta de comandos global (Ctrl/Cmd+K)** para navegar e disparar ações rápidas.
+Additivo (não refatora grids). **Sem `cmdk`** (que puxa Radix, evitado no projeto) — feito sobre o **Base UI
+Dialog** que já temos, com filtro + navegação por teclado (↑↓ / Enter / Esc). Gate verde.
 
 ## Arquivos alterados (sobrescrever no repo)
-- **NOVO** `src/components/ui/Tooltip.tsx` — wrapper Base UI (`Tooltip.Root/Trigger/Portal/Positioner/Popup`);
-  usa o **render prop** → não adiciona DOM ao redor do botão (preserva o layout do `.theme-toggle`)
-- `src/components/Layout.tsx` — 4 botões de ícone envolvidos em `<Tooltip label="...">`
-- `src/styles.css` — `.bui-tooltip` (+ `-pos` z-75; popup escuro, transição)
+- **NOVO** `src/components/ui/CommandPalette.tsx` — Base UI Dialog + input de filtro + lista filtrável;
+  comandos `{id,label,group,run}`; atalho **⌘K** global; foco via ref+effect (sem `autoFocus`, que o Biome bloqueia)
+- `src/components/Layout.tsx` — `useNavigate` + estado + **comandos derivados das seções de nav** (filtrados por
+  papel via `hasRole`) + 2 ações (Nova programação, Nova obra) + botão **"Buscar ⌘K"** na topbar + `<CommandPalette/>`
+- `src/styles.css` — `.cmdk-*` (popup top-center, item ativo, rodapé de atalhos) + `.topbar-search`
 - `core.ts` / `public/sw.js` / `SOURCE_VERSION.md`
 
-## Decisões de escopo (onde NÃO apliquei, de propósito)
-- **Select/Combobox** do Base UI: os `<select>` nativos já são acessíveis e funcionam; troca em massa do
-  `SelectField` = alto churn/risco p/ ganho marginal → adiado (faço pontual se surgir lista longa que peça busca).
-- **Tabs**: não há UI de abas hoje → sem alvo.
-- **Popover**: "Notificações" é item de nav (não dropdown na topbar) → sem alvo claro agora.
+## UX
+- **⌘K** (ou Ctrl+K) abre de qualquer tela; ou clique em **"Buscar ⌘K"** na topbar.
+- Digite p/ filtrar (label + grupo); ↑↓ navega, Enter abre, Esc fecha. As navegações usam `viewTransition`.
+- Os comandos **respeitam o papel** do usuário (mesma lista de nav da sidebar) + 2 ações de criação.
 
 ## Sem dep nova (Base UI veio no v63) → só `git pull` + deploy.
 
-## FASE 3 COMPLETA
-- v63 ConfirmDialog · v64 Drawer (A) · v65 RHF+Zod · v66 Modal→Base UI Dialog · v67 Página dedicada (C) · v68 Tooltip.
-- **Próximo: FASE 4** — TanStack Table + virtualização nos grids de lançamento, ⌘K, edição em massa com colar.
+## Próximo (Fase 4)
+- **TanStack Table + virtualização** nos grids de lançamento (rompimentos/resultados) + **edição em massa com colar**.
