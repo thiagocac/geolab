@@ -1,4 +1,4 @@
-# GEOLAB → Concresoft — SOURCE VERSION v60
+# GEOLAB → Concresoft — SOURCE VERSION v61
 CACHE_NAME: consultegeo-geolab-v59 · APP_VERSION: v59
 
 ## v59 — Observabilidade + Melhorias APLICADAS (banco) + tipos reais + melhoria do db tipado
