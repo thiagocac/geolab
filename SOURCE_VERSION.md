@@ -1,5 +1,15 @@
-# GEOLAB → Concresoft — SOURCE VERSION v74
-CACHE_NAME: consultegeo-geolab-v59 · APP_VERSION: v59
+# GEOLAB → Concresoft — SOURCE VERSION v75
+CACHE_NAME: consultegeo-geolab-v75 · APP_VERSION: v75
+
+## v75 — Cadastro de Tipos de ensaio (catalogo material_test_types)
+> Nota de numeracao: a v74 desta pasta e outra release ("Correcoes da auditoria v60->v73"); por isso esta saiu como v75.
+Nova aba "Tipos de ensaio" em Cadastros (AdminListPage declarativo) sobre `material_test_types` (catalogo ja
+existente, migration 006). `filter` material_kind=concreto; campos: codigo, descricao, material, grupo
+(endurecido/fresco), unidade, resultado consolidado, idade de controle, ensaio padrao, observacao. **Sem
+migration e sem Edge Function** (RLS is_tenant_writer cobre INSERT/UPDATE; soft-delete). 1 arquivo de frontend:
+`src/pages/cadastros/CadastrosPage.tsx`. Escopo enxuto v1 (toggle fresco/endurecido, idades de e-mail,
+descarte automatico ficam v1.1).
+
 
 ## v59 — Observabilidade + Melhorias APLICADAS (banco) + tipos reais + melhoria do db tipado
 Sobre o v58 (release combinado). Backend aplicado em producao via MCP; frontend buildando verde.
