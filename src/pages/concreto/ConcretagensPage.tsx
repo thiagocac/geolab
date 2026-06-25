@@ -8,11 +8,10 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listConcretagens, createConcretagem, invokeFicha, listTracosComFck } from '../../lib/api/concretagem';
+import { listConcretagens, createConcretagem, invokeFicha, listTracosComFck, invokeFichaBranco } from '../../lib/api/concretagem';
 import { listPecasObra } from '../../lib/api/estrutura';
 import { listReference } from '../../lib/api/client';
 import { saveBlob as dl } from '../../lib/pdf';
-
 
 export function ConcretagensPage() {
   const { member } = useAuth();
@@ -40,12 +39,13 @@ export function ConcretagensPage() {
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function ficha(id: string) { try { dl(await invokeFicha(id), 'ficha-moldagem.pdf'); } catch (e) { toast((e as Error).message, 'error'); } }
+  async function fichaBranco() { try { dl(await invokeFichaBranco(), 'ficha-moldagem-em-branco.pdf'); } catch (e) { toast((e as Error).message, 'error'); } }
 
   const rows = q.data ?? [];
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <PageHeader kicker="Concreto" title="Concretagens" description="Programacoes e concretagens do laboratorio." />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><Button variant="ghost" onClick={() => nav('/nova-obra')}>Nova obra</Button><Button onClick={() => { setForm({ origem: 'programada' }); setOpen(true); }}>Nova concretagem</Button></div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><Button variant="ghost" onClick={() => void fichaBranco()}>Ficha em branco (PDF)</Button><Button variant="ghost" onClick={() => nav('/nova-obra')}>Nova obra</Button><Button onClick={() => { setForm({ origem: 'programada' }); setOpen(true); }}>Nova concretagem</Button></div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <div style={{ display: 'grid', gap: 8 }}>
           {rows.map((c) => (

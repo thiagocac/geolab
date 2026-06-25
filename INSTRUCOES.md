@@ -1,38 +1,23 @@
-# INSTRUÇÕES — Patch v81 (12 melhorias do portal do cliente, em ordem de prioridade)
+# INSTRUÇÕES — Patch v82 (Ficha de moldagem Modelo A: em branco + pré-preenchida + OCR)
 
-## Já aplicado por mim via MCP (NÃO precisa fazer nada no Supabase)
-- **Migration 064** `064_portal_melhorias_classificacao_magiclink` — aplicada em `xbdvyvvxvzmcosnekmfv`.
-- **EF `lab-client-portal` v9** — sha `dfe2b8b1…` (marca último acesso do magic link).
-- **EF `portal-anexo` v1** — sha `2d65bdeb…`, verify_jwt=true (upload/download de anexos da programação no bucket privado `anexos`).
+## Já aplicado por mim via MCP (nada a fazer no Supabase)
+- **EF `generate-ficha-moldagem-pdf` v12** (sha `846fadcf…`) — reescrita para o **Modelo A (paisagem)**. Modos: **em branco** (body `{mode:'blank'}` ou sem `concretagem_id`) ou **pré-preenchida** (`{concretagem_id}`) com cabeçalho/dosagem da programação + QR do `concretagem_id`. pdf-lib, Helvetica.
+- **EF `extract-ficha-vision` v4** (sha `fcf31a6e…`) — prompt do OCR alinhado às colunas do Modelo A (Abat→slump, NF, horários de transporte/descarga, volume Unit→volume_m3). Mantém o contrato de retorno (front inalterado).
 
-## O que VOCÊ faz (frontend → GitHub → Netlify CI): commitar e dar push
-### Novos
-- `src/components/portal/EvolucaoExemplares.tsx`
-- `supabase/migrations/064_portal_melhorias_classificacao_magiclink.sql` (ref.; já aplicada)
-- `supabase/functions/portal-anexo/index.ts` (ref.; já deployada)
-
+## Frontend (vai pro GitHub → Netlify CI)
 ### Alterados
-- `src/lib/portal/types.ts`, `src/lib/portal/resultados.ts`
-- `src/components/portal/LaudosResultadosPanel.tsx`
-- `src/lib/api/portalCliente.ts`, `src/lib/api/clientUsers.ts`, `src/lib/api/laudo.ts`
-- `src/pages/portal/ClientePortalPage.tsx`, `src/pages/portal/PortalPublicoPage.tsx`, `src/pages/portal/ClienteUsuariosPage.tsx`
-- `src/pages/concreto/LaudosPage.tsx`
-- `supabase/functions/lab-client-portal/index.ts` (ref.; já deployada v9)
-- `src/lib/telemetry/core.ts` + `public/sw.js` (v81)
+- `src/lib/api/concretagem.ts` (+ `invokeFichaBranco()`)
+- `src/pages/concreto/ConcretagensPage.tsx` (botão **"Ficha em branco (PDF)"** no topo)
+- `supabase/functions/generate-ficha-moldagem-pdf/index.ts` (ref.; já deployada)
+- `supabase/functions/extract-ficha-vision/index.ts` (ref.; já deployada)
+- `src/lib/telemetry/core.ts` + `public/sw.js` (v82)
 
-## As 12 melhorias (na ordem do documento)
-1. **Curva de evolução** por exemplar (idade×resistência + linha do fck) no "Ver resultados".
-2. **CPs atrasados**: card de alerta + badge "atrasado" + contagem (pendente, rompimento vencido sem resultado).
-3. **E-mail ao cliente quando laudo vira Final**: selo Parcial/Final na LaudosPage (staff); ao **Emitir** um laudo Final, o sistema chama `enviar-laudo-cliente` automaticamente (best-effort, respeita gating de e-mail).
-4. **Painel-resumo** (cards): laudos finais/parciais, exemplares conformes/não conformes, CPs atrasados.
-5. **Filtro por período** (De/Até) — laudos por emissão, resultados por rompimento.
-6. **Exportar PDF** do conjunto filtrado (via impressão do navegador; sem nova dependência).
-7. **Status amigável** da programação (StatusBadge) nos dois portais.
-8. **Anexar arquivo (NF/DANFE)** à programação: botão por concretagem em "Minhas concretagens" (EF `portal-anexo`, ≤8MB, bucket `anexos`).
-9. **Magic link**: card "Links de portal ativos" com último acesso/contador + **Revogar** (Usuários de clientes).
-10. **Acessibilidade**: `role=tablist/tab` + `aria-selected` nas abas dos dois portais.
-11. **Paginação** (50/página) na tabela de resultados.
-12. **Detalhes técnicos** (toggle): carga kN, Ø×h, tipo de ruptura.
+## Local da funcionalidade (mapa)
+A ficha vive na seção **Concreto ▸ Concretagens**:
+- **Central de Concretagens** (`/concretagens`): botão **"Ficha em branco (PDF)"** (topo, imprimir em lote) + botão **"Ficha"** por linha (pré-preenchida da concretagem).
+- **Detalhe da concretagem** (`/concretagens/:id`): **"Gerar ficha PDF"** (pré-preenchida) e, na etapa **"2 · Caminhões + CPs"**, **"Ler ficha preenchida"** → foto/scan → OCR (extract-ficha-vision) → conferência por confiança → cria caminhões + CPs (idempotente por `external_key = ficha:<NF>`).
 
-## Gate
-`check-source` OK no sandbox; revisão de código independente: **SHIP** (0 erros). `tsc/biome/vitest` rodam no Netlify CI.
+Fluxo de campo: gerar ficha (branco ou pré-preenchida) → imprimir A4 paisagem → moldador preenche à mão → fotografar → "Ler ficha preenchida". O **QR** (na pré-preenchida) faz o casamento determinístico com a concretagem; o OCR lê só os campos manuscritos.
+
+## Verificação
+check-source OK; revisão independente do EF pdf-lib (layout conferido numericamente — cabe na página, índices ok, null-safe) e do frontend: **SHIP**. **Confirme o 1º print** (A4 paisagem, escala 100%) — o layout do EF foi portado do modelo reportlab já validado visualmente, mas o render do pdf-lib só dá para conferir imprimindo.

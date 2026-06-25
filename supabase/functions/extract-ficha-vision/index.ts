@@ -1,25 +1,24 @@
-// extract-ficha-vision (GEOLAB) — OCR por IA da FICHA DE MOLDAGEM preenchida (foto) -> caminhões detectados.
-// Alvo: GEOLAB (implementado do zero, sem GEOMAT). FAIL-SAFE sem VISION_API_KEY. verify_jwt=true (auth de member).
-// Contrato espelha extract-nf-vision: { ok, enabled, _source, reason?, dados }.
-// IMPORTANTE: o corpo de extract-nf-vision está deployado via MCP (fora do source). A chamada HTTP de visão aqui
-// segue o padrão documentado VISION_API_KEY / VISION_API_URL / VISION_API_MODEL (OpenAI-compatível, chat/completions
-// com content multimodal text+image_url). Se a sua extract-nf-vision deployada usa outro provedor/shape, reconcilie
-// apenas o bloco `fetch(apiUrl, ...)` + o parse de `out.choices[0].message.content` — o restante (auth, fail-safe,
-// contrato de saída) já está alinhado com o frontend (lerFichaImagem).
+// extract-ficha-vision (GEOLAB) - OCR por IA da FICHA DE MOLDAGEM (modelo A, paisagem) preenchida -> caminhoes.
+// FAIL-SAFE sem VISION_API_KEY. verify_jwt=true. Self-contained.
+import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
-import { handleCors } from '../_shared/cors.ts';
-import { json, fail } from '../_shared/response.ts';
-import { userClient } from '../_shared/client.ts';
+const corsHeaders = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'access-control-allow-methods': 'GET,POST,OPTIONS' };
+const handleCors = (req: Request): Response | null => (req.method === 'OPTIONS' ? new Response('ok', { headers: corsHeaders }) : null);
+const json = (body: unknown, init: ResponseInit = {}) => new Response(JSON.stringify(body), { ...init, headers: { 'content-type': 'application/json; charset=utf-8', ...corsHeaders, ...(init.headers ?? {}) } });
+const fail = (message: string, status = 400, details?: unknown) => json({ ok: false, error: message, details }, { status });
+const userClient = (req: Request) => createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: req.headers.get('authorization') ?? '' } }, auth: { persistSession: false } });
 
 type Rec = Record<string, unknown>;
 const s = (v: unknown) => (v == null ? '' : String(v));
 
 const PROMPT = [
-  'Você lê uma FICHA DE MOLDAGEM de concreto fotografada (laboratório de controle tecnológico).',
-  'Extraia a lista de caminhões/betoneiras lançados na ficha.',
-  'Responda APENAS um JSON válido, sem comentários nem texto fora do JSON, exatamente neste formato:',
-  '{"caminhoes":[{"serie":1,"nota_fiscal":"","placa":"","motorista":"","volume_m3":0,"slump_medido_cm":0,"temperatura_concreto_c":0,"hora_saida_usina":"HH:MM","hora_chegada_obra":"HH:MM","hora_inicio_descarga":"HH:MM","hora_fim_descarga":"HH:MM"}],"confianca":0.0}',
-  'Regras: use null quando o campo estiver ilegível ou ausente; horários em 24h "HH:MM"; números com ponto decimal; nunca invente valores; "confianca" é um número entre 0 e 1.',
+  'Voce le uma FICHA DE MOLDAGEM de concreto (modelo Consulte GEO, paisagem) fotografada ou escaneada.',
+  'A grade tem UMA LINHA POR CAMINHAO-BETONEIRA, com colunas: Serie no | Qtde CPs | Abat.(mm) | Nota Fiscal no | Horario moldagem | TRANSPORTE (Inicio da mistura | Chegada a obra) | DESCARGA (Inicio | Termino) | Tempo total | Concreto aplicado (Unit. | Acum.) | C.B. no | Elementos concretados | Idades.',
+  'Extraia uma entrada por linha PREENCHIDA (ignore linhas totalmente em branco).',
+  'Responda APENAS um JSON valido, sem comentarios nem texto fora do JSON, exatamente neste formato:',
+  '{"caminhoes":[{"serie":1,"nota_fiscal":"","slump_medido_cm":0,"volume_m3":0,"hora_saida_usina":"HH:MM","hora_chegada_obra":"HH:MM","hora_inicio_descarga":"HH:MM","hora_fim_descarga":"HH:MM","placa":null,"motorista":null,"temperatura_concreto_c":null}],"confianca":0.0}',
+  'Mapeamento de colunas -> campos JSON: "Abat.(mm)"->slump_medido_cm ; "Nota Fiscal no"->nota_fiscal ; "Inicio da mistura"->hora_saida_usina ; "Chegada a obra"->hora_chegada_obra ; "Descarga Inicio"->hora_inicio_descarga ; "Descarga Termino"->hora_fim_descarga ; "Concreto aplicado Unit."->volume_m3 ; "Serie no"->serie.',
+  'Regras: use null quando o campo estiver ilegivel ou ausente; horarios em 24h "HH:MM"; numeros com ponto decimal; nunca invente valores; placa/motorista/temperatura normalmente nao existem nesta ficha (use null); "confianca" e um numero entre 0 e 1 (legibilidade geral).',
 ].join('\n');
 
 Deno.serve(async (req) => {
@@ -30,12 +29,11 @@ Deno.serve(async (req) => {
     const imageB64 = s(body.image_base64);
     const mime = s(body.mime) || 'image/jpeg';
     const concretagemId = s(body.concretagem_id) || null;
-    if (!imageB64) return fail('image_base64 é obrigatório');
+    if (!imageB64) return fail('image_base64 e obrigatorio');
 
-    // Auth de member (verify_jwt=true já valida o token; confirmamos a identidade).
     const supa = userClient(req);
     const { data: u } = await supa.auth.getUser();
-    if (!u?.user) return fail('não autenticado', 401);
+    if (!u?.user) return fail('nao autenticado', 401);
 
     const KEY = Deno.env.get('VISION_API_KEY') ?? '';
     if (!KEY) {
@@ -59,7 +57,7 @@ Deno.serve(async (req) => {
     });
     if (!r.ok) {
       const t = await r.text().catch(() => '');
-      return json({ ok: true, enabled: true, _source: 'vision', reason: 'visão indisponível (' + r.status + ')', detail: t.slice(0, 200), dados: { concretagem_id: concretagemId, caminhoes: [] } });
+      return json({ ok: true, enabled: true, _source: 'vision', reason: 'visao indisponivel (' + r.status + ')', detail: t.slice(0, 200), dados: { concretagem_id: concretagemId, caminhoes: [] } });
     }
 
     const out = (await r.json().catch(() => ({}))) as Rec;

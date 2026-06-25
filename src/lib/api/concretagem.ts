@@ -132,6 +132,18 @@ export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie:
   if (cps.length) { const { error: e3 } = await db.from('corpos_prova').insert(cps as unknown as Database['public']['Tables']['corpos_prova']['Insert'][]); if (e3) throw new Error(e3.message); }
 }
 
+export async function invokeFichaBranco(): Promise<Blob> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/generate-ficha-moldagem-pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ mode: 'blank' }),
+  });
+  if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
+  return resp.blob();
+}
+
 export async function invokeFicha(concId: string): Promise<Blob> {
   const { data: sess } = await supabase.auth.getSession();
   const token = sess.session?.access_token ?? '';
