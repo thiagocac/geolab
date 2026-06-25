@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -7,6 +8,8 @@ import { Stat } from '../components/ui/Stat';
 import { Button } from '../components/ui/Button';
 import { LoadingState, ErrorState } from '../components/ui/State';
 import { getKpis } from '../lib/api/dashboard';
+
+const DashboardCharts = lazy(() => import('./DashboardCharts'));
 
 export function DashboardPage() {
   const { member } = useAuth();
@@ -25,6 +28,9 @@ export function DashboardPage() {
             <Stat label="Laudos emitidos" value={k.laudos.emitido} detail={k.laudos.rascunho + ' em rascunho/revisao'} />
             <Stat label="Calibracoes vencendo" value={k.calibracoesVencendo} detail="proximos 30 dias" />
           </div>
+          <Suspense fallback={<Card><div className="p-6"><div className="skeleton h-5 w-2/5" style={{ marginBottom: 14 }} /><div className="skeleton" style={{ height: 220 }} /></div></Card>}>
+            <DashboardCharts agenda={k.agenda} laudos={k.laudos} />
+          </Suspense>
           <Card>
             <CardHeader kicker="Atalhos" title="Acoes rapidas" />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: 16 }}>
