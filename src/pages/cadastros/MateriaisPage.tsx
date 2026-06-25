@@ -233,10 +233,6 @@ export function MateriaisPage() {
           </div>
 
           <Card className="p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="font-black text-slate-900 dark:text-slate-100">Concreto 1</div>
-              {editId ? null : <button type="button" className="text-xl text-slate-400" onClick={() => setOpen(false)}>×</button>}
-            </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Descrição *" value={f.descricao} onChange={(e) => patch('descricao', e.target.value)} />
               <Field label="Aplicação" value={f.aplicacao} onChange={(e) => patch('aplicacao', e.target.value)} />

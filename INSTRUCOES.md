@@ -1,30 +1,37 @@
-# v71 — TanStack Table + Virtual: grid virtualizado e ordenável (isolado) · Fase 4 (3/n)
+# Patch v72 — UX dos modais de cadastro (scroll, alinhamento, foco)
 
-Introduz **TanStack Table** (headless) + **TanStack Virtual** (virtualização de linhas) num primitivo reusável
-`VirtualTable`, aplicado de forma **ISOLADA** na lista da `ProgramacoesPage` (read-only, sem o risco do grid
-editável de rompimentos). Ordenação por cabeçalho + render só das linhas visíveis (escala p/ centenas de linhas). Gate verde.
+Release **v72** (a partir do source v71). Corrige a camada de **modais centrais** (Base UI Dialog)
+e o **alinhamento de campos** que causava: sem barra de rolagem, título/rodapé cortados,
+"cursor sai da tela" ao digitar e campos desalinhados. Detalhe completo por tela em
+`GEOLAB-Revisao-Modais-Cadastro-v72.md`.
 
-## Deps novas
-- `+ @tanstack/react-table@^8` (8.21.3) `+ @tanstack/react-virtual@^3` (3.14.3). Peers React 19 ok.
-- **Após o pull: `npm install`.**
+## Arquivos alterados (este zip = só os alterados)
+- `src/components/ui/Modal.tsx` — cabeçalho fixo + corpo rolável + rodapé fixo (espelha o `Drawer`).
+- `src/styles.css` — `.bui-modal` flex-column + `.bui-modal-head/-body/-foot`; `wide` 768→860px.
+- `src/components/ui/Field.tsx` — `min-w-0` nas labels (robustez em grid/flex).
+- `src/pages/cadastros/ColaboradoresPage.tsx` — linhas de campo em grid (CPF/Registro, certificação).
+- `src/pages/operacao/OperacaoPage.tsx` — Cargo/Telefone e Slug/CNPJ em grid.
+- `src/pages/portal/ClienteUsuariosPage.tsx` — linha senha + botão (campo cresce, botão fixo).
+- `src/pages/cadastros/MateriaisPage.tsx` — removido o `×` duplicado ("Concreto 1").
+- `public/sw.js` + `src/lib/telemetry/core.ts` — bump `consultegeo-geolab-v72` / `v72` (sincronizados).
+- `SOURCE_VERSION.md` — seção v72.
 
-## Arquivos alterados (sobrescrever no repo)
-- **NOVO** `src/components/ui/VirtualTable.tsx` — primitivo genérico `<VirtualTable data columns rowId height/>`:
-  TanStack Table (`getCoreRowModel`+`getSortedRowModel`, sorting por estado) + `useVirtualizer` (medição
-  **dinâmica de altura** via `measureElement`, overscan). Markup em **divs** (a virtualização por `translateY`
-  quebra o `<table>` nativo) — cabeçalho sticky e sortável, linhas absolutas.
-- `src/pages/concreto/ProgramacoesPage.tsx` — a `<table>` manual virou `<VirtualTable>` com `ColumnDef[]`
-  (status/data/cliente-obra/local/traço/fornecedor/volume **ordenáveis** + coluna Ações). Altura adapta ao nº de linhas (cap 620).
-- `src/styles.css` — `.vt-*` (scroll, head sticky, tr absoluta, td).
-- `core.ts` / `public/sw.js` / `SOURCE_VERSION.md`.
+## Como aplicar
+1. Copie estes arquivos por cima do repo do GEOLAB (mantendo os caminhos), **sobrescrevendo**.
+2. `git add -A && git commit -m "v72: UX dos modais de cadastro (scroll/alinhamento/foco)"`.
+3. `git push` → o Netlify CI builda (gate: `check-source` → `tsc --noEmit` → `vitest` → `vite build`).
+   - O bump já está aplicado; o guard de versão (`check-source`) passa.
+4. Opcional local: `npm run build` para rodar o gate antes do push.
 
-## Por que isolado AQUI (não no rompimentos)
-- Grid **read-only e que eu controlo** (reescrito no v67) → baixo risco. Prova o padrão TanStack Table+Virtual.
-  O grid **editável** de rompimentos (crítico) pode adotar o `VirtualTable` depois, com você validando no preview do Netlify.
+## Smoke test pós-deploy (hard refresh: o SW troca de cache v71→v72)
+- Cadastros → **Colaboradores** → Novo: digitar em "Nome", "CPF", "Registro" — sem perda de foco;
+  CPF e Registro lado a lado, alinhados; rolar com cabeçalho/rodapé fixos.
+- Cadastros → **Traços** (modal largo): rolar o formulário longo — "Salvar traço" sempre visível no rodapé.
+- **Operação interna** → Novo usuário / Novo laboratório: Cargo/Telefone e Slug/CNPJ alinhados.
+- Portal → **Usuários de clientes** → Novo: linha de senha + "Gerar" alinhada.
 
-## UX
-- **Clique nos cabeçalhos para ordenar** (↑/↓). Listas longas renderizam só o visível (scroll suave).
-- Cabeçalho fixo no topo; rolagem horizontal no mobile (colunas com largura fixa).
-
-## Próximo
-- Aplicar o `VirtualTable` a outras listas longas (concretagens/laudos) e, com cuidado e validação, ao grid de rompimentos.
+> Observação sobre foco: a causa do "cursor sai da tela" é o *scroll-into-view* num modal sem
+> scroll interno próprio — resolvido pela reestruturação do `Modal`. Se em algum modal específico
+> ainda houver perda real de foco (re-render do Dialog por estado no componente da página),
+> o passo seguinte é isolar o estado do formulário num componente-filho (padrão que `FaturasPage`
+> e `NcConfigPage` já usam). Ver seção "Contingência de foco" no documento.
