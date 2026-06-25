@@ -247,8 +247,85 @@ export type Database = {
           },
         ]
       }
+      client_telemetry_log: {
+        Row: {
+          app_version: string | null
+          category: string
+          created_at: string | null
+          error_fingerprint: string | null
+          id: string
+          ip_address: unknown
+          level: string
+          member_id: string | null
+          message: string
+          metadata: Json | null
+          occurred_at: string
+          session_id: string | null
+          stack: string | null
+          tenant_id: string | null
+          url: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          category: string
+          created_at?: string | null
+          error_fingerprint?: string | null
+          id?: string
+          ip_address?: unknown
+          level: string
+          member_id?: string | null
+          message: string
+          metadata?: Json | null
+          occurred_at: string
+          session_id?: string | null
+          stack?: string | null
+          tenant_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          category?: string
+          created_at?: string | null
+          error_fingerprint?: string | null
+          id?: string
+          ip_address?: unknown
+          level?: string
+          member_id?: string | null
+          message?: string
+          metadata?: Json | null
+          occurred_at?: string
+          session_id?: string | null
+          stack?: string | null
+          tenant_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      client_telemetry_rate_limit: {
+        Row: {
+          actor_key: string
+          bucket_start: string
+          calls: number
+        }
+        Insert: {
+          actor_key: string
+          bucket_start: string
+          calls?: number
+        }
+        Update: {
+          actor_key?: string
+          bucket_start?: string
+          calls?: number
+        }
+        Relationships: []
+      }
       client_works: {
         Row: {
+          bairro: string | null
+          cep: string | null
           cidade: string | null
           client_id: string
           codigo: string | null
@@ -260,6 +337,7 @@ export type Database = {
           etapa: string | null
           id: string
           nome: string
+          precos: Json
           responsavel_tecnico: string | null
           status: string
           tenant_id: string
@@ -269,6 +347,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bairro?: string | null
+          cep?: string | null
           cidade?: string | null
           client_id: string
           codigo?: string | null
@@ -280,6 +360,7 @@ export type Database = {
           etapa?: string | null
           id?: string
           nome: string
+          precos?: Json
           responsavel_tecnico?: string | null
           status?: string
           tenant_id: string
@@ -289,6 +370,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bairro?: string | null
+          cep?: string | null
           cidade?: string | null
           client_id?: string
           codigo?: string | null
@@ -300,6 +383,7 @@ export type Database = {
           etapa?: string | null
           id?: string
           nome?: string
+          precos?: Json
           responsavel_tecnico?: string | null
           status?: string
           tenant_id?: string
@@ -463,6 +547,7 @@ export type Database = {
           temperatura_ambiente_c: number | null
           tenant_id: string
           traco_texto: string | null
+          unit_id: string | null
           updated_at: string
           volume_lancado_m3: number | null
           volume_programado_m3: number | null
@@ -497,6 +582,7 @@ export type Database = {
           temperatura_ambiente_c?: number | null
           tenant_id: string
           traco_texto?: string | null
+          unit_id?: string | null
           updated_at?: string
           volume_lancado_m3?: number | null
           volume_programado_m3?: number | null
@@ -531,6 +617,7 @@ export type Database = {
           temperatura_ambiente_c?: number | null
           tenant_id?: string
           traco_texto?: string | null
+          unit_id?: string | null
           updated_at?: string
           volume_lancado_m3?: number | null
           volume_programado_m3?: number | null
@@ -580,6 +667,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "concretagens_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "concretagens_work_id_fkey"
             columns: ["work_id"]
             isOneToOne: false
@@ -591,13 +685,18 @@ export type Database = {
       config_lab: {
         Row: {
           acreditacao_inmetro: string | null
+          art_numero: string | null
+          concretagem_campos: Json
           cor_primaria: string | null
           cp_overdue_days: number
+          crea_gq: string | null
           crea_rt: string | null
           created_at: string
           ensaio_campos: Json
+          gerente_qualidade: string | null
           idade_controle_default: number
           laudo_campos: Json
+          local_ensaio: string | null
           logo_path: string | null
           nota_rodape: string | null
           recebimento_campos: Json
@@ -608,13 +707,18 @@ export type Database = {
         }
         Insert: {
           acreditacao_inmetro?: string | null
+          art_numero?: string | null
+          concretagem_campos?: Json
           cor_primaria?: string | null
           cp_overdue_days?: number
+          crea_gq?: string | null
           crea_rt?: string | null
           created_at?: string
           ensaio_campos?: Json
+          gerente_qualidade?: string | null
           idade_controle_default?: number
           laudo_campos?: Json
+          local_ensaio?: string | null
           logo_path?: string | null
           nota_rodape?: string | null
           recebimento_campos?: Json
@@ -625,13 +729,18 @@ export type Database = {
         }
         Update: {
           acreditacao_inmetro?: string | null
+          art_numero?: string | null
+          concretagem_campos?: Json
           cor_primaria?: string | null
           cp_overdue_days?: number
+          crea_gq?: string | null
           crea_rt?: string | null
           created_at?: string
           ensaio_campos?: Json
+          gerente_qualidade?: string | null
           idade_controle_default?: number
           laudo_campos?: Json
+          local_ensaio?: string | null
           logo_path?: string | null
           nota_rodape?: string | null
           recebimento_campos?: Json
@@ -762,6 +871,7 @@ export type Database = {
           material_test_type_id: string | null
           metadata: Json
           motivo_descarte: string | null
+          numeracao_lab: string | null
           ordem: number | null
           receipt_id: string | null
           situacao: string
@@ -788,6 +898,7 @@ export type Database = {
           material_test_type_id?: string | null
           metadata?: Json
           motivo_descarte?: string | null
+          numeracao_lab?: string | null
           ordem?: number | null
           receipt_id?: string | null
           situacao?: string
@@ -814,6 +925,7 @@ export type Database = {
           material_test_type_id?: string | null
           metadata?: Json
           motivo_descarte?: string | null
+          numeracao_lab?: string | null
           ordem?: number | null
           receipt_id?: string | null
           situacao?: string
@@ -951,6 +1063,93 @@ export type Database = {
           },
         ]
       }
+      cron_heartbeat: {
+        Row: {
+          active: boolean
+          consecutive_failures: number
+          created_at: string
+          description: string | null
+          expected_max_age_minutes: number
+          job_name: string
+          last_error: string | null
+          last_seen_at: string
+          last_status: string | null
+          total_failures: number
+          total_runs: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          consecutive_failures?: number
+          created_at?: string
+          description?: string | null
+          expected_max_age_minutes: number
+          job_name: string
+          last_error?: string | null
+          last_seen_at?: string
+          last_status?: string | null
+          total_failures?: number
+          total_runs?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          consecutive_failures?: number
+          created_at?: string
+          description?: string | null
+          expected_max_age_minutes?: number
+          job_name?: string
+          last_error?: string | null
+          last_seen_at?: string
+          last_status?: string | null
+          total_failures?: number
+          total_runs?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ef_invocation_log: {
+        Row: {
+          actor_id: string | null
+          created_at: string | null
+          duration_ms: number
+          error_message: string | null
+          fn_name: string
+          id: string
+          metadata: Json | null
+          request_id: string | null
+          started_at: string
+          status_code: number
+          tenant_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string | null
+          duration_ms: number
+          error_message?: string | null
+          fn_name: string
+          id?: string
+          metadata?: Json | null
+          request_id?: string | null
+          started_at: string
+          status_code: number
+          tenant_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string | null
+          duration_ms?: number
+          error_message?: string | null
+          fn_name?: string
+          id?: string
+          metadata?: Json | null
+          request_id?: string | null
+          started_at?: string
+          status_code?: number
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
       email_suppressions: {
         Row: {
           created_at: string
@@ -1046,6 +1245,156 @@ export type Database = {
           },
         ]
       }
+      evidencias: {
+        Row: {
+          concretagem_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          descricao: string | null
+          id: string
+          path: string
+          receipt_id: string | null
+          tenant_id: string
+          tipo: string
+        }
+        Insert: {
+          concretagem_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          descricao?: string | null
+          id?: string
+          path: string
+          receipt_id?: string | null
+          tenant_id: string
+          tipo?: string
+        }
+        Update: {
+          concretagem_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          descricao?: string | null
+          id?: string
+          path?: string
+          receipt_id?: string | null
+          tenant_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidencias_concretagem_id_fkey"
+            columns: ["concretagem_id"]
+            isOneToOne: false
+            referencedRelation: "concretagens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidencias_concretagem_id_fkey"
+            columns: ["concretagem_id"]
+            isOneToOne: false
+            referencedRelation: "v_concretagens_central"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidencias_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "material_receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidencias_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faturas: {
+        Row: {
+          client_id: string | null
+          competencia: string | null
+          created_at: string
+          created_by: string | null
+          data_emissao: string
+          data_pagamento: string | null
+          data_vencimento: string | null
+          deleted_at: string | null
+          forma_pagamento: string | null
+          id: string
+          medicao_id: string | null
+          numero: string
+          observacoes: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          client_id?: string | null
+          competencia?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          deleted_at?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          medicao_id?: string | null
+          numero: string
+          observacoes?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          client_id?: string | null
+          competencia?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          deleted_at?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          medicao_id?: string | null
+          numero?: string
+          observacoes?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faturas_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "lab_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faturas_medicao_id_fkey"
+            columns: ["medicao_id"]
+            isOneToOne: false
+            referencedRelation: "medicoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faturas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forma_movimentacoes: {
         Row: {
           colaborador_id: string | null
@@ -1110,6 +1459,42 @@ export type Database = {
           },
         ]
       }
+      frontend_canary_checks: {
+        Row: {
+          cache_name: string | null
+          error: string | null
+          evaluated_at: string | null
+          id: number
+          ok: boolean | null
+          request_id: number | null
+          requested_at: string
+          status_code: number | null
+          url: string
+        }
+        Insert: {
+          cache_name?: string | null
+          error?: string | null
+          evaluated_at?: string | null
+          id?: number
+          ok?: boolean | null
+          request_id?: number | null
+          requested_at?: string
+          status_code?: number | null
+          url: string
+        }
+        Update: {
+          cache_name?: string | null
+          error?: string | null
+          evaluated_at?: string | null
+          id?: number
+          ok?: boolean | null
+          request_id?: number | null
+          requested_at?: string
+          status_code?: number | null
+          url?: string
+        }
+        Relationships: []
+      }
       lab_clients: {
         Row: {
           bairro: string | null
@@ -1125,6 +1510,7 @@ export type Database = {
           inscricao_estadual: string | null
           nome_fantasia: string | null
           observacoes: string | null
+          precos: Json
           razao_social: string
           status: string
           telefone: string | null
@@ -1147,6 +1533,7 @@ export type Database = {
           inscricao_estadual?: string | null
           nome_fantasia?: string | null
           observacoes?: string | null
+          precos?: Json
           razao_social: string
           status?: string
           telefone?: string | null
@@ -1169,6 +1556,7 @@ export type Database = {
           inscricao_estadual?: string | null
           nome_fantasia?: string | null
           observacoes?: string | null
+          precos?: Json
           razao_social?: string
           status?: string
           telefone?: string | null
@@ -1196,6 +1584,7 @@ export type Database = {
           descricao: string | null
           id: string
           numero: string | null
+          precos: Json
           status: string
           tenant_id: string
           updated_at: string
@@ -1210,6 +1599,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           numero?: string | null
+          precos?: Json
           status?: string
           tenant_id: string
           updated_at?: string
@@ -1224,6 +1614,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           numero?: string | null
+          precos?: Json
           status?: string
           tenant_id?: string
           updated_at?: string
@@ -1460,6 +1851,87 @@ export type Database = {
           },
         ]
       }
+      lotes_aceitacao: {
+        Row: {
+          condicao_preparo: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          fck_est: number | null
+          fck_mpa: number
+          fcm: number | null
+          id: string
+          idade_controle_dias: number
+          n_exemplares: number
+          numero: string
+          observacao: string | null
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          sd: number | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          work_id: string
+        }
+        Insert: {
+          condicao_preparo?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          fck_est?: number | null
+          fck_mpa: number
+          fcm?: number | null
+          id?: string
+          idade_controle_dias?: number
+          n_exemplares?: number
+          numero: string
+          observacao?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          sd?: number | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          work_id: string
+        }
+        Update: {
+          condicao_preparo?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          fck_est?: number | null
+          fck_mpa?: number
+          fcm?: number | null
+          id?: string
+          idade_controle_dias?: number
+          n_exemplares?: number
+          numero?: string
+          observacao?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          sd?: number | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          work_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lotes_aceitacao_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lotes_aceitacao_work_id_fkey"
+            columns: ["work_id"]
+            isOneToOne: false
+            referencedRelation: "client_works"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lotes_importacao: {
         Row: {
           alertas: Json
@@ -1619,6 +2091,53 @@ export type Database = {
           },
           {
             foreignKeyName: "lotes_importacao_linhas_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      magic_links: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          created_by: string | null
+          entity_id: string
+          entity_table: string
+          expires_at: string
+          id: string
+          purpose: string
+          tenant_id: string
+          token_hash: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id: string
+          entity_table: string
+          expires_at: string
+          id?: string
+          purpose: string
+          tenant_id: string
+          token_hash: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string
+          entity_table?: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+          tenant_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "magic_links_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -2015,6 +2534,97 @@ export type Database = {
           },
         ]
       }
+      medicoes: {
+        Row: {
+          adicionais: Json
+          client_id: string | null
+          competencia: string | null
+          contract_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          escopo: string
+          escopo_id: string | null
+          id: string
+          itens: Json
+          observacoes: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          valor_adicionais: number
+          valor_itens: number
+          valor_total: number
+        }
+        Insert: {
+          adicionais?: Json
+          client_id?: string | null
+          competencia?: string | null
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          escopo?: string
+          escopo_id?: string | null
+          id?: string
+          itens?: Json
+          observacoes?: string | null
+          periodo_fim: string
+          periodo_inicio: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          valor_adicionais?: number
+          valor_itens?: number
+          valor_total?: number
+        }
+        Update: {
+          adicionais?: Json
+          client_id?: string | null
+          competencia?: string | null
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          escopo?: string
+          escopo_id?: string | null
+          id?: string
+          itens?: Json
+          observacoes?: string | null
+          periodo_fim?: string
+          periodo_inicio?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          valor_adicionais?: number
+          valor_itens?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicoes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "lab_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medicoes_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "lab_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medicoes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_notification_prefs: {
         Row: {
           channel: string
@@ -2072,6 +2682,7 @@ export type Database = {
       member_obras: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           member_id: string
           tenant_id: string
@@ -2079,6 +2690,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           member_id: string
           tenant_id: string
@@ -2086,6 +2698,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           member_id?: string
           tenant_id?: string
@@ -2177,6 +2790,7 @@ export type Database = {
       nc_action_templates: {
         Row: {
           acao_automatica: boolean
+          acao_projetista: boolean
           ativo: boolean
           campos: Json
           classification_code: string | null
@@ -2198,6 +2812,7 @@ export type Database = {
         }
         Insert: {
           acao_automatica?: boolean
+          acao_projetista?: boolean
           ativo?: boolean
           campos?: Json
           classification_code?: string | null
@@ -2219,6 +2834,7 @@ export type Database = {
         }
         Update: {
           acao_automatica?: boolean
+          acao_projetista?: boolean
           ativo?: boolean
           campos?: Json
           classification_code?: string | null
@@ -2586,6 +3202,84 @@ export type Database = {
         }
         Relationships: []
       }
+      non_conformities: {
+        Row: {
+          classification_code: string | null
+          classification_nome: string | null
+          created_at: string
+          data_abertura: string
+          deleted_at: string | null
+          descricao: string | null
+          entidade_origem: string | null
+          entidade_origem_id: string | null
+          id: string
+          numero: string
+          origem: string
+          severidade: string
+          status: string
+          tenant_id: string
+          tipo_code: string | null
+          tipo_nome: string | null
+          updated_at: string
+          work_id: string | null
+        }
+        Insert: {
+          classification_code?: string | null
+          classification_nome?: string | null
+          created_at?: string
+          data_abertura?: string
+          deleted_at?: string | null
+          descricao?: string | null
+          entidade_origem?: string | null
+          entidade_origem_id?: string | null
+          id?: string
+          numero: string
+          origem?: string
+          severidade?: string
+          status?: string
+          tenant_id: string
+          tipo_code?: string | null
+          tipo_nome?: string | null
+          updated_at?: string
+          work_id?: string | null
+        }
+        Update: {
+          classification_code?: string | null
+          classification_nome?: string | null
+          created_at?: string
+          data_abertura?: string
+          deleted_at?: string | null
+          descricao?: string | null
+          entidade_origem?: string | null
+          entidade_origem_id?: string | null
+          id?: string
+          numero?: string
+          origem?: string
+          severidade?: string
+          status?: string
+          tenant_id?: string
+          tipo_code?: string | null
+          tipo_nome?: string | null
+          updated_at?: string
+          work_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "non_conformities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "non_conformities_work_id_fkey"
+            columns: ["work_id"]
+            isOneToOne: false
+            referencedRelation: "client_works"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_dispatch_log: {
         Row: {
           bounced_at: string | null
@@ -2863,6 +3557,7 @@ export type Database = {
           carta_traco_path: string | null
           cimento_tipo: string | null
           codigo: string
+          componentes: Json
           condicao_preparo: string | null
           consumo_cimento_kg_m3: number | null
           created_at: string
@@ -2901,6 +3596,7 @@ export type Database = {
           carta_traco_path?: string | null
           cimento_tipo?: string | null
           codigo: string
+          componentes?: Json
           condicao_preparo?: string | null
           consumo_cimento_kg_m3?: number | null
           created_at?: string
@@ -2939,6 +3635,7 @@ export type Database = {
           carta_traco_path?: string | null
           cimento_tipo?: string | null
           codigo?: string
+          componentes?: Json
           condicao_preparo?: string | null
           consumo_cimento_kg_m3?: number | null
           created_at?: string
@@ -3009,6 +3706,282 @@ export type Database = {
           event_type?: string
           id?: string
           role_code?: string
+        }
+        Relationships: []
+      }
+      telemetry_alert: {
+        Row: {
+          alert_key: string
+          app_version: string | null
+          detail: string | null
+          first_seen_at: string
+          id: string
+          kind: string
+          last_seen_at: string
+          metric: string | null
+          observed: number | null
+          occurrences: number
+          resolved_at: string | null
+          severity: string
+          status: string
+          threshold: number | null
+          title: string
+        }
+        Insert: {
+          alert_key: string
+          app_version?: string | null
+          detail?: string | null
+          first_seen_at?: string
+          id?: string
+          kind: string
+          last_seen_at?: string
+          metric?: string | null
+          observed?: number | null
+          occurrences?: number
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          threshold?: number | null
+          title: string
+        }
+        Update: {
+          alert_key?: string
+          app_version?: string | null
+          detail?: string | null
+          first_seen_at?: string
+          id?: string
+          kind?: string
+          last_seen_at?: string
+          metric?: string | null
+          observed?: number | null
+          occurrences?: number
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          threshold?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
+      telemetry_error_group: {
+        Row: {
+          created_at: string
+          fingerprint: string
+          muted_until: string | null
+          note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fingerprint: string
+          muted_until?: string | null
+          note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fingerprint?: string
+          muted_until?: string | null
+          note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      telemetry_rollup_daily: {
+        Row: {
+          computed_at: string
+          day: string
+          dim: string
+          errors: number | null
+          errors_5xx: number | null
+          good: number | null
+          needs_improvement: number | null
+          p75: number | null
+          p95: number | null
+          poor: number | null
+          samples: number
+          scope: string
+        }
+        Insert: {
+          computed_at?: string
+          day: string
+          dim: string
+          errors?: number | null
+          errors_5xx?: number | null
+          good?: number | null
+          needs_improvement?: number | null
+          p75?: number | null
+          p95?: number | null
+          poor?: number | null
+          samples?: number
+          scope: string
+        }
+        Update: {
+          computed_at?: string
+          day?: string
+          dim?: string
+          errors?: number | null
+          errors_5xx?: number | null
+          good?: number | null
+          needs_improvement?: number | null
+          p75?: number | null
+          p95?: number | null
+          poor?: number | null
+          samples?: number
+          scope?: string
+        }
+        Relationships: []
+      }
+      telemetry_settings: {
+        Row: {
+          alert_cls_p75: number
+          alert_crash_free_enabled: boolean
+          alert_crash_free_min_pct: number
+          alert_cron_enabled: boolean
+          alert_ef_5xx_min: number
+          alert_ef_5xx_window_hours: number
+          alert_ef_latency_exempt: string[]
+          alert_ef_p95_ms: number
+          alert_email_bounce_pct: number
+          alert_email_complaint_pct: number
+          alert_email_enabled: boolean
+          alert_email_min_sent: number
+          alert_email_window_hours: number
+          alert_error_rate_pct: number
+          alert_fcp_p75_ms: number
+          alert_inp_p75_ms: number
+          alert_lcp_p75_ms: number
+          alert_min_events: number
+          alert_notify_email: boolean
+          alert_notify_inapp: boolean
+          alert_notify_webhook_url: string | null
+          alert_ops_audit_anon: number
+          alert_ops_auth_failures: number
+          alert_ops_auth_failures_per_user: number
+          alert_ops_enabled: boolean
+          alert_ops_env_overdue: number
+          alert_ops_identity_errors: number
+          alert_ops_queue_backlog: number
+          alert_ops_queue_max_attempts: number
+          alert_pg_dead_pct: number
+          alert_pg_enabled: boolean
+          alert_pg_mean_ms: number
+          alert_pg_min_calls: number
+          alert_pg_min_table_bytes: number
+          alert_release_min_sessions: number
+          alert_schedule_coverage_pct: number
+          alert_schedule_enabled: boolean
+          alert_ttfb_p75_ms: number
+          alert_vital_min_samples: number
+          alert_webhook_dead_letter: number
+          alerting_enabled: boolean
+          id: number
+          ingest_enabled: boolean
+          sample_rate: number
+          updated_at: string
+        }
+        Insert: {
+          alert_cls_p75?: number
+          alert_crash_free_enabled?: boolean
+          alert_crash_free_min_pct?: number
+          alert_cron_enabled?: boolean
+          alert_ef_5xx_min?: number
+          alert_ef_5xx_window_hours?: number
+          alert_ef_latency_exempt?: string[]
+          alert_ef_p95_ms?: number
+          alert_email_bounce_pct?: number
+          alert_email_complaint_pct?: number
+          alert_email_enabled?: boolean
+          alert_email_min_sent?: number
+          alert_email_window_hours?: number
+          alert_error_rate_pct?: number
+          alert_fcp_p75_ms?: number
+          alert_inp_p75_ms?: number
+          alert_lcp_p75_ms?: number
+          alert_min_events?: number
+          alert_notify_email?: boolean
+          alert_notify_inapp?: boolean
+          alert_notify_webhook_url?: string | null
+          alert_ops_audit_anon?: number
+          alert_ops_auth_failures?: number
+          alert_ops_auth_failures_per_user?: number
+          alert_ops_enabled?: boolean
+          alert_ops_env_overdue?: number
+          alert_ops_identity_errors?: number
+          alert_ops_queue_backlog?: number
+          alert_ops_queue_max_attempts?: number
+          alert_pg_dead_pct?: number
+          alert_pg_enabled?: boolean
+          alert_pg_mean_ms?: number
+          alert_pg_min_calls?: number
+          alert_pg_min_table_bytes?: number
+          alert_release_min_sessions?: number
+          alert_schedule_coverage_pct?: number
+          alert_schedule_enabled?: boolean
+          alert_ttfb_p75_ms?: number
+          alert_vital_min_samples?: number
+          alert_webhook_dead_letter?: number
+          alerting_enabled?: boolean
+          id?: number
+          ingest_enabled?: boolean
+          sample_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          alert_cls_p75?: number
+          alert_crash_free_enabled?: boolean
+          alert_crash_free_min_pct?: number
+          alert_cron_enabled?: boolean
+          alert_ef_5xx_min?: number
+          alert_ef_5xx_window_hours?: number
+          alert_ef_latency_exempt?: string[]
+          alert_ef_p95_ms?: number
+          alert_email_bounce_pct?: number
+          alert_email_complaint_pct?: number
+          alert_email_enabled?: boolean
+          alert_email_min_sent?: number
+          alert_email_window_hours?: number
+          alert_error_rate_pct?: number
+          alert_fcp_p75_ms?: number
+          alert_inp_p75_ms?: number
+          alert_lcp_p75_ms?: number
+          alert_min_events?: number
+          alert_notify_email?: boolean
+          alert_notify_inapp?: boolean
+          alert_notify_webhook_url?: string | null
+          alert_ops_audit_anon?: number
+          alert_ops_auth_failures?: number
+          alert_ops_auth_failures_per_user?: number
+          alert_ops_enabled?: boolean
+          alert_ops_env_overdue?: number
+          alert_ops_identity_errors?: number
+          alert_ops_queue_backlog?: number
+          alert_ops_queue_max_attempts?: number
+          alert_pg_dead_pct?: number
+          alert_pg_enabled?: boolean
+          alert_pg_mean_ms?: number
+          alert_pg_min_calls?: number
+          alert_pg_min_table_bytes?: number
+          alert_release_min_sessions?: number
+          alert_schedule_coverage_pct?: number
+          alert_schedule_enabled?: boolean
+          alert_ttfb_p75_ms?: number
+          alert_vital_min_samples?: number
+          alert_webhook_dead_letter?: number
+          alerting_enabled?: boolean
+          id?: number
+          ingest_enabled?: boolean
+          sample_rate?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3575,79 +4548,42 @@ export type Database = {
       }
     }
     Views: {
-      v_telemetry_mttr_summary: {
-        Row: {
-          open_incidents: number | null
-          incidents_30d: number | null
-          resolved_30d: number | null
-          critical_30d: number | null
-          avg_mttr_minutes_30d: number | null
-        }
-        Relationships: []
-      }
       v_client_health_by_version: {
         Row: {
           app_version: string | null
-          events: number | null
-          errors: number | null
           error_rate_pct: number | null
+          errors: number | null
+          events: number | null
+          last_seen: string | null
           sessions: number | null
+          tenant_id: string | null
+          warnings: number | null
         }
         Relationships: []
       }
-      v_release_health: {
+      v_client_metric_daily: {
         Row: {
-          app_version: string | null
-          sessions: number | null
-          crash_free_sessions_pct: number | null
-        }
-        Relationships: []
-      }
-      v_ef_metrics_hourly: {
-        Row: {
-          fn_name: string | null
-          hour: string | null
-          calls: number | null
-          errors_5xx: number | null
-          p95_ms: number | null
+          avg: number | null
+          day: string | null
+          metric: string | null
+          p50: number | null
+          p95: number | null
+          samples: number | null
+          tenant_id: string | null
         }
         Relationships: []
       }
       v_client_vitals_daily: {
         Row: {
           day: string | null
+          good: number | null
           metric: string | null
+          needs_improvement: number | null
           p75: number | null
+          p95: number | null
+          poor: number | null
           samples: number | null
-        }
-        Relationships: []
-      }
-      telemetry_alert: {
-        Row: {
-          alert_key: string | null
-          kind: string | null
-          severity: string | null
-          title: string | null
-          detail: string | null
-          metric: string | null
-          observed: number | null
-          threshold: number | null
-          app_version: string | null
-          first_seen_at: string | null
-          last_seen_at: string | null
-          occurrences: number | null
-          status: string | null
-        }
-        Relationships: []
-      }
-      cron_heartbeat: {
-        Row: {
-          job_name: string | null
-          last_seen_at: string | null
-          expected_max_age_minutes: number | null
-          last_status: string | null
-          consecutive_failures: number | null
-          active: boolean | null
+          tenant_id: string | null
         }
         Relationships: []
       }
@@ -3696,6 +4632,34 @@ export type Database = {
           },
         ]
       }
+      v_domain_events_daily: {
+        Row: {
+          area: string | null
+          day: string | null
+          event: string | null
+          last_seen: string | null
+          members: number | null
+          sessions: number | null
+          tenants: number | null
+          total: number | null
+        }
+        Relationships: []
+      }
+      v_ef_metrics_hourly: {
+        Row: {
+          avg_ms: number | null
+          calls: number | null
+          errors: number | null
+          errors_5xx: number | null
+          fn_name: string | null
+          hour: string | null
+          max_ms: number | null
+          p50_ms: number | null
+          p95_ms: number | null
+          p99_ms: number | null
+        }
+        Relationships: []
+      }
       v_formas_saldo: {
         Row: {
           saldo: number | null
@@ -3719,15 +4683,329 @@ export type Database = {
           },
         ]
       }
+      v_release_health: {
+        Row: {
+          app_version: string | null
+          crash_free_sessions_pct: number | null
+          crash_free_users_pct: number | null
+          error_rate_pct: number | null
+          error_sessions: number | null
+          error_users: number | null
+          errors: number | null
+          events: number | null
+          first_seen: string | null
+          last_seen: string | null
+          sessions: number | null
+          tenant_id: string | null
+          users: number | null
+        }
+        Relationships: []
+      }
+      v_telemetry_incident_stats: {
+        Row: {
+          alert_key: string | null
+          avg_mttr_minutes: number | null
+          critical_incidents: number | null
+          currently_open: boolean | null
+          first_incident_at: string | null
+          kind: string | null
+          last_resolved_at: string | null
+          last_seen_at: string | null
+          max_mttr_minutes: number | null
+          median_mttr_minutes: number | null
+          open_incidents: number | null
+          resolved_incidents: number | null
+          total_incidents: number | null
+          total_occurrences: number | null
+        }
+        Relationships: []
+      }
+      v_telemetry_mttr_summary: {
+        Row: {
+          avg_mttr_minutes_30d: number | null
+          critical_30d: number | null
+          distinct_keys_30d: number | null
+          incidents_30d: number | null
+          max_mttr_minutes_30d: number | null
+          open_incidents: number | null
+          resolved_30d: number | null
+        }
+        Relationships: []
+      }
+      v_webhook_dead_letter_alerts: {
+        Row: {
+          dead_letter_count: number | null
+          events_affected: string[] | null
+          oldest_dead_at: string | null
+          sample_error: string | null
+          tenant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notify_event_outbox_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      abrir_nc_manual: {
+        Args: {
+          p_descricao: string
+          p_entidade_origem?: string
+          p_entidade_origem_id?: string
+          p_severidade?: string
+          p_tenant_id: string
+          p_tipo_code: string
+          p_work_id: string
+        }
+        Returns: {
+          classification_code: string | null
+          classification_nome: string | null
+          created_at: string
+          data_abertura: string
+          deleted_at: string | null
+          descricao: string | null
+          entidade_origem: string | null
+          entidade_origem_id: string | null
+          id: string
+          numero: string
+          origem: string
+          severidade: string
+          status: string
+          tenant_id: string
+          tipo_code: string | null
+          tipo_nome: string | null
+          updated_at: string
+          work_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "non_conformities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      app_trace_id: { Args: never; Returns: string }
+      aprovar_laudo: {
+        Args: { p_lab_report_id: string }
+        Returns: {
+          amostra_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          art: string | null
+          client_id: string
+          concretagem_id: string | null
+          crea_rt: string | null
+          created_at: string
+          data_emissao: string | null
+          deleted_at: string | null
+          escopo: string
+          hash_sha256: string | null
+          id: string
+          justificativa: string | null
+          laboratorio_nome: string | null
+          lote_importacao_id: string | null
+          material_test_type_id: string | null
+          numero: string
+          origem: string
+          responsavel_tecnico: string | null
+          revisao: number
+          status: string
+          storage_path: string | null
+          tenant_id: string
+          updated_at: string
+          work_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lab_reports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      bump_client_telemetry_rate_limit: {
+        Args: { p_actor_key: string; p_bucket_start: string }
+        Returns: number
+      }
+      calcular_aceitacao_lote: { Args: { p_lote: string }; Returns: Json }
+      computar_medicao: {
+        Args: {
+          p_escopo: string
+          p_escopo_id: string
+          p_fim: string
+          p_inicio: string
+          p_precos: Json
+        }
+        Returns: Json
+      }
+      consume_magic_link_laudo: {
+        Args: { p_comment?: string; p_decision: string; p_token: string }
+        Returns: Json
+      }
+      criar_lote_aceitacao: { Args: { payload: Json }; Returns: Json }
+      criar_magic_link: {
+        Args: {
+          p_dias?: number
+          p_entity_id: string
+          p_entity_table: string
+          p_purpose: string
+        }
+        Returns: string
+      }
       current_member_id: { Args: never; Returns: string }
       current_tenant_id: { Args: never; Returns: string }
+      emitir_fatura: {
+        Args: { p_medicao_id: string; p_vencimento?: string }
+        Returns: {
+          client_id: string | null
+          competencia: string | null
+          created_at: string
+          created_by: string | null
+          data_emissao: string
+          data_pagamento: string | null
+          data_vencimento: string | null
+          deleted_at: string | null
+          forma_pagamento: string | null
+          id: string
+          medicao_id: string | null
+          numero: string
+          observacoes: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          valor: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "faturas"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      frontend_canary_run: { Args: never; Returns: Json }
+      gerar_contraprova_cp: { Args: { payload: Json }; Returns: string }
+      gerar_ncs_cp_atrasado: { Args: never; Returns: number }
       has_role: { Args: { p_role: string }; Returns: boolean }
       is_tenant_admin: { Args: { p_tenant_id: string }; Returns: boolean }
       is_tenant_member: { Args: { p_tenant_id: string }; Returns: boolean }
       is_tenant_writer: { Args: { p_tenant_id: string }; Returns: boolean }
+      lancar_rompimento_cp: { Args: { payload: Json }; Returns: Json }
+      lancar_situacao_cp: { Args: { payload: Json }; Returns: undefined }
+      log_ef_invocation: {
+        Args: {
+          p_actor_id: string
+          p_duration_ms: number
+          p_error: string
+          p_fn_name: string
+          p_metadata: Json
+          p_request_id: string
+          p_started_at: string
+          p_status_code: number
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      member_can_access_work: { Args: { p_work_id: string }; Returns: boolean }
+      prune_client_telemetry: { Args: never; Returns: undefined }
+      raise_telemetry_alert: {
+        Args: {
+          p_alert_key: string
+          p_app_version: string
+          p_detail: string
+          p_kind: string
+          p_metric: string
+          p_observed: number
+          p_severity: string
+          p_threshold: number
+          p_title: string
+        }
+        Returns: boolean
+      }
+      reabrir_laudo: {
+        Args: { p_justificativa?: string; p_lab_report_id: string }
+        Returns: {
+          amostra_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          art: string | null
+          client_id: string
+          concretagem_id: string | null
+          crea_rt: string | null
+          created_at: string
+          data_emissao: string | null
+          deleted_at: string | null
+          escopo: string
+          hash_sha256: string | null
+          id: string
+          justificativa: string | null
+          laboratorio_nome: string | null
+          lote_importacao_id: string | null
+          material_test_type_id: string | null
+          numero: string
+          origem: string
+          responsavel_tecnico: string | null
+          revisao: number
+          status: string
+          storage_path: string | null
+          tenant_id: string
+          updated_at: string
+          work_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "lab_reports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_cron_heartbeat: {
+        Args: {
+          p_description?: string
+          p_error?: string
+          p_expected_max_age_minutes: number
+          p_job_name: string
+          p_status?: string
+        }
+        Returns: undefined
+      }
+      registrar_acao_nc: { Args: { payload: Json }; Returns: Json }
+      relatorio_produtividade: {
+        Args: { p_fim: string; p_inicio: string }
+        Returns: Json
+      }
+      resolve_telemetry_alerts: {
+        Args: { p_active_keys: string[] }
+        Returns: number
+      }
+      rollup_telemetry_daily: { Args: { p_day: string }; Returns: number }
+      rollup_telemetry_daily_recent: {
+        Args: { p_days?: number }
+        Returns: number
+      }
+      seed_nc_action_engine: { Args: { p_tenant: string }; Returns: number }
+      seed_nc_rac_padrao: { Args: { p_tenant: string }; Returns: number }
       select_tenant: { Args: { p_tenant_id: string }; Returns: undefined }
+      set_numeracao_cp: {
+        Args: { p_id: string; p_numeracao: string }
+        Returns: undefined
+      }
+      telemetry_admin_member_ids: {
+        Args: never
+        Returns: {
+          member_id: string
+        }[]
+      }
+      telemetry_email_alarm_run: { Args: never; Returns: Json }
+      telemetry_error_fingerprint: {
+        Args: { p_category: string; p_message: string; p_stack: string }
+        Returns: string
+      }
+      telemetry_pg_alarm_run: { Args: never; Returns: Json }
+      telemetry_release_alarm_run: { Args: never; Returns: Json }
     }
     Enums: {
       material_kind:

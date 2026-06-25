@@ -19,15 +19,15 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 SELECT cron.schedule('concresoft-frontend-canary', '*/15 * * * *', $$ SELECT public.frontend_canary_run(); $$);
 
 -- 2) Alarme horário (EF telemetry-alarm) via net.http_post + x-cron-secret do vault (fail-closed na EF).
---    ADAPTAR: troque <PROJECT_REF> e <ANON_KEY> pelos MESMOS valores dos crons já existentes (033/044).
+--    ADAPTAR: troque xbdvyvvxvzmcosnekmfv e eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhiZHZ5dnZ4dnptY29zbmVrbWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNjEwMDEsImV4cCI6MjA5NzczNzAwMX0.KhLZVORWXZLEw7UvD1LuqLpm-A-zbdUaIR4HgvcM3HA pelos MESMOS valores dos crons já existentes (033/044).
 --    O mais seguro é COPIAR a forma exata do net.http_post do seu job 'concresoft-nc-digest' (044) e
 --    apenas trocar o nome da função para 'telemetry-alarm' — assim a URL/apikey/segredo já ficam certos.
 SELECT cron.schedule('concresoft-telemetry-alarm', '0 * * * *', $$
   SELECT net.http_post(
-    url := 'https://<PROJECT_REF>.supabase.co/functions/v1/telemetry-alarm',
+    url := 'https://xbdvyvvxvzmcosnekmfv.supabase.co/functions/v1/telemetry-alarm',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'apikey', '<ANON_KEY>',
+      'apikey', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhiZHZ5dnZ4dnptY29zbmVrbWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxNjEwMDEsImV4cCI6MjA5NzczNzAwMX0.KhLZVORWXZLEw7UvD1LuqLpm-A-zbdUaIR4HgvcM3HA',
       'x-cron-secret', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'CRON_SECRET')
     ),
     body := '{}'::jsonb,

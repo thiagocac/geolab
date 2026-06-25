@@ -1,44 +1,44 @@
-# GEOLAB → Concresoft — SOURCE VERSION v58
-CACHE_NAME: consultegeo-geolab-v58 · APP_VERSION: v58
+# GEOLAB → Concresoft — SOURCE VERSION v59
+CACHE_NAME: consultegeo-geolab-v59 · APP_VERSION: v59
 (slug interno `consultegeo-geolab` mantido; marca visivel = **Concresoft**)
 
-Frontend (acumulado v2→v58): …Portal do Cliente (v29) · Brand Kit (v30) · laudo dinamico v4 (v31) ·
-rebrand Concresoft (v32-v33) · Medicao/faturamento (v35-v36) · Formas (v38) · Estatistica de lote NBR
-12655 (v39) · Motor de NC (v40-v44) · laudo↔lote (v45) · OCR de DANFE/NF (v47) · Financeiro (v49) ·
-code-splitting + xlsx lazy (v50) · Biome lint no gate (v51) · versao auto na UI (v52) · React 18→19
-(v53) · React Compiler (v54) · rolldown-vite (v55) · Vite 8 nativo + plugin-react v6 + vitest 3 (v56) ·
-Zod 4 — schema→tipo→validacao (v57) · Observabilidade + Melhorias de processos (v58).
+Frontend (acumulado v2→v59): …Portal do Cliente (v29) · Brand Kit (v30) · Medicao/faturamento (v35-v36) ·
+Estatistica de lote NBR 12655 (v39) · Motor de NC (v40-v44) · OCR de DANFE/NF (v47) · Financeiro (v49) ·
+code-splitting + xlsx lazy (v50) · Biome (v51) · versao auto na UI (v52) · React 18→19 (v53) · React
+Compiler (v54) · rolldown-vite (v55) · Vite 8 + plugin-react v6 + vitest 3 (v56) · Zod 4 (v57) ·
+Observabilidade + Melhorias de processos (v58) · backend aplicado + tipos reais + db tipado (v59).
 (historico completo v2→v49 em git log + 08-changelog.)
 
-## v58 — Observabilidade + Melhorias dos Processos (combinado sobre o v57 modernizado)
-Integra o release "geolab-release" (duas frentes, construidas sobre o v57) a arvore modernizada
-(React 19.2 + Compiler · Vite 8.1 Rolldown/Oxc · vitest 3 · Biome 2.5 · Zod 4 · TS bundler).
+## v59 — Observabilidade + Melhorias APLICADAS (banco) + tipos reais + melhoria do db tipado
+Sobre o v58 (release combinado). Backend aplicado em producao via MCP; frontend buildando verde.
 
-### Frentes
-- OBSERVABILIDADE: client-telemetry (ingestao do browser) + telemetry-alarm (alarme horario) + 6 EFs
-  instrumentadas (serveWithTelemetry) + migrations 048-052 (9 tabelas, 11 funcoes, 9 views security_invoker,
-  3 alarmes SQL, crons) + painel /observabilidade (admin) + vitals canonico + supabase.ts com propagacao de trace.
-- MELHORIAS Processos 1-3: ficha QR + OCR (extract-ficha-vision); evidencias (053); magic link de aprovacao
-  de laudo (054 + approve-laudo-link + pagina publica /laudo/aprovar); enviar laudo ao cliente
-  (enviar-laudo-cliente, 055); Rompimentos (fck so na idade de controle, faixa MPa, calibracao, legenda de
-  ruptura, incerteza, "aplicar a N"); Laudos (multisselecao + pre-visualizar + gerar em lote).
+### Banco (APLICADO em xbdvyvvxvzmcosnekmfv — migrations 049-056)
+- COLISAO resolvida: o vivo ja estava em 048_magic_links_portal -> o release foi renumerado 049-056.
+- 049 core (9 tabelas telemetria + RLS) · 050 funcoes (11 SECURITY DEFINER) · 051 views (9 security_invoker) ·
+  052 alarmes SQL (pg/release/email + 3 crons) · 053 cron (4 jobs; placeholders preenchidos) ·
+  054 evidencias (tabela + RLS + storage) · 055 magic_link_aprovacao (criar_magic_link SUPERSET FIEL do vivo
+  +'aprovacao_laudo' + consume_magic_link_laudo) · 056 evento_laudo_cliente (catalogo).
+- Advisor seguranca pos-DDL: 0 ERROR (so 2 INFO rls_enabled_no_policy intencionais + WARN generico de SECURITY DEFINER).
 
-### Correcoes aplicadas (para buildar verde no stack v57)
-- metrics-math.test.ts: import alias `@/...` (nao configurado no projeto) -> relativo; +anotacao de tipo.
-- database.types.ts: +7 STUBS de view/tabela (v_telemetry_mttr_summary, v_client_health_by_version,
-  v_release_health, v_ef_metrics_hourly, v_client_vitals_daily, telemetry_alert, cron_heartbeat) p/ o painel
-  tipar os from().select(). SAO STUBS — substituir por `gen:types` real APOS aplicar as migrations.
+### Tipos
+- src/lib/database.types.ts REGENERADO do banco vivo (gen_types) — substitui os 7 stubs do v58 pelos tipos reais
+  (telemetria + evidencias + views).
 
-### Validacao (sandbox, gate completo) — EXIT 0
-- check-source OK · biome 0 erros · tsc 0 erros · vitest 18/18 · vite 8.1 build OK.
+### Frontend (melhoria do db tipado)
+- src/lib/api/concretagem.ts: removido o cast untyped `db = supabase as unknown as {from:(t)=>any}` -> `db = supabase`
+  (client tipado). 3 casts localizados `as unknown as Database[...]['Insert']` so nos payloads dinamicos
+  (createConcretagem, addCaminhao receipt+cps). Type-safety do fluxo de concretagem restaurada.
+- Bump v59. npm run build verde: check-source · biome 0 erros · tsc 0 erros · vitest 18/18 · vite 8.1 build.
 
-### Pendencias de integracao (voce, via MCP) — detalhe em docs/v58-*.md
-- Migrations 048-055 (uma por vez, list_migrations entre cada); regenerar database.types.ts; deploy das EFs
-  com o config.toml; CRON_SECRET; G1 (VISION_API_KEY, RESEND_FROM_EMAIL); H3 (notification_dispatch_settings).
-- Migrations 048-055 vem com CORPO COMPLETO (no source 029-047 e stub-comentario) — aplicar via MCP.
-- Melhoria recomendada: re-tipar `db` em concretagem.ts (hoje cast untyped p/ evidencias) com uma tabela
-  evidencias tipada — restaura type-safety do fluxo de concretagem.
+### Edge Functions
+- DEPLOYADAS (2 novas, self-contained): approve-laudo-link (v1, public) · enviar-laudo-cliente (v1).
+- PENDENTES (9, importam _shared -> exigem inline self-contained; nao deployadas p/ nao arriscar):
+  NOVAS: client-telemetry, telemetry-alarm, extract-ficha-vision.
+  INSTRUMENTADAS (redeploy de EFs VIVAS criticas — alto risco): generate-ficha-moldagem-pdf, generate-laudo-ensaio-pdf,
+  portal-laudo-url, consulta-fiscal, client-portal-submit-programacoes, admin-create-client-user.
 
-> ATENCAO (deploy): o frontend v58 ja sobe (build verde com stubs), MAS as telas novas (/observabilidade,
-> /laudo/aprovar, evidencias, enviar-laudo) so funcionam de verdade APOS aplicar migrations 048-055 + EFs +
-> regenerar database.types.ts via MCP. Ate la, consultas a tabelas/views ainda inexistentes falham em runtime.
+### PENDENTE (voce)
+- Secrets no vault: CRON_SECRET (alarme/crons), VISION_API_KEY (OCR ficha), RESEND_FROM_EMAIL (envio ao cliente).
+- Deploy das 9 EFs (inline self-contained — derivar as 6 instrumentadas do corpo VIVO via get_edge_function).
+- Reconciliar o slot cron 'concresoft-telemetria' (033) que coexiste no minuto 0 com 'concresoft-telemetry-alarm'.
+- H3: notification_dispatch_settings (dispatch_enabled/dry_run/allowlist) para envio real.

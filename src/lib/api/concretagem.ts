@@ -1,8 +1,9 @@
 import { supabase } from '../supabase';
+import type { Database } from '../database.types';
 import { env } from '../env';
 import { normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../concreto';
 
-const db = supabase as unknown as { from: (t: string) => any };
+const db = supabase;
 
 type Rec = Record<string, unknown>;
 export type PadraoItem = { idade?: number; idadeControle?: number | string; unidade?: string; unidadeIdade?: string; quantidade?: number; quantidadeCp?: number | string; valor_esperado?: number; valorEsperado?: number | string; tipoEnsaio?: string; tipo_ensaio?: string };
@@ -48,7 +49,7 @@ export async function getConcretagem(id: string): Promise<ConcretagemRow | null>
 export async function createConcretagem(tenantId: string, values: Record<string, unknown>): Promise<{ id: string }> {
   const status = String(values.status ?? 'rascunho');
   const origem = String(values.origem ?? 'programada');
-  const { data, error } = await db.from('concretagens').insert({ ...values, tenant_id: tenantId, status, origem }).select('id').single();
+  const { data, error } = await db.from('concretagens').insert({ ...values, tenant_id: tenantId, status, origem } as unknown as Database['public']['Tables']['concretagens']['Insert']).select('id').single();
   if (error) throw new Error(error.message);
   return data as { id: string };
 }
@@ -106,7 +107,7 @@ function padraoFromValues(values: Record<string, unknown>, conc: ConcretagemRow)
 // Cria caminhão + amostra + CPs pelo padrão de moldagem do caminhão, da concretagem ou do traço.
 export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie: number, values: Record<string, unknown>): Promise<void> {
   const receiptPayload = sanitizeCaminhaoValues(values);
-  const { data: rec, error: e1 } = await db.from('material_receipts').insert({ ...receiptPayload, tenant_id: tenantId, concretagem_id: conc.id, serie }).select('id').single();
+  const { data: rec, error: e1 } = await db.from('material_receipts').insert({ ...receiptPayload, tenant_id: tenantId, concretagem_id: conc.id, serie } as unknown as Database['public']['Tables']['material_receipts']['Insert']).select('id').single();
   if (e1) throw new Error(e1.message);
   const receiptId = (rec as { id: string }).id;
   const hoje = (conc.data_real ?? conc.data_programada ?? new Date().toISOString().slice(0, 10));
@@ -128,7 +129,7 @@ export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie:
       n++;
     }
   }
-  if (cps.length) { const { error: e3 } = await db.from('corpos_prova').insert(cps); if (e3) throw new Error(e3.message); }
+  if (cps.length) { const { error: e3 } = await db.from('corpos_prova').insert(cps as unknown as Database['public']['Tables']['corpos_prova']['Insert'][]); if (e3) throw new Error(e3.message); }
 }
 
 export async function invokeFicha(concId: string): Promise<Blob> {
