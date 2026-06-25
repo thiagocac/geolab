@@ -336,7 +336,7 @@ export function RompimentosPage() {
   function handlePaste(e: ClipboardEvent<HTMLInputElement>, rowIndex: number) {
     const text = e.clipboardData.getData('text');
     if (!text) return;
-    const values = text.split('\n').map((s) => s.trim());
+    const values = text.split('\n').map((s) => s.split('\t')[0].trim());
     while (values.length && values[values.length - 1] === '') values.pop();
     if (values.length <= 1) return;
     e.preventDefault();

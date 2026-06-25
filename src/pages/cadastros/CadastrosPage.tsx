@@ -7,7 +7,7 @@ import { ColaboradoresPage } from './ColaboradoresPage';
 
 const ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map((u) => ({ value: u, label: u }));
 
-type Tab = { key: string; label: string; table: string; description: string; sort: string; columns: Column<DomainRow>[]; fields: FieldSpec[]; filter?: Record<string, string> };
+type Tab = { key: string; label: string; table: string; description: string; sort: string; columns: Column<DomainRow>[]; fields: FieldSpec[] };
 
 const tabs: Tab[] = [
   { key: 'clientes', label: 'Clientes', table: 'lab_clients', description: 'Construtoras atendidas pelo laboratorio.', sort: 'razao_social',
@@ -25,9 +25,6 @@ const tabs: Tab[] = [
   { key: 'equipamentos', label: 'Equipamentos', table: 'equipamentos', description: 'Equipamentos e calibracao.', sort: 'tipo',
     columns: [{ key: 'tipo', header: 'Tipo', sortable: true }, { key: 'marca_modelo', header: 'Marca/Modelo' }, { key: 'numero_serie', header: 'No serie' }, { key: 'validade_calibracao', header: 'Validade calib.', type: 'date' }],
     fields: [{ key: 'tipo', label: 'Tipo', type: 'select', required: true, options: [{ value: 'prensa', label: 'Prensa' }, { value: 'balanca', label: 'Balanca' }, { value: 'molde', label: 'Molde' }, { value: 'paquimetro', label: 'Paquimetro' }, { value: 'outro', label: 'Outro' }] }, { key: 'marca_modelo', label: 'Marca/Modelo' }, { key: 'numero_serie', label: 'No serie' }, { key: 'capacidade_kn', label: 'Capacidade (kN)', type: 'number' }, { key: 'classe', label: 'Classe' }, { key: 'numero_certificado', label: 'No certificado' }, { key: 'data_calibracao', label: 'Data calibracao', type: 'date' }, { key: 'validade_calibracao', label: 'Validade calibracao', type: 'date' }, { key: 'lab_calibrador', label: 'Lab. calibrador' }, { key: 'incerteza_mpa', label: 'Incerteza (MPa)', type: 'number' }] },
-  { key: 'tipos-ensaio', label: 'Tipos de ensaio', table: 'material_test_types', description: 'Catalogo de tipos de ensaio por material (NBR 5739). v1: concreto / compressao.', sort: 'nome', filter: { material_kind: 'concreto' },
-    columns: [{ key: 'codigo', header: 'Codigo', sortable: true }, { key: 'nome', header: 'Descricao', sortable: true }, { key: 'unidade_resultado', header: 'Unidade' }, { key: 'idade_controle', header: 'Idade ctrl.', type: 'number' }, { key: 'ensaio_grupo', header: 'Grupo' }, { key: 'padrao', header: 'Padrao', render: (r) => (r.padrao ? 'Sim' : 'Nao') }],
-    fields: [{ key: 'codigo', label: 'Codigo', required: true, help: 'Identificador curto, ex.: COMP.' }, { key: 'nome', label: 'Descricao', required: true }, { key: 'material_kind', label: 'Material', type: 'select', required: true, options: [{ value: 'concreto', label: 'Concreto' }] }, { key: 'ensaio_grupo', label: 'Grupo do ensaio', type: 'select', required: true, options: [{ value: 'endurecido', label: 'Endurecido' }, { value: 'fresco', label: 'Fresco' }] }, { key: 'unidade_resultado', label: 'Unidade de medida', required: true, help: 'Ex.: MPa, cm, %.' }, { key: 'tipo_resultado_consolidado', label: 'Resultado consolidado', type: 'select', required: true, options: [{ value: 'maximo', label: 'Maximo (exemplar = maior do par)' }, { value: 'minimo', label: 'Minimo' }, { value: 'media', label: 'Media' }] }, { key: 'idade_controle', label: 'Idade de controle (dias)', type: 'number', help: 'Unica idade de aceitacao. Vazio = sem idade de referencia.' }, { key: 'padrao', label: 'Ensaio padrao', type: 'boolean' }, { key: 'observacao', label: 'Observacao', type: 'textarea' }] },
 ];
 
 export function CadastrosPage() {
@@ -48,7 +45,7 @@ export function CadastrosPage() {
         ? <ColaboradoresPage />
         : isMateriais
         ? <MateriaisPage />
-        : <AdminListPage key={t.key} title={t.label} kicker="Cadastros" description={t.description} table={t.table} columns={t.columns} fields={t.fields} initialSort={t.sort} filter={t.filter} canDelete />}
+        : <AdminListPage key={t.key} title={t.label} kicker="Cadastros" description={t.description} table={t.table} columns={t.columns} fields={t.fields} initialSort={t.sort} canDelete />}
     </div>
   );
 }

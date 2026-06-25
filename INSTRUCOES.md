@@ -1,31 +1,32 @@
-# v77 — Reconciliação: modernização (v60→v74) + "v72 modais" + domínio (v52)
+# Concresoft — Patch v78 — Revisão dos ícones do menu lateral
 
-Release **UNIFICADA** que junta as duas trilhas que forkavam no v71:
-- **A (minha modernização v60→v74):** Tailwind v4/OKLCH, Base UI (ConfirmDialog/Drawer/Modal/Tooltip/⌘K), RHF+Zod,
-  TanStack Table+Virtual, Recharts, página dedicada (C), auditoria.
-- **B ("v72 modais"):** Modal com corpo rolável (head/body/foot) + `Field` min-w-0 + grids nas telas de cadastro.
-- **C (domínio v52):** app.concresoft.io.
-Base = **meu v74 (superset)** + re-aplicada a B (do doc `GEOLAB-Revisao-Modais-Cadastro-v72.md`) + domínio. Gate verde.
-**v77 ⊇ v76** (v76 = v71+modais; v77 = v71 + Recharts/auditoria + modais). Use o **completo** como árvore canônica.
+## O que mudou (somente front-end; sem banco/EF/rota)
+Revisão de todos os ícones da sidebar. Trocas:
 
-## O que a "v72 modais" trouxe (re-aplicado sobre o v74)
-- `src/components/ui/Modal.tsx` — Base UI Dialog com `.bui-modal-head` (fixo) / `-body` (rolável) / `-foot` (fixo) —
-  resolve o "cursor sai da tela" em formulário alto; **mantém z-index 71 + a transição do meu v66**.
-- `src/styles.css` — bloco `.bui-modal*` da v72 (flex-column, max-h min(90vh,760px), overflow hidden, head/body/foot,
-  `.bui-modal-wide` 768→**860px**); **TODO o resto do styles.css preservado** (OKLCH/slate/motion/cmdk/vt/tooltip/backdrop-top…).
-- `src/components/ui/Field.tsx` — `min-w-0` nas labels (inputs encolhem em grid/flex; **mantém a prop `error` do v65**).
-- `src/pages/cadastros/ColaboradoresPage.tsx` — CPF/Registro → grid auto-fit (mantém `useConfirm`).
-- `src/pages/cadastros/MateriaisPage.tsx` — removido o `×` duplicado (mantém `useConfirm`).
-- `src/pages/operacao/OperacaoPage.tsx` — Cargo/Telefone + Slug/CNPJ → grid auto-fit.
-- `src/pages/portal/ClienteUsuariosPage.tsx` — senha cresce (`flex-1 min-w-0`), botão "Gerar" fixo.
+| Item do menu          | Antes (ícone)        | Depois (ícone)               |
+|-----------------------|---------------------|------------------------------|
+| Concretagens          | Truck (genérico)    | **MixerTruck** (betoneira)   |
+| Rompimentos           | Flame (chama)       | **Compress** (prensa)        |
+| Preferências           | Gauge               | **Settings** (engrenagem)    |
+| Medição               | FileText            | **Ruler** (régua)            |
+| Faturas               | FileText            | **Receipt** (recibo)         |
+| Fôrmas                | Boxes               | **Mold** (molde cilíndrico) |
+| Usuários de clientes  | Building2           | **Users** (pessoas)          |
+| Config de NC          | ClipboardCheck      | **Sliders**                  |
 
-## Domínio (v52)
-- `src/pages/ValidarPage.tsx` — `lab.consultegeo.org` → `app.concresoft.io`.
+Motivos: a chama não representa rompimento à compressão; o caminhão genérico não é betoneira; e havia colisões (FileText em Laudos/Medição/Faturas; Boxes em Cadastros/Fôrmas; Building2 em Portal/Usuários; Gauge em Preferências/Produtividade). As 3 telas "Campos…" seguem com ClipboardCheck de propósito (família). `Truck` e `Flame` continuam exportados em icons.tsx (não quebram nada).
 
-## `core.ts` / `public/sw.js` — v77.
+## Arquivos (substituir no repo)
+- src/components/ui/icons.tsx       (8 novos componentes SVG)
+- src/components/Layout.tsx         (import + mapeamento dos itens)
+- public/sw.js                      (CACHE_NAME consultegeo-geolab-v78)
+- src/lib/telemetry/core.ts         (APP_VERSION v78)
+- SOURCE_VERSION.md
 
-## Sem dep nova. Só `git pull` + deploy. (Deps das fases anteriores — base-ui/rhf/tanstack/recharts — já no completo; `npm install`.)
+## Como aplicar
+1. Copie os 5 arquivos sobre o working copy do repo.
+2. git add -A && git commit -m "v78: revisão dos ícones do menu (betoneira, prensa, etc.)"
+3. git push → Netlify (geo-labs) builda.
 
-## Conflitos resolvidos (ref. GEOLAB-Reconciliacao-Trilhas-2026-06-25.md)
-- `Modal.tsx`: fiquei com a v72 (evolução do meu Modal). `styles.css`: troquei só o bloco `.bui-modal*`.
-  `Field`/`Colaboradores`/`Materiais`: mesclados (v72 + meu `useConfirm`/`error`). `sw.js`/`core.ts`: renumerados → v77.
+## Gate validado no sandbox
+check-source OK · biome lint (0 erros; 2 warnings de a11y pré-existentes no nav-scrim, não relacionados) · tsc --noEmit OK · vitest run 18/18.

@@ -5,7 +5,7 @@ import { useTheme } from '../lib/theme';
 import { APP_VERSION } from '../lib/telemetry/core';
 import { Tooltip } from './ui/Tooltip';
 import { CommandPalette, type Command } from './ui/CommandPalette';
-import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle } from './ui/icons';
+import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Ruler, Mold, Users, Sliders } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
@@ -15,8 +15,8 @@ const sections: Section[] = [
   { items: [{ to: '/', label: 'Painel', icon: Home, end: true }] },
   { title: 'Concreto', items: [
     { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
-    { to: '/concretagens', label: 'Concretagens', icon: Truck, roles: labRoles },
-    { to: '/rompimentos', label: 'Rompimentos', icon: Flame, roles: labRoles },
+    { to: '/concretagens', label: 'Concretagens', icon: MixerTruck, roles: labRoles },
+    { to: '/rompimentos', label: 'Rompimentos', icon: Compress, roles: labRoles },
     { to: '/laudos', label: 'Laudos', icon: FileText, roles: labRoles },
     { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
     { to: '/nao-conformidades', label: 'Não-conformidades', icon: AlertTriangle, roles: labRoles },
@@ -26,22 +26,22 @@ const sections: Section[] = [
   { title: 'Cadastros', items: [
     { to: '/cadastros', label: 'Cadastros', icon: Boxes, roles: labRoles },
     { to: '/estrutura', label: 'Estrutura', icon: Layers, roles: labRoles },
-    { to: '/portal/usuarios-clientes', label: 'Usuários de clientes', icon: Building2, roles: adminRoles },
+    { to: '/portal/usuarios-clientes', label: 'Usuários de clientes', icon: Users, roles: adminRoles },
   ] },
   { title: 'Portal', items: [
     { to: '/portal-cliente', label: 'Portal do cliente', icon: Building2, roles: ['cliente', 'admin', 'admin_consulte'] },
   ] },
   { title: 'Gestão', items: [
     { to: '/notificacoes', label: 'Notificações', icon: Bell, roles: labRoles },
-    { to: '/preferencias', label: 'Preferências', icon: Gauge, roles: adminRoles },
-    { to: '/medicoes', label: 'Medição', icon: FileText, roles: adminRoles },
+    { to: '/preferencias', label: 'Preferências', icon: Settings, roles: adminRoles },
+    { to: '/medicoes', label: 'Medição', icon: Ruler, roles: adminRoles },
     { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
-    { to: '/faturas', label: 'Faturas', icon: FileText, roles: ['admin', 'admin_consulte', 'financeiro'] },
-    { to: '/formas', label: 'Fôrmas', icon: Boxes, roles: labRoles },
+    { to: '/faturas', label: 'Faturas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
+    { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles },
     { to: '/gestao/controle-laudo', label: 'Campos do ensaio e laudo', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/campos-recebimento', label: 'Campos recebimento', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/campos-concretagem', label: 'Campos concretagem', icon: ClipboardCheck, roles: adminRoles },
-    { to: '/gestao/nc-config', label: 'Config de NC', icon: ClipboardCheck, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
+    { to: '/gestao/nc-config', label: 'Config de NC', icon: Sliders, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
   ] },
   { title: 'Operação interna', items: [{ to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles }] },
 ];
