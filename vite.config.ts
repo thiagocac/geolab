@@ -1,18 +1,21 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
+import babel from '@rolldown/plugin-babel';
 
-// React Compiler 1.0 — memoizacao automatica (build-time via Babel).
-// target '19': usa o runtime embutido do React 19 (sem pacote react-compiler-runtime).
-const reactCompiler: [string, Record<string, unknown>] = ['babel-plugin-react-compiler', { target: '19' }];
-
+// Vite 8 + @vitejs/plugin-react v6: o plugin-react dropou o Babel (usa Oxc).
+// O React Compiler (Babel) volta via @rolldown/plugin-babel, com o reactCompilerPreset()
+// no array `presets`. ORDEM: babel() ANTES de react() — senão o compiler nao roda.
 export default defineConfig({
-  plugins: [react({ babel: { plugins: [reactCompiler] } })],
+  plugins: [
+    babel({ presets: [reactCompilerPreset()] }),
+    react(),
+  ],
   build: {
     sourcemap: true,
     chunkSizeWarningLimit: 180,
     rollupOptions: {
       output: {
-        manualChunks(id) {
+        manualChunks(id: string) {
           if (!id.includes('node_modules')) return;
           if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/')) return 'vendor';
           if (id.includes('@supabase')) return 'supabase';
