@@ -78,3 +78,15 @@ export async function replaceClienteUsuarioObras(memberId: string, tenantId: str
   const { error: e2 } = await db.from('member_obras').insert(rows);
   if (e2) throw new Error(e2.message);
 }
+
+// Gera um link de acesso ao portal publico (magic link, sem senha) para um cliente.
+// Restrito a is_tenant_writer (gate dentro de criar_magic_link). Retorna a URL pronta.
+export async function criarLinkPortal(clientId: string, dias = 30): Promise<string> {
+  const r = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+  const { data, error } = await r.rpc('criar_magic_link', { p_purpose: 'portal', p_entity_table: 'lab_clients', p_entity_id: clientId, p_dias: dias });
+  if (error) throw new Error(error.message);
+  const token = String(data ?? '');
+  if (!token) throw new Error('Falha ao gerar o link.');
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.concresoft.io';
+  return origin + '/portal/acesso/' + token;
+}

@@ -37,6 +37,7 @@ const OperacaoPage = lazy(() => import('./pages/operacao/OperacaoPage').then((m)
 const ObservabilidadePage = lazy(() => import('./pages/gestao/ObservabilidadePage').then((m) => ({ default: m.ObservabilidadePage })));
 const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
 const LaudoAprovarPage = lazy(() => import('./pages/LaudoAprovarPage').then((m) => ({ default: m.LaudoAprovarPage })));
+const PortalPublicoPage = lazy(() => import('./pages/portal/PortalPublicoPage').then((m) => ({ default: m.PortalPublicoPage })));
 
 export function App() {
   const { ready, session, needsTenantSelection, hasRole } = useAuth();
@@ -63,6 +64,20 @@ export function App() {
           <Routes>
             <Route path="/laudo/aprovar/:token" element={<LaudoAprovarPage />} />
             <Route path="*" element={<LaudoAprovarPage />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    );
+  }
+
+  // Rota PUBLICA do portal do cliente por magic link (fora do gate de auth).
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/portal/acesso')) {
+    return (
+      <BrowserRouter>
+        <Suspense fallback={<LoadingState />}>
+          <Routes>
+            <Route path="/portal/acesso/:token" element={<PortalPublicoPage />} />
+            <Route path="*" element={<PortalPublicoPage />} />
           </Routes>
         </Suspense>
       </BrowserRouter>

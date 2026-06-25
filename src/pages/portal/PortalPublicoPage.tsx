@@ -1,0 +1,102 @@
+import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardHeader } from '../../components/ui/Card';
+import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
+import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosPanel';
+import type { PortalLaudoView, PortalResultadoRow } from '../../lib/portal/types';
+import { env } from '../../lib/env';
+import { useToast } from '../../lib/toast';
+
+type PortalData = {
+  laboratorio: string | null;
+  cliente: { razao_social?: string | null; nome_fantasia?: string | null } | null;
+  obras: { id: string; nome: string; codigo?: string | null; cidade?: string | null; uf?: string | null }[];
+  concretagens: { id: string; codigo: string | null; status: string; data_real: string | null; data_programada: string | null; local_texto: string | null; volume_lancado_m3: number | null; fck_previsto: number | null }[];
+  laudos: PortalLaudoView[];
+  resultados: PortalResultadoRow[];
+};
+
+async function callPortal(token: string, extra?: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/lab-client-portal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey },
+    body: JSON.stringify({ token, ...(extra ?? {}) }),
+  });
+  const txt = await resp.text();
+  const payload = txt ? JSON.parse(txt) as Record<string, unknown> : {};
+  if (!resp.ok || payload.ok === false) throw new Error(String(payload.error ?? 'Link inválido ou expirado.'));
+  return payload;
+}
+
+type Tab = 'concretagens' | 'resultados';
+
+export function PortalPublicoPage() {
+  const { token = '' } = useParams<{ token: string }>();
+  const toast = useToast();
+  const [tab, setTab] = useState<Tab>('resultados');
+  const q = useQuery({
+    queryKey: ['portal-publico', token],
+    queryFn: async (): Promise<PortalData> => {
+      const p = await callPortal(token);
+      return {
+        laboratorio: (p.laboratorio as string | null) ?? null,
+        cliente: (p.cliente as PortalData['cliente']) ?? null,
+        obras: (p.obras as PortalData['obras']) ?? [],
+        concretagens: (p.concretagens as PortalData['concretagens']) ?? [],
+        laudos: (p.laudos as PortalLaudoView[]) ?? [],
+        resultados: (p.resultados as PortalResultadoRow[]) ?? [],
+      };
+    },
+    enabled: token.length >= 16,
+    retry: false,
+  });
+
+  async function abrir(reportId: string) {
+    try {
+      const r = await callPortal(token, { lab_report_id: reportId });
+      if (r.url) window.open(String(r.url), '_blank', 'noopener,noreferrer');
+    } catch (e) { toast((e as Error).message, 'error'); }
+  }
+
+  const d = q.data;
+  const clienteNome = d?.cliente?.nome_fantasia || d?.cliente?.razao_social || 'Cliente';
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <header className="border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="kicker">Portal do cliente</p>
+            <h1 className="text-xl display text-slate-950 dark:text-slate-50">{d?.laboratorio ?? 'Consulte GEO'}</h1>
+          </div>
+          <div className="text-right text-sm text-slate-500">{clienteNome}<div className="text-xs">Acesso por link · somente leitura</div></div>
+        </div>
+      </header>
+      <main className="mx-auto max-w-6xl space-y-4 px-4 py-6">
+        {token.length < 16 ? <ErrorState message="Link inválido." /> : q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : !d ? <EmptyState /> : (
+          <>
+            <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+              <button type="button" onClick={() => setTab('concretagens')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'concretagens' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Concretagens</button>
+              <button type="button" onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button>
+            </div>
+            {tab === 'concretagens' ? (
+              <Card>
+                <CardHeader title="Concretagens">Programações e concretagens registradas para suas obras.</CardHeader>
+                {d.concretagens.length === 0 ? <EmptyState /> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{d.concretagens.map((c) => <div key={c.id} className="p-4 text-sm"><div className="font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'} · {c.status}</div><div className="mt-1 text-slate-500">{c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}{c.fck_previsto ? ' · FCK ' + c.fck_previsto : ''}{c.volume_lancado_m3 ? ' · ' + c.volume_lancado_m3 + ' m³' : ''}</div></div>)}</div>}
+              </Card>
+            ) : (
+              <LaudosResultadosPanel
+                works={d.obras.map((w) => ({ id: w.id, nome: w.nome }))}
+                laudos={d.laudos}
+                resultados={d.resultados}
+                onDownload={(id) => abrir(id)}
+                fileLabel="resultados"
+              />
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  );
+}

@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { createClienteUsuario, listClienteUsuarios, listClientesPortal, listObrasPortal, replaceClienteUsuarioObras, setClienteUsuarioAtivo, type ClienteUsuarioRow } from '../../lib/api/clientUsers';
+import { createClienteUsuario, criarLinkPortal, listClienteUsuarios, listClientesPortal, listObrasPortal, replaceClienteUsuarioObras, setClienteUsuarioAtivo, type ClienteUsuarioRow } from '../../lib/api/clientUsers';
 
 const genPass = () => 'GeoLab#' + Math.random().toString(36).slice(2, 8).toUpperCase() + '29';
 const arr = (x: string[]) => [...new Set(x.filter(Boolean))];
@@ -23,6 +23,8 @@ export function ClienteUsuariosPage() {
   const [workIds, setWorkIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [senha, setSenha] = useState<{ username: string; password: string } | null>(null);
+  const [linkClient, setLinkClient] = useState('');
+  const [linkBusy, setLinkBusy] = useState(false);
   const users = useQuery({ queryKey: ['cliente-usuarios'], queryFn: listClienteUsuarios });
   const clients = useQuery({ queryKey: ['cliente-options'], queryFn: listClientesPortal });
   const obras = useQuery({ queryKey: ['obra-options', f.client_id ?? 'all'], queryFn: () => listObrasPortal(String(f.client_id ?? '') || undefined) });
@@ -56,11 +58,27 @@ export function ClienteUsuariosPage() {
     try { await setClienteUsuarioAtivo(u.id, !u.active); await qc.invalidateQueries({ queryKey: ['cliente-usuarios'] }); }
     catch (e) { toast((e as Error).message, 'error'); }
   }
+  async function gerarLink() {
+    if (!linkClient) { toast('Selecione um cliente.', 'error'); return; }
+    setLinkBusy(true);
+    try {
+      const url = await criarLinkPortal(linkClient, 30);
+      try { await navigator.clipboard.writeText(url); toast('Link do portal copiado (valido 30 dias).', 'success'); }
+      catch { toast('Link do portal: ' + url, 'info'); }
+    } catch (e) { toast((e as Error).message, 'error'); } finally { setLinkBusy(false); }
+  }
   const list = users.data ?? [];
   return (
     <section className="space-y-5">
       <PageHeader kicker="Portal do cliente" title="Usuarios de clientes" description="Crie acessos para construtoras, vincule as obras permitidas e gere usuario/senha para entrada no portal." />
       <div className="flex justify-end"><Button onClick={abrirNovo}>Novo usuario de cliente</Button></div>
+      <Card>
+        <CardHeader title="Acesso por link (sem senha)">Gere um link de leitura do portal para um cliente. Libera todas as obras do cliente por 30 dias, sem login.</CardHeader>
+        <div className="flex flex-wrap items-end gap-2 p-4">
+          <div className="min-w-[240px] flex-1"><SelectField label="Cliente" value={linkClient} onChange={(e) => setLinkClient(e.target.value)}><option value="">Selecione</option>{(clients.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectField></div>
+          <Button variant="secondary" onClick={() => void gerarLink()} disabled={linkBusy || !linkClient}>{linkBusy ? 'Gerando...' : 'Gerar link do portal'}</Button>
+        </div>
+      </Card>
       {users.isLoading ? <LoadingState /> : users.isError ? <ErrorState message={(users.error as Error).message} /> : list.length === 0 ? <EmptyState /> : (
         <Card><div className="divide-y divide-slate-100 dark:divide-slate-800">{list.map((u) => <div key={u.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm"><div><div className="font-black text-slate-950 dark:text-slate-50">{u.full_name ?? u.email} · {u.email}</div><div className="mt-1 text-slate-500">{u.active ? 'Ativo' : 'Inativo'} · {u.obras.length ? u.obras.map((o) => o.nome).join(', ') : 'sem obras vinculadas'}</div></div><div className="flex gap-2"><Button variant="secondary" onClick={() => abrirAcesso(u)}>Obras</Button><Button variant="ghost" onClick={() => void toggleAtivo(u)}>{u.active ? 'Desativar' : 'Ativar'}</Button></div></div>)}</div></Card>
       )}
