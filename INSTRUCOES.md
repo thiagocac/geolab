@@ -1,22 +1,39 @@
-# Patches v59 — Backend aplicado + tipos reais + db tipado (sobre v58)
+# v60 — Migração para Tailwind CSS v4 (fundação de tokens OKLCH) · Fase 2 (1/n)
 
-## Frontend (sobe no GitHub -> Netlify)
-- src/lib/database.types.ts  (REGENERADO do banco vivo — tipos reais)
-- src/lib/api/concretagem.ts (db tipado + 3 casts localizados nos payloads dinamicos)
-- src/lib/telemetry/core.ts  (APP_VERSION = 'v59') · public/sw.js (CACHE_NAME = v59)
-Build validado: check-source · biome 0 · tsc 0 · vitest 18/18 · vite 8.1 (EXIT 0).
+PR de **fundação** da Fase 2. Troca o engine Tailwind **3 → 4** (CSS-first) e introduz a camada `@theme`
+com os tokens de marca em **OKLCH**. **Paridade visual**: os neutros continuam no `slate` do Tailwind
+(que o v4 já entrega em OKLCH); a única mudança visível é o **gradiente de marca**, que passa a
+interpolar em OKLCH (mais vivo, sem a zona acinzentada do sRGB). Gate completo verde
+(`check-source → biome → tsc → vitest → vite build`), React Compiler ativo.
 
-## Backend (JA APLICADO em producao via MCP — aqui so como referencia no source)
-- supabase/migrations renomeadas 049-056 (era 048-055 no v58; colisao com o vivo 048_magic_links_portal).
-  APAGUE no repo os arquivos antigos 048_*..055_* do release e use os 049-056 (cron com placeholders ja preenchidos).
-- As 8 migrations FORAM aplicadas no banco vivo (xbdvyvvxvzmcosnekmfv). NAO reaplicar.
+## Arquivos alterados (sobrescrever no repo)
+- `package.json` — + `tailwindcss@^4.3.0`, `@tailwindcss/postcss@^4.3.0`; − `tailwindcss@3`, `autoprefixer`
+- `package-lock.json` — idem
+- `postcss.config.js` — plugin `@tailwindcss/postcss` (sem autoprefixer; o v4 já prefixa via Lightning CSS)
+- `src/styles.css` — `@import "tailwindcss"` + `@custom-variant dark` + bloco `@theme` (tokens OKLCH:
+  navy/purple/magenta + rampa magenta + fontes + raios) + `@source` + shims de compat v3→v4 +
+  gradiente de marca em OKLCH
+- `biome.json` — exclui CSS do lint (`!src/**/*.css`); as at-rules do Tailwind v4 não são do escopo do Biome
+- `src/lib/telemetry/core.ts` — `APP_VERSION = 'v60'`
+- `public/sw.js` — `CACHE_NAME = 'consultegeo-geolab-v60'`
+- `SOURCE_VERSION.md` — marcador
 
-## Ainda pendente (voce)
-1. Secrets (vault): CRON_SECRET, VISION_API_KEY, RESEND_FROM_EMAIL.
-2. Deploy das 9 EFs restantes (inline self-contained; as 6 instrumentadas: partir do corpo VIVO via get_edge_function
-   + adicionar serveWithTelemetry inline — NAO deployar a copia com import _shared, que nao bundla).
-3. Reconciliar cron 'concresoft-telemetria' (slot 033) vs 'concresoft-telemetry-alarm'.
-4. H3 notification_dispatch_settings p/ e-mail real.
+## AÇÃO MANUAL (o zip não representa exclusão)
+- **APAGAR `tailwind.config.js`** do repo. No v4 a config é CSS-first; nada importa esse arquivo.
 
-Detalhe completo em GEOLAB-v58-Analise-e-Correcoes + SOURCE_VERSION.md.
-Bump: APP_VERSION/CACHE_NAME = v59.
+## Depois do pull
+- `npm install` (novas deps). O Netlify builda normalmente — sem mudança no comando de build.
+
+## Por que escolhi `@tailwindcss/postcss` (e não o plugin Vite)
+- Integração agnóstica ao bundler: evita o edge case documentado do `@tailwindcss/vite` com
+  rolldown-vite (Vite 8). Roda no pipeline PostCSS que o Vite já usa para CSS.
+
+## Compat v3→v4 embutida nos shims (preserva paridade)
+- `border` nu agora usa `var(--line)` (antes era `gray-200` fixo) — melhora o dark mode.
+- `button`/`[role=button]` mantêm `cursor:pointer` (o v4 passa a `default`).
+- `::placeholder` mantém `var(--ink-faint)`.
+
+## Próximo (v61 — aplicação ampla, já com tokens aprovados)
+- Migrar os utilitários `slate` → escala neutra **navy-tinted** + **papel morno** (a virada de paleta).
+- Aplicar a escala tipográfica Mona Sans (eixo de largura no display).
+- Motion completo: View Transitions de rota/lista + hover-lift + skeletons (respeitando `prefers-reduced-motion`).

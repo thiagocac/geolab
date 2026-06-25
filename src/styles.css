@@ -1,6 +1,43 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* dark mode por classe .dark (v4 default seria prefers-color-scheme) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* deteccao de conteudo explicita (producao) */
+@source "../index.html";
+@source "./**/*.{ts,tsx}";
+
+/* ---- tokens de marca em OKLCH (fonte unica; geram utilitarios bg-/text-/border-) ---- */
+@theme {
+  --color-navy: oklch(30.3% 0.106 268);
+  --color-navy-deep: oklch(23.5% 0.073 266);
+  --color-purple: oklch(35.5% 0.112 291);
+  --color-magenta: oklch(54.6% 0.219 352);
+  --color-magenta-light: oklch(64.9% 0.214 351);
+  --color-magenta-50: oklch(95.1% 0.023 348);
+  --color-magenta-100: oklch(89.5% 0.052 349);
+  --color-magenta-200: oklch(80.6% 0.098 350);
+  --color-magenta-300: oklch(70.8% 0.154 350);
+  --color-magenta-400: oklch(61.8% 0.202 351);
+  --color-magenta-500: oklch(54.6% 0.219 352);
+  --color-magenta-600: oklch(47.9% 0.191 352);
+  --color-magenta-700: oklch(40.4% 0.160 351);
+  --color-magenta-800: oklch(32.9% 0.129 348);
+  --color-magenta-900: oklch(25.2% 0.097 347);
+  --font-sans: 'Mona Sans', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+}
+
+/* ---- shims de compat v3->v4 (preservam paridade) ---- */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button { border-color: var(--line); }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+  ::placeholder { color: var(--ink-faint); opacity: 1; }
+}
 
 /* ---- fontes da marca GEOLAB (self-hosted; Mona Sans + JetBrains Mono) ---- */
 @font-face{
@@ -20,8 +57,8 @@
 /* ---- design tokens (claro = valores originais; escuro adicionado) ---- */
 :root{
   color-scheme:light;
-  --navy:#182863;--navy-deep:#0E1B40;--purple:#3E2D71;--magenta:#C5117E;--magenta-light:#E8459E;
-  --grad-brand:linear-gradient(135deg,#182863 0%,#3E2D71 55%,#C5117E 100%);
+  --navy:var(--color-navy);--navy-deep:var(--color-navy-deep);--purple:var(--color-purple);--magenta:var(--color-magenta);--magenta-light:var(--color-magenta-light);
+  --grad-brand:linear-gradient(135deg in oklch,var(--color-navy) 0%,var(--color-purple) 55%,var(--color-magenta) 100%);
   --font-sans:'Mona Sans',Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --paper:#FAF9F7;--surface:#ffffff;--surface-2:#f8fafc;

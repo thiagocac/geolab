@@ -1,13 +1,5 @@
-# GEOLAB → Concresoft — SOURCE VERSION v59
+# GEOLAB → Concresoft — SOURCE VERSION v60
 CACHE_NAME: consultegeo-geolab-v59 · APP_VERSION: v59
-(slug interno `consultegeo-geolab` mantido; marca visivel = **Concresoft**)
-
-Frontend (acumulado v2→v59): …Portal do Cliente (v29) · Brand Kit (v30) · Medicao/faturamento (v35-v36) ·
-Estatistica de lote NBR 12655 (v39) · Motor de NC (v40-v44) · OCR de DANFE/NF (v47) · Financeiro (v49) ·
-code-splitting + xlsx lazy (v50) · Biome (v51) · versao auto na UI (v52) · React 18→19 (v53) · React
-Compiler (v54) · rolldown-vite (v55) · Vite 8 + plugin-react v6 + vitest 3 (v56) · Zod 4 (v57) ·
-Observabilidade + Melhorias de processos (v58) · backend aplicado + tipos reais + db tipado (v59).
-(historico completo v2→v49 em git log + 08-changelog.)
 
 ## v59 — Observabilidade + Melhorias APLICADAS (banco) + tipos reais + melhoria do db tipado
 Sobre o v58 (release combinado). Backend aplicado em producao via MCP; frontend buildando verde.
