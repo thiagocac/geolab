@@ -1,13 +1,14 @@
-# GEOLAB → Concresoft — SOURCE VERSION v56
-CACHE_NAME: consultegeo-geolab-v56 · APP_VERSION: v56
+# GEOLAB → Concresoft — SOURCE VERSION v57
+CACHE_NAME: consultegeo-geolab-v57 · APP_VERSION: v57
 
-## v56 — Vite 8 nativo (Rolldown+Oxc) + plugin-react v6 + vitest 3 (Fase 1)
-- vite 8.1.0 (sai do alias rolldown-vite; Rolldown nativo). @vitejs/plugin-react 6.0.3 (Oxc no JSX/refresh,
-  sem Babel interno). vitest 3.2.6 UNIFICADO no vite 8 (acabou o vite 5 aninhado da v55).
-- React Compiler religado pelo caminho novo: @rolldown/plugin-babel 0.2.3 + reactCompilerPreset() do
-  plugin-react, no array `presets`; ORDEM babel() ANTES de react(). +@babel/core +@types/babel__core.
-  Prova: 765 memo-slots $[n] no index + react/compiler-runtime.
-- tsconfig: moduleResolution 'Node' -> 'bundler' (OBRIGATORIO: os tipos do Vite 8 vem por exports maps).
-- vite.config: manualChunks(id: string) tipado. Build ~5.6s (mais rapido que v54/v55: Oxc faz o JSX,
-  Babel so o compiler). Chunks: vendor ~182kB, xlsx isolado.
-- Bump => v56. npm run build verde. Sem mudanca de codigo de componente.
+## v57 — Zod 4 (Fase 1; contrato schema->tipo->validacao) — FECHA A FASE 1
+- zod ^4.4.3 (dependency). Primeiro schema: EF publica validar-laudo (src/lib/api/validar.ts).
+  validacaoLaudoSchema -> tipo via z.infer (substitui o type manual) + safeParse no lugar do cast
+  `as ValidacaoLaudo` (resposta de rede nao confiavel; endpoint sem login, alvo do QR). Fallback
+  {found:false} em parse invalido.
+- +teste src/lib/api/validar.test.ts (3 casos). vitest agora 4 testes (era 1).
+- zod fica no chunk lazy do ValidarPage (unico consumidor; rota publica) — fora do bundle principal.
+- Padrao estabelecido sem refatorar o resto. Bump => v57. npm run build verde.
+
+## Fase 1 completa: v53 React 19.2 · v54 React Compiler 1.0 · v55 rolldown-vite · v56 Vite 8 · v57 Zod 4.
+## Fase 0 (v50-v52) + Fase 1 (v53-v57) entregues. Proximas: Fase 2 (Tailwind v4/OKLCH, tokens, motion) etc.
