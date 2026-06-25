@@ -13,6 +13,7 @@ const NovaObraWizard = lazy(() => import('./pages/cadastros/NovaObraWizard').the
 const EstruturaPage = lazy(() => import('./pages/cadastros/EstruturaPage').then((m) => ({ default: m.EstruturaPage })));
 const MateriaisPage = lazy(() => import('./pages/cadastros/MateriaisPage').then((m) => ({ default: m.MateriaisPage })));
 const ProgramacoesPage = lazy(() => import('./pages/concreto/ProgramacoesPage').then((m) => ({ default: m.ProgramacoesPage })));
+const NovaProgramacaoPage = lazy(() => import('./pages/concreto/NovaProgramacaoPage').then((m) => ({ default: m.NovaProgramacaoPage })));
 const ConcretagensPage = lazy(() => import('./pages/concreto/ConcretagensPage').then((m) => ({ default: m.ConcretagensPage })));
 const ConcretagemDetalhePage = lazy(() => import('./pages/concreto/ConcretagemDetalhePage').then((m) => ({ default: m.ConcretagemDetalhePage })));
 const RompimentosPage = lazy(() => import('./pages/concreto/RompimentosPage').then((m) => ({ default: m.RompimentosPage })));
@@ -84,6 +85,7 @@ export function App() {
             <Route path="/estrutura" element={<EstruturaPage />} />
             <Route path="/tracos" element={<MateriaisPage />} />
             <Route path="/programacoes" element={<ProgramacoesPage />} />
+            <Route path="/programacoes/nova" element={<NovaProgramacaoPage />} />
             <Route path="/concretagens" element={<ConcretagensPage />} />
             <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
             <Route path="/rompimentos" element={<RompimentosPage />} />
