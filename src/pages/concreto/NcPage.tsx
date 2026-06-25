@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -86,6 +87,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
   const { member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const cls = nc.classification_code ?? '';
   const acoes = useQuery({ queryKey: ['nc-acoes', nc.id], queryFn: () => listAcoes(nc.id) });
   const templates = useQuery({ queryKey: ['nc-templates', cls], queryFn: () => listTemplates(cls), enabled: !!cls });
@@ -124,7 +126,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
     catch (e) { toast((e as Error).message, 'error'); }
   }
   async function excluir() {
-    if (!window.confirm('Excluir esta NC?')) return;
+    if (!(await confirm({ title: 'Excluir NC', message: 'Excluir esta NC?', danger: true, confirmLabel: 'Excluir' }))) return;
     try { await excluirNc(nc.id); onChange(); onClose(); toast('NC excluida.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); }
   }

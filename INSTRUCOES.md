@@ -1,30 +1,29 @@
-# v62 — View Transitions de rota (escopadas ao conteúdo) · Fase 2 (3/n)
+# v63 — Base UI (primitivos acessíveis) + ConfirmDialog no lugar de window.confirm · Fase 3 (1/n)
 
-Fecha o "motion completo" da Fase 2 com **transições de rota** suaves. Usa o suporte **nativo do React
-Router 6.30.4** (`viewTransition` na `NavLink`) — ele embrulha a navegação em `document.startViewTransition`
-e cuida do `flushSync`/concurrent. A animação é **escopada só à área de conteúdo** (`.page-wrap` ganha
-`view-transition-name:page-content`), então **sidebar e topbar ficam parados** — só o miolo faz um
-fade + slide curto. Degrada sozinho: navegadores sem a API caem na navegação normal; `prefers-reduced-motion`
-desliga a animação (o guard global zera as durações). Gate completo verde.
+Fundação da Fase 3: instala o **Base UI 1.6** (MUI — primitivos unstyled, acessíveis, **icon-agnóstico**) e
+introduz o **ConfirmDialog** (AlertDialog do Base UI) que substitui **todos os 7 `window.confirm`** por um
+diálogo com foco/teclado/ARIA corretos, estilizado nos tokens. Gate completo verde.
+
+## Dep nova + override (IMPORTANTE para o install)
+- `+ @base-ui/react@^1.6.0`
+- `package.json` ganhou `overrides: { "@base-ui/react": { "date-fns": "$date-fns" } }` — o Base UI declara
+  `date-fns@^4` como peer **opcional** (só p/ componentes de data, que NÃO usamos). O override aponta p/ o
+  `date-fns@3.6.0` que já existe → evita `ERESOLVE` sem `legacy-peer-deps` global nem bumpar o date-fns.
+- **Após o pull: `npm install`** (instala o Base UI + atualiza o lockfile). O Netlify resolve com o override.
 
 ## Arquivos alterados (sobrescrever no repo)
-- `src/components/Layout.tsx` — `viewTransition` na `<NavLink>` da sidebar (1 ponto cobre toda a navegação principal)
-- `src/styles.css` — `.page-wrap{view-transition-name:page-content}` + `::view-transition-old/new(page-content)`
-  com `@keyframes vt-out/vt-in` (fade + slide ~.2-.26s, `var(--ease-out)`), sob `prefers-reduced-motion:no-preference`
-- `src/lib/telemetry/core.ts` / `public/sw.js` — v62
-- `SOURCE_VERSION.md` — marcador
+- **NOVO** `src/components/ui/ConfirmDialog.tsx` — `ConfirmProvider` + `useConfirm()` (retorna `Promise<boolean>`); AlertDialog do Base UI
+- `src/main.tsx` — `<ConfirmProvider>` dentro do `<ToastProvider>`
+- `src/styles.css` — `.bui-backdrop` / `.bui-popup` (overlays do Base UI; transição via `data-starting/ending-style`)
+- 7 sites `window.confirm` → `await confirm({ title, message, danger, confirmLabel })`:
+  `AdminListPage`, `Colaboradores`, `Materiais`, `Faturas`, `Formas`, `Lotes`, `NcPage` (no subcomponente `NcDetalhe`)
+- `package.json` / `package-lock.json` / `core.ts` / `public/sw.js` / `SOURCE_VERSION.md`
 
-## Depois do pull
-- Sem dep nova: `git pull` + deploy.
+## Padrão de uso daqui pra frente
+- `const confirm = useConfirm();` (hook no corpo do componente)
+- `if (!(await confirm({ title, message, danger: true, confirmLabel: 'Excluir' }))) return;`
+- **Zero `window.confirm` no código** (dá pra adicionar uma regra no check-source proibindo, se quiser).
 
-## Notas de escopo
-- **viewTransition ligada na navegação da sidebar** (o caso principal: trocar de seção). Navegações dentro da
-  página (linha→detalhe, atalhos do Painel via `useNavigate`) podem adotar a VT incrementalmente passando
-  `{ viewTransition: true }` no `navigate(...)` — não fiz em massa pra manter o PR enxuto.
-- **Hover-lift em cards interativos: não aplicado** — o app usa `<Button>` para ações e os cards de KPI (`Stat`)
-  não são clicáveis; forçar lift em card estático é anti-padrão. A classe `.lift` (v61) fica disponível para quando
-  surgir card clicável.
-
-## Fase 2 — fechada
-- v60 engine Tailwind v4 + @theme OKLCH · v61 virada de paleta + tipografia + skeletons/micro-motion · v62 View Transitions.
-- **Próximo: Fase 3** (primitivos Base UI + drawer A/página C para cadastro + RHF+Zod + ConfirmDialog no lugar de window.confirm).
+## Próximo (v64)
+- Migrar o **modal central branco** do `AdminListPage` → **Drawer lateral (padrão A)** com Base UI Dialog
+  (form curto/médio) + **RHF + Zod** na validação. Página dedicada (padrão C) p/ o form longo (Nova Programação) vem depois.

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -122,6 +123,7 @@ export function MateriaisPage() {
   const { member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [f, setF] = useState<FormState>(vazio());
@@ -192,7 +194,7 @@ export function MateriaisPage() {
   }
 
   async function excluir(t: TracoRow) {
-    if (!window.confirm('Excluir o traço ' + t.codigo + '?')) return;
+    if (!(await confirm({ title: 'Excluir traço', message: 'Excluir o traço ' + t.codigo + '?', danger: true, confirmLabel: 'Excluir' }))) return;
     try { await softDeleteTraco(t.id); await qc.invalidateQueries({ queryKey: ['tracos'] }); toast('Excluído.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); }
   }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -25,6 +26,7 @@ export function ColaboradoresPage() {
   const { member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [f, setF] = useState<Record<string, unknown>>({});
@@ -60,7 +62,7 @@ export function ColaboradoresPage() {
     try { await softDeleteCert(id); await qc.invalidateQueries({ queryKey: ['colaboradores'] }); } catch (e) { toast((e as Error).message, 'error'); }
   }
   async function excluir(c: ColaboradorRow) {
-    if (!window.confirm('Excluir o colaborador ' + c.nome + '?')) return;
+    if (!(await confirm({ title: 'Excluir colaborador', message: 'Excluir ' + c.nome + '?', danger: true, confirmLabel: 'Excluir' }))) return;
     try { await softDeleteColaborador(c.id); await qc.invalidateQueries({ queryKey: ['colaboradores'] }); toast('Excluido.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
   }
 

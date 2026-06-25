@@ -135,6 +135,12 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .lift{transition:transform var(--dur-3) var(--ease-emph),box-shadow var(--dur-3) var(--ease-emph)}
 .lift:hover{transform:translateY(-3px);box-shadow:var(--shadow-pop)}
 
+/* ---- overlays do Base UI (Dialog/AlertDialog/Drawer) ---- */
+.bui-backdrop{position:fixed;inset:0;z-index:70;background:oklch(20.8% 0.04 262 / .42);backdrop-filter:blur(2px);transition:opacity var(--dur-2) var(--ease-out)}
+.bui-backdrop[data-starting-style],.bui-backdrop[data-ending-style]{opacity:0}
+.bui-popup{position:fixed;left:50%;top:50%;z-index:71;width:calc(100% - 2rem);max-width:420px;transform:translate(-50%,-50%);outline:none;transition:opacity var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out)}
+.bui-popup[data-starting-style],.bui-popup[data-ending-style]{opacity:0;transform:translate(-50%,-48%) scale(.98)}
+
 /* ---- layout: sidebar + topbar ---- */
 .app-shell{display:flex;min-height:100vh}
 .sidebar{width:248px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:40}

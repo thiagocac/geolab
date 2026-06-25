@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -21,6 +22,7 @@ export function FaturasPage() {
   const { hasRole } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const pode = hasRole('admin', 'admin_consulte', 'financeiro');
   const [status, setStatus] = useState('');
   const [emitir, setEmitir] = useState(false);
@@ -32,7 +34,7 @@ export function FaturasPage() {
   const pago = linhas.filter((f) => f.status === 'paga').reduce((s, f) => s + f.valor, 0);
 
   async function cancelar(f: FaturaRow) {
-    if (!window.confirm('Cancelar a fatura ' + f.numero + '?')) return;
+    if (!(await confirm({ title: 'Cancelar fatura', message: 'Cancelar a fatura ' + f.numero + '?', danger: true, confirmLabel: 'Cancelar fatura', cancelLabel: 'Voltar' }))) return;
     try { await cancelarFatura(f.id); await qc.invalidateQueries({ queryKey: ['faturas'] }); toast('Fatura cancelada.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); }
   }

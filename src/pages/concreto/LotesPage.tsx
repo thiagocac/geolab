@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -21,6 +22,7 @@ export function LotesPage() {
   const { member, hasRole } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const podeEditar = hasRole('admin', 'admin_consulte', 'gestor_qualidade');
   const [filtroObra, setFiltroObra] = useState('');
   const [open, setOpen] = useState(false);
@@ -51,7 +53,7 @@ export function LotesPage() {
     catch (e) { toast((e as Error).message, 'error'); }
   }
   async function excluir(id: string) {
-    if (!window.confirm('Excluir este lote?')) return;
+    if (!(await confirm({ title: 'Excluir lote', message: 'Excluir este lote?', danger: true, confirmLabel: 'Excluir' }))) return;
     try { await excluirLote(id); await qc.invalidateQueries({ queryKey: ['lotes'] }); toast('Lote excluido.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); }
   }

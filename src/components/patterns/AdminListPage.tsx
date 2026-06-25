@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useConfirm } from '../ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -25,6 +26,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
   const { member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortState>({ column: initialSort ?? 'created_at', direction: 'asc' });
@@ -72,7 +74,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
   }
 
   async function remove(row: T) {
-    if (!window.confirm('Excluir este registro?')) return;
+    if (!(await confirm({ title: 'Excluir registro', message: 'Esta ação não pode ser desfeita.', danger: true, confirmLabel: 'Excluir' }))) return;
     try { await softDelete(table, row.id); await qc.invalidateQueries({ queryKey: [table] }); toast('Registro excluido.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); }
   }
