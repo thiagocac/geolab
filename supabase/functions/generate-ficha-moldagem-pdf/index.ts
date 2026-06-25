@@ -1,4 +1,6 @@
+import { serveWithTelemetry } from '../_shared/telemetry.ts';
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
+import QRCode from 'npm:qrcode@1.5.3';
 import { handleCors } from '../_shared/cors.ts';
 import { fail } from '../_shared/response.ts';
 import { userClient } from '../_shared/client.ts';
@@ -12,7 +14,7 @@ const sane = (v: unknown) => s(v).replace(/[→➔➜]/g, '->').replace(/[–—
 const ddmm = (iso: string) => iso ? iso.slice(0, 10).split('-').reverse().join('/') : '-';
 const emb = (v: unknown): Row => (v && typeof v === 'object' ? v as Row : {});
 
-Deno.serve(async (req) => {
+serveWithTelemetry('generate-ficha-moldagem-pdf', async (req) => {
   try {
     const cors = handleCors(req); if (cors) return cors;
     const body = await req.json().catch(() => ({})) as Row;
@@ -58,6 +60,15 @@ Deno.serve(async (req) => {
     let page = pdf.addPage([W, H]);
     let y = H - 54;
     const nova = () => { page = pdf.addPage([W, H]); y = H - 54; };
+
+    // Melhoria 1.1 — QR com o concretagem_id (casamento determinístico na leitura da ficha). Best-effort.
+    try {
+      const qrUrl = await QRCode.toDataURL(concId, { margin: 1, width: 240 });
+      const qrPng = await pdf.embedPng(Uint8Array.from(atob(qrUrl.split(',')[1]), (ch) => ch.charCodeAt(0)));
+      const qz = 80;
+      page.drawImage(qrPng, { x: W - M - qz, y: H - M - qz, width: qz, height: qz });
+      page.drawText('ficha de moldagem', { x: W - M - qz, y: H - M - qz - 9, size: 6, font, color: grey });
+    } catch { /* QR nunca quebra a ficha */ }
 
     page.drawText(sane(`${s(lab.name) || 'Laboratorio'} - Controle Tecnologico de Materiais`), { x: M, y, size: 9, font: bold, color: grey }); y -= 16;
     page.drawText(sane(`Ficha de moldagem - ${s(conc.codigo) || '(sem codigo)'}`), { x: M, y, size: 16, font: bold, color: navy }); y -= 14;

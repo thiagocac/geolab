@@ -33,7 +33,9 @@ const CamposConcretagemPage = lazy(() => import('./pages/gestao/CamposConcretage
 const ClientePortalPage = lazy(() => import('./pages/portal/ClientePortalPage').then((m) => ({ default: m.ClientePortalPage })));
 const ClienteUsuariosPage = lazy(() => import('./pages/portal/ClienteUsuariosPage').then((m) => ({ default: m.ClienteUsuariosPage })));
 const OperacaoPage = lazy(() => import('./pages/operacao/OperacaoPage').then((m) => ({ default: m.OperacaoPage })));
+const ObservabilidadePage = lazy(() => import('./pages/gestao/ObservabilidadePage').then((m) => ({ default: m.ObservabilidadePage })));
 const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
+const LaudoAprovarPage = lazy(() => import('./pages/LaudoAprovarPage').then((m) => ({ default: m.LaudoAprovarPage })));
 
 export function App() {
   const { ready, session, needsTenantSelection, hasRole } = useAuth();
@@ -46,6 +48,20 @@ export function App() {
           <Routes>
             <Route path="/validar/:codigo" element={<ValidarPage />} />
             <Route path="*" element={<ValidarPage />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    );
+  }
+
+  // Rota PUBLICA de aprovacao de laudo por magic link (fora do gate de auth) — melhoria 3.2.
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/laudo/aprovar')) {
+    return (
+      <BrowserRouter>
+        <Suspense fallback={<LoadingState />}>
+          <Routes>
+            <Route path="/laudo/aprovar/:token" element={<LaudoAprovarPage />} />
+            <Route path="*" element={<LaudoAprovarPage />} />
           </Routes>
         </Suspense>
       </BrowserRouter>
@@ -88,6 +104,7 @@ export function App() {
             <Route path="/portal-cliente" element={<ClientePortalPage />} />
             <Route path="/portal/usuarios-clientes" element={podeGerirClientes ? <ClienteUsuariosPage /> : <Navigate to="/portal-cliente" replace />} />
             <Route path="/operacao" element={podeOperacao ? <OperacaoPage /> : <Navigate to="/" replace />} />
+            <Route path="/observabilidade" element={podeOperacao ? <ObservabilidadePage /> : <Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

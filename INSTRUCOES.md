@@ -1,28 +1,25 @@
-# Patches v57 — Zod 4 (contrato schema->tipo->validacao)
+# Patches v58 — Observabilidade + Melhorias (combinado sobre v57)
 
-Aplicar por cima da v56, commitar, deixar o Netlify buildar.
-IMPORTANTE: package.json + package-lock.json mudaram (+zod). `npm ci` instala.
+Pacote source da v58: v57 modernizado + as duas frentes do release, ja reconciliado e BUILDANDO VERDE.
 
-## Arquivos (8)
-- package.json                  (+dependency zod ^4.4.3)
-- package-lock.json
-- src/lib/api/validar.ts        (schema Zod -> z.infer + safeParse; sai o cast `as`)
-- src/lib/api/validar.test.ts   (NOVO; 3 testes do schema)
-- src/lib/telemetry/core.ts     (APP_VERSION = 'v57')
-- public/sw.js                  (CACHE_NAME = 'consultegeo-geolab-v57')
-- SOURCE_VERSION.md / INSTRUCOES.md
+## Como aplicar
+1. FRONTEND (Netlify, via GitHub): sobrepor todos os arquivos de `src/` e `public/sw.js`. O App.tsx/ficha
+   ja vem combinados; o database.types.ts traz stubs das tabelas novas (regerar depois — ver abaixo).
+2. BACKEND (via MCP, fora do Netlify): aplicar migrations 048->055 (uma por vez, list_migrations entre cada),
+   deploy das EFs usando o supabase/config.toml incluido. Detalhe e ordem completa em:
+   - docs/v58-RELEASE-README.md  (ordem combinada + ressalvas)
+   - docs/v58-observabilidade.md (camadas, crons, secrets)
+   - docs/v58-melhorias.md       (9 melhorias, EFs, G1/H3)
+3. REGENERAR database.types.ts apos aplicar as migrations (substitui os 7 stubs por tipos reais):
+   `npm run gen:types` (ou MCP generate_typescript_types no projeto xbdvyvvxvzmcosnekmfv).
+4. Secrets/config: CRON_SECRET; G1 (VISION_API_KEY, RESEND_FROM_EMAIL); H3 (notification_dispatch_settings).
 
-## O que muda
-- Estabelece o padrao Zod: o schema e a fonte unica -> tipo (z.infer) + validacao em runtime.
-- Aplicado num ponto de valor e baixo risco: a EF publica validar-laudo (alvo do QR, sem login).
-  Antes: `as ValidacaoLaudo` (cast sem checagem) num JSON de rede. Agora: safeParse + fallback {found:false}.
-- zod entra no chunk lazy do ValidarPage (so ele usa hoje) — nao afeta o bundle principal.
-- Nao refatora o resto; outros pontos (fiscal.ts, forms) migram aos poucos.
+## Validacao ja executada (sandbox) — gate completo
+- npm run build => check-source OK · biome 0 erros · tsc 0 erros · vitest 18/18 · vite 8.1 build OK · EXIT 0.
 
-## Validacao (sandbox)
-- npm run build => check-source OK · biome lint 0 erros · tsc 0 erros · vitest 4/4 (era 1) · vite build OK · EXIT 0.
+## Observacoes importantes
+- database.types.ts: os 7 stubs SAO PROVISORIOS (o build so fica honesto-tipado apos o gen:types real).
+- concretagem.ts usa `db` cast para untyped (escolha do release p/ evidencias) — funciona; recomendo re-tipar.
+- EFs e migrations passam no check-source mas NAO foram executadas em runtime (sem Deno/banco no sandbox).
 
-## Proximos candidatos a Zod (futuro)
-- fiscal.ts (resposta consulta-fiscal); payload dos forms de cadastro (junto com React Hook Form na Fase 3).
-
-Bump: APP_VERSION/CACHE_NAME = v57.
+Bump: APP_VERSION/CACHE_NAME = v58.

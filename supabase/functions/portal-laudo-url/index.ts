@@ -1,3 +1,4 @@
+import { serveWithTelemetry } from '../_shared/telemetry.ts';
 // portal-laudo-url (GEOLAB) - assina download de laudo APÓS verificar escopo do solicitante.
 // Cliente: só obras vinculadas (member_can_access_work). Staff: qualquer obra do tenant.
 // Necessário porque o bucket lab-reports não tem policy de storage p/ laudos (e policy não escopa por obra).
@@ -7,7 +8,7 @@ const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...cors } });
 const clean = (v: unknown) => String(v ?? '').trim();
 
-Deno.serve(async (req) => {
+serveWithTelemetry('portal-laudo-url', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
     const url = Deno.env.get('SUPABASE_URL') ?? '';

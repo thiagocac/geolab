@@ -6,10 +6,9 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { SelectField } from '../../components/ui/Field';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto } from '../../lib/api/laudo';
+import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente } from '../../lib/api/laudo';
 
 export function LaudosPage() {
   const { hasRole, member } = useAuth();
@@ -17,24 +16,41 @@ export function LaudosPage() {
   const qc = useQueryClient();
   const podeAprovar = hasRole('admin', 'admin_consulte', 'gestor_qualidade');
   const [novo, setNovo] = useState(false);
-  const [concId, setConcId] = useState('');
+  const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
 
   const q = useQuery({ queryKey: ['laudos'], queryFn: listLaudos });
   const elegiveis = useQuery({ queryKey: ['conc-result'], queryFn: listConcretagensComResultado, enabled: novo });
 
   function abrirBlob(blob: Blob) { const url = URL.createObjectURL(blob); window.open(url, '_blank', 'noopener'); }
 
-  async function gerar() {
-    if (!concId) { toast('Selecione uma concretagem.', 'error'); return; }
+  function toggle(cid: string) { setSel((s) => { const n = new Set(s); if (n.has(cid)) n.delete(cid); else n.add(cid); return n; }); }
+  function fecharNovo() { setNovo(false); setSel(new Set()); setProg(null); }
+  async function previewOne() {
+    const ids = [...sel]; if (ids.length !== 1) { toast('Selecione exatamente uma concretagem para pré-visualizar.', 'error'); return; }
     setBusy(true);
-    try {
-      const { blob, labReportId } = await gerarLaudo(concId);
-      abrirBlob(blob);
-      if (labReportId && member) { try { await notifyLaudoPronto(member.tenant_id, labReportId); } catch { /* notificacao e best-effort */ } }
-      await qc.invalidateQueries({ queryKey: ['laudos'] }); toast('Laudo gerado.', 'success'); setNovo(false); setConcId('');
-    }
+    try { const { blob } = await gerarLaudo(ids[0], false); abrirBlob(blob); toast('Pré-visualização gerada (não persistida).', 'info'); }
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
+  }
+  async function gerar() {
+    const ids = [...sel]; if (!ids.length) { toast('Selecione ao menos uma concretagem.', 'error'); return; }
+    setBusy(true); setProg({ done: 0, total: ids.length });
+    let ok = 0; const erros: string[] = [];
+    for (const cid of ids) {
+      try {
+        const { blob, labReportId } = await gerarLaudo(cid, true);
+        if (ids.length === 1) abrirBlob(blob);
+        if (labReportId && member) { try { await notifyLaudoPronto(member.tenant_id, labReportId); } catch { /* best-effort */ } }
+        ok += 1;
+      } catch (e) { erros.push((e as Error).message); }
+      setProg((pr) => pr ? { ...pr, done: pr.done + 1 } : pr);
+    }
+    await qc.invalidateQueries({ queryKey: ['laudos'] });
+    if (ok) toast(ok + ' laudo(s) gerado(s)' + (erros.length ? ' · ' + erros.length + ' com erro' : '') + '.', erros.length ? 'warning' : 'success');
+    else toast('Falha ao gerar: ' + (erros[0] ?? 'erro'), 'error');
+    setBusy(false); setProg(null);
+    if (ok) fecharNovo();
   }
   async function baixar(path: string | null) {
     if (!path) { toast('Laudo ainda nao persistido.', 'error'); return; }
@@ -45,6 +61,20 @@ export function LaudosPage() {
   }
   async function reabrir(id: string) {
     try { await reabrirLaudo(id); await qc.invalidateQueries({ queryKey: ['laudos'] }); toast('Laudo reaberto.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
+  }
+  async function gerarLink(id: string) {
+    try {
+      const url = await criarLinkAprovacao(id);
+      try { await navigator.clipboard.writeText(url); toast('Link de aprovacao copiado para a area de transferencia.', 'success'); }
+      catch { toast('Link de aprovacao: ' + url, 'info'); }
+    } catch (e) { toast((e as Error).message, 'error'); }
+  }
+  async function enviarCliente(id: string) {
+    try {
+      const r = await enviarLaudoCliente(id);
+      if (r.sent) toast('Laudo enviado ao cliente (' + (r.to ?? '') + ').', 'success');
+      else toast('Nao enviado: ' + (r.reason ?? 'verifique as configuracoes de e-mail.'), 'info');
+    } catch (e) { toast((e as Error).message, 'error'); }
   }
 
   const rows = q.data ?? [];
@@ -62,20 +92,33 @@ export function LaudosPage() {
                   <StatusBadge status={r.status} />
                   <Button variant="ghost" onClick={() => void baixar(r.storage_path)}>Baixar</Button>
                   {podeAprovar && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
+                  {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void reabrir(r.id)}>Reabrir</Button> : null}
+                  {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void enviarCliente(r.id)}>Enviar ao cliente</Button> : null}
                 </div>
               </div>
             ))}
           </div>
         </Card>
       )}
-      <Modal open={novo} title="Novo laudo" onClose={() => setNovo(false)} footer={<><Button variant="ghost" onClick={() => setNovo(false)}>Cancelar</Button><Button onClick={() => void gerar()} disabled={busy}>{busy ? 'Gerando...' : 'Gerar PDF'}</Button></>}>
-        <div style={{ display: 'grid', gap: 12 }}>
-          <SelectField label="Concretagem (com resultados lancados)" value={concId} onChange={(e) => setConcId(e.target.value)}>
-            <option value="">Selecione...</option>
-            {(elegiveis.data ?? []).map((c) => <option key={c.id} value={c.id}>{(c.codigo ?? c.id.slice(0, 8)) + ' - ' + (c.work_nome ?? '-')}</option>)}
-          </SelectField>
-          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>O laudo agrupa os exemplares (NF) da concretagem; aceitacao por exemplar na idade de controle. Sai como rascunho ate a aprovacao.</p>
+      <Modal open={novo} wide title="Novo laudo (individual ou em lote)" onClose={fecharNovo} footer={<><Button variant="ghost" onClick={fecharNovo}>Cancelar</Button><Button variant="secondary" onClick={() => void previewOne()} disabled={busy || sel.size !== 1}>Pré-visualizar</Button><Button onClick={() => void gerar()} disabled={busy || sel.size === 0}>{busy ? (prog ? ('Gerando ' + prog.done + '/' + prog.total + '...') : 'Gerando...') : ('Gerar ' + (sel.size || '') + ' laudo' + (sel.size === 1 ? '' : 's')).replace('  ', ' ').trim()}</Button></>}>
+        <div style={{ display: 'grid', gap: 10 }}>
+          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Selecione uma ou mais concretagens com resultados lancados. <strong>Pre-visualizar</strong> gera o PDF sem persistir (apenas com 1 selecionada). <strong>Gerar</strong> persiste como rascunho e dispara a notificacao interna. Aceitacao por exemplar (NF) na idade de controle.</p>
+          {elegiveis.isLoading ? <LoadingState /> : (elegiveis.data ?? []).length === 0 ? <EmptyState /> : (
+            <>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>
+                <input type="checkbox" checked={sel.size > 0 && sel.size === (elegiveis.data ?? []).length} onChange={(e) => setSel(e.target.checked ? new Set((elegiveis.data ?? []).map((c) => c.id)) : new Set())} /> Selecionar todas ({(elegiveis.data ?? []).length})
+              </label>
+              <div style={{ display: 'grid', gap: 4, maxHeight: 320, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 8, padding: 8 }}>
+                {(elegiveis.data ?? []).map((c) => (
+                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '4px 6px', borderRadius: 6, background: sel.has(c.id) ? 'var(--surface-2, rgba(0,0,0,0.05))' : 'transparent' }}>
+                    <input type="checkbox" checked={sel.has(c.id)} onChange={() => toggle(c.id)} />
+                    <span>{(c.codigo ?? c.id.slice(0, 8)) + ' · ' + (c.work_nome ?? '-')}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

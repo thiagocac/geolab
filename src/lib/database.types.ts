@@ -3575,6 +3575,82 @@ export type Database = {
       }
     }
     Views: {
+      v_telemetry_mttr_summary: {
+        Row: {
+          open_incidents: number | null
+          incidents_30d: number | null
+          resolved_30d: number | null
+          critical_30d: number | null
+          avg_mttr_minutes_30d: number | null
+        }
+        Relationships: []
+      }
+      v_client_health_by_version: {
+        Row: {
+          app_version: string | null
+          events: number | null
+          errors: number | null
+          error_rate_pct: number | null
+          sessions: number | null
+        }
+        Relationships: []
+      }
+      v_release_health: {
+        Row: {
+          app_version: string | null
+          sessions: number | null
+          crash_free_sessions_pct: number | null
+        }
+        Relationships: []
+      }
+      v_ef_metrics_hourly: {
+        Row: {
+          fn_name: string | null
+          hour: string | null
+          calls: number | null
+          errors_5xx: number | null
+          p95_ms: number | null
+        }
+        Relationships: []
+      }
+      v_client_vitals_daily: {
+        Row: {
+          day: string | null
+          metric: string | null
+          p75: number | null
+          samples: number | null
+        }
+        Relationships: []
+      }
+      telemetry_alert: {
+        Row: {
+          alert_key: string | null
+          kind: string | null
+          severity: string | null
+          title: string | null
+          detail: string | null
+          metric: string | null
+          observed: number | null
+          threshold: number | null
+          app_version: string | null
+          first_seen_at: string | null
+          last_seen_at: string | null
+          occurrences: number | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      cron_heartbeat: {
+        Row: {
+          job_name: string | null
+          last_seen_at: string | null
+          expected_max_age_minutes: number | null
+          last_status: string | null
+          consecutive_failures: number | null
+          active: boolean | null
+        }
+        Relationships: []
+      }
       v_concretagens_central: {
         Row: {
           client_id: string | null

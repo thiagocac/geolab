@@ -10,7 +10,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
-import { getConcretagem, listCaminhoes, listCpsDaConcretagem, addCaminhao, invokeFicha, updateConcretagem, listTracosComFck, padraoMoldagemDaConcretagem, lerNfImagem, type ConcretagemRow } from '../../lib/api/concretagem';
+import { getConcretagem, listCaminhoes, listCpsDaConcretagem, addCaminhao, invokeFicha, updateConcretagem, listTracosComFck, padraoMoldagemDaConcretagem, lerNfImagem, uploadEvidencia, listEvidencias, signedEvidencia, excluirEvidencia, lerFichaImagem, type ConcretagemRow, type FichaCaminhaoOCR } from '../../lib/api/concretagem';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { listColaboradores } from '../../lib/api/colaboradores';
 import { listPecasObra } from '../../lib/api/estrutura';
@@ -65,10 +65,20 @@ export function ConcretagemDetalhePage() {
   const [camPadrao, setCamPadrao] = useState<PadraoMoldagem[]>([]);
   const [busy, setBusy] = useState(false);
   const [busyStep, setBusyStep] = useState(false);
+  const [upEvi, setUpEvi] = useState(false);
+  const [fichaOpen, setFichaOpen] = useState(false);
+  const [lendoFicha, setLendoFicha] = useState(false);
+  const [gravandoFicha, setGravandoFicha] = useState(false);
+  const [fichaCams, setFichaCams] = useState<FichaCaminhaoOCR[]>([]);
+  const [fichaConf, setFichaConf] = useState<number | null>(null);
 
   const conc = useQuery({ queryKey: ['concretagem', id], queryFn: () => getConcretagem(id), enabled: !!id });
   const cams = useQuery({ queryKey: ['caminhoes', id], queryFn: () => listCaminhoes(id), enabled: !!id });
   const cps = useQuery({ queryKey: ['cps', id], queryFn: () => listCpsDaConcretagem(id), enabled: !!id });
+  const evidencias = useQuery({ queryKey: ['evidencias', id], enabled: !!id, queryFn: async () => {
+    const linhas = await listEvidencias(id);
+    return Promise.all(linhas.map(async (r) => ({ ...r, url: await signedEvidencia(r.path).catch(() => '') })));
+  } });
   const tracos = useQuery({ queryKey: ['tracos-fck'], queryFn: listTracosComFck });
   const colaboradores = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradores });
   const cfg = useQuery({ queryKey: ['config_concretagem_recebimento', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
@@ -154,6 +164,42 @@ export function ConcretagemDetalhePage() {
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function ficha() { try { dl(await invokeFicha(id), 'ficha-moldagem-' + (conc.data?.codigo ?? id.slice(0, 6)) + '.pdf'); } catch (e) { toast((e as Error).message, 'error'); } }
+  async function onUploadEvidencia(file: File | null) {
+    if (!file || !member) return;
+    setUpEvi(true);
+    try { await uploadEvidencia(member.tenant_id, id, file); await qc.invalidateQueries({ queryKey: ['evidencias', id] }); toast('Evidência enviada.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setUpEvi(false); }
+  }
+  async function onExcluirEvidencia(eid: string) {
+    try { await excluirEvidencia(eid); await qc.invalidateQueries({ queryKey: ['evidencias', id] }); toast('Evidência removida.', 'info'); }
+    catch (e) { toast((e as Error).message, 'error'); }
+  }
+  async function onLerFicha(file: File) {
+    setLendoFicha(true);
+    try {
+      const r = await lerFichaImagem(file, id);
+      if (!r.enabled) { toast(r.reason ?? 'Leitura por IA indisponível.', 'error'); setFichaCams([]); return; }
+      setFichaCams(r.caminhoes); setFichaConf(r.confianca);
+      toast(r.caminhoes.length + ' caminhão(ões) detectado(s). Confira antes de criar.', r.caminhoes.length ? 'success' : 'warning');
+    } catch (e) { toast((e as Error).message, 'error'); } finally { setLendoFicha(false); }
+  }
+  async function onCriarDetectados() {
+    const c = conc.data; if (!member || !c) return;
+    setGravandoFicha(true);
+    try {
+      const existentes = new Set((cams.data ?? []).map((x) => str(x.nota_fiscal)).filter(Boolean));
+      let serie = (cams.data?.length ?? 0); let criados = 0;
+      for (const cv of fichaCams) {
+        const nf = str(cv.nota_fiscal);
+        if (!nf || existentes.has(nf)) continue;
+        serie += 1; criados += 1; existentes.add(nf);
+        await addCaminhao(member.tenant_id, c, serie, { nota_fiscal: nf, placa: cv.placa ?? null, motorista: cv.motorista ?? null, volume_m3: cv.volume_m3 ?? null, slump_medido_cm: cv.slump_medido_cm ?? null, temperatura_concreto_c: cv.temperatura_concreto_c ?? null, hora_saida_usina: cv.hora_saida_usina ?? null, hora_chegada_obra: cv.hora_chegada_obra ?? null, hora_inicio_descarga: cv.hora_inicio_descarga ?? null, hora_fim_descarga: cv.hora_fim_descarga ?? null, external_key: 'ficha:' + nf });
+      }
+      await Promise.all([qc.invalidateQueries({ queryKey: ['caminhoes', id] }), qc.invalidateQueries({ queryKey: ['cps', id] }), qc.invalidateQueries({ queryKey: ['concretagem', id] })]);
+      toast(criados ? (criados + ' caminhão(ões) criado(s).') : 'Nada novo a criar.', criados ? 'success' : 'info');
+      if (criados) setFichaOpen(false);
+    } catch (e) { toast((e as Error).message, 'error'); } finally { setGravandoFicha(false); }
+  }
 
   if (conc.isLoading) return <LoadingState />;
   if (conc.isError || !conc.data) return <ErrorState message={conc.error ? (conc.error as Error).message : 'Concretagem não encontrada'} />;
@@ -168,7 +214,7 @@ export function ConcretagemDetalhePage() {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setStep(1)} className={'rounded-full px-3 py-1.5 text-sm font-black ' + (step === 1 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200')}>1 · Concretagem</button>
         <button type="button" onClick={() => setStep(2)} className={'rounded-full px-3 py-1.5 text-sm font-black ' + (step === 2 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200')}>2 · Caminhões + CPs</button>
-        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" onClick={() => void ficha()}>Gerar ficha PDF</Button><Button onClick={abrirCaminhao}>Adicionar caminhão</Button></div>
+        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" onClick={() => void ficha()}>Gerar ficha PDF</Button>{step === 2 ? <Button variant="secondary" onClick={() => { setFichaCams([]); setFichaConf(null); setFichaOpen(true); }}>Ler ficha preenchida</Button> : null}<Button onClick={abrirCaminhao}>Adicionar caminhão</Button></div>
       </div>
 
       {step === 1 ? (
@@ -230,6 +276,23 @@ export function ConcretagemDetalhePage() {
               })}
             </div>
           )}
+
+          <Card>
+            <CardHeader kicker="Registro fotográfico" title="Evidências">Fotos do local, dos CPs ou da ficha física. Visíveis só para a equipe do laboratório.</CardHeader>
+            <div className="space-y-3 p-4">
+              <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Adicionar foto:</span><input type="file" accept="image/*" disabled={upEvi} onChange={(e) => { const f = e.target.files?.[0] ?? null; void onUploadEvidencia(f); e.currentTarget.value = ''; }} />{upEvi ? <span className="text-xs text-slate-500">enviando...</span> : null}</label>
+              {evidencias.isLoading ? <p className="text-sm text-slate-500">Carregando...</p> : (evidencias.data?.length ?? 0) === 0 ? <p className="text-sm text-slate-500">Nenhuma evidência ainda.</p> : (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {(evidencias.data ?? []).map((ev) => (
+                    <div key={ev.id} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                      {ev.url ? <a href={ev.url} target="_blank" rel="noreferrer"><img src={ev.url} alt={ev.descricao ?? 'evidência'} className="h-28 w-full object-cover" /></a> : <div className="flex h-28 items-center justify-center text-xs text-slate-400">indisponível</div>}
+                      <div className="flex items-center justify-between gap-2 px-2 py-1 text-[11px]"><span className="truncate text-slate-500">{dateBr(ev.created_at)}</span><button type="button" className="font-bold text-red-600" onClick={() => void onExcluirEvidencia(ev.id)}>excluir</button></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       )}
 
@@ -258,6 +321,24 @@ export function ConcretagemDetalhePage() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-black text-slate-950 dark:text-slate-50">Amostra e CPs deste caminhão</h3><p className="text-xs text-slate-500">Ajuste idades e quantidades antes de salvar. O sistema gera os CPs automaticamente.</p></div><Button variant="secondary" onClick={buscarPadraoCaminhao}>Buscar padrão de moldagem</Button></div>
             <MoldingStandardEditor value={camPadrao} onChange={setCamPadrao} fck={fckAtual} />
           </div>
+        </div>
+      </Modal>
+
+      <Modal open={fichaOpen} wide title="Conferir ficha preenchida (foto)" onClose={() => setFichaOpen(false)} footer={<><Button variant="ghost" onClick={() => setFichaOpen(false)}>Fechar</Button>{fichaCams.length ? <Button onClick={() => void onCriarDetectados()} disabled={gravandoFicha}>{gravandoFicha ? 'Criando...' : 'Criar caminhões detectados'}</Button> : null}</>}>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
+            <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Foto da ficha:</span><input type="file" accept="image/*" disabled={lendoFicha} onChange={(e) => { const f = e.target.files?.[0]; if (f) void onLerFicha(f); e.currentTarget.value = ''; }} />{lendoFicha ? <span className="text-xs text-slate-500">lendo...</span> : null}</label>
+            <p className="mt-1 text-xs text-slate-500">Fotografe a ficha de moldagem preenchida. O QR identifica a concretagem; a IA extrai os caminhões. Requer VISION_API_KEY. Confira antes de criar.</p>
+          </div>
+          {fichaConf != null ? <div className="text-xs text-slate-500">Confiança da leitura: <b>{Math.round((fichaConf ?? 0) * 100)}%</b></div> : null}
+          {fichaCams.length === 0 ? <p className="text-sm text-slate-500">Nenhum caminhão detectado ainda.</p> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-xs uppercase text-slate-500"><th className="py-1 pr-3">NF</th><th className="py-1 pr-3">Placa</th><th className="py-1 pr-3">Vol.</th><th className="py-1 pr-3">Slump</th><th className="py-1 pr-3">Temp.</th><th className="py-1 pr-3">Situação</th></tr></thead>
+                <tbody>{fichaCams.map((cv, i) => { const existe = (cams.data ?? []).some((x) => str(x.nota_fiscal) && str(x.nota_fiscal) === str(cv.nota_fiscal)); return (<tr key={i} className="border-t border-slate-100 dark:border-slate-800"><td className="py-1 pr-3 font-bold">{cv.nota_fiscal ?? '-'}</td><td className="py-1 pr-3">{cv.placa ?? '-'}</td><td className="py-1 pr-3">{cv.volume_m3 ?? '-'}</td><td className="py-1 pr-3">{cv.slump_medido_cm ?? '-'}</td><td className="py-1 pr-3">{cv.temperatura_concreto_c ?? '-'}</td><td className="py-1 pr-3">{existe ? <span className="text-slate-400">já lançado</span> : <span className="font-bold text-green-700">novo</span>}</td></tr>); })}</tbody>
+              </table>
+            </div>
+          )}
         </div>
       </Modal>
     </section>

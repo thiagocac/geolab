@@ -1,3 +1,4 @@
+import { serveWithTelemetry } from '../_shared/telemetry.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
 const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'access-control-allow-methods': 'POST,OPTIONS' };
@@ -6,7 +7,7 @@ const clean = (v: unknown) => String(v ?? '').trim();
 const pass = () => 'GeoLab#' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase() + '29';
 const isUuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 
-Deno.serve(async (req) => {
+serveWithTelemetry('admin-create-client-user', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
     const url = Deno.env.get('SUPABASE_URL') ?? '';

@@ -36,18 +36,18 @@ export async function listConcretagensComResultado(): Promise<ConcretagemElegive
   return [...seen.values()];
 }
 
-export async function gerarLaudo(concId: string): Promise<{ blob: Blob; labReportId: string }> {
+export async function gerarLaudo(concId: string, persist = true): Promise<{ blob: Blob; labReportId: string }> {
   const { data: sess } = await supabase.auth.getSession();
   const token = sess.session?.access_token ?? '';
   const resp = await fetch(env.supabaseUrl + '/functions/v1/generate-laudo-ensaio-pdf', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ concretagem_id: concId, persist: true }),
+    body: JSON.stringify({ concretagem_id: concId, persist }),
   });
   if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
   const blob = await resp.blob();
   let labReportId = resp.headers.get('x-lab-report-id') ?? '';
-  if (!labReportId) {
+  if (persist && !labReportId) {
     // Fallback: o header x-lab-report-id pode nao estar exposto via CORS no browser.
     // Sem ele, busca o laudo recem-persistido da concretagem para disparar o laudo_pronto.
     const { data } = await db.from('lab_reports').select('id').eq('concretagem_id', concId).is('deleted_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -81,4 +81,41 @@ export async function notifyLaudoPronto(tenantId: string, labReportId: string, r
     headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
     body: JSON.stringify({ tenant_id: tenantId, event_type: 'laudo_pronto', entity_type: 'lab_report', entity_id: labReportId, reference: reference ?? '', deep_link: '/laudos' }),
   });
+}
+
+
+// ---- Aprovação por magic link (melhoria 3.2) ----
+// Gera o link (staff, is_tenant_writer) para enviar ao RT/aprovador. Token cru só trafega aqui; o banco guarda hash.
+export async function criarLinkAprovacao(labReportId: string, dias = 14): Promise<string> {
+  const { data, error } = await rpc.rpc('criar_magic_link', { p_purpose: 'aprovacao_laudo', p_entity_table: 'lab_reports', p_entity_id: labReportId, p_dias: dias });
+  if (error) throw new Error(error.message);
+  const token = String(data ?? '');
+  if (!token) throw new Error('Falha ao gerar o link.');
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://lab.consultegeo.org';
+  return origin + '/laudo/aprovar/' + token;
+}
+// Consome o link na página pública (sem login) via EF approve-laudo-link (verify_jwt=false).
+export async function decidirLaudoLink(token: string, decision: 'aprovar' | 'devolver' | 'reprovar', comment?: string): Promise<{ ok: boolean; numero?: string; status?: string; error?: string }> {
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/approve-laudo-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey },
+    body: JSON.stringify({ token, decision, comment: comment ?? '' }),
+  });
+  const out = (await resp.json().catch(() => ({}))) as { ok?: boolean; numero?: string; status?: string; error?: string };
+  if (!resp.ok || out.ok === false) return { ok: false, error: out.error ?? ('Erro ' + resp.status) };
+  return { ok: true, numero: out.numero, status: out.status };
+}
+
+// Envia o laudo emitido ao contato do cliente (EF enviar-laudo-cliente). sent=false quando dry-run/desabilitado/sem config.
+export async function enviarLaudoCliente(labReportId: string): Promise<{ sent: boolean; reason?: string; to?: string }> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/enviar-laudo-cliente', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ lab_report_id: labReportId }),
+  });
+  const out = (await resp.json().catch(() => ({}))) as { ok?: boolean; sent?: boolean; reason?: string; to?: string; error?: string };
+  if (!resp.ok || out.ok === false) throw new Error(out.error ?? ('Erro ' + resp.status));
+  return { sent: out.sent === true, reason: out.reason, to: out.to };
 }

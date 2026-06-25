@@ -1,3 +1,4 @@
+import { serveWithTelemetry } from '../_shared/telemetry.ts';
 // consulta-fiscal — lookup fiscal (CNPJ/CEP) via BrasilAPI. v1.1 GEOLAB.
 // verify_jwt=true: só usuários logados do laboratório chamam. Sem DB, sem service-role.
 // Dados de CNPJ/CEP são públicos; a EF apenas normaliza a resposta para os campos do form.
@@ -56,7 +57,7 @@ async function fetchCep(cep: string): Promise<Rec | null> {
   };
 }
 
-Deno.serve(async (req: Request) => {
+serveWithTelemetry('consulta-fiscal', async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ ok: false, error: 'method_not_allowed' }, 405);
   try {

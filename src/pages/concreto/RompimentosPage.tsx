@@ -23,6 +23,7 @@ import {
   type AuditItem,
   type CpRompimento,
 } from '../../lib/api/rompimento';
+import { supabase } from '../../lib/supabase';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (v: string | null | undefined) => !v ? '-' : v.split('-').reverse().join('/');
@@ -56,6 +57,11 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+const RUPTURA_AF: ReadonlyArray<[string, string]> = [
+  ['A', 'Cônica'], ['B', 'Cônica e bipartida'], ['C', 'Colunar'],
+  ['D', 'Cisalhada'], ['E', 'Paralela às bases'], ['F', 'Pontiaguda'],
+];
+
 export function RompimentosPage() {
   const { member } = useAuth();
   const toast = useToast();
@@ -85,10 +91,18 @@ export function RompimentosPage() {
   const [numValor, setNumValor] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [importLines, setImportLines] = useState<ImportLine[]>([]);
+  const [bulkData, setBulkData] = useState('');
+  const [bulkHora, setBulkHora] = useState('');
+  const [bulkTipo, setBulkTipo] = useState('');
 
   const cpsQ = useQuery({ queryKey: ['rompimentos'], queryFn: listCpsRompimento });
   const cfgQ = useQuery({ queryKey: ['config_controle_laudo', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
   const equips = useQuery({ queryKey: ['ref', 'equipamentos_prensa'], queryFn: () => listReference('equipamentos', 'marca_modelo') });
+  const prensasDet = useQuery({ queryKey: ['prensas_det', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: async () => {
+    const { data, error } = await supabase.from('equipamentos').select('id,marca_modelo,incerteza_mpa,validade_calibracao,tipo').eq('tenant_id', member!.tenant_id).is('deleted_at', null);
+    if (error) throw error;
+    return (data ?? []) as Array<{ id: string; marca_modelo: string | null; incerteza_mpa: number | null; validade_calibracao: string | null; tipo: string | null }>;
+  } });
   const operadores = useQuery({ queryKey: ['ref', 'colaboradores'], queryFn: () => listReference('colaboradores', 'nome') });
 
   const EC = initCampoState(CAMPOS_ENSAIO, cfgQ.data?.ensaio_campos ?? {});
@@ -96,6 +110,13 @@ export function RompimentosPage() {
   const campoPrensa = EC.prensa !== false;
   const campoCapeamento = EC.capeamento !== false;
   const campoMassa = EC.massa_cp_g !== false;
+
+  // Lote A — apoio às validações inline (2.1) e à incerteza (2.2)
+  const idadeControle = Number(cfgQ.data?.idade_controle_default) || 28;
+  function isIdadeControle(cp: CpRompimento): boolean { return cp.idade_unidade !== 'hora' && Number(cp.idade_dias) === idadeControle; }
+  const prensaSel = (prensasDet.data ?? []).find((pp) => pp.id === prensaId) ?? null;
+  const calibVencida = !!prensaSel?.validade_calibracao && prensaSel.validade_calibracao < hoje();
+  function mpaForaFaixa(v: number): boolean { return Number.isFinite(v) && (v <= 0 || v > 120); }
 
   const rows = cpsQ.data ?? [];
   const tipos = useMemo(() => {
@@ -301,6 +322,16 @@ export function RompimentosPage() {
   function toggleTodos() {
     setSelecionados((old) => old.size === filtradas.length ? new Set() : new Set(filtradas.map((r) => r.id)));
   }
+  function aplicarAosSelecionados() {
+    if (!selecionados.size) return;
+    const vals: Partial<EditState> = {};
+    if (bulkData) vals.data = bulkData;
+    if (bulkHora) vals.hora = bulkHora;
+    if (bulkTipo) vals.tipo_ruptura = bulkTipo;
+    if (!Object.keys(vals).length) { toast('Defina data, hora ou ruptura para aplicar.', 'info'); return; }
+    setEdits((s) => { const next = { ...s }; for (const id of selecionados) next[id] = { ...(next[id] ?? {}), ...vals }; return next; });
+    toast(`Aplicado a ${selecionados.size} CP(s).`, 'success');
+  }
 
   const curvaRows = curvaCp ? rows.filter((r) => r.amostra_id && r.amostra_id === curvaCp.amostra_id) : [];
 
@@ -342,7 +373,7 @@ export function RompimentosPage() {
             <label className="flex items-center gap-2"><input type="checkbox" checked={entrarCarga} onChange={(e) => setEntrarCarga(e.target.checked)} /> Entrar carga (converte p/ MPa)</label>
           </div>
           {entrarCarga ? <div className="mt-3 grid gap-3 md:grid-cols-4"><label className="block space-y-1"><span className="text-sm font-bold">Unidade da carga</span><select className="input" value={cargaUnidade} onChange={(e) => setCargaUnidade(e.target.value as UnidadeCarga)}><option value="kn">kN</option><option value="tf">tf</option><option value="kgf">kgf</option></select></label><label className="block space-y-1"><span className="text-sm font-bold">Diâmetro (mm)</span><input className="input" type="number" value={diametro} onChange={(e) => setDiametro(Number(e.target.value) || 100)} /></label><label className="block space-y-1"><span className="text-sm font-bold">Altura (mm)</span><input className="input" type="number" value={altura} onChange={(e) => setAltura(Number(e.target.value) || 200)} /></label><div className="flex flex-wrap items-end gap-2">{DIMENSOES_CP.map((d) => <button type="button" key={d.label} className="rounded-md border border-slate-200 px-2 py-2 text-xs font-bold" onClick={() => { setDiametro(d.diametroMm); setAltura(d.alturaMm); }}>{d.label}</button>)}</div></div> : null}
-          {(campoPrensa || campoCapeamento) ? <div className="mt-3 grid gap-3 md:grid-cols-2">{campoPrensa ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa utilizada</span><select className="input" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">-</option>{(equips.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label> : null}{campoCapeamento ? <label className="block space-y-1"><span className="text-sm font-bold">Capeamento / bases</span><select className="input" value={capeamento} onChange={(e) => setCapeamento(e.target.value)}><option value="">-</option>{['Retífica', 'Neoprene', 'Enxofre', 'Sem capeamento'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label> : null}</div> : null}
+          {(campoPrensa || campoCapeamento) ? <div className="mt-3 grid gap-3 md:grid-cols-2">{campoPrensa ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa utilizada</span><select className="input" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">-</option>{(equips.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>{prensaSel ? <span className="mt-1 block text-xs font-bold text-slate-500">{prensaSel.incerteza_mpa != null ? `Incerteza: ± ${nfmt(prensaSel.incerteza_mpa, 2)} MPa` : 'Incerteza não cadastrada'}{prensaSel.validade_calibracao ? ` · calibração até ${fmtDate(prensaSel.validade_calibracao)}` : ''}</span> : null}{calibVencida ? <span className="mt-1 block text-xs font-bold text-amber-600">⚠ Calibração vencida — o resultado gerará NC (T-14). Não bloqueia o lançamento.</span> : null}</label> : null}{campoCapeamento ? <label className="block space-y-1"><span className="text-sm font-bold">Capeamento / bases</span><select className="input" value={capeamento} onChange={(e) => setCapeamento(e.target.value)}><option value="">-</option>{['Retífica', 'Neoprene', 'Enxofre', 'Sem capeamento'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label> : null}</div> : null}
         </div>
       </Card>
 
@@ -356,6 +387,8 @@ export function RompimentosPage() {
         <div className="ml-auto"><Button onClick={() => void salvarRecorte()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar resultados'}</Button></div>
       </div>
 
+      {selecionados.size ? <div className="flex flex-wrap items-end gap-2 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/20"><span className="font-bold text-blue-800 dark:text-blue-300">Aplicar a {selecionados.size} selecionado(s):</span><input className="input max-w-[150px]" type="date" value={bulkData} onChange={(e) => setBulkData(e.target.value)} /><input className="input max-w-[110px]" type="time" value={bulkHora} onChange={(e) => setBulkHora(e.target.value)} />{campoTipo ? <select className="input max-w-[100px]" value={bulkTipo} onChange={(e) => setBulkTipo(e.target.value)}><option value="">ruptura</option>{['A', 'B', 'C', 'D', 'E', 'F'].map((x) => <option key={x} value={x}>{x}</option>)}</select> : null}<Button variant="secondary" onClick={aplicarAosSelecionados}>Aplicar</Button></div> : null}
+      {campoTipo ? <details className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900"><summary className="cursor-pointer font-bold text-slate-600 dark:text-slate-300">Tipos de ruptura (A–F · NBR 5739)</summary><ul className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">{RUPTURA_AF.map(([k, v]) => <li key={k}><span className="font-black">{k}</span> — {v}</li>)}</ul></details> : null}
       {cpsQ.isLoading ? <LoadingState /> : cpsQ.isError ? <ErrorState message={(cpsQ.error as Error).message} /> : filtradas.length === 0 ? <EmptyState /> : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
@@ -370,15 +403,17 @@ export function RompimentosPage() {
                 {filtradas.map((r) => {
                   const res = resultadoAtual(r);
                   const esp = esperado(r);
-                  const ins = res?.resultado_valor != null && esp != null && res.resultado_valor < esp;
+                  const naIdadeControle = isIdadeControle(r);
+                  const abaixoFck = res?.resultado_valor != null && esp != null && res.resultado_valor < esp;
+                  const ins = abaixoFck && naIdadeControle;
                   return (
                     <tr key={r.id} className={ins ? 'bg-red-50/70 dark:bg-red-950/20' : ''}>
                       <td className="px-3 py-2"><input type="checkbox" checked={selecionados.has(r.id)} onChange={() => toggleSelecionado(r.id)} /></td>
                       <td className="px-3 py-2 align-top"><div className="font-black text-slate-950 dark:text-slate-50">{cpNumero(r)}</div><button type="button" className="text-xs font-bold text-blue-600" onClick={() => { setNumCp(r); setNumValor(cpNumero(r)); }}>+ numeração lab</button><div className="mt-1 text-[11px] text-slate-400">{statusBadge(r)}</div></td>
                       <td className="px-3 py-2 align-top"><span className={isAtrasado(r, dataRef) ? 'font-black text-red-600' : 'font-black'}>{fmtDate(r.data_prevista_rompimento)}{isAtrasado(r, dataRef) ? ' !' : ''}</span></td>
                       <td className="px-3 py-2"><div className="flex gap-2"><input className="input" type="date" value={effectiveData(r)} onChange={(e) => patch(r.id, { data: e.target.value })} /><input className="input max-w-[90px]" type="time" value={effectiveHora(r)} onChange={(e) => patch(r.id, { hora: e.target.value })} /></div></td>
-                      <td className="px-3 py-2"><input className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: e.target.value } : { valor: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') void salvarLinhas([r]); }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}</td>
-                      <td className="px-3 py-2"><span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-800">{esp == null ? 'sem critério' : nfmt(esp, 1)}</span></td>
+                      <td className="px-3 py-2"><input className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: e.target.value } : { valor: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') void salvarLinhas([r]); }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); return (effectiveValor(r) || effectiveCarga(r)) && mpaForaFaixa(mpa) ? <div className="mt-1 text-xs font-bold text-amber-600">⚠ MPa fora de faixa plausível (verifique a digitação)</div> : null; })()}</td>
+                      <td className="px-3 py-2"><span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-800">{esp == null ? 'sem critério' : nfmt(esp, 1)}</span>{ins ? <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold text-red-700">abaixo do fck</span> : abaixoFck ? <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">acompanhamento</span> : null}</td>
                       <td className="px-3 py-2 font-semibold">{nf(r)}</td><td className="px-3 py-2 font-semibold">{idade(r)}</td>
                       {campoTipo ? <td className="px-3 py-2"><select className="input min-w-[82px]" value={effectiveTipo(r)} onChange={(e) => patch(r.id, { tipo_ruptura: e.target.value })}><option value="">-</option>{['A', 'B', 'C', 'D', 'E', 'F'].map((x) => <option key={x} value={x}>{x}</option>)}</select></td> : null}
                       {campoMassa ? <td className="px-3 py-2"><input className="input max-w-[110px]" type="number" value={effectiveMassa(r)} onChange={(e) => patch(r.id, { massa_cp_g: e.target.value })} /></td> : null}

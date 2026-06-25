@@ -1,9 +1,15 @@
 import { emit } from './instrument';
+import { rateVital } from './metrics-math';
 
 /**
  * Coleta os Web Vitals canônicos (LCP, CLS, INP, FCP, TTFB) com baixo volume:
  * TTFB/FCP de imediato; LCP/CLS/INP uma vez quando a página fica oculta.
  * NÃO emite mais um evento por interação do DOM (era o ruído da v≤180).
+ *
+ * Observabilidade (Camada 5): emite no formato CANÔNICO — category 'web-vital' e
+ * metadata.rating (good/needs-improvement/poor) calculado por rateVital. É o que
+ * preenche as colunas good/needs_improvement/poor de v_client_vitals_daily. O `value`
+ * vai no topo e a EF de ingestão o move para metadata.value (lido pelos percentis).
  */
 export function installVitals() {
   if (!('PerformanceObserver' in window)) return;
@@ -12,7 +18,8 @@ export function installVitals() {
   let inp = 0;
   let flushed = false;
 
-  const send = (name: string, value: number) => emit({ category: 'vital', name, value, metadata: { kind: 'web-vital' } });
+  const send = (name: string, value: number) =>
+    emit({ category: 'web-vital', name, value, metadata: { kind: 'web-vital', rating: rateVital(name, value) } });
 
   try {
     const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;

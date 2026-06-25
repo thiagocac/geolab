@@ -8,3 +8,25 @@ verify_jwt = true
 
 [functions.consulta-fiscal]
 verify_jwt = true
+
+# Observabilidade — ingestão de telemetria do browser. verify_jwt=false: o navegador posta
+# no unload (sem sessão garantida). A defesa é rate-limit + sample + kill-switch + validação.
+[functions.client-telemetry]
+verify_jwt = false
+
+# Observabilidade — alarme horário. verify_jwt=false: autorizado internamente por x-cron-secret
+# (cron) OU service-role/admin (painel), via authorizeServiceOrAdmin.
+[functions.telemetry-alarm]
+verify_jwt = false
+
+# Melhorias — OCR da ficha (staff).
+[functions.extract-ficha-vision]
+verify_jwt = true
+
+# Melhorias — aprovação de laudo por magic link (PÚBLICA).
+[functions.approve-laudo-link]
+verify_jwt = false
+
+# Melhorias — envio do laudo ao cliente (staff).
+[functions.enviar-laudo-cliente]
+verify_jwt = true

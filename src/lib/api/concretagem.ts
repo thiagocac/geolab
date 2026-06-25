@@ -181,3 +181,44 @@ export async function lerNfImagem(file: File): Promise<{ enabled: boolean; dados
   if (!resp.ok || out.ok === false) throw new Error(out.error ?? out.reason ?? 'Falha ao ler a NF.');
   return { enabled: out.enabled !== false, dados: out.dados ?? {}, reason: out.reason };
 }
+
+// Evidências (melhoria 1.2) — fotos da concretagem/CP/ficha física. Bucket 'evidencias' (RLS por tenant).
+export type EvidenciaRow = { id: string; path: string; tipo: string; descricao: string | null; created_at: string; concretagem_id: string | null; receipt_id: string | null };
+export async function uploadEvidencia(tenantId: string, concId: string, file: File, opts?: { receiptId?: string | null; tipo?: string; descricao?: string }): Promise<void> {
+  const safe = file.name.replace(/[^\w.-]+/g, '_');
+  const path = tenantId + '/conc/' + concId + '/' + Date.now() + '-' + safe;
+  const up = await supabase.storage.from('evidencias').upload(path, file, { upsert: false, contentType: file.type || undefined });
+  if (up.error) throw new Error(up.error.message);
+  const { error } = await db.from('evidencias').insert({ tenant_id: tenantId, concretagem_id: concId, receipt_id: opts?.receiptId ?? null, path, tipo: opts?.tipo ?? 'foto', descricao: opts?.descricao ?? null });
+  if (error) throw new Error(error.message);
+}
+export async function listEvidencias(concId: string): Promise<EvidenciaRow[]> {
+  const { data, error } = await db.from('evidencias').select('id, path, tipo, descricao, created_at, concretagem_id, receipt_id').eq('concretagem_id', concId).is('deleted_at', null).order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as EvidenciaRow[];
+}
+export async function signedEvidencia(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('evidencias').createSignedUrl(path, 300);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
+}
+export async function excluirEvidencia(id: string): Promise<void> {
+  const { error } = await db.from('evidencias').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+// OCR da FICHA DE MOLDAGEM preenchida (EF extract-ficha-vision). Retorna caminhões detectados p/ conferência.
+export type FichaCaminhaoOCR = { serie?: number | null; nota_fiscal?: string | null; placa?: string | null; motorista?: string | null; volume_m3?: number | null; slump_medido_cm?: number | null; temperatura_concreto_c?: number | null; hora_saida_usina?: string | null; hora_chegada_obra?: string | null; hora_inicio_descarga?: string | null; hora_fim_descarga?: string | null };
+export async function lerFichaImagem(file: File, concId: string): Promise<{ enabled: boolean; caminhoes: FichaCaminhaoOCR[]; confianca: number | null; reason?: string }> {
+  const { base64, mime } = await fileToBase64(file);
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/extract-ficha-vision', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ image_base64: base64, mime, concretagem_id: concId }),
+  });
+  const out = (await resp.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; dados?: { caminhoes?: FichaCaminhaoOCR[]; confianca?: number | null }; reason?: string; error?: string };
+  if (!resp.ok || out.ok === false) throw new Error(out.error ?? out.reason ?? 'Falha ao ler a ficha.');
+  return { enabled: out.enabled !== false, caminhoes: out.dados?.caminhoes ?? [], confianca: out.dados?.confianca ?? null, reason: out.reason };
+}

@@ -1,3 +1,4 @@
+import { serveWithTelemetry } from '../_shared/telemetry.ts';
 // generate-laudo-ensaio-pdf (GEOLAB) - Laudo NBR 5739 modelo v4 + campos dinamicos + paridade v4 (amostragem/contato/local/componentes/incerteza/capeamento/ART/2a assinatura).
 import { PDFDocument, StandardFonts, rgb, PDFImage } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
@@ -24,7 +25,7 @@ const dbr = (s: unknown) => { const t = String(s ?? '').slice(0, 10); if (!/^\d{
 const emb = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? v as Record<string, unknown> : {});
 async function sha256Hex(bytes: Uint8Array): Promise<string> { const d = await crypto.subtle.digest('SHA-256', bytes); return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
 
-Deno.serve(async (req) => {
+serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
     const body = await req.json().catch(() => ({}));
