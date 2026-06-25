@@ -8,7 +8,8 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente } from '../../lib/api/laudo';
+import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, type LaudoRow } from '../../lib/api/laudo';
+import { saveUrl, openDeferredTab, blobUrlAutoRevoke } from '../../lib/pdf';
 
 export function LaudosPage() {
   const { hasRole, member } = useAuth();
@@ -23,38 +24,41 @@ export function LaudosPage() {
   const q = useQuery({ queryKey: ['laudos'], queryFn: listLaudos });
   const elegiveis = useQuery({ queryKey: ['conc-result'], queryFn: listConcretagensComResultado, enabled: novo });
 
-  function abrirBlob(blob: Blob) { const url = URL.createObjectURL(blob); window.open(url, '_blank', 'noopener'); }
 
   function toggle(cid: string) { setSel((s) => { const n = new Set(s); if (n.has(cid)) n.delete(cid); else n.add(cid); return n; }); }
   function fecharNovo() { setNovo(false); setSel(new Set()); setProg(null); }
   async function previewOne() {
     const ids = [...sel]; if (ids.length !== 1) { toast('Selecione exatamente uma concretagem para pré-visualizar.', 'error'); return; }
+    const tab = openDeferredTab();
     setBusy(true);
-    try { const { blob } = await gerarLaudo(ids[0], false); abrirBlob(blob); toast('Pré-visualização gerada (não persistida).', 'info'); }
-    catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
+    try { const { blob } = await gerarLaudo(ids[0], false); tab.go(blobUrlAutoRevoke(blob)); toast('Pré-visualização gerada (não persistida).', 'info'); }
+    catch (e) { tab.fail(); toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function gerar() {
     const ids = [...sel]; if (!ids.length) { toast('Selecione ao menos uma concretagem.', 'error'); return; }
+    const tab = ids.length === 1 ? openDeferredTab() : null;
     setBusy(true); setProg({ done: 0, total: ids.length });
     let ok = 0; const erros: string[] = [];
     for (const cid of ids) {
       try {
         const { blob, labReportId } = await gerarLaudo(cid, true);
-        if (ids.length === 1) abrirBlob(blob);
+        if (tab) tab.go(blobUrlAutoRevoke(blob));
         if (labReportId && member) { try { await notifyLaudoPronto(member.tenant_id, labReportId); } catch { /* best-effort */ } }
         ok += 1;
       } catch (e) { erros.push((e as Error).message); }
       setProg((pr) => pr ? { ...pr, done: pr.done + 1 } : pr);
     }
+    if (tab && ok === 0) tab.fail();
     await qc.invalidateQueries({ queryKey: ['laudos'] });
     if (ok) toast(ok + ' laudo(s) gerado(s)' + (erros.length ? ' · ' + erros.length + ' com erro' : '') + '.', erros.length ? 'warning' : 'success');
     else toast('Falha ao gerar: ' + (erros[0] ?? 'erro'), 'error');
     setBusy(false); setProg(null);
     if (ok) fecharNovo();
   }
-  async function baixar(path: string | null) {
-    if (!path) { toast('Laudo ainda nao persistido.', 'error'); return; }
-    try { const url = await downloadUrl(path); window.open(url, '_blank', 'noopener'); } catch (e) { toast((e as Error).message, 'error'); }
+  async function baixar(r: LaudoRow) {
+    if (!r.storage_path) { toast('Laudo ainda nao persistido.', 'error'); return; }
+    const filename = 'Laudo ' + r.numero.replace('/', '-') + (r.revisao > 0 ? ' R' + r.revisao : '') + '.pdf';
+    try { const url = await downloadUrl(r.storage_path, filename); saveUrl(url, filename); } catch (e) { toast((e as Error).message, 'error'); }
   }
   async function aprovar(id: string) {
     try { await aprovarLaudo(id); await qc.invalidateQueries({ queryKey: ['laudos'] }); toast('Laudo emitido.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
@@ -90,7 +94,7 @@ export function LaudosPage() {
                 <span style={{ fontSize: 13 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissao'}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <StatusBadge status={r.status} />
-                  <Button variant="ghost" onClick={() => void baixar(r.storage_path)}>Baixar</Button>
+                  <Button variant="ghost" onClick={() => void baixar(r)}>Baixar</Button>
                   {podeAprovar && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
                   {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void reabrir(r.id)}>Reabrir</Button> : null}

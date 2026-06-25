@@ -7,7 +7,8 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State';
-import { listEscopo, listTestTypes, salvarPrecos, computarMedicao, salvarMedicao, listMedicoes, pdfMedicaoUrl, type EscopoTipo, type MedicaoItem, type Adicional } from '../../lib/api/medicao';
+import { listEscopo, listTestTypes, salvarPrecos, computarMedicao, salvarMedicao, listMedicoes, pdfMedicaoBlob, type EscopoTipo, type MedicaoItem, type Adicional } from '../../lib/api/medicao';
+import { openDeferredTab, blobUrlAutoRevoke } from '../../lib/pdf';
 
 const BRL = (n: number) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const FLAT: [string, string][] = [['forma', 'Formas (cobranca)'], ['laudo', 'Laudo'], ['visita', 'Visita do moldador'], ['fixo_mensal', 'Fixo mensal']];
@@ -70,7 +71,7 @@ export function MedicaoPage() {
       toast('Medicao fechada.', 'success'); setItens(null); setAdicionais([]);
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
-  async function gerarPdf(id: string) { setBusy(true); try { window.open(await pdfMedicaoUrl(id), '_blank', 'noopener,noreferrer'); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); } }
+  async function gerarPdf(id: string) { const tab = openDeferredTab(); setBusy(true); try { tab.go(blobUrlAutoRevoke(await pdfMedicaoBlob(id))); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } finally { setBusy(false); } }
   async function exportar() {
     if (!itens) return;
     const XLSX = await import('xlsx');

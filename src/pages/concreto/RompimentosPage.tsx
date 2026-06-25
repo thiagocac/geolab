@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { listReference } from '../../lib/api/client';
+import { saveBlob as downloadBlob } from '../../lib/pdf';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { CAMPOS_ENSAIO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
 import { DIMENSOES_CP, cargaParaMpa, relacaoHD, type UnidadeCarga } from '../../lib/concreto/cp';
@@ -50,12 +51,6 @@ function statusBadge(c: CpRompimento): string {
 }
 function isAtrasado(c: CpRompimento, ref: string): boolean { return !resultadoAtual(c) && c.situacao === 'pendente' && !!c.data_prevista_rompimento && c.data_prevista_rompimento < ref; }
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
 
 const RUPTURA_AF: ReadonlyArray<[string, string]> = [
   ['A', 'Cônica'], ['B', 'Cônica e bipartida'], ['C', 'Colunar'],

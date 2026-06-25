@@ -60,10 +60,10 @@ export async function listMedicoes(escopoId?: string): Promise<Medicao[]> {
   return (data ?? []) as Medicao[];
 }
 
-export async function pdfMedicaoUrl(medicaoId: string): Promise<string> {
+export async function pdfMedicaoBlob(medicaoId: string): Promise<Blob> {
   const { data: sess } = await supabase.auth.getSession();
   const token = sess.session?.access_token ?? '';
   const resp = await fetch(env.supabaseUrl + '/functions/v1/generate-medicao-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token }, body: JSON.stringify({ medicao_id: medicaoId }) });
   if (!resp.ok) { const t = await resp.text(); throw new Error('Falha ao gerar PDF: ' + t.slice(0, 160)); }
-  return URL.createObjectURL(await resp.blob());
+  return resp.blob();
 }

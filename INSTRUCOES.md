@@ -1,36 +1,33 @@
-# GEOLAB v79 — Correcao: 404 do Netlify ao atualizar a pagina (SPA fallback)
+# Concresoft — Patch v80 — Revisão da emissão/abertura de PDFs
 
-## Bug
-App usa `BrowserRouter` (history API): rotas como `/laudos`, `/concretagens` etc. sao
-virtuais, resolvidas no cliente. O repo **nao tinha** `public/_redirects` nem `netlify.toml`,
-entao em **refresh** ou **acesso direto** a uma rota o Netlify procurava um arquivo fisico
-naquele caminho, nao achava, e servia a pagina **"Page not found"** dele. So a raiz `/` abria.
+## Resumo
+Revisão completa de como o app **abre e baixa PDFs** (laudo, ficha, agenda, medição, anexo de NC, portal do cliente), aplicando práticas atuais de mercado. Só front-end. Combina com o fix de back já LIVE (migration 062 — policy de storage que liberou o download do laudo para o staff).
 
-## Correcao
-Adicionado `public/_redirects` com o fallback canonico de SPA. O Vite copia `public/` para
-`dist/`, entao o arquivo chega na pasta publicada e o Netlify reescreve toda rota para
-`index.html` (HTTP 200). Arquivos estaticos existentes (assets/fontes) tem precedencia e
-nao sao afetados.
+## Problema central corrigido
+`window.open(url)` chamado **depois de um `await`** perde a ativação do usuário e é **bloqueado pelo popup-blocker** (o sintoma "clico e nada acontece"). Também havia nome de arquivo ruim no download e revogação prematura do objectURL (abortava o download em alguns navegadores) e vazamento de objectURL na medição.
 
-```
-/*    /index.html   200
-```
+## Solução
+Novo util `src/lib/pdf.ts`:
+- `saveBlob(blob, filename)` / `saveUrl(url, filename)` — download via `<a download>` (imune a popup-blocker, nome correto, revogação adiada).
+- `openDeferredTab()` — abre a aba **síncrona** no clique e navega após o await (`tab.go(url)` / `tab.fail()`).
+- `blobUrlAutoRevoke(blob)` — objectURL com revogação adiada para "abrir em nova aba".
 
-## Arquivos alterados (3)
-- `public/_redirects` — **novo**. SPA fallback.
-- `public/sw.js` — bump CACHE_NAME -> consultegeo-geolab-v79.
-- `src/lib/telemetry/core.ts` — bump APP_VERSION -> v79.
+Comportamento por relatório: **Baixar** = download com nome (ex.: `Laudo 000002-2026.pdf`); **Pré-visualizar/Gerar/Abrir** = nova aba sem bloqueio.
 
-(CACHE_NAME + APP_VERSION bumpados juntos via `npm run bump v79`; check-source passou.)
+## Arquivos (substituir/adicionar no repo)
+- **NOVO** `src/lib/pdf.ts`
+- `src/lib/api/laudo.ts` · `src/lib/api/medicao.ts` · `src/lib/api/nc.ts`
+- `src/pages/concreto/LaudosPage.tsx` · `NcPage.tsx` · `ConcretagensPage.tsx` · `ProgramacoesPage.tsx` · `ConcretagemDetalhePage.tsx` · `RompimentosPage.tsx`
+- `src/pages/gestao/MedicaoPage.tsx` · `src/pages/portal/ClientePortalPage.tsx`
+- `public/sw.js` (CACHE_NAME v80) · `src/lib/telemetry/core.ts` (APP_VERSION v80) · `SOURCE_VERSION.md`
 
-## Deploy
-1. Copiar os arquivos deste zip para a raiz do repo (preservando caminhos).
-2. git add public/_redirects public/sw.js src/lib/telemetry/core.ts
-3. git commit -m "fix: SPA fallback _redirects (404 no refresh) + bump v79"
-4. git push -> Netlify (geo-labs) builda e publica.
+## Aplicar
+1. Copiar os arquivos sobre o working copy (base = v79: inclui ícones v78 + `_redirects` SPA v79).
+2. `git add -A && git commit -m "v80: revisão da emissão/abertura de PDFs (anti popup-block + download nomeado)"`
+3. `git push` → Netlify (geo-labs).
 
-## Validacao pos-deploy
-- Abrir https://app.concresoft.io/laudos direto (ou F5 nela) -> deve carregar a tela,
-  nao o 404 do Netlify.
-- Repetir em outra rota profunda (ex.: /concretagens).
-- Rodape do menu deve mostrar "Concresoft v79".
+## Gate validado no sandbox
+check-source OK · biome lint (exit 0; só warnings de hooks pré-existentes) · tsc --noEmit OK · vitest 18/18 · vite build OK.
+
+## Observação de back (já aplicada, LIVE)
+O download do laudo só funciona porque a **migration 062** adicionou a policy de storage `lab_laudos_read` (o bucket `lab-reports` só liberava o prefixo `logos/`). Isso já está no banco de produção; não depende deste push.

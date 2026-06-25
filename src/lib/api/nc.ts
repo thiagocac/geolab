@@ -100,8 +100,8 @@ export async function uploadAnexo(tenantId: string, ncId: string, file: File): P
   if (error) throw new Error(error.message);
   return { path, nome: file.name };
 }
-export async function signedAnexo(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('anexos').createSignedUrl(path, 300);
+export async function signedAnexo(path: string, filename?: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('anexos').createSignedUrl(path, 300, filename ? { download: filename } : undefined);
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }

@@ -16,8 +16,8 @@ import { listColaboradores } from '../../lib/api/colaboradores';
 import { listPecasObra } from '../../lib/api/estrutura';
 import { CAMPOS_CONCRETAGEM, CAMPOS_RECEBIMENTO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
 import { normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../../lib/concreto';
+import { saveBlob as dl } from '../../lib/pdf';
 
-function dl(blob: Blob, name: string) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); URL.revokeObjectURL(u); }
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown): number | null => toNumber(v as number | string | null | undefined);
 const val = (v: unknown) => v == null ? '' : String(v);

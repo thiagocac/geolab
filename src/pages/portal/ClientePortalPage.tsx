@@ -7,6 +7,7 @@ import { Field } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { useToast } from '../../lib/toast';
 import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, listPortalLaudos, openPortalLaudo, type PortalProgramacaoInput } from '../../lib/api/portalCliente';
+import { openDeferredTab } from '../../lib/pdf';
 
 const blank = (): PortalProgramacaoInput & { key: string } => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
 const str = (v: unknown) => String(v ?? '').trim();
@@ -33,7 +34,7 @@ export function ClientePortalPage() {
       toast(inserted + ' programação(ões) enviada(s) ao laboratório.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
-  async function abrir(reportId: string | null) { if (!reportId) { toast('Laudo indisponível.', 'warning'); return; } try { window.open(await openPortalLaudo(reportId), '_blank', 'noopener,noreferrer'); } catch (e) { toast((e as Error).message, 'error'); } }
+  async function abrir(reportId: string | null) { if (!reportId) { toast('Laudo indisponível.', 'warning'); return; } const tab = openDeferredTab(); try { tab.go(await openPortalLaudo(reportId)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } }
 
   return (
     <section className="space-y-5">

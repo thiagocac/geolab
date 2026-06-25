@@ -10,6 +10,7 @@ import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State';
 import { listNcs, listAcoes, listTemplates, listTransitions, listSituacoes, listTipos, listObrasRef, abrirNcManual, registrarAcao, excluirNc, uploadAnexo, signedAnexo, type NcRow } from '../../lib/api/nc';
+import { saveUrl } from '../../lib/pdf';
 
 const dataBR = (s: string) => (s && s.length === 10 ? s.split('-').reverse().join('/') : s);
 const SEV: Record<string, string> = { alta: 'var(--magenta)', media: '#d97706', baixa: 'var(--ink-faint)' };
@@ -121,8 +122,9 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
       toast(r?.concluida ? 'Acao registrada — NC concluida.' : 'Acao registrada.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
-  async function baixar(path: string) {
-    try { const url = await signedAnexo(path); window.open(url, '_blank'); }
+  async function baixar(path: string, nome?: string) {
+    const filename = nome || path.split('/').pop() || 'anexo';
+    try { const url = await signedAnexo(path, filename); saveUrl(url, filename); }
     catch (e) { toast((e as Error).message, 'error'); }
   }
   async function excluir() {
@@ -153,7 +155,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{a.template_nome} <span style={{ fontWeight: 400, color: 'var(--ink-faint)' }}>· {situ[a.situacao_codigo ?? ''] ?? a.situacao_codigo} · {dataBR(String(a.executada_em ?? a.created_at).slice(0, 10))}</span></div>
                   {a.descricao ? <div style={{ fontSize: 13 }}>{a.descricao}</div> : null}
                   {a.campos_dinamicos?.anotacao ? <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{String(a.campos_dinamicos.anotacao)}</div> : null}
-                  {a.campos_dinamicos?.arquivo ? <button type="button" onClick={() => void baixar(String(a.campos_dinamicos.arquivo))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--magenta)', fontWeight: 700, fontSize: 12, padding: 0 }}>Baixar anexo{a.campos_dinamicos.arquivo_nome ? ' (' + String(a.campos_dinamicos.arquivo_nome) + ')' : ''}</button> : null}
+                  {a.campos_dinamicos?.arquivo ? <button type="button" onClick={() => void baixar(String(a.campos_dinamicos.arquivo), a.campos_dinamicos.arquivo_nome ? String(a.campos_dinamicos.arquivo_nome) : undefined)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--magenta)', fontWeight: 700, fontSize: 12, padding: 0 }}>Baixar anexo{a.campos_dinamicos.arquivo_nome ? ' (' + String(a.campos_dinamicos.arquivo_nome) + ')' : ''}</button> : null}
                 </div>
               ))}
             </div>

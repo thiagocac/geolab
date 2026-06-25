@@ -11,8 +11,8 @@ import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State'
 import { listConcretagens, createConcretagem, invokeFicha, listTracosComFck } from '../../lib/api/concretagem';
 import { listPecasObra } from '../../lib/api/estrutura';
 import { listReference } from '../../lib/api/client';
+import { saveBlob as dl } from '../../lib/pdf';
 
-function dl(blob: Blob, name: string) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); URL.revokeObjectURL(u); }
 
 export function ConcretagensPage() {
   const { member } = useAuth();

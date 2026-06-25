@@ -56,8 +56,8 @@ export async function gerarLaudo(concId: string, persist = true): Promise<{ blob
   return { blob, labReportId };
 }
 
-export async function downloadUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('lab-reports').createSignedUrl(path, 120);
+export async function downloadUrl(path: string, filename?: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('lab-reports').createSignedUrl(path, 120, filename ? { download: filename } : undefined);
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }

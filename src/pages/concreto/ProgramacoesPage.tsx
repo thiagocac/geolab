@@ -7,8 +7,8 @@ import { Button } from '../../components/ui/Button';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { VirtualTable } from '../../components/ui/VirtualTable';
 import { listProgramacoes, confirmarProgramacao, cancelarProgramacao, invokeFicha } from '../../lib/api/concretagem';
+import { saveBlob as dl } from '../../lib/pdf';
 
-function dl(blob: Blob, name: string) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); URL.revokeObjectURL(u); }
 function statusCls(s: string) { if (s === 'registrado' || s === 'aprovado') return 'bg-green-100 text-green-700'; if (s === 'cancelada') return 'bg-red-100 text-red-700'; if (s === 'pendente') return 'bg-amber-100 text-amber-800'; return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'; }
 
 export function ProgramacoesPage() {
