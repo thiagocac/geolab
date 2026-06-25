@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { DataTable } from '../ui/DataTable';
-import { Modal } from '../ui/Modal';
+import { Drawer } from '../ui/Drawer';
 import { Button } from '../ui/Button';
 import { Field, TextArea, SelectField } from '../ui/Field';
 import { PageHeader } from '../ui/PageHeader';
@@ -103,7 +103,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
           <Button variant="ghost" disabled={page * PAGE >= total} onClick={() => setPage((p) => p + 1)}>Proxima</Button>
         </span>
       </div>
-      <Modal open={editing !== undefined} title={editing ? 'Editar - ' + title : 'Novo - ' + title} onClose={close} footer={<><Button variant="ghost" onClick={close}>Cancelar</Button><Button onClick={() => void save()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
+      <Drawer open={editing !== undefined} title={editing ? 'Editar - ' + title : 'Novo - ' + title} onClose={close} footer={<><Button variant="ghost" onClick={close}>Cancelar</Button><Button onClick={() => void save()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           {fields.map((f) => f.lookup ? (
             <div key={f.key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
@@ -115,7 +115,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
           ))}
           {err ? <div style={{ color: 'var(--magenta)', fontSize: 13 }}>{err}</div> : null}
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

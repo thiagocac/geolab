@@ -1,29 +1,24 @@
-# v63 — Base UI (primitivos acessíveis) + ConfirmDialog no lugar de window.confirm · Fase 3 (1/n)
+# v64 — Cadastro em Drawer lateral (padrão A) · Fase 3 (2/n)
 
-Fundação da Fase 3: instala o **Base UI 1.6** (MUI — primitivos unstyled, acessíveis, **icon-agnóstico**) e
-introduz o **ConfirmDialog** (AlertDialog do Base UI) que substitui **todos os 7 `window.confirm`** por um
-diálogo com foco/teclado/ARIA corretos, estilizado nos tokens. Gate completo verde.
-
-## Dep nova + override (IMPORTANTE para o install)
-- `+ @base-ui/react@^1.6.0`
-- `package.json` ganhou `overrides: { "@base-ui/react": { "date-fns": "$date-fns" } }` — o Base UI declara
-  `date-fns@^4` como peer **opcional** (só p/ componentes de data, que NÃO usamos). O override aponta p/ o
-  `date-fns@3.6.0` que já existe → evita `ERESOLVE` sem `legacy-peer-deps` global nem bumpar o date-fns.
-- **Após o pull: `npm install`** (instala o Base UI + atualiza o lockfile). O Netlify resolve com o override.
+Aplica o **padrão de cadastro aprovado**: o modal central branco do `AdminListPage` vira um **DRAWER LATERAL**
+(desliza da direita, mantém a lista visível) usando o **Base UI Dialog** (foco preso, Escape, scroll-lock e
+ARIA corretos). Como o `AdminListPage` é o pattern **compartilhado**, **todos os cadastros** (clientes, obras,
+contatos, equipamentos, materiais, etc.) ganham o drawer de uma vez. Gate completo verde.
 
 ## Arquivos alterados (sobrescrever no repo)
-- **NOVO** `src/components/ui/ConfirmDialog.tsx` — `ConfirmProvider` + `useConfirm()` (retorna `Promise<boolean>`); AlertDialog do Base UI
-- `src/main.tsx` — `<ConfirmProvider>` dentro do `<ToastProvider>`
-- `src/styles.css` — `.bui-backdrop` / `.bui-popup` (overlays do Base UI; transição via `data-starting/ending-style`)
-- 7 sites `window.confirm` → `await confirm({ title, message, danger, confirmLabel })`:
-  `AdminListPage`, `Colaboradores`, `Materiais`, `Faturas`, `Formas`, `Lotes`, `NcPage` (no subcomponente `NcDetalhe`)
-- `package.json` / `package-lock.json` / `core.ts` / `public/sw.js` / `SOURCE_VERSION.md`
+- **NOVO** `src/components/ui/Drawer.tsx` — Base UI Dialog como painel lateral; **API igual à do Modal**
+  (`open/title/onClose/children/footer/wide`), então a troca no AdminListPage foi 1:1
+- `src/styles.css` — `.bui-drawer` (+ `-head`/`-body`/`-foot`; slide via `data-starting/ending-style`;
+  reusa o `.bui-backdrop` do v63). 460px (wide 680px), full-width no mobile, corpo rola e cabeçalho/rodapé fixos
+- `src/components/patterns/AdminListPage.tsx` — `<Modal>` → `<Drawer>` (só o container muda; render dos
+  campos, lookup fiscal e save são idênticos)
+- `core.ts` / `public/sw.js` / `SOURCE_VERSION.md`
 
-## Padrão de uso daqui pra frente
-- `const confirm = useConfirm();` (hook no corpo do componente)
-- `if (!(await confirm({ title, message, danger: true, confirmLabel: 'Excluir' }))) return;`
-- **Zero `window.confirm` no código** (dá pra adicionar uma regra no check-source proibindo, se quiser).
+## Notas
+- **Sem dep nova** (o Base UI veio no v63) — só `git pull` + deploy.
+- `Modal.tsx` **continua** (ainda usado por `NovaNcModal`, `ConcretagemDetalhe`, etc.) — não foi removido.
+  Outros usos podem migrar p/ Drawer (curto/médio) ou virar página (longo) incrementalmente.
 
-## Próximo (v64)
-- Migrar o **modal central branco** do `AdminListPage` → **Drawer lateral (padrão A)** com Base UI Dialog
-  (form curto/médio) + **RHF + Zod** na validação. Página dedicada (padrão C) p/ o form longo (Nova Programação) vem depois.
+## Próximo (v65)
+- **RHF + Zod** na validação do `AdminListPage` (esquema por `FieldSpec`, erro por campo, bloqueia submit inválido).
+- Depois: **página dedicada (padrão C)** p/ o form longo (Nova Programação) + Popover/Select/Tabs/Tooltip do Base UI.
