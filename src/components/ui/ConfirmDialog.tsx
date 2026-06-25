@@ -19,7 +19,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       {children}
       <AlertDialog.Root open={opts !== null} onOpenChange={(open) => { if (!open) settle(false); }}>
         <AlertDialog.Portal>
-          <AlertDialog.Backdrop className="bui-backdrop" />
+          <AlertDialog.Backdrop className="bui-backdrop-top" />
           <AlertDialog.Popup className="bui-popup card p-6">
             <AlertDialog.Title className="text-lg display text-slate-950 dark:text-slate-50">{opts?.title}</AlertDialog.Title>
             {opts?.message ? <AlertDialog.Description className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{opts.message}</AlertDialog.Description> : null}
