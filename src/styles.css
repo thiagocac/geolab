@@ -148,7 +148,15 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .nav-count{margin-left:auto;display:inline-flex;min-width:20px;height:20px;align-items:center;justify-content:center;border-radius:999px;background:var(--magenta);color:#fff;font-size:11px;font-weight:800;padding:0 6px}
 .content-col{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar{height:60px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 18px;position:sticky;top:0;z-index:30}
-.page-wrap{padding:24px;width:100%;min-width:0}
+.page-wrap{padding:24px;width:100%;min-width:0;view-transition-name:page-content}
+
+/* ---- View Transitions de rota (RR6 viewTransition na NavLink): so a area de conteudo anima ---- */
+@media (prefers-reduced-motion:no-preference){
+  ::view-transition-old(page-content){animation:vt-out .2s var(--ease-out) both}
+  ::view-transition-new(page-content){animation:vt-in .26s var(--ease-out) both}
+}
+@keyframes vt-out{to{opacity:0;transform:translateY(-6px)}}
+@keyframes vt-in{from{opacity:0;transform:translateY(10px)}}
 
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;min-width:40px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--ink-soft);cursor:pointer;position:relative}
 .icon-btn:hover{background:var(--surface-2);color:var(--ink)}

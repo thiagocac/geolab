@@ -73,7 +73,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 {items.map((it) => {
                   const Icon = it.icon;
                   return (
-                    <NavLink key={it.to} to={it.to} end={it.end} onClick={() => setOpen(false)} className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
+                    <NavLink key={it.to} to={it.to} end={it.end} viewTransition onClick={() => setOpen(false)} className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
                       <Icon size={18} /> {it.label}
                     </NavLink>
                   );
