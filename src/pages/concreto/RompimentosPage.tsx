@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ClipboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -333,6 +333,27 @@ export function RompimentosPage() {
     toast(`Aplicado a ${selecionados.size} CP(s).`, 'success');
   }
 
+  function handlePaste(e: ClipboardEvent<HTMLInputElement>, rowIndex: number) {
+    const text = e.clipboardData.getData('text');
+    if (!text) return;
+    const values = text.split('\n').map((s) => s.trim());
+    while (values.length && values[values.length - 1] === '') values.pop();
+    if (values.length <= 1) return;
+    e.preventDefault();
+    const key: 'carga' | 'valor' = entrarCarga ? 'carga' : 'valor';
+    let n = 0;
+    setEdits((s) => {
+      const next = { ...s };
+      for (let i = 0; i < values.length && rowIndex + i < filtradas.length; i++) {
+        const cp = filtradas[rowIndex + i];
+        next[cp.id] = { ...(next[cp.id] ?? {}), [key]: values[i].replace(',', '.') };
+        n++;
+      }
+      return next;
+    });
+    toast(n + ' valor(es) colado(s) na coluna.', 'success');
+  }
+
   const curvaRows = curvaCp ? rows.filter((r) => r.amostra_id && r.amostra_id === curvaCp.amostra_id) : [];
 
   return (
@@ -391,6 +412,7 @@ export function RompimentosPage() {
       {campoTipo ? <details className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900"><summary className="cursor-pointer font-bold text-slate-600 dark:text-slate-300">Tipos de ruptura (A–F · NBR 5739)</summary><ul className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">{RUPTURA_AF.map(([k, v]) => <li key={k}><span className="font-black">{k}</span> — {v}</li>)}</ul></details> : null}
       {cpsQ.isLoading ? <LoadingState /> : cpsQ.isError ? <ErrorState message={(cpsQ.error as Error).message} /> : filtradas.length === 0 ? <EmptyState /> : (
         <Card className="overflow-hidden">
+          <div className="border-b border-slate-100 px-3 py-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">Dica: cole uma coluna do Excel no campo de {entrarCarga ? 'carga' : 'MPa'} para preencher vários CPs de uma vez (Ctrl+V).</div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1180px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
@@ -400,7 +422,7 @@ export function RompimentosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtradas.map((r) => {
+                {filtradas.map((r, rowIdx) => {
                   const res = resultadoAtual(r);
                   const esp = esperado(r);
                   const naIdadeControle = isIdadeControle(r);
@@ -412,7 +434,7 @@ export function RompimentosPage() {
                       <td className="px-3 py-2 align-top"><div className="font-black text-slate-950 dark:text-slate-50">{cpNumero(r)}</div><button type="button" className="text-xs font-bold text-blue-600" onClick={() => { setNumCp(r); setNumValor(cpNumero(r)); }}>+ numeração lab</button><div className="mt-1 text-[11px] text-slate-400">{statusBadge(r)}</div></td>
                       <td className="px-3 py-2 align-top"><span className={isAtrasado(r, dataRef) ? 'font-black text-red-600' : 'font-black'}>{fmtDate(r.data_prevista_rompimento)}{isAtrasado(r, dataRef) ? ' !' : ''}</span></td>
                       <td className="px-3 py-2"><div className="flex gap-2"><input className="input" type="date" value={effectiveData(r)} onChange={(e) => patch(r.id, { data: e.target.value })} /><input className="input max-w-[90px]" type="time" value={effectiveHora(r)} onChange={(e) => patch(r.id, { hora: e.target.value })} /></div></td>
-                      <td className="px-3 py-2"><input className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: e.target.value } : { valor: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') void salvarLinhas([r]); }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); return (effectiveValor(r) || effectiveCarga(r)) && mpaForaFaixa(mpa) ? <div className="mt-1 text-xs font-bold text-amber-600">⚠ MPa fora de faixa plausível (verifique a digitação)</div> : null; })()}</td>
+                      <td className="px-3 py-2"><input className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: e.target.value } : { valor: e.target.value })} onPaste={(e) => handlePaste(e, rowIdx)} title="Cole uma coluna do Excel para preencher varios CPs" onKeyDown={(e) => { if (e.key === 'Enter') void salvarLinhas([r]); }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); return (effectiveValor(r) || effectiveCarga(r)) && mpaForaFaixa(mpa) ? <div className="mt-1 text-xs font-bold text-amber-600">⚠ MPa fora de faixa plausível (verifique a digitação)</div> : null; })()}</td>
                       <td className="px-3 py-2"><span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-800">{esp == null ? 'sem critério' : nfmt(esp, 1)}</span>{ins ? <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold text-red-700">abaixo do fck</span> : abaixoFck ? <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">acompanhamento</span> : null}</td>
                       <td className="px-3 py-2 font-semibold">{nf(r)}</td><td className="px-3 py-2 font-semibold">{idade(r)}</td>
                       {campoTipo ? <td className="px-3 py-2"><select className="input min-w-[82px]" value={effectiveTipo(r)} onChange={(e) => patch(r.id, { tipo_ruptura: e.target.value })}><option value="">-</option>{['A', 'B', 'C', 'D', 'E', 'F'].map((x) => <option key={x} value={x}>{x}</option>)}</select></td> : null}
