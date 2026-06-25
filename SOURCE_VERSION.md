@@ -1,18 +1,5 @@
-# GEOLAB → Concresoft — SOURCE VERSION v72
-CACHE_NAME: consultegeo-geolab-v72 · APP_VERSION: v72
-
-## v72 — UX dos modais de cadastro (scroll, alinhamento, foco)
-Correção transversal da camada de modais centrais (Base UI Dialog) e de alinhamento de campos.
-- **`src/components/ui/Modal.tsx`** reestruturado: cabeçalho fixo + **corpo rolável** (`.bui-modal-body`) + rodapé fixo,
-  espelhando o `Drawer` (padrão que já funcionava). Resolve "sem barra de rolagem", título/rodapé cortados e o
-  "cursor sai da tela" (scroll-into-view num modal sem scroll interno) em **todas as 13 telas** que usam `Modal`.
-- **`src/styles.css`**: `.bui-modal` vira flex-column com `max-height:min(90vh,760px)`, `overflow:hidden`, superfície/borda/sombra;
-  novos `.bui-modal-head/-body/-foot`; `.bui-modal-wide` 768→**860px** (formulários largos: Traços, Caminhão+CPs).
-- **Alinhamento de campos** (linhas de 2 campos em `display:flex` sem `flex:1` → grid `auto-fit minmax`):
-  `ColaboradoresPage` (CPF/Registro + linha de certificação), `OperacaoPage` (Cargo/Telefone, Slug/CNPJ),
-  `ClienteUsuariosPage` (senha + botão Gerar). `Field/SelectField/TextArea` ganham `min-w-0` (robustez em grid/flex).
-- **`MateriaisPage`**: removido o `×` duplicado/confuso ("Concreto 1") que fechava o modal inteiro.
-- Bump `npm run bump v72` (CACHE_NAME + APP_VERSION sincronizados). `check-source` verde.
+# GEOLAB → Concresoft — SOURCE VERSION v73
+CACHE_NAME: consultegeo-geolab-v59 · APP_VERSION: v59
 
 ## v59 — Observabilidade + Melhorias APLICADAS (banco) + tipos reais + melhoria do db tipado
 Sobre o v58 (release combinado). Backend aplicado em producao via MCP; frontend buildando verde.

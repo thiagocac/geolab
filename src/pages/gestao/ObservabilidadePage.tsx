@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { supabase } from '../../lib/supabase';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
@@ -19,6 +20,7 @@ import { buildDailySeries } from '../../lib/telemetry/metrics-math';
  */
 
 const REFRESH_MS = 60_000;
+const tipStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--ink)', fontSize: 13 } as const;
 
 type Mttr = {
   open_incidents: number; incidents_30d: number; resolved_30d: number; critical_30d: number;
@@ -72,22 +74,19 @@ function CronPill({ c }: { c: Cron }) {
   return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>{label}</span>;
 }
 
-function Sparkline({ values }: { values: Array<number | null> }) {
-  const pts = values
-    .map((v, i) => (v == null ? null : ([i, v] as [number, number])))
-    .filter((p): p is [number, number] => p !== null);
-  if (pts.length < 2) return <span className="text-xs text-slate-400">—</span>;
-  const xMax = values.length - 1;
-  const ys = pts.map((p) => p[1]);
-  const min = Math.min(...ys), max = Math.max(...ys);
-  const w = 120, h = 28;
-  const sx = (i: number) => (i / xMax) * w;
-  const sy = (v: number) => h - ((v - min) / ((max - min) || 1)) * h;
-  const d = pts.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(' ');
+function MiniTrend({ values, color = '#C5117E' }: { values: Array<number | null>; color?: string }) {
+  const gid = 'mt' + useId().replace(/:/g, '');
+  if (values.filter((v) => v != null).length < 2) return <span className="text-xs text-slate-400">—</span>;
+  const data = values.map((v, i) => ({ i, v }));
   return (
-    <svg width={w} height={h} role="img" aria-label="tendência">
-      <path d={d} fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-500 dark:text-slate-400" />
-    </svg>
+    <div style={{ height: 38 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 3, right: 2, bottom: 0, left: 2 }}>
+          <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity={0.35} /><stop offset="100%" stopColor={color} stopOpacity={0} /></linearGradient></defs>
+          <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.6} fill={`url(#${gid})`} connectNulls dot={false} isAnimationActive={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -136,6 +135,7 @@ export function ObservabilidadePage() {
   }
 
   const m = mttr.data?.[0];
+  const topEfs = (efs.data ?? []).slice(0, 10);
   const vitalMetrics = ['LCP', 'INP', 'CLS', 'FCP', 'TTFB'];
 
   return (
@@ -161,6 +161,28 @@ export function ObservabilidadePage() {
           <Stat label="MTTR médio (30d)" value={m?.avg_mttr_minutes_30d != null ? `${m.avg_mttr_minutes_30d} min` : '—'} />
         </div>
       )}
+
+      {/* Latência p95 por EF (gráfico) */}
+      <Card>
+        <CardHeader kicker="Edge Functions" title="Latência p95 por função (top)">As funções mais lentas na janela recente.</CardHeader>
+        <div className="p-5">
+          {efs.isLoading ? <LoadingState /> : efs.error ? <ErrorState message={(efs.error as Error).message} /> : topEfs.length === 0 ? <EmptyState /> : (
+            <div style={{ height: Math.min(300, 30 + topEfs.length * 26) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topEfs} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 10 }}>
+                  <CartesianGrid horizontal={false} stroke="var(--line)" />
+                  <XAxis type="number" tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} axisLine={false} tickLine={false} unit="ms" />
+                  <YAxis type="category" dataKey="fn_name" width={160} tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: 'var(--surface-2)' }} contentStyle={tipStyle} />
+                  <Bar dataKey="p95_ms" radius={[0, 5, 5, 0]} maxBarSize={18}>
+                    {topEfs.map((e) => <Cell key={e.fn_name} fill={(e.p95_ms ?? 0) > 1500 ? '#ef4444' : (e.p95_ms ?? 0) > 600 ? '#f59e0b' : '#16a34a'} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* Incidentes abertos */}
       <Card>
@@ -278,7 +300,7 @@ export function ObservabilidadePage() {
                       <span className="kicker">{metric}</span>
                       <strong className="tabular-nums text-lg font-extrabold text-slate-900 dark:text-slate-50">{metric === 'CLS' ? last.toFixed(3) : `${Math.round(last)}ms`}</strong>
                     </div>
-                    <div className="mt-2"><Sparkline values={series.values} /></div>
+                    <div className="mt-2"><MiniTrend values={series.values} /></div>
                   </div>
                 );
               })}
