@@ -1,28 +1,23 @@
-# v67 — Padrão C: "Nova programação" vira página dedicada · Fase 3 (5/n)
+# v68 — Tooltip do Base UI nos botões de ícone (fecha os primitivos da Fase 3) · Fase 3 (6/6)
 
-O formulário mais longo do sistema (**Nova programação de concretagem** — cliente/obra/traço/logística +
-a tabela `MoldingStandardEditor`) sai do `<Modal wide>` e vira uma **PÁGINA DEDICADA** em `/programacoes/nova`
-(padrão **C**): breadcrumb, deep-link, **barra de ações fixa no rodapé** (sticky) e transição de rota
-(View Transitions). Fecha o padrão A/C (A=drawer p/ curto-médio, C=página p/ longo). Gate verde.
+Fecha a adoção de primitivos da Fase 3 **onde agrega**: Tooltip acessível do Base UI nos botões só-ícone da
+topbar (menu, tema claro/escuro, sair), que antes tinham só `aria-label`. Hover/foco mostram o rótulo. Gate verde.
 
 ## Arquivos alterados (sobrescrever no repo)
-- **NOVO** `src/pages/concreto/NovaProgramacaoPage.tsx` — a página do form (extraído do modal; **lógica idêntica**:
-  queries de cliente/obra/traço/moldador, `salvar`, `MoldingStandardEditor`)
-- `src/pages/concreto/ProgramacoesPage.tsx` — **enxuta**: só a lista + ações; o botão "Nova programação"
-  navega p/ `/programacoes/nova` (`viewTransition`); removidos Modal + estado de form + queries do form
-- `src/App.tsx` — lazy import + rota `/programacoes/nova`
-- `src/styles.css` — `.form-actions` (barra sticky no rodapé do conteúdo)
+- **NOVO** `src/components/ui/Tooltip.tsx` — wrapper Base UI (`Tooltip.Root/Trigger/Portal/Positioner/Popup`);
+  usa o **render prop** → não adiciona DOM ao redor do botão (preserva o layout do `.theme-toggle`)
+- `src/components/Layout.tsx` — 4 botões de ícone envolvidos em `<Tooltip label="...">`
+- `src/styles.css` — `.bui-tooltip` (+ `-pos` z-75; popup escuro, transição)
 - `core.ts` / `public/sw.js` / `SOURCE_VERSION.md`
 
-## Notas
-- **Sem dep nova** → só `git pull` + deploy.
-- As navegações do fluxo (abrir/salvar/cancelar) usam `{ viewTransition: true }` → transição suave (a VT de rota do v62).
-- Salvar continua indo p/ `/concretagens/:id` (a concretagem criada). Cancelar/breadcrumb voltam p/ `/programacoes`.
+## Decisões de escopo (onde NÃO apliquei, de propósito)
+- **Select/Combobox** do Base UI: os `<select>` nativos já são acessíveis e funcionam; troca em massa do
+  `SelectField` = alto churn/risco p/ ganho marginal → adiado (faço pontual se surgir lista longa que peça busca).
+- **Tabs**: não há UI de abas hoje → sem alvo.
+- **Popover**: "Notificações" é item de nav (não dropdown na topbar) → sem alvo claro agora.
 
-## GOTCHA de sandbox (não afeta o app)
-- O `npm run build` inteiro estourou 45s no sandbox hoje (chain longa + contenção de processos presos).
-  Validei o gate **em partes**: check-source OK · biome 0 erros · **tsc 0 erros** · vitest 18/18 · **vite build 7s**. Tudo verde.
+## Sem dep nova (Base UI veio no v63) → só `git pull` + deploy.
 
-## Fase 3 — padrão de cadastro COMPLETO
-- **v63** ConfirmDialog · **v64** Drawer (A) · **v65** RHF+Zod · **v66** Modal→Base UI Dialog · **v67** Página dedicada (C).
-- Próximo: Popover/Select/Tabs/Tooltip do Base UI onde agregar (filtros, seletor de obra) + polish.
+## FASE 3 COMPLETA
+- v63 ConfirmDialog · v64 Drawer (A) · v65 RHF+Zod · v66 Modal→Base UI Dialog · v67 Página dedicada (C) · v68 Tooltip.
+- **Próximo: FASE 4** — TanStack Table + virtualização nos grids de lançamento, ⌘K, edição em massa com colar.

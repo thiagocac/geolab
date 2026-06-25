@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { APP_VERSION } from '../lib/telemetry/core';
+import { Tooltip } from './ui/Tooltip';
 import { Home, Truck, Flame, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
@@ -86,15 +87,15 @@ export function Layout({ children }: { children: ReactNode }) {
       </aside>
       <div className="content-col">
         <header className="topbar">
-          <button type="button" className="icon-btn menu-btn" aria-label="Menu" onClick={() => setOpen((o) => !o)}><Menu size={20} /></button>
+          <Tooltip label="Menu"><button type="button" className="icon-btn menu-btn" aria-label="Menu" onClick={() => setOpen((o) => !o)}><Menu size={20} /></button></Tooltip>
           <span style={{ fontWeight: 700, color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member?.tenant_name}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
             <div className="theme-toggle">
-              <button type="button" className={theme === 'light' ? 'on' : ''} aria-label="Tema claro" onClick={() => setTheme('light')}><Sun size={16} /></button>
-              <button type="button" className={theme === 'dark' ? 'on' : ''} aria-label="Tema escuro" onClick={() => setTheme('dark')}><Moon size={16} /></button>
+              <Tooltip label="Tema claro"><button type="button" className={theme === 'light' ? 'on' : ''} aria-label="Tema claro" onClick={() => setTheme('light')}><Sun size={16} /></button></Tooltip>
+              <Tooltip label="Tema escuro"><button type="button" className={theme === 'dark' ? 'on' : ''} aria-label="Tema escuro" onClick={() => setTheme('dark')}><Moon size={16} /></button></Tooltip>
             </div>
             <span style={{ fontSize: 13, color: 'var(--ink-faint)' }} className="hide-sm">{member?.email}</span>
-            <button type="button" className="icon-btn" aria-label="Sair" onClick={() => void signOut()}><LogOut size={18} /></button>
+            <Tooltip label="Sair"><button type="button" className="icon-btn" aria-label="Sair" onClick={() => void signOut()}><LogOut size={18} /></button></Tooltip>
           </div>
         </header>
         <main id="conteudo" className="page-wrap">{children}</main>

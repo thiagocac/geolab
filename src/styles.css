@@ -159,6 +159,11 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .bui-backdrop-top{position:fixed;inset:0;z-index:90;background:oklch(20.8% 0.04 262 / .42);backdrop-filter:blur(2px);transition:opacity var(--dur-2) var(--ease-out)}
 .bui-backdrop-top[data-starting-style],.bui-backdrop-top[data-ending-style]{opacity:0}
 
+/* ---- Tooltip (Base UI) ---- */
+.bui-tooltip-pos{z-index:75}
+.bui-tooltip{background:var(--ink);color:var(--surface);font-size:12px;font-weight:600;line-height:1.3;padding:5px 9px;border-radius:8px;box-shadow:var(--shadow-pop);max-width:220px;transition:opacity var(--dur-1) var(--ease-out),transform var(--dur-1) var(--ease-out)}
+.bui-tooltip[data-starting-style],.bui-tooltip[data-ending-style]{opacity:0;transform:scale(.96)}
+
 /* ---- layout: sidebar + topbar ---- */
 .app-shell{display:flex;min-height:100vh}
 .sidebar{width:248px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:40}
