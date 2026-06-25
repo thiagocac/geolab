@@ -8,7 +8,9 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, type LaudoRow } from '../../lib/api/laudo';
+import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, type LaudoRow } from '../../lib/api/laudo';
+import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
+import type { ParcialFinal } from '../../lib/portal/types';
 import { saveUrl, openDeferredTab, blobUrlAutoRevoke } from '../../lib/pdf';
 
 export function LaudosPage() {
@@ -22,22 +24,22 @@ export function LaudosPage() {
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
 
   const q = useQuery({ queryKey: ['laudos'], queryFn: listLaudos });
+  const cls = useQuery({ queryKey: ['laudos-cls'], queryFn: listLaudosClassificacao });
   const elegiveis = useQuery({ queryKey: ['conc-result'], queryFn: listConcretagensComResultado, enabled: novo });
-
 
   function toggle(cid: string) { setSel((s) => { const n = new Set(s); if (n.has(cid)) n.delete(cid); else n.add(cid); return n; }); }
   function fecharNovo() { setNovo(false); setSel(new Set()); setProg(null); }
   async function previewOne() {
     const ids = [...sel]; if (ids.length !== 1) { toast('Selecione exatamente uma concretagem para pré-visualizar.', 'error'); return; }
-    const tab = openDeferredTab();
     setBusy(true);
+    const tab = openDeferredTab();
     try { const { blob } = await gerarLaudo(ids[0], false); tab.go(blobUrlAutoRevoke(blob)); toast('Pré-visualização gerada (não persistida).', 'info'); }
     catch (e) { tab.fail(); toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function gerar() {
     const ids = [...sel]; if (!ids.length) { toast('Selecione ao menos uma concretagem.', 'error'); return; }
-    const tab = ids.length === 1 ? openDeferredTab() : null;
     setBusy(true); setProg({ done: 0, total: ids.length });
+    const tab = ids.length === 1 ? openDeferredTab() : null;
     let ok = 0; const erros: string[] = [];
     for (const cid of ids) {
       try {
@@ -61,7 +63,14 @@ export function LaudosPage() {
     try { const url = await downloadUrl(r.storage_path, filename); saveUrl(url, filename); } catch (e) { toast((e as Error).message, 'error'); }
   }
   async function aprovar(id: string) {
-    try { await aprovarLaudo(id); await qc.invalidateQueries({ queryKey: ['laudos'] }); toast('Laudo emitido.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
+    try {
+      await aprovarLaudo(id);
+      await Promise.all([qc.invalidateQueries({ queryKey: ['laudos'] }), qc.invalidateQueries({ queryKey: ['laudos-cls'] })]);
+      if (cls.data?.[id] === 'final') {
+        try { const r = await enviarLaudoCliente(id); toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configuracoes de e-mail.')), r.sent ? 'success' : 'info'); }
+        catch { toast('Laudo Final emitido. Falha ao enviar ao cliente.', 'warning'); }
+      } else { toast('Laudo emitido.', 'success'); }
+    } catch (e) { toast((e as Error).message, 'error'); }
   }
   async function reabrir(id: string) {
     try { await reabrirLaudo(id); await qc.invalidateQueries({ queryKey: ['laudos'] }); toast('Laudo reaberto.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
@@ -93,6 +102,7 @@ export function LaudosPage() {
               <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
                 <span style={{ fontSize: 13 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissao'}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
                   <Button variant="ghost" onClick={() => void baixar(r)}>Baixar</Button>
                   {podeAprovar && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}

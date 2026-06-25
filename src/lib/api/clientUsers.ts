@@ -90,3 +90,24 @@ export async function criarLinkPortal(clientId: string, dias = 30): Promise<stri
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.concresoft.io';
   return origin + '/portal/acesso/' + token;
 }
+
+
+// ---- Magic links do portal (observabilidade + revogacao) — staff ----
+export type MagicLinkRow = { id: string; client_id: string; client_nome: string | null; created_at: string; expires_at: string; consumed_at: string | null; last_access_at: string | null; access_count: number; ativo: boolean };
+
+export async function listarMagicLinksPortal(): Promise<MagicLinkRow[]> {
+  const r = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+  const { data, error } = await r.rpc('listar_magic_links_portal');
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Rec[]).map((m) => ({
+    id: String(m.id), client_id: String(m.client_id ?? ''), client_nome: (m.client_nome as string | null) ?? null,
+    created_at: String(m.created_at), expires_at: String(m.expires_at), consumed_at: (m.consumed_at as string | null) ?? null,
+    last_access_at: (m.last_access_at as string | null) ?? null, access_count: Number(m.access_count ?? 0), ativo: m.ativo === true,
+  }));
+}
+
+export async function revogarMagicLink(id: string): Promise<void> {
+  const r = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+  const { error } = await r.rpc('revogar_magic_link', { p_id: id });
+  if (error) throw new Error(error.message);
+}

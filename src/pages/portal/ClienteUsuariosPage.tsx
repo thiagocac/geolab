@@ -7,11 +7,13 @@ import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField } from '../../components/ui/Field';
+import { Badge } from '../../components/ui/Badge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { createClienteUsuario, criarLinkPortal, listClienteUsuarios, listClientesPortal, listObrasPortal, replaceClienteUsuarioObras, setClienteUsuarioAtivo, type ClienteUsuarioRow } from '../../lib/api/clientUsers';
+import { createClienteUsuario, criarLinkPortal, listClienteUsuarios, listClientesPortal, listObrasPortal, replaceClienteUsuarioObras, setClienteUsuarioAtivo, listarMagicLinksPortal, revogarMagicLink, type ClienteUsuarioRow } from '../../lib/api/clientUsers';
 
 const genPass = () => 'GeoLab#' + Math.random().toString(36).slice(2, 8).toUpperCase() + '29';
 const arr = (x: string[]) => [...new Set(x.filter(Boolean))];
+const fmtData = (v: string | null) => { if (!v) return '—'; try { return new Date(v).toLocaleDateString('pt-BR'); } catch { return v; } };
 
 export function ClienteUsuariosPage() {
   const { member } = useAuth();
@@ -27,6 +29,7 @@ export function ClienteUsuariosPage() {
   const [linkBusy, setLinkBusy] = useState(false);
   const users = useQuery({ queryKey: ['cliente-usuarios'], queryFn: listClienteUsuarios });
   const clients = useQuery({ queryKey: ['cliente-options'], queryFn: listClientesPortal });
+  const links = useQuery({ queryKey: ['portal-magic-links'], queryFn: listarMagicLinksPortal });
   const obras = useQuery({ queryKey: ['obra-options', f.client_id ?? 'all'], queryFn: () => listObrasPortal(String(f.client_id ?? '') || undefined) });
   const todasObras = useQuery({ queryKey: ['obra-options-all'], queryFn: () => listObrasPortal() });
   const obrasAcesso = useMemo(() => todasObras.data ?? [], [todasObras.data]);
@@ -65,7 +68,12 @@ export function ClienteUsuariosPage() {
       const url = await criarLinkPortal(linkClient, 30);
       try { await navigator.clipboard.writeText(url); toast('Link do portal copiado (valido 30 dias).', 'success'); }
       catch { toast('Link do portal: ' + url, 'info'); }
+      await qc.invalidateQueries({ queryKey: ['portal-magic-links'] });
     } catch (e) { toast((e as Error).message, 'error'); } finally { setLinkBusy(false); }
+  }
+  async function revogar(id: string) {
+    try { await revogarMagicLink(id); await qc.invalidateQueries({ queryKey: ['portal-magic-links'] }); toast('Link revogado.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); }
   }
   const list = users.data ?? [];
   return (
@@ -78,6 +86,17 @@ export function ClienteUsuariosPage() {
           <div className="min-w-[240px] flex-1"><SelectField label="Cliente" value={linkClient} onChange={(e) => setLinkClient(e.target.value)}><option value="">Selecione</option>{(clients.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectField></div>
           <Button variant="secondary" onClick={() => void gerarLink()} disabled={linkBusy || !linkClient}>{linkBusy ? 'Gerando...' : 'Gerar link do portal'}</Button>
         </div>
+      </Card>
+      <Card>
+        <CardHeader title="Links de portal ativos">Acompanhe o último acesso e revogue o acesso por link quando necessário.</CardHeader>
+        {links.isLoading ? <LoadingState /> : (links.data ?? []).length === 0 ? <EmptyState /> : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">{(links.data ?? []).map((m) => (
+            <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+              <div><div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-50">{m.client_nome ?? 'Cliente'} {m.ativo ? <Badge tone="success">Ativo</Badge> : <Badge tone="neutral">{m.consumed_at ? 'Revogado' : 'Expirado'}</Badge>}</div><div className="mt-1 text-xs text-slate-500">Criado {fmtData(m.created_at)} · expira {fmtData(m.expires_at)} · {m.access_count} acesso(s) · último {fmtData(m.last_access_at)}</div></div>
+              {m.ativo ? <Button variant="ghost" onClick={() => void revogar(m.id)}>Revogar</Button> : null}
+            </div>
+          ))}</div>
+        )}
       </Card>
       {users.isLoading ? <LoadingState /> : users.isError ? <ErrorState message={(users.error as Error).message} /> : list.length === 0 ? <EmptyState /> : (
         <Card><div className="divide-y divide-slate-100 dark:divide-slate-800">{list.map((u) => <div key={u.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm"><div><div className="font-black text-slate-950 dark:text-slate-50">{u.full_name ?? u.email} · {u.email}</div><div className="mt-1 text-slate-500">{u.active ? 'Ativo' : 'Inativo'} · {u.obras.length ? u.obras.map((o) => o.nome).join(', ') : 'sem obras vinculadas'}</div></div><div className="flex gap-2"><Button variant="secondary" onClick={() => abrirAcesso(u)}>Obras</Button><Button variant="ghost" onClick={() => void toggleAtivo(u)}>{u.active ? 'Desativar' : 'Ativar'}</Button></div></div>)}</div></Card>

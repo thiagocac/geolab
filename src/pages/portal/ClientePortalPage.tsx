@@ -3,16 +3,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
+import { FileText } from '../../components/ui/icons';
 import { useToast } from '../../lib/toast';
 import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosPanel';
-import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, openPortalLaudo, type PortalProgramacaoInput } from '../../lib/api/portalCliente';
+import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, openPortalLaudo, uploadPortalAnexo, downloadPortalAnexo, type PortalProgramacaoInput, type PortalAnexo } from '../../lib/api/portalCliente';
 import { listPortalResultados, listPortalLaudosView } from '../../lib/api/portalResultados';
 import { openDeferredTab } from '../../lib/pdf';
 
 const blank = (): PortalProgramacaoInput & { key: string } => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown): number | null => { const s = str(v).replace(',', '.'); if (!s) return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
+const anexosDe = (md: unknown): PortalAnexo[] => { const o = md as Record<string, unknown> | null; return o && Array.isArray(o.anexos) ? o.anexos as PortalAnexo[] : []; };
 
 type Tab = 'programacao' | 'resultados';
 
@@ -22,6 +25,7 @@ export function ClientePortalPage() {
   const [tab, setTab] = useState<Tab>('programacao');
   const [rows, setRows] = useState([blank()]);
   const [busy, setBusy] = useState(false);
+  const [anexBusy, setAnexBusy] = useState<string | null>(null);
 
   const works = useQuery({ queryKey: ['portal-works'], queryFn: listPortalWorks });
   const concretagens = useQuery({ queryKey: ['portal-concretagens-status'], queryFn: () => listPortalConcretagens('') });
@@ -41,14 +45,21 @@ export function ClientePortalPage() {
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function abrir(reportId: string) { const tab = openDeferredTab(); try { tab.go(await openPortalLaudo(reportId)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } }
+  async function anexar(concId: string, file: File | null) {
+    if (!file) return;
+    setAnexBusy(concId);
+    try { await uploadPortalAnexo(concId, file); await qc.invalidateQueries({ queryKey: ['portal-concretagens-status'] }); toast('Anexo enviado.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setAnexBusy(null); }
+  }
+  async function baixarAnexo(path: string) { const tab = openDeferredTab(); try { tab.go(await downloadPortalAnexo(path)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } }
 
   return (
     <section className="space-y-5">
       <PageHeader kicker="Portal do cliente" title="Programações, resultados e laudos" description="Solicite concretagens e acompanhe resultados e laudos emitidos pelo laboratório." />
 
-      <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-        <button type="button" onClick={() => setTab('programacao')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'programacao' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Programação</button>
-        <button type="button" onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button>
+      <div role="tablist" aria-label="Seções do portal" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+        <button role="tab" type="button" aria-selected={tab === 'programacao'} onClick={() => setTab('programacao')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'programacao' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Programação</button>
+        <button role="tab" type="button" aria-selected={tab === 'resultados'} onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button>
       </div>
 
       {tab === 'programacao' ? (
@@ -80,8 +91,21 @@ export function ClientePortalPage() {
           </Card>
 
           <Card>
-            <CardHeader title="Minhas concretagens">Status das programações enviadas e concretagens em andamento.</CardHeader>
-            {concretagens.isLoading ? <LoadingState /> : concretagens.isError ? <ErrorState message={(concretagens.error as Error).message} /> : (concretagens.data ?? []).length === 0 ? <EmptyState /> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{(concretagens.data ?? []).map((c) => <div key={c.id} className="p-4 text-sm"><div className="font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'} · {c.status}</div><div className="mt-1 text-slate-500">{c.client_works?.nome ?? '-'} · {c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}</div></div>)}</div>}
+            <CardHeader title="Minhas concretagens">Status das programações enviadas. Anexe a NF/DANFE ou documentos por concretagem.</CardHeader>
+            {concretagens.isLoading ? <LoadingState /> : concretagens.isError ? <ErrorState message={(concretagens.error as Error).message} /> : (concretagens.data ?? []).length === 0 ? <EmptyState /> : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">{(concretagens.data ?? []).map((c) => {
+                const anexos = anexosDe(c.metadata);
+                return (
+                  <div key={c.id} className="p-4 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'}</span><StatusBadge status={c.status} /></div><div className="mt-1 text-slate-500">{c.client_works?.nome ?? '-'} · {c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}</div></div>
+                      <label className="btn btn-secondary cursor-pointer whitespace-nowrap">{anexBusy === c.id ? 'Enviando...' : '+ Anexar arquivo'}<input type="file" className="hidden" disabled={anexBusy === c.id} onChange={(e) => void anexar(c.id, e.target.files?.[0] ?? null)} /></label>
+                    </div>
+                    {anexos.length ? <div className="mt-2 flex flex-wrap gap-2">{anexos.map((a, i) => <button key={a.path || i} type="button" className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200" onClick={() => void baixarAnexo(a.path)}><FileText size={13} /> {a.filename}</button>)}</div> : null}
+                  </div>
+                );
+              })}</div>
+            )}
           </Card>
         </>
       ) : (

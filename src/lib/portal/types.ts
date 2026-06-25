@@ -53,13 +53,15 @@ export type PortalResultadoRow = {
   conforme: boolean | null;
 };
 
-export type LaudoFiltro = { workId: string; texto: string; tipo: 'todos' | 'parcial' | 'final'; status: string };
+export type LaudoFiltro = { workId: string; texto: string; tipo: 'todos' | 'parcial' | 'final'; status: string; de: string; ate: string };
 export type ResultadoFiltro = {
   workId: string;
   texto: string;
   idade: 'todas' | 'controle' | 'acompanhamento';
   conformidade: 'todas' | 'conforme' | 'nao_conforme';
   somenteComResultado: boolean;
+  de: string;
+  ate: string;
 };
 
 export type ExemplarResumo = {

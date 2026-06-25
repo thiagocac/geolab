@@ -1,13 +1,19 @@
 // Helpers puros do portal (sem dependencia de Supabase): filtros, consolidacao por
-// exemplar e exportador Excel. Reusados pelo portal autenticado e pelo publico.
+// exemplar, deteccao de atraso e exportadores Excel/PDF. Reusados pelos dois portais.
 import type { ExemplarResumo, LaudoFiltro, ParcialFinal, PortalLaudoView, PortalResultadoRow, ResultadoFiltro } from './types';
 
 const norm = (v: unknown) => String(v ?? '').toLowerCase();
+export const hojeISO = () => new Date().toISOString().slice(0, 10);
 
 export function parcialFinalMeta(value: ParcialFinal): { label: string; tone: 'success' | 'warning' | 'neutral' } {
   if (value === 'final') return { label: 'Final', tone: 'success' };
   if (value === 'parcial') return { label: 'Parcial', tone: 'warning' };
   return { label: 'Sem resultados', tone: 'neutral' };
+}
+
+// CP atrasado: pendente, sem resultado e com data prevista de rompimento ja vencida.
+export function isAtrasado(r: PortalResultadoRow, hoje = hojeISO()): boolean {
+  return r.resultado_valor == null && r.situacao === 'pendente' && !!r.data_prevista_rompimento && r.data_prevista_rompimento < hoje;
 }
 
 export function filtraLaudos(laudos: PortalLaudoView[], f: LaudoFiltro): PortalLaudoView[] {
@@ -16,6 +22,8 @@ export function filtraLaudos(laudos: PortalLaudoView[], f: LaudoFiltro): PortalL
     if (f.workId && l.work_id !== f.workId) return false;
     if (f.tipo !== 'todos' && l.parcial_final !== f.tipo) return false;
     if (f.status && l.status !== f.status) return false;
+    if (f.de && (!l.data_emissao || l.data_emissao < f.de)) return false;
+    if (f.ate && (!l.data_emissao || l.data_emissao > f.ate)) return false;
     if (t && !(norm(l.numero).includes(t) || norm(l.work_nome).includes(t))) return false;
     return true;
   });
@@ -30,6 +38,8 @@ export function filtraResultados(rows: PortalResultadoRow[], f: ResultadoFiltro)
     if (f.idade === 'acompanhamento' && r.is_controle) return false;
     if (f.conformidade === 'conforme' && r.conforme !== true) return false;
     if (f.conformidade === 'nao_conforme' && r.conforme !== false) return false;
+    if (f.de && (!r.data_rompimento || r.data_rompimento < f.de)) return false;
+    if (f.ate && (!r.data_rompimento || r.data_rompimento > f.ate)) return false;
     if (t) {
       const hay = [r.concretagem_codigo, r.local_texto, r.nota_fiscal, r.cp_codigo, r.numeracao_lab, r.work_nome, r.amostra_codigo].map(norm).join(' ');
       if (!hay.includes(t)) return false;
@@ -65,42 +75,46 @@ export function consolidarExemplares(rows: PortalResultadoRow[]): ExemplarResumo
 
 const conformeTxt = (v: boolean | null) => (v == null ? '' : v ? 'Conforme' : 'Nao conforme');
 
-// Exporta a planilha respeitando o filtro atual (recebe as linhas ja filtradas).
 export async function exportResultadosXlsx(rows: PortalResultadoRow[], filename: string): Promise<void> {
   const XLSX = await import('xlsx');
   const detalhe = rows.map((r) => ({
-    Obra: r.work_nome ?? '',
-    Concretagem: r.concretagem_codigo ?? '',
-    Data: r.data_concretagem ?? '',
-    Fornecedor: r.fornecedor_texto ?? '',
-    'Local/Peca': r.local_texto ?? '',
-    NF: r.nota_fiscal ?? '',
-    Exemplar: r.amostra_codigo ?? '',
-    CP: r.cp_codigo ?? r.numeracao_lab ?? '',
-    'Idade (dias)': r.idade_dias ?? '',
-    'Data rompimento': r.data_rompimento ?? '',
-    'Carga (kN)': r.carga_ruptura_kn ?? '',
-    'Resultado (MPa)': r.resultado_valor ?? '',
-    'FCK (MPa)': r.fck_ref ?? '',
-    'Idade controle (dias)': r.idade_controle ?? '',
-    'Idade de controle?': r.is_controle ? 'Sim' : 'Nao',
-    Conforme: conformeTxt(r.conforme),
-    Situacao: r.situacao ?? '',
+    Obra: r.work_nome ?? '', Concretagem: r.concretagem_codigo ?? '', Data: r.data_concretagem ?? '',
+    Fornecedor: r.fornecedor_texto ?? '', 'Local/Peca': r.local_texto ?? '', NF: r.nota_fiscal ?? '',
+    Exemplar: r.amostra_codigo ?? '', CP: r.cp_codigo ?? r.numeracao_lab ?? '', 'Idade (dias)': r.idade_dias ?? '',
+    'Data rompimento': r.data_rompimento ?? '', 'Carga (kN)': r.carga_ruptura_kn ?? '', 'Resultado (MPa)': r.resultado_valor ?? '',
+    'FCK (MPa)': r.fck_ref ?? '', 'Idade controle (dias)': r.idade_controle ?? '', 'Idade de controle?': r.is_controle ? 'Sim' : 'Nao',
+    Conforme: conformeTxt(r.conforme), Situacao: r.situacao ?? '',
   }));
   const resumo = consolidarExemplares(rows).map((e) => ({
-    Obra: e.work_nome ?? '',
-    Concretagem: e.concretagem_codigo ?? '',
-    Data: e.data ?? '',
-    Exemplar: e.exemplar ?? '',
-    NF: e.nf ?? '',
-    'Idade controle (dias)': e.idade_controle ?? '',
-    'Resistencia (MPa)': e.resistencia ?? '',
-    'FCK (MPa)': e.fck ?? '',
-    Conforme: conformeTxt(e.conforme),
-    'Nro CPs': e.n_cps,
+    Obra: e.work_nome ?? '', Concretagem: e.concretagem_codigo ?? '', Data: e.data ?? '', Exemplar: e.exemplar ?? '', NF: e.nf ?? '',
+    'Idade controle (dias)': e.idade_controle ?? '', 'Resistencia (MPa)': e.resistencia ?? '', 'FCK (MPa)': e.fck ?? '',
+    Conforme: conformeTxt(e.conforme), 'Nro CPs': e.n_cps,
   }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo), 'Resumo por exemplar');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalhe), 'Detalhe por CP');
   XLSX.writeFile(wb, filename);
+}
+
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>]/g, (c) => (c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;'));
+const cell = (v: unknown) => '<td>' + esc(v) + '</td>';
+
+// Exporta PDF via impressao do navegador (sem dependencia nova). Abre aba e dispara print.
+export function exportResultadosPdf(rows: PortalResultadoRow[], titulo: string): boolean {
+  const win = window.open('', '_blank');
+  if (!win) return false;
+  const resumo = consolidarExemplares(rows);
+  const resumoHtml = resumo.map((e) => '<tr>' + [e.work_nome, e.concretagem_codigo, e.data, e.exemplar, e.nf, e.idade_controle, e.resistencia ?? '—', e.fck ?? '—', conformeTxt(e.conforme)].map(cell).join('') + '</tr>').join('');
+  const detalheHtml = rows.map((r) => '<tr>' + [r.concretagem_codigo, r.nota_fiscal, r.amostra_codigo, r.cp_codigo ?? r.numeracao_lab, (r.idade_dias ?? '') + (r.idade_unidade === 'hora' ? 'h' : 'd'), r.data_rompimento, r.resultado_valor ?? '—', r.fck_ref ?? '—', conformeTxt(r.conforme)].map(cell).join('') + '</tr>').join('');
+  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(titulo) + '</title>'
+    + '<style>body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:24px}h1{font-size:18px;margin:0 0 4px}h2{font-size:13px;margin:18px 0 6px}p{color:#64748b;font-size:11px;margin:0 0 8px}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #cbd5e1;padding:4px 6px;text-align:left}th{background:#f1f5f9}@media print{button{display:none}}</style></head><body>'
+    + '<h1>' + esc(titulo) + '</h1><p>Gerado em ' + esc(new Date().toLocaleString('pt-BR')) + ' — ' + rows.length + ' corpos de prova · ' + resumo.length + ' exemplares</p>'
+    + '<button onclick="window.print()">Imprimir / Salvar PDF</button>'
+    + '<h2>Resumo por exemplar</h2><table><thead><tr><th>Obra</th><th>Concretagem</th><th>Data</th><th>Exemplar</th><th>NF</th><th>Idade ctrl</th><th>Resist. (MPa)</th><th>FCK</th><th>Conforme</th></tr></thead><tbody>' + resumoHtml + '</tbody></table>'
+    + '<h2>Detalhe por CP</h2><table><thead><tr><th>Concretagem</th><th>NF</th><th>Exemplar</th><th>CP</th><th>Idade</th><th>Rompimento</th><th>Resultado</th><th>FCK</th><th>Conforme</th></tr></thead><tbody>' + detalheHtml + '</tbody></table>'
+    + '<script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>';
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  return true;
 }

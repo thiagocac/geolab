@@ -119,3 +119,14 @@ export async function enviarLaudoCliente(labReportId: string): Promise<{ sent: b
   if (!resp.ok || out.ok === false) throw new Error(out.error ?? ('Erro ' + resp.status));
   return { sent: out.sent === true, reason: out.reason, to: out.to };
 }
+
+
+// Classificacao Parcial/Final dos laudos do tenant (badge + auto-envio ao emitir Final). RPC laudos_parcial_final (064).
+export async function listLaudosClassificacao(): Promise<Record<string, string>> {
+  const { data, error } = await rpc.rpc('laudos_parcial_final');
+  if (error) throw new Error(error.message);
+  const m: Record<string, string> = {};
+  for (const r of (data ?? []) as Record<string, unknown>[]) m[String(r.id)] = String(r.parcial_final ?? 'sem_resultados');
+  return m;
+}
+

@@ -6,7 +6,7 @@ const db = supabase as unknown as { from: (t: string) => any };
 type Rec = Record<string, unknown>;
 export type PortalWork = { id: string; nome: string; client_id: string; cliente: string };
 export type PortalProgramacaoInput = { work_id: string; data_programada: string; hora_programada?: string; local_texto?: string; traco_texto?: string; fck_previsto?: number | null; fornecedor_texto?: string; volume_programado_m3?: number | null; observacoes?: string };
-export type PortalConcretagem = { id: string; codigo: string | null; status: string; data_programada: string | null; data_real: string | null; local_texto: string | null; fck_previsto: number | null; client_works?: { nome: string | null } | null; lab_reports?: { id: string; numero: string; status: string; storage_path: string | null }[] | null };
+export type PortalConcretagem = { id: string; codigo: string | null; status: string; data_programada: string | null; data_real: string | null; local_texto: string | null; fck_previsto: number | null; client_works?: { nome: string | null } | null; lab_reports?: { id: string; numero: string; status: string; storage_path: string | null }[] | null; metadata?: Record<string, unknown> | null };
 export type PortalLaudo = { id: string; numero: string; status: string; data_emissao: string | null; storage_path: string | null; concretagem_id: string | null; work_id?: string | null; client_works?: { nome: string | null } | null };
 
 async function portalScope(): Promise<string[] | null> {
@@ -53,7 +53,7 @@ export async function submitPortalProgramacoes(rows: PortalProgramacaoInput[]): 
 export async function listPortalConcretagens(search = ''): Promise<PortalConcretagem[]> {
   const scope = await portalScope();
   if (scope && !scope.length) return [];
-  let q = db.from('concretagens').select('id, codigo, status, data_programada, data_real, local_texto, fck_previsto, work_id, client_works(nome), lab_reports(id, numero, status, storage_path, deleted_at)').is('deleted_at', null).order('created_at', { ascending: false }).limit(80);
+  let q = db.from('concretagens').select('id, codigo, status, data_programada, data_real, local_texto, fck_previsto, work_id, metadata, client_works(nome), lab_reports(id, numero, status, storage_path, deleted_at)').is('deleted_at', null).order('created_at', { ascending: false }).limit(80);
   if (scope) q = q.in('work_id', scope);
   if (search.trim()) q = q.or(`codigo.ilike.%${search.trim()}%,local_texto.ilike.%${search.trim()}%,traco_texto.ilike.%${search.trim()}%`);
   const { data, error } = await q;
@@ -84,4 +84,43 @@ export async function openPortalLaudo(reportId: string): Promise<string> {
   const payload = txt ? JSON.parse(txt) as Rec : {};
   if (!resp.ok || !payload.url) throw new Error(String(payload.error ?? 'Erro ao abrir laudo'));
   return String(payload.url);
+}
+
+
+// ---- Anexos da programacao/concretagem (EF portal-anexo, bucket privado anexos) ----
+export type PortalAnexo = { path: string; filename: string; mime?: string; size?: number; uploaded_at?: string };
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => { const s = String(reader.result ?? ''); resolve(s.includes(',') ? s.slice(s.indexOf(',') + 1) : s); };
+    reader.onerror = () => reject(new Error('falha ao ler o arquivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function callAnexo(body: Record<string, unknown>): Promise<Rec> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/portal-anexo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+    body: JSON.stringify(body),
+  });
+  const txt = await resp.text();
+  const payload = txt ? JSON.parse(txt) as Rec : {};
+  if (!resp.ok || payload.ok === false) throw new Error(String(payload.error ?? 'Erro no anexo'));
+  return payload;
+}
+
+export async function uploadPortalAnexo(concretagemId: string, file: File): Promise<PortalAnexo> {
+  if (file.size > 8 * 1024 * 1024) throw new Error('Arquivo acima de 8MB.');
+  const content = await fileToBase64(file);
+  const r = await callAnexo({ action: 'upload', concretagem_id: concretagemId, filename: file.name, mime: file.type, content_base64: content });
+  return r.anexo as PortalAnexo;
+}
+
+export async function downloadPortalAnexo(path: string): Promise<string> {
+  const r = await callAnexo({ action: 'download', path });
+  return String(r.url);
 }

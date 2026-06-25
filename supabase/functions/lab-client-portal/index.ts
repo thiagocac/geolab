@@ -22,6 +22,8 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: 'Link invalido ou expirado.' }, 401);
     }
     const tenant = String(link.tenant_id); const clientId = String(link.entity_id);
+    // (#9) observabilidade: marca ultimo acesso do magic link (best-effort).
+    try { await admin.rpc('bump_magic_link_access', { p_hash: hash }); } catch (_e) { /* nao bloqueia */ }
 
     // Download de laudo (escopo: a obra precisa ser do cliente do link)
     const reportId = typeof body.lab_report_id === 'string' ? body.lab_report_id : '';

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosPanel';
 import type { PortalLaudoView, PortalResultadoRow } from '../../lib/portal/types';
 import { env } from '../../lib/env';
@@ -76,14 +77,14 @@ export function PortalPublicoPage() {
       <main className="mx-auto max-w-6xl space-y-4 px-4 py-6">
         {token.length < 16 ? <ErrorState message="Link inválido." /> : q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : !d ? <EmptyState /> : (
           <>
-            <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-              <button type="button" onClick={() => setTab('concretagens')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'concretagens' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Concretagens</button>
-              <button type="button" onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button>
+            <div role="tablist" aria-label="Seções do portal" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+              <button role="tab" type="button" aria-selected={tab === 'concretagens'} onClick={() => setTab('concretagens')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'concretagens' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Concretagens</button>
+              <button role="tab" type="button" aria-selected={tab === 'resultados'} onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button>
             </div>
             {tab === 'concretagens' ? (
               <Card>
                 <CardHeader title="Concretagens">Programações e concretagens registradas para suas obras.</CardHeader>
-                {d.concretagens.length === 0 ? <EmptyState /> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{d.concretagens.map((c) => <div key={c.id} className="p-4 text-sm"><div className="font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'} · {c.status}</div><div className="mt-1 text-slate-500">{c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}{c.fck_previsto ? ' · FCK ' + c.fck_previsto : ''}{c.volume_lancado_m3 ? ' · ' + c.volume_lancado_m3 + ' m³' : ''}</div></div>)}</div>}
+                {d.concretagens.length === 0 ? <EmptyState /> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{d.concretagens.map((c) => <div key={c.id} className="p-4 text-sm"><div className="flex flex-wrap items-center gap-2 font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'} <StatusBadge status={c.status} /></div><div className="mt-1 text-slate-500">{c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}{c.fck_previsto ? ' · FCK ' + c.fck_previsto : ''}{c.volume_lancado_m3 ? ' · ' + c.volume_lancado_m3 + ' m³' : ''}</div></div>)}</div>}
               </Card>
             ) : (
               <LaudosResultadosPanel
