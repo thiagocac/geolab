@@ -180,6 +180,19 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .cmdk-foot{display:flex;gap:10px;padding:8px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-faint);background:var(--surface-2)}
 .cmdk-foot kbd{font-family:var(--font-mono);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 5px}
 
+/* ---- VirtualTable (TanStack Table + Virtual) ---- */
+.vt-scroll{overflow:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow-card)}
+.vt{position:relative}
+.vt-head{display:flex;position:sticky;top:0;z-index:2;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.vt-th{flex-shrink:0;padding:11px 12px;font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);font-weight:700;white-space:nowrap;user-select:none}
+.vt-th.vt-sortable{cursor:pointer}
+.vt-th.vt-sortable:hover{color:var(--ink)}
+.vt-body{position:relative;width:100%}
+.vt-tr{position:absolute;top:0;left:0;display:flex;width:100%;border-bottom:1px solid var(--line-soft);transition:background var(--dur-1) var(--ease-out)}
+.vt-tr:hover{background:var(--surface-2)}
+.vt-td{flex-shrink:0;padding:9px 12px;font-size:13.5px;color:var(--ink);display:flex;flex-direction:column;justify-content:center;min-width:0}
+.vt-empty{padding:28px;text-align:center;color:var(--ink-faint);font-size:14px}
+
 /* ---- layout: sidebar + topbar ---- */
 .app-shell{display:flex;min-height:100vh}
 .sidebar{width:248px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:40}

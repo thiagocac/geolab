@@ -1,27 +1,30 @@
-# v70 — Edição em massa colando (paste-to-fill) no grid de rompimentos · Fase 4 (2/n)
+# v71 — TanStack Table + Virtual: grid virtualizado e ordenável (isolado) · Fase 4 (3/n)
 
-A maior alavanca operacional da Fase 4 p/ o lab: **colar uma COLUNA do Excel** no campo de carga/MPa preenche
-vários CPs consecutivos de uma vez. **Additivo** (não reescreve o grid). Gate verde.
+Introduz **TanStack Table** (headless) + **TanStack Virtual** (virtualização de linhas) num primitivo reusável
+`VirtualTable`, aplicado de forma **ISOLADA** na lista da `ProgramacoesPage` (read-only, sem o risco do grid
+editável de rompimentos). Ordenação por cabeçalho + render só das linhas visíveis (escala p/ centenas de linhas). Gate verde.
 
-## Por que NÃO o TanStack Table+Virtual agora (decisão consciente)
-- A `RompimentosPage` é a tela mais crítica e intrincada do lab (448 linhas: estado de edição por CP,
-  filtros, seleção/bulk, 4 modais, XLSX import/export, preservação E1<fck). Reescrever o grid p/
-  TanStack Table+Virtual **num PR só = alto risco**, sem como testar visualmente daqui. O **paste-to-fill**
-  entrega o maior ganho de workflow (lançar 20 cargas colando) **sem** o refactor. O grid-engine
-  (TanStack Table+Virtual) fica p/ um esforço **isolado e testável** depois.
+## Deps novas
+- `+ @tanstack/react-table@^8` (8.21.3) `+ @tanstack/react-virtual@^3` (3.14.3). Peers React 19 ok.
+- **Após o pull: `npm install`.**
 
 ## Arquivos alterados (sobrescrever no repo)
-- `src/pages/concreto/RompimentosPage.tsx` — `handlePaste(e, rowIndex)`: lê o clipboard, divide por linha,
-  distribui aos CPs **consecutivos a partir da linha colada** (carga OU MPa, conforme o toggle `entrarCarga`);
-  normaliza **vírgula→ponto**; ignora paste de valor único (deixa o paste normal do navegador). `onPaste`+`title`
-  no input de carga; índice (`rowIdx`) no `.map` das linhas; hint no topo da tabela.
-- `core.ts` / `public/sw.js` / `SOURCE_VERSION.md`
+- **NOVO** `src/components/ui/VirtualTable.tsx` — primitivo genérico `<VirtualTable data columns rowId height/>`:
+  TanStack Table (`getCoreRowModel`+`getSortedRowModel`, sorting por estado) + `useVirtualizer` (medição
+  **dinâmica de altura** via `measureElement`, overscan). Markup em **divs** (a virtualização por `translateY`
+  quebra o `<table>` nativo) — cabeçalho sticky e sortável, linhas absolutas.
+- `src/pages/concreto/ProgramacoesPage.tsx` — a `<table>` manual virou `<VirtualTable>` com `ColumnDef[]`
+  (status/data/cliente-obra/local/traço/fornecedor/volume **ordenáveis** + coluna Ações). Altura adapta ao nº de linhas (cap 620).
+- `src/styles.css` — `.vt-*` (scroll, head sticky, tr absoluta, td).
+- `core.ts` / `public/sw.js` / `SOURCE_VERSION.md`.
+
+## Por que isolado AQUI (não no rompimentos)
+- Grid **read-only e que eu controlo** (reescrito no v67) → baixo risco. Prova o padrão TanStack Table+Virtual.
+  O grid **editável** de rompimentos (crítico) pode adotar o `VirtualTable` depois, com você validando no preview do Netlify.
 
 ## UX
-- No grid, **cole (Ctrl+V) uma coluna** de valores do Excel no campo de carga/MPa de qualquer linha → preenche
-  daquela linha p/ baixo. Toast confirma quantos foram preenchidos. 1 valor só = paste normal. Vírgula vira ponto.
+- **Clique nos cabeçalhos para ordenar** (↑/↓). Listas longas renderizam só o visível (scroll suave).
+- Cabeçalho fixo no topo; rolagem horizontal no mobile (colunas com largura fixa).
 
-## Sem dep nova → só `git pull` + deploy.
-
-## Próximo (Fase 4)
-- **TanStack Table + virtualização** do grid (esforço isolado, testável no preview do Netlify), edição inline mais rica.
+## Próximo
+- Aplicar o `VirtualTable` a outras listas longas (concretagens/laudos) e, com cuidado e validação, ao grid de rompimentos.
