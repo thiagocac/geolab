@@ -25,6 +25,7 @@ export type LaudosResultadosPanelProps = {
   podeComentar?: boolean;
   podeContestar?: boolean;
   podeBaixar?: boolean;
+  podeDossie?: boolean;
 };
 
 const PAGE = 50;
@@ -67,7 +68,7 @@ function ResultadosTable({ rows, tech }: { rows: PortalResultadoRow[]; tech?: bo
   );
 }
 
-export function LaudosResultadosPanel({ works, laudos, resultados, loading, error, onDownload, fileLabel = 'resultados', permiteComentarios = false, podeComentar = true, podeContestar = true, podeBaixar = true }: LaudosResultadosPanelProps) {
+export function LaudosResultadosPanel({ works, laudos, resultados, loading, error, onDownload, fileLabel = 'resultados', permiteComentarios = false, podeComentar = true, podeContestar = true, podeBaixar = true, podeDossie = false }: LaudosResultadosPanelProps) {
   const [workId, setWorkId] = useState('');
   const [texto, setTexto] = useState('');
   const [tipo, setTipo] = useState<'todos' | 'parcial' | 'final'>('todos');
@@ -102,6 +103,7 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
   async function baixar(id: string) { setBaixando(id); try { await onDownload(id); } finally { setBaixando(null); } }
   async function exportarXlsx() { setExp('xlsx'); try { await exportResultadosXlsx(resF, fileLabel + '-' + new Date().toISOString().slice(0, 10) + '.xlsx'); } finally { setExp(''); } }
   function exportarPdf() { setExp('pdf'); try { exportResultadosPdf(resF, 'Resultados de ensaio — ' + fileLabel); } finally { setExp(''); } }
+  async function dossie() { setExp('xlsx'); try { await exportResultadosXlsx(resF, 'dossie-' + fileLabel + '-' + new Date().toISOString().slice(0, 10) + '.xlsx'); exportResultadosPdf(resF, 'Dossiê da obra — ' + fileLabel); } finally { setExp(''); } }
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -178,7 +180,7 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
           <div><p className="kicker">Resultados</p><h2 className="mt-1 text-lg display text-slate-950 dark:text-slate-50">Corpos de prova ({resF.length})</h2><p className="mt-1 text-xs text-slate-500">Exemplares: {resumo.length} · {conformes} conformes · {naoConformes} não conformes</p></div>
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => setTech((v) => !v)}>{tech ? 'Menos colunas' : 'Detalhes técnicos'}</Button>
-            <Button variant="secondary" leftIcon={<Download size={15} />} disabled={exp !== '' || resF.length === 0} onClick={() => exportarPdf()}>{exp === 'pdf' ? 'Gerando...' : 'PDF'}</Button>
+            {podeDossie ? <Button variant="secondary" leftIcon={<Download size={15} />} disabled={exp !== '' || resF.length === 0} onClick={() => void dossie()}>Dossiê</Button> : null}<Button variant="secondary" leftIcon={<Download size={15} />} disabled={exp !== '' || resF.length === 0} onClick={() => exportarPdf()}>{exp === 'pdf' ? 'Gerando...' : 'PDF'}</Button>
             <Button leftIcon={<Download size={15} />} disabled={exp !== '' || resF.length === 0} onClick={() => void exportarXlsx()}>{exp === 'xlsx' ? 'Gerando...' : 'Excel'}</Button>
           </div>
         </div>

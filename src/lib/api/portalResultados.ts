@@ -28,3 +28,10 @@ export async function listPortalLaudosView(workId?: string): Promise<PortalLaudo
     parcial_final: (String(r.parcial_final ?? 'sem_resultados') as ParcialFinal),
   }));
 }
+
+export type PortalFinanceiro = { tipo: 'fatura' | 'medicao'; id: string; numero: string | null; competencia: string | null; periodo_inicio: string | null; periodo_fim: string | null; valor: number | null; status: string | null; data_emissao: string | null };
+export async function listPortalFinanceiro(): Promise<PortalFinanceiro[]> {
+  const { data, error } = await rpc.rpc('portal_financeiro');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PortalFinanceiro[];
+}

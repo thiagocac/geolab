@@ -3,12 +3,16 @@ import { supabase } from '../supabase';
 const db = supabase as unknown as { from: (t: string) => any };
 
 // Recursos do portal que podem ser delimitados por usuário do cliente.
-export type FeatureKey = 'ver_resultados' | 'baixar_laudo' | 'programar' | 'cancelar_programacao' | 'anexar' | 'comentar' | 'contestar';
+export type FeatureKey = 'ver_resultados' | 'baixar_laudo' | 'ver_agenda' | 'ver_medicao' | 'ver_nc' | 'ver_dossie' | 'programar' | 'cancelar_programacao' | 'anexar' | 'comentar' | 'contestar';
 export type PortalPermissoes = Record<FeatureKey, boolean>;
 
 export const FEATURES: { key: FeatureKey; label: string; hint?: string }[] = [
   { key: 'ver_resultados', label: 'Ver resultados e laudos' },
   { key: 'baixar_laudo', label: 'Baixar PDF do laudo' },
+  { key: 'ver_agenda', label: 'Ver agenda de rompimentos' },
+  { key: 'ver_medicao', label: 'Ver medição / faturamento' },
+  { key: 'ver_nc', label: 'Ver não conformidades' },
+  { key: 'ver_dossie', label: 'Baixar dossiê da obra' },
   { key: 'programar', label: 'Enviar programação de concretagem' },
   { key: 'cancelar_programacao', label: 'Cancelar programação pendente' },
   { key: 'anexar', label: 'Anexar NF/DANFE à programação' },
@@ -16,7 +20,7 @@ export const FEATURES: { key: FeatureKey; label: string; hint?: string }[] = [
   { key: 'contestar', label: 'Contestar resultados' },
 ];
 
-const ALL_TRUE: PortalPermissoes = { ver_resultados: true, baixar_laudo: true, programar: true, cancelar_programacao: true, anexar: true, comentar: true, contestar: true };
+const ALL_TRUE: PortalPermissoes = { ver_resultados: true, baixar_laudo: true, ver_agenda: true, ver_medicao: true, ver_nc: true, ver_dossie: true, programar: true, cancelar_programacao: true, anexar: true, comentar: true, contestar: true };
 
 export const PERFIS: { key: string; label: string; perms: PortalPermissoes }[] = [
   { key: 'leitor', label: 'Leitor (só consulta)', perms: { ...ALL_TRUE, programar: false, cancelar_programacao: false, anexar: false, comentar: false, contestar: false } },

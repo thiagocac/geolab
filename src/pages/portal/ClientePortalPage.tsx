@@ -8,17 +8,18 @@ import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State'
 import { FileText, Bell } from '../../components/ui/icons';
 import { useToast } from '../../lib/toast';
 import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosPanel';
+import { AcompanhamentoPortal } from '../../components/portal/AcompanhamentoPortal';
 import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, openPortalLaudo, uploadPortalAnexo, downloadPortalAnexo, listPortalNotificacoes, marcarNotificacao, cancelarProgramacao, type PortalProgramacaoInput, type PortalAnexo, type PortalNotificacao } from '../../lib/api/portalCliente';
-import { listPortalResultados, listPortalLaudosView } from '../../lib/api/portalResultados';
-import { openDeferredTab } from '../../lib/pdf';
+import { listPortalResultados, listPortalLaudosView, listPortalFinanceiro } from '../../lib/api/portalResultados';
 import { getMinhasPermissoes, type FeatureKey } from '../../lib/api/portalPermissoes';
+import { openDeferredTab } from '../../lib/pdf';
 
 const blank = (): PortalProgramacaoInput & { key: string } => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown): number | null => { const s = str(v).replace(',', '.'); if (!s) return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
 const anexosDe = (md: unknown): PortalAnexo[] => { const o = md as Record<string, unknown> | null; return o && Array.isArray(o.anexos) ? o.anexos as PortalAnexo[] : []; };
 
-type Tab = 'programacao' | 'resultados';
+type Tab = 'programacao' | 'resultados' | 'acompanhamento';
 
 export function ClientePortalPage() {
   const toast = useToast();
@@ -34,9 +35,10 @@ export function ClientePortalPage() {
   const works = useQuery({ queryKey: ['portal-works'], queryFn: listPortalWorks });
   const concretagens = useQuery({ queryKey: ['portal-concretagens-status'], queryFn: () => listPortalConcretagens('') });
   const laudos = useQuery({ queryKey: ['portal-laudos-view'], queryFn: () => listPortalLaudosView(), enabled: tab === 'resultados' });
-  const resultados = useQuery({ queryKey: ['portal-resultados'], queryFn: () => listPortalResultados(), enabled: tab === 'resultados' });
+  const resultados = useQuery({ queryKey: ['portal-resultados'], queryFn: () => listPortalResultados(), enabled: tab === 'resultados' || tab === 'acompanhamento' });
   const perms = useQuery({ queryKey: ['portal-perms'], queryFn: getMinhasPermissoes });
   const can = (k: FeatureKey) => (perms.data ? perms.data[k] : true);
+  const financeiro = useQuery({ queryKey: ['portal-financeiro'], queryFn: listPortalFinanceiro, enabled: tab === 'acompanhamento' && can('ver_medicao') });
 
   function patch(key: string, field: keyof PortalProgramacaoInput, value: unknown) { setRows((list) => list.map((r) => r.key === key ? { ...r, [field]: value } : r)); }
   async function enviar() {
@@ -74,6 +76,7 @@ export function ClientePortalPage() {
         <div role="tablist" aria-label="Seções do portal" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
           <button role="tab" type="button" aria-selected={tab === 'programacao'} onClick={() => setTab('programacao')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'programacao' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Programação</button>
           {can('ver_resultados') ? <button role="tab" type="button" aria-selected={tab === 'resultados'} onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button> : null}
+        {can('ver_agenda') || can('ver_medicao') || can('ver_nc') ? <button role="tab" type="button" aria-selected={tab === 'acompanhamento'} onClick={() => setTab('acompanhamento')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'acompanhamento' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Acompanhamento</button> : null}
         </div>
         <div className="relative">
           <Button variant="secondary" leftIcon={<Bell size={16} />} onClick={() => setNotifOpen((o) => !o)}>Notificações{unread > 0 ? <span className="ml-1 rounded-full bg-pink-600 px-1.5 py-0.5 text-xs font-bold text-white">{unread}</span> : null}</Button>
@@ -92,7 +95,9 @@ export function ClientePortalPage() {
         </div>
       </div>
 
-      {(tab === 'programacao' || !can('ver_resultados')) ? (
+      {tab === 'acompanhamento' ? (
+        <AcompanhamentoPortal resultados={resultados.data ?? []} financeiro={financeiro.data ?? []} verAgenda={can('ver_agenda')} verMedicao={can('ver_medicao')} verNc={can('ver_nc')} />
+      ) : (tab === 'programacao' || !can('ver_resultados')) ? (
         <>
           {can('programar') ? <Card>
             <CardHeader title="Nova programação de concretagem">Preencha uma linha por concretagem e envie tudo para confirmação do laboratório.</CardHeader>
@@ -151,6 +156,7 @@ export function ClientePortalPage() {
           podeComentar={can('comentar')}
           podeContestar={can('contestar')}
           podeBaixar={can('baixar_laudo')}
+          podeDossie={can('ver_dossie')}
         />
       )}
     </section>
