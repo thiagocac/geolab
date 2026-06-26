@@ -7,7 +7,7 @@ import { useToast } from '../../lib/toast';
 import { listComentarios, postarComentario, resolverComentario } from '../../lib/api/comentarios';
 
 // Thread de comentários/contestações de um laudo. Usado no portal (cliente) e na LaudosPage (staff).
-export function ComentariosLaudo({ labReportId, workId, podeResolver = false }: { labReportId: string; workId: string | null; podeResolver?: boolean }) {
+export function ComentariosLaudo({ labReportId, workId, podeResolver = false, podeComentar = true, podeContestar = true }: { labReportId: string; workId: string | null; podeResolver?: boolean; podeComentar?: boolean; podeContestar?: boolean }) {
   const toast = useToast();
   const qc = useQueryClient();
   const [msg, setMsg] = useState('');
@@ -49,13 +49,15 @@ export function ComentariosLaudo({ labReportId, workId, podeResolver = false }: 
           ))}
         </div>
       )}
-      <div className="space-y-2">
-        <textarea className="input min-h-[60px] w-full" value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Escreva um comentário ou dúvida sobre este laudo..." />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={contestar} onChange={(e) => setContestar(e.target.checked)} /> Registrar como contestação de resultado</label>
-          <Button onClick={() => void enviar()} disabled={busy || !msg.trim()}>{busy ? 'Enviando...' : 'Enviar'}</Button>
+      {podeComentar ? (
+        <div className="space-y-2">
+          <textarea className="input min-h-[60px] w-full" value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Escreva um comentário ou dúvida sobre este laudo..." />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {podeContestar ? <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><input type="checkbox" checked={contestar} onChange={(e) => setContestar(e.target.checked)} /> Registrar como contestação de resultado</label> : <span />}
+            <Button onClick={() => void enviar()} disabled={busy || !msg.trim()}>{busy ? 'Enviando...' : 'Enviar'}</Button>
+          </div>
         </div>
-      </div>
+      ) : <p className="text-xs text-slate-400">Seu acesso não permite comentar neste laudo.</p>}
     </div>
   );
 }

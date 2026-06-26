@@ -11,6 +11,7 @@ import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosP
 import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, openPortalLaudo, uploadPortalAnexo, downloadPortalAnexo, listPortalNotificacoes, marcarNotificacao, cancelarProgramacao, type PortalProgramacaoInput, type PortalAnexo, type PortalNotificacao } from '../../lib/api/portalCliente';
 import { listPortalResultados, listPortalLaudosView } from '../../lib/api/portalResultados';
 import { openDeferredTab } from '../../lib/pdf';
+import { getMinhasPermissoes, type FeatureKey } from '../../lib/api/portalPermissoes';
 
 const blank = (): PortalProgramacaoInput & { key: string } => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
 const str = (v: unknown) => String(v ?? '').trim();
@@ -34,6 +35,8 @@ export function ClientePortalPage() {
   const concretagens = useQuery({ queryKey: ['portal-concretagens-status'], queryFn: () => listPortalConcretagens('') });
   const laudos = useQuery({ queryKey: ['portal-laudos-view'], queryFn: () => listPortalLaudosView(), enabled: tab === 'resultados' });
   const resultados = useQuery({ queryKey: ['portal-resultados'], queryFn: () => listPortalResultados(), enabled: tab === 'resultados' });
+  const perms = useQuery({ queryKey: ['portal-perms'], queryFn: getMinhasPermissoes });
+  const can = (k: FeatureKey) => (perms.data ? perms.data[k] : true);
 
   function patch(key: string, field: keyof PortalProgramacaoInput, value: unknown) { setRows((list) => list.map((r) => r.key === key ? { ...r, [field]: value } : r)); }
   async function enviar() {
@@ -70,7 +73,7 @@ export function ClientePortalPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="tablist" aria-label="Seções do portal" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
           <button role="tab" type="button" aria-selected={tab === 'programacao'} onClick={() => setTab('programacao')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'programacao' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Programação</button>
-          <button role="tab" type="button" aria-selected={tab === 'resultados'} onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button>
+          {can('ver_resultados') ? <button role="tab" type="button" aria-selected={tab === 'resultados'} onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button> : null}
         </div>
         <div className="relative">
           <Button variant="secondary" leftIcon={<Bell size={16} />} onClick={() => setNotifOpen((o) => !o)}>Notificações{unread > 0 ? <span className="ml-1 rounded-full bg-pink-600 px-1.5 py-0.5 text-xs font-bold text-white">{unread}</span> : null}</Button>
@@ -89,9 +92,9 @@ export function ClientePortalPage() {
         </div>
       </div>
 
-      {tab === 'programacao' ? (
+      {(tab === 'programacao' || !can('ver_resultados')) ? (
         <>
-          <Card>
+          {can('programar') ? <Card>
             <CardHeader title="Nova programação de concretagem">Preencha uma linha por concretagem e envie tudo para confirmação do laboratório.</CardHeader>
             <div className="overflow-x-auto p-4">
               <table className="w-full min-w-[1120px] text-left text-sm">
@@ -115,7 +118,7 @@ export function ClientePortalPage() {
               </table>
             </div>
             <div className="flex flex-wrap justify-between gap-2 border-t border-slate-100 p-4 dark:border-slate-800"><Button variant="secondary" onClick={() => setRows((r) => [...r, blank()])}>+ Adicionar linha</Button><Button onClick={() => void enviar()} disabled={busy}>{busy ? 'Enviando...' : 'Enviar programações ao laboratório'}</Button></div>
-          </Card>
+          </Card> : null}
 
           <Card>
             <CardHeader title="Minhas concretagens">Status das programações enviadas. Anexe a NF/DANFE ou documentos por concretagem.</CardHeader>
@@ -126,7 +129,7 @@ export function ClientePortalPage() {
                   <div key={c.id} className="p-4 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'}</span><StatusBadge status={c.status} /></div><div className="mt-1 text-slate-500">{c.client_works?.nome ?? '-'} · {c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}</div></div>
-                      <div className="flex flex-wrap gap-2">{c.status === 'pendente' ? <Button variant="ghost" onClick={() => void cancelar(c.id)}>Cancelar</Button> : null}<label className="btn btn-secondary cursor-pointer whitespace-nowrap">{anexBusy === c.id ? 'Enviando...' : '+ Anexar arquivo'}<input type="file" className="hidden" disabled={anexBusy === c.id} onChange={(e) => void anexar(c.id, e.target.files?.[0] ?? null)} /></label></div>
+                      <div className="flex flex-wrap gap-2">{c.status === 'pendente' && can('cancelar_programacao') ? <Button variant="ghost" onClick={() => void cancelar(c.id)}>Cancelar</Button> : null}{can('anexar') ? <label className="btn btn-secondary cursor-pointer whitespace-nowrap">{anexBusy === c.id ? 'Enviando...' : '+ Anexar arquivo'}<input type="file" className="hidden" disabled={anexBusy === c.id} onChange={(e) => void anexar(c.id, e.target.files?.[0] ?? null)} /></label> : null}</div>
                     </div>
                     {anexos.length ? <div className="mt-2 flex flex-wrap gap-2">{anexos.map((a, i) => <button key={a.path || i} type="button" className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200" onClick={() => void baixarAnexo(a.path)}><FileText size={13} /> {a.filename}</button>)}</div> : null}
                   </div>
@@ -145,6 +148,9 @@ export function ClientePortalPage() {
           onDownload={(id) => abrir(id)}
           fileLabel="meus-resultados"
           permiteComentarios
+          podeComentar={can('comentar')}
+          podeContestar={can('contestar')}
+          podeBaixar={can('baixar_laudo')}
         />
       )}
     </section>

@@ -22,6 +22,9 @@ export type LaudosResultadosPanelProps = {
   onDownload: (reportId: string) => void | Promise<void>;
   fileLabel?: string;
   permiteComentarios?: boolean;
+  podeComentar?: boolean;
+  podeContestar?: boolean;
+  podeBaixar?: boolean;
 };
 
 const PAGE = 50;
@@ -64,7 +67,7 @@ function ResultadosTable({ rows, tech }: { rows: PortalResultadoRow[]; tech?: bo
   );
 }
 
-export function LaudosResultadosPanel({ works, laudos, resultados, loading, error, onDownload, fileLabel = 'resultados', permiteComentarios = false }: LaudosResultadosPanelProps) {
+export function LaudosResultadosPanel({ works, laudos, resultados, loading, error, onDownload, fileLabel = 'resultados', permiteComentarios = false, podeComentar = true, podeContestar = true, podeBaixar = true }: LaudosResultadosPanelProps) {
   const [workId, setWorkId] = useState('');
   const [texto, setTexto] = useState('');
   const [tipo, setTipo] = useState<'todos' | 'parcial' | 'final'>('todos');
@@ -159,10 +162,10 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="secondary" leftIcon={<FileText size={15} />} onClick={() => toggle(l.id)}>{aberto ? 'Ocultar resultados' : 'Ver resultados'}</Button>
-                      {l.tem_pdf ? <Button variant="ghost" leftIcon={<Download size={15} />} disabled={baixando === l.id} onClick={() => void baixar(l.id)}>{baixando === l.id ? 'Abrindo...' : 'Baixar PDF'}</Button> : null}{concCodigo.get(l.concretagem_id ?? '') ? <Button variant="ghost" onClick={() => window.open((typeof window !== 'undefined' ? window.location.origin : '') + '/validar/' + concCodigo.get(l.concretagem_id ?? ''), '_blank', 'noopener,noreferrer')}>Validar</Button> : null}
+                      {l.tem_pdf && podeBaixar ? <Button variant="ghost" leftIcon={<Download size={15} />} disabled={baixando === l.id} onClick={() => void baixar(l.id)}>{baixando === l.id ? 'Abrindo...' : 'Baixar PDF'}</Button> : null}{concCodigo.get(l.concretagem_id ?? '') ? <Button variant="ghost" onClick={() => window.open((typeof window !== 'undefined' ? window.location.origin : '') + '/validar/' + concCodigo.get(l.concretagem_id ?? ''), '_blank', 'noopener,noreferrer')}>Validar</Button> : null}
                     </div>
                   </div>
-                  {aberto ? <div className="mt-3 space-y-3"><div className="rounded-xl border border-slate-200 dark:border-slate-700"><LinhaTempoConcretagem laudo={l} cps={cps} /></div><div className="rounded-xl border border-slate-200 dark:border-slate-700">{cps.length ? <><EvolucaoExemplares rows={cps} /><ResultadosTable rows={cps} /></> : <p className="px-3 py-4 text-sm text-slate-500">Sem resultados lançados para este laudo ainda.</p>}</div>{permiteComentarios ? <div className="rounded-xl border border-slate-200 dark:border-slate-700"><div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800">Comentários e contestações</div><ComentariosLaudo labReportId={l.id} workId={l.work_id} /></div> : null}</div> : null}
+                  {aberto ? <div className="mt-3 space-y-3"><div className="rounded-xl border border-slate-200 dark:border-slate-700"><LinhaTempoConcretagem laudo={l} cps={cps} /></div><div className="rounded-xl border border-slate-200 dark:border-slate-700">{cps.length ? <><EvolucaoExemplares rows={cps} /><ResultadosTable rows={cps} /></> : <p className="px-3 py-4 text-sm text-slate-500">Sem resultados lançados para este laudo ainda.</p>}</div>{permiteComentarios ? <div className="rounded-xl border border-slate-200 dark:border-slate-700"><div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800">Comentários e contestações</div><ComentariosLaudo labReportId={l.id} workId={l.work_id} podeComentar={podeComentar} podeContestar={podeContestar} /></div> : null}</div> : null}
                 </div>
               );
             })}

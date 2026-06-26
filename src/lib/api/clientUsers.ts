@@ -6,7 +6,7 @@ type Rec = Record<string, unknown>;
 
 export type ClienteOption = { id: string; nome: string };
 export type ObraOption = { id: string; nome: string; client_id: string; cliente?: string };
-export type ClienteUsuarioRow = { id: string; full_name: string | null; email: string; telefone: string | null; active: boolean; created_at: string; obras: ObraOption[] };
+export type ClienteUsuarioRow = { id: string; full_name: string | null; email: string; telefone: string | null; active: boolean; created_at: string; obras: ObraOption[]; portal_permissoes: Record<string, unknown> | null };
 export type CreateClienteUserInput = { nome: string; email: string; telefone?: string; password?: string; work_ids: string[] };
 
 async function callEF(slug: string, body: unknown): Promise<Rec> {
@@ -42,7 +42,7 @@ export async function listObrasPortal(clientId?: string): Promise<ObraOption[]> 
 
 export async function listClienteUsuarios(): Promise<ClienteUsuarioRow[]> {
   const { data, error } = await db.from('members')
-    .select('id, full_name, email, telefone, active, created_at, member_obras(id, work_id, deleted_at, client_works(id, nome, client_id, lab_clients(razao_social)))')
+    .select('id, full_name, email, telefone, active, created_at, portal_permissoes, member_obras(id, work_id, deleted_at, client_works(id, nome, client_id, lab_clients(razao_social)))')
     .eq('role', 'cliente')
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
@@ -55,7 +55,7 @@ export async function listClienteUsuarios(): Promise<ClienteUsuarioRow[]> {
         const c = w.lab_clients && typeof w.lab_clients === 'object' ? w.lab_clients as Rec : {};
         return { id: String(w.id ?? mo.work_id), nome: String(w.nome ?? mo.work_id), client_id: String(w.client_id ?? ''), cliente: String(c.razao_social ?? '') };
       });
-    return { id: String(m.id), full_name: m.full_name as string | null, email: String(m.email), telefone: m.telefone as string | null, active: m.active !== false, created_at: String(m.created_at), obras };
+    return { id: String(m.id), full_name: m.full_name as string | null, email: String(m.email), telefone: m.telefone as string | null, active: m.active !== false, created_at: String(m.created_at), obras, portal_permissoes: (m.portal_permissoes && typeof m.portal_permissoes === 'object' ? m.portal_permissoes as Record<string, unknown> : null) };
   });
 }
 
@@ -109,5 +109,10 @@ export async function listarMagicLinksPortal(): Promise<MagicLinkRow[]> {
 export async function revogarMagicLink(id: string): Promise<void> {
   const r = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
   const { error } = await r.rpc('revogar_magic_link', { p_id: id });
+  if (error) throw new Error(error.message);
+}
+
+export async function updateClienteUsuarioPermissoes(memberId: string, permissoes: Record<string, boolean>): Promise<void> {
+  const { error } = await db.from('members').update({ portal_permissoes: permissoes, updated_at: new Date().toISOString() }).eq('id', memberId);
   if (error) throw new Error(error.message);
 }
