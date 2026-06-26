@@ -25,6 +25,12 @@ type Props<T extends DomainRow> = {
 type FormVals = Record<string, unknown>;
 const PAGE = 20;
 
+function deriveValue(transform: string, v: unknown): string {
+  const s = String(v ?? '');
+  if (transform === 'first4letters') return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
+  return s;
+}
+
 export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, description, table, columns, fields, rowActions, initialSort, filter, canDelete }: Props<T>) {
   const { member } = useAuth();
   const toast = useToast();
@@ -84,6 +90,16 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
     } catch (e) { toast((e as Error).message, 'error'); } finally { setLookupBusy(null); }
   }
 
+  function applyChange(spec: FieldSpec, value: unknown, base: (v: unknown) => void) {
+    base(value);
+    for (const d of fields) {
+      if (d.derive?.from === spec.key) {
+        const cur = getValues(d.key);
+        if (cur == null || String(cur).trim() === '') setValue(d.key, deriveValue(d.derive.transform, value), { shouldDirty: false });
+      }
+    }
+  }
+
   async function onValid(values: FormVals) {
     if (!member) return;
     setBusy(true); setErr(null);
@@ -132,11 +148,11 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
           {fields.map((f) => (
             <Controller key={f.key} name={f.key} control={control} render={({ field }) => f.lookup ? (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
-                <FieldRenderer spec={f} value={field.value} onChange={field.onChange} error={errors[f.key]?.message as string | undefined} />
+                <FieldRenderer spec={f} value={field.value} onChange={(v) => applyChange(f, v, field.onChange)} error={errors[f.key]?.message as string | undefined} />
                 <Button variant="secondary" disabled={lookupBusy === f.key} onClick={() => void runLookup(f)}>{lookupBusy === f.key ? '...' : 'Buscar'}</Button>
               </div>
             ) : (
-              <FieldRenderer spec={f} value={field.value} onChange={field.onChange} error={errors[f.key]?.message as string | undefined} />
+              <FieldRenderer spec={f} value={field.value} onChange={(v) => applyChange(f, v, field.onChange)} error={errors[f.key]?.message as string | undefined} />
             )} />
           ))}
           {err ? <div style={{ color: 'var(--magenta)', fontSize: 13 }}>{err}</div> : null}

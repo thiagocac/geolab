@@ -23,6 +23,7 @@ export function NovaObraWizard() {
   const clientes = useQuery({ queryKey: ['ref', 'lab_clients', 'nova-obra'], queryFn: listClientesRef });
 
   function set(k: string, v: unknown) { setF((s) => ({ ...s, [k]: v })); }
+  const sigla4 = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
   function avancar() {
     if (!f.client_id) { toast('Selecione o cliente.', 'error'); return; }
     if (!str(f.nome)) { toast('Informe o nome da obra.', 'error'); return; }
@@ -33,7 +34,7 @@ export function NovaObraWizard() {
     setBusy(true);
     try {
       const workId = await createObra(member.tenant_id, {
-        client_id: String(f.client_id), codigo: str(f.codigo) || null, nome: str(f.nome),
+        client_id: String(f.client_id), codigo: str(f.codigo) || null, nome: str(f.nome), sigla: str(f.sigla) || null,
         endereco: str(f.endereco) || null, cidade: str(f.cidade) || null, uf: str(f.uf) || null,
         responsavel_tecnico: str(f.responsavel_tecnico) || null, crea: str(f.crea) || null,
         estrutura_habilitada: !!f.estrutura_habilitada, traco_habilitado: !!f.traco_habilitado,
@@ -61,8 +62,9 @@ export function NovaObraWizard() {
             </SelectField>
             <div style={{ display: 'flex', gap: 12 }}>
               <Field label="Codigo da obra" value={String(f.codigo ?? '')} onChange={(e) => set('codigo', e.target.value)} />
-              <Field label="Nome da obra*" value={String(f.nome ?? '')} onChange={(e) => set('nome', e.target.value)} />
+              <Field label="Nome da obra*" value={String(f.nome ?? '')} onChange={(e) => { const v = e.target.value; set('nome', v); if (!str(f.sigla)) set('sigla', sigla4(v)); }} />
             </div>
+            <Field label="Sigla (prefixo do Nº de relatório)" hint="Gerada das 4 primeiras letras do nome; editável." value={String(f.sigla ?? '')} onChange={(e) => set('sigla', e.target.value)} />
             <Field label="Endereco" value={String(f.endereco ?? '')} onChange={(e) => set('endereco', e.target.value)} />
             <div style={{ display: 'flex', gap: 12 }}>
               <Field label="Cidade" value={String(f.cidade ?? '')} onChange={(e) => set('cidade', e.target.value)} />

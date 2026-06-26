@@ -1,6 +1,10 @@
-# GEOLAB → Concresoft — SOURCE VERSION v93
-CACHE_NAME: consultegeo-geolab-v93 · APP_VERSION: v93
+# GEOLAB → Concresoft — SOURCE VERSION v96
+CACHE_NAME: consultegeo-geolab-v96 · APP_VERSION: v96
 (slug interno `consultegeo-geolab` mantido; marca visivel = **Concresoft**; app em `app.concresoft.io`)
+(v94-v96: rompimentos/operador/export-fila (v94) + cumulativos v95/v96. **v95 exigiu REGERAR
+`database.types.ts` do banco vivo** — usa `numero_relatorio` que os tipos do completo nao tinham → tsc
+quebrava. RompimentosPage: `downloadBlob` virou revoke-adiado no pipeline → MANTIDO, nao mesclado.
+Novo invariante de verificacao: **0 `window.open(await`** no pdfset + `pdf.ts` presente.)
 
 Frontend (acumulado v2→v88): …Brand Kit (v30) · Motor de NC (v40-v44) · Financeiro (v49) · React 19 +
 Compiler (v53-54) · Vite 8 + vitest 3 (v56) · Tailwind v4/OKLCH (v60) · Base UI (v63-68) · ⌘K +
