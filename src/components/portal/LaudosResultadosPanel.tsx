@@ -8,6 +8,7 @@ import { FileText, Download, Search, AlertTriangle } from '../ui/icons';
 import { ParcialFinalBadge } from './ParcialFinalBadge';
 import { EvolucaoExemplares } from './EvolucaoExemplares';
 import { TendenciaResistencia } from './TendenciaResistencia';
+import { ComentariosLaudo } from './ComentariosLaudo';
 import { consolidarExemplares, exportResultadosPdf, exportResultadosXlsx, filtraLaudos, filtraResultados, isAtrasado } from '../../lib/portal/resultados';
 import type { PortalLaudoView, PortalResultadoRow } from '../../lib/portal/types';
 
@@ -19,6 +20,7 @@ export type LaudosResultadosPanelProps = {
   error?: string | null;
   onDownload: (reportId: string) => void | Promise<void>;
   fileLabel?: string;
+  permiteComentarios?: boolean;
 };
 
 const PAGE = 50;
@@ -61,7 +63,7 @@ function ResultadosTable({ rows, tech }: { rows: PortalResultadoRow[]; tech?: bo
   );
 }
 
-export function LaudosResultadosPanel({ works, laudos, resultados, loading, error, onDownload, fileLabel = 'resultados' }: LaudosResultadosPanelProps) {
+export function LaudosResultadosPanel({ works, laudos, resultados, loading, error, onDownload, fileLabel = 'resultados', permiteComentarios = false }: LaudosResultadosPanelProps) {
   const [workId, setWorkId] = useState('');
   const [texto, setTexto] = useState('');
   const [tipo, setTipo] = useState<'todos' | 'parcial' | 'final'>('todos');
@@ -157,7 +159,7 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
                       {l.tem_pdf ? <Button variant="ghost" leftIcon={<Download size={15} />} disabled={baixando === l.id} onClick={() => void baixar(l.id)}>{baixando === l.id ? 'Abrindo...' : 'Baixar PDF'}</Button> : null}{concCodigo.get(l.concretagem_id ?? '') ? <Button variant="ghost" onClick={() => window.open((typeof window !== 'undefined' ? window.location.origin : '') + '/validar/' + concCodigo.get(l.concretagem_id ?? ''), '_blank', 'noopener,noreferrer')}>Validar</Button> : null}
                     </div>
                   </div>
-                  {aberto ? <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700">{cps.length ? <><EvolucaoExemplares rows={cps} /><ResultadosTable rows={cps} /></> : <p className="px-3 py-4 text-sm text-slate-500">Sem resultados lançados para este laudo ainda.</p>}</div> : null}
+                  {aberto ? <div className="mt-3 space-y-3"><div className="rounded-xl border border-slate-200 dark:border-slate-700">{cps.length ? <><EvolucaoExemplares rows={cps} /><ResultadosTable rows={cps} /></> : <p className="px-3 py-4 text-sm text-slate-500">Sem resultados lançados para este laudo ainda.</p>}</div>{permiteComentarios ? <div className="rounded-xl border border-slate-200 dark:border-slate-700"><div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800">Comentários e contestações</div><ComentariosLaudo labReportId={l.id} workId={l.work_id} /></div> : null}</div> : null}
                 </div>
               );
             })}

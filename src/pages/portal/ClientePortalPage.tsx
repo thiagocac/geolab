@@ -144,6 +144,7 @@ export function ClientePortalPage() {
           error={laudos.isError ? (laudos.error as Error).message : resultados.isError ? (resultados.error as Error).message : null}
           onDownload={(id) => abrir(id)}
           fileLabel="meus-resultados"
+          permiteComentarios
         />
       )}
     </section>

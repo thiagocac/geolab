@@ -12,6 +12,7 @@ import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, apro
 import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
 import type { ParcialFinal } from '../../lib/portal/types';
 import { saveUrl, openDeferredTab, blobUrlAutoRevoke } from '../../lib/pdf';
+import { ComentariosLaudo } from '../../components/portal/ComentariosLaudo';
 
 export function LaudosPage() {
   const { hasRole, member } = useAuth();
@@ -22,6 +23,8 @@ export function LaudosPage() {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
+  const [coment, setComent] = useState<Set<string>>(new Set());
+  function toggleComent(id: string) { setComent((c) => { const n = new Set(c); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
 
   const q = useQuery({ queryKey: ['laudos'], queryFn: listLaudos });
   const cls = useQuery({ queryKey: ['laudos-cls'], queryFn: listLaudosClassificacao });
@@ -100,7 +103,8 @@ export function LaudosPage() {
         <Card>
           <div style={{ display: 'grid', gap: 6 }}>
             {rows.map((r) => (
-              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
+              <div key={r.id}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
                 <span style={{ fontSize: 13 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissao'}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
@@ -110,7 +114,10 @@ export function LaudosPage() {
                   {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void reabrir(r.id)}>Reabrir</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void enviarCliente(r.id)}>Enviar ao cliente</Button> : null}
+                  <Button variant="ghost" onClick={() => toggleComent(r.id)}>{coment.has(r.id) ? 'Ocultar comentários' : 'Comentários'}</Button>
                 </div>
+              </div>
+                {coment.has(r.id) ? <div style={{ border: '1px solid var(--line)', borderRadius: 8, marginTop: 4 }}><ComentariosLaudo labReportId={r.id} workId={r.work_id} podeResolver={podeAprovar} /></div> : null}
               </div>
             ))}
           </div>
