@@ -9,6 +9,7 @@ import { ParcialFinalBadge } from './ParcialFinalBadge';
 import { EvolucaoExemplares } from './EvolucaoExemplares';
 import { TendenciaResistencia } from './TendenciaResistencia';
 import { ComentariosLaudo } from './ComentariosLaudo';
+import { LinhaTempoConcretagem } from './LinhaTempoConcretagem';
 import { consolidarExemplares, exportResultadosPdf, exportResultadosXlsx, filtraLaudos, filtraResultados, isAtrasado } from '../../lib/portal/resultados';
 import type { PortalLaudoView, PortalResultadoRow } from '../../lib/portal/types';
 
@@ -114,6 +115,8 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
 
       {resF.length >= 2 ? <Card><TendenciaResistencia rows={resF} /></Card> : null}
 
+      {resultados.length >= 5000 ? <Card><div className="flex items-center gap-2 p-4 text-sm text-amber-700 dark:text-amber-300"><AlertTriangle size={16} /> Mostrando os 5000 resultados mais recentes. Filtre por obra ou período para ver os demais.</div></Card> : null}
+
       {atrasados.length ? (
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-2 p-4">
@@ -159,7 +162,7 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
                       {l.tem_pdf ? <Button variant="ghost" leftIcon={<Download size={15} />} disabled={baixando === l.id} onClick={() => void baixar(l.id)}>{baixando === l.id ? 'Abrindo...' : 'Baixar PDF'}</Button> : null}{concCodigo.get(l.concretagem_id ?? '') ? <Button variant="ghost" onClick={() => window.open((typeof window !== 'undefined' ? window.location.origin : '') + '/validar/' + concCodigo.get(l.concretagem_id ?? ''), '_blank', 'noopener,noreferrer')}>Validar</Button> : null}
                     </div>
                   </div>
-                  {aberto ? <div className="mt-3 space-y-3"><div className="rounded-xl border border-slate-200 dark:border-slate-700">{cps.length ? <><EvolucaoExemplares rows={cps} /><ResultadosTable rows={cps} /></> : <p className="px-3 py-4 text-sm text-slate-500">Sem resultados lançados para este laudo ainda.</p>}</div>{permiteComentarios ? <div className="rounded-xl border border-slate-200 dark:border-slate-700"><div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800">Comentários e contestações</div><ComentariosLaudo labReportId={l.id} workId={l.work_id} /></div> : null}</div> : null}
+                  {aberto ? <div className="mt-3 space-y-3"><div className="rounded-xl border border-slate-200 dark:border-slate-700"><LinhaTempoConcretagem laudo={l} cps={cps} /></div><div className="rounded-xl border border-slate-200 dark:border-slate-700">{cps.length ? <><EvolucaoExemplares rows={cps} /><ResultadosTable rows={cps} /></> : <p className="px-3 py-4 text-sm text-slate-500">Sem resultados lançados para este laudo ainda.</p>}</div>{permiteComentarios ? <div className="rounded-xl border border-slate-200 dark:border-slate-700"><div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800">Comentários e contestações</div><ComentariosLaudo labReportId={l.id} workId={l.work_id} /></div> : null}</div> : null}
                 </div>
               );
             })}
