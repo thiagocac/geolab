@@ -1,50 +1,50 @@
-# GEOLAB → Concresoft — Patch v94
-## Revisão da tela de Resultados de Ensaios (`/rompimentos`)
+# GEOLAB → Concresoft — Patch v95 (cumulativo sobre v93)
+## Número de relatório por obra+ano + revisão da tela de Resultados (v94)
 
-Bump: `CACHE_NAME consultegeo-geolab-v94` + `APP_VERSION v94` (juntos).
+Bump: `CACHE_NAME consultegeo-geolab-v95` + `APP_VERSION v95` (juntos).
+Patch cumulativo: inclui as correções da tela de Resultados (v94) **e** a numeração de relatório (v95).
 
-### Arquivos no patch (sobem no GitHub)
-- `src/pages/concreto/RompimentosPage.tsx` — correções + melhorias da tela.
-- `src/lib/api/rompimento.ts` — idade de controle configurável no alerta < fck.
-- `src/lib/telemetry/core.ts` — APP_VERSION v94 (bump).
-- `public/sw.js` — CACHE_NAME v94 (bump).
+### Aplicar (sobe no GitHub → Netlify CI)
+1. `unzip -o consultegeo-geolab-source-patches-v95.zip` na raiz do repo.
+2. `git add -A && git commit -m "v95: numero de relatorio por obra + revisao de resultados" && git push`.
+3. Netlify builda (check-source → biome → tsc → vitest → vite).
 
-### Como aplicar
-1. `unzip -o consultegeo-geolab-source-patches-v94.zip` na raiz do repo.
-2. `git add -A && git commit -m "v94: revisão da tela de resultados (/rompimentos)" && git push`.
-3. Netlify CI builda (check-source → biome → tsc → vitest → vite).
+### Backend — JÁ APLICADO no banco vivo (xbdvyvvxvzmcosnekmfv) via MCP. NÃO re-aplicar.
+- **Migration 070_numero_relatorio_por_obra** (LIVE): `client_works.sigla`; `concretagens.relatorio_seq` + `numero_relatorio`;
+  função `obra_prefixo_relatorio`; trigger BEFORE INSERT `trg_concretagens_numero_relatorio` (advisory lock por tenant+obra+ano);
+  UNIQUE `(tenant_id, work_id, numero_relatorio)`; backfill das concretagens existentes. (SQL completo abaixo.)
+- **EF generate-laudo-ensaio-pdf v16** (sha 33e2ba83, LIVE): lê `conc.numero_relatorio` (fallback ao cálculo antigo);
+  upsert do `lab_report` por `concretagem_id` (1 laudo/concretagem; atualiza o número p/ o formato novo nas revisões).
+  O source atualizado vai no patch (supabase/functions/.../index.ts) só para sincronizar o repo.
 
-### Bugs corrigidos
-1. **Botão "Exportar fila" duplicava "Exportar modelo"** (mesmo handler). Agora "Exportar fila"
-   gera um snapshot real do recorte (obra, NF, idade, previsto/realizado, esperado, situação);
-   "Exportar modelo (p/ importar)" segue como template de ida-e-volta.
-2. **Enter no campo de resultado SALVAVA o CP** (1 RPC por Enter), contrariando a ajuda da tela
-   ("Enter pula para o próximo"). Agora Enter move o foco para o próximo CP; a gravação é no botão Salvar.
-3. **"Salvar resultados" regravava CPs já lançados sem edição** (soft-delete + re-insert →
-   churn em `material_tests`, ruído na trilha e re-disparo de notificação). Agora pula lançados
-   sem edição; mensagem clara quando não há nada a gravar.
-4. **`operador_id` pegava cegamente o 1º colaborador** da lista para todos os rompimentos.
-   Removido. Adicionado seletor "Operador (quem rompeu)"; grava só o escolhido.
-5. **Alerta "abaixo do fck" tinha 28d fixo** em `maybeNotifyAbaixoFck`, ignorando o
-   `idade_controle_default` do laboratório. Agora recebe e usa a idade de controle configurada.
-6. **`downloadBlob` revogava a object URL imediatamente** (pode abortar o download em alguns
-   navegadores). Agora anexa o link ao DOM e adia a revogação (mesmo padrão do helper de Excel).
-7. **Import não lia carga/unidade/massa**, embora o modelo exportado tenha essas colunas
-   (round-trip quebrado). Agora aceita `carga` + `unidade_carga` (converte p/ MPa) e `massa_cp_g`.
-8. **Botão "Trilha de alterações" no cabeçalho era morto** (só toast / modal já aberta). Removido;
-   a trilha por linha continua.
-9. **Filtro rotulado "Idade de controle"** filtrava qualquer idade (7d, desforma…). Renomeado p/ "Idade".
+### Numeração — como ficou
+Formato `PREFIXO-NNN/AAAA`, sequência **por obra + ano** (reinicia anual), reservado **na criação da concretagem**
+(programação inclusa). PREFIXO = `client_works.sigla`; se vazio, o sufixo do código da obra. Piloto: obra `OBRA-2026-0001`
+sem sigla → `0001-001/2026`, `0001-002/2026`. (Defina `sigla` na obra p/ um prefixo curto tipo `AUR-001/2026`.)
 
-### Melhorias
-- "Adotar Data Prevista" e "Adotar Data Referência" agora são mutuamente exclusivas.
-- "Contraprova" pede confirmação e trata erro (antes criava CP sem aviso e engolia erros).
-- `aria-label` nos checkboxes sem texto (selecionar todos / selecionar CP / descartar).
-- Texto de ajuda da importação atualizado com as novas colunas aceitas.
+### Frontend deste patch
+- **Resultados/rompimentos (v94):** ver histórico — botões duplicados, Enter, re-save de lançados, operador, alerta < fck
+  na idade de controle configurável, download seguro, import carga/massa, etc.
+- **Numeração de relatório (v95):** coluna/exibição + filtro por Nº de relatório em **Concretagens, Programações,
+  Rompimentos, Laudos e Importações**; selects de concretagem passam a trazer `numero_relatorio`.
+- **NC:** não incluída no filtro por Nº de relatório — `non_conformities` liga-se à **obra** (não à concretagem) e já filtra
+  por obra. Adicionar Nº de relatório ali exige desnormalizar a concretagem na NC (próximo incremento, se quiser).
 
-### Notas
-- Sem migration e sem Edge Function: a RPC `lancar_rompimento_cp` já aceitava `operador_id`,
-  `carga_unidade` e `massa_cp_g`; o 4º parâmetro de `maybeNotifyAbaixoFck` é opcional (default 28),
-  então os callers em `importacao.ts` seguem compilando.
-- **Fora do pdfset** (laudo/portal/concretagens): este patch não conflita com o merge manual do `pdf.ts`.
-- Gate local: `check-source` OK; **esbuild** (sintaxe + JSX + resolução de imports) OK nos 2 arquivos.
-  `tsc`/`vitest`/`vite` rodam no Netlify (sandbox sem `node_modules`).
+### Arquivos
+Frontend: `src/lib/api/{concretagem,rompimento,importacao}.ts`, `src/pages/concreto/{RompimentosPage,ConcretagensPage,ProgramacoesPage,LaudosPage,ImportacoesPage}.tsx`, `src/lib/telemetry/core.ts`, `public/sw.js`.
+Backend (referência/sync): `supabase/functions/generate-laudo-ensaio-pdf/index.ts`.
+
+### Gate local
+check-source OK · **esbuild** (sintaxe + JSX + imports) OK em todos os arquivos tocados. tsc/vitest/vite rodam no Netlify.
+
+---
+## SQL da migration 070 (já aplicada — referência)
+```sql
+alter table public.client_works add column if not exists sigla text;
+alter table public.concretagens add column if not exists relatorio_seq integer;
+alter table public.concretagens add column if not exists numero_relatorio text;
+-- função obra_prefixo_relatorio(uuid): sigla -> sufixo do código da obra -> 4 chars do uuid
+-- trigger set_concretagem_numero_relatorio(): advisory lock por (tenant,obra,ano); max(relatorio_seq)+1; monta PREFIXO-NNN/AAAA
+-- backfill por row_number() em (tenant,obra,ano) ordenado por created_at
+-- unique index concretagens_numero_relatorio_uk (tenant_id, work_id, numero_relatorio) where deleted_at is null
+```

@@ -60,7 +60,6 @@ export function ConcretagemDetalhePage() {
   const [padrao, setPadrao] = useState<PadraoMoldagem[]>([]);
   const [open, setOpen] = useState(false);
   const [camForm, setCamForm] = useState<Record<string, unknown>>({});
-  const [nfFile, setNfFile] = useState<File | null>(null);
   const [lendoNf, setLendoNf] = useState(false);
   const [camPadrao, setCamPadrao] = useState<PadraoMoldagem[]>([]);
   const [busy, setBusy] = useState(false);
@@ -107,7 +106,6 @@ export function ConcretagemDetalhePage() {
   function patchCam(k: string, v: unknown) { setCamForm((s) => ({ ...s, [k]: v })); }
   async function lerNf(file: File) {
     setLendoNf(true);
-    setNfFile(file);
     try {
       const r = await lerNfImagem(file);
       if (!r.enabled) { toast(r.reason ?? 'Leitura por IA indisponivel.', 'error'); return; }
@@ -128,7 +126,6 @@ export function ConcretagemDetalhePage() {
     const p = padrao.length ? padrao : padraoMoldagemDaConcretagem(conc.data);
     setCamPadrao(p);
     setCamForm({ nota_fiscal: '', houve_adicao_agua: false, rejeitado: false });
-    setNfFile(null);
     setOpen(true);
   }
   function buscarPadraoCaminhao() {
@@ -157,12 +154,10 @@ export function ConcretagemDetalhePage() {
     try {
       if (!str(camForm.nota_fiscal)) throw new Error('Nota fiscal é obrigatória.');
       const serie = (cams.data?.length ?? 0) + 1;
-      const receiptId = await addCaminhao(member.tenant_id, c, serie, { ...camForm, padrao_moldagem: camPadrao });
-      if (nfFile) { try { await uploadEvidencia(member.tenant_id, id, nfFile, { receiptId, tipo: 'nf', descricao: 'NF ' + str(camForm.nota_fiscal) }); } catch { /* anexo da NF e best-effort */ } }
+      await addCaminhao(member.tenant_id, c, serie, { ...camForm, padrao_moldagem: camPadrao });
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['caminhoes', id] }), qc.invalidateQueries({ queryKey: ['cps', id] }), qc.invalidateQueries({ queryKey: ['rompimentos'] }), qc.invalidateQueries({ queryKey: ['concretagem', id] }), qc.invalidateQueries({ queryKey: ['evidencias', id] }),
+        qc.invalidateQueries({ queryKey: ['caminhoes', id] }), qc.invalidateQueries({ queryKey: ['cps', id] }), qc.invalidateQueries({ queryKey: ['rompimentos'] }), qc.invalidateQueries({ queryKey: ['concretagem', id] }),
       ]);
-      setNfFile(null);
       toast('Caminhão, amostra e CPs adicionados.', 'success');
       setOpen(false);
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
@@ -259,12 +254,11 @@ export function ConcretagemDetalhePage() {
             <div className="space-y-3">
               {(cams.data ?? []).map((cam) => {
                 const cpsCam = cpsRows.filter((cp) => cp.receipt_id === cam.id);
-                const nfEv = (evidencias.data ?? []).find((ev) => ev.receipt_id === cam.id && ev.tipo === 'nf');
                 return (
                   <Card key={cam.id} className="overflow-hidden">
                     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
                       <div><div className="font-black text-slate-950 dark:text-slate-50">Caminhão {cam.serie ?? '-'} · NF {cam.nota_fiscal}</div><div className="mt-1 text-xs text-slate-500">{onR('placa') ? `Placa ${cam.placa ?? '-'} · ` : ''}{onR('volume_m3') ? `Volume ${cam.volume_m3 ?? '-'} m³ · ` : ''}{onR('slump') ? `Slump ${cam.slump_medido_cm ?? '-'} cm · ` : ''}{onR('temperatura_concreto') ? `Temp. ${cam.temperatura_concreto_c ?? '-'} °C` : ''}</div></div>
-                      <div className="flex items-center gap-2">{nfEv?.url ? <a href={nfEv.url} target="_blank" rel="noreferrer" className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200">Ver NF</a> : null}{cam.rejeitado ? <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">Rejeitado</span> : <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-700">Recebido</span>}</div>
+                      {cam.rejeitado ? <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">Rejeitado</span> : <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-700">Recebido</span>}
                     </div>
                     <div className="grid gap-3 p-4 md:grid-cols-3">
                       {onR('horarios_transporte') ? <div className="text-sm"><b>Transporte:</b> {cam.hora_saida_usina ?? '-'} {'->'} {cam.hora_chegada_obra ?? '-'}</div> : null}
@@ -304,7 +298,7 @@ export function ConcretagemDetalhePage() {
       <Modal open={open} wide title="Adicionar caminhão + CPs" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvarCaminhao()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar caminhão e gerar CPs'}</Button></>}>
         <div className="space-y-4">
           <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
-            <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Ler NF (foto):</span><input type="file" accept="image/*" disabled={lendoNf} onChange={(e) => { const f = e.target.files?.[0]; if (f) void lerNf(f); e.currentTarget.value = ''; }} />{lendoNf ? <span className="text-xs text-slate-500">lendo...</span> : null}{nfFile && !lendoNf ? <span className="text-xs font-semibold text-emerald-600">NF anexada ({nfFile.name}) — será salva neste caminhão.</span> : null}</label>
+            <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Ler NF (foto):</span><input type="file" accept="image/*" disabled={lendoNf} onChange={(e) => { const f = e.target.files?.[0]; if (f) void lerNf(f); e.currentTarget.value = ''; }} />{lendoNf ? <span className="text-xs text-slate-500">lendo...</span> : null}</label>
             <p className="mt-1 text-xs text-slate-500">Fotografe a DANFE/nota do caminhao para preencher os campos. Requer VISION_API_KEY; confira antes de salvar.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">

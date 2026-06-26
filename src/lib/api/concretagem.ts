@@ -8,7 +8,7 @@ const db = supabase;
 type Rec = Record<string, unknown>;
 export type PadraoItem = { idade?: number; idadeControle?: number | string; unidade?: string; unidadeIdade?: string; quantidade?: number; quantidadeCp?: number | string; valor_esperado?: number; valorEsperado?: number | string; tipoEnsaio?: string; tipo_ensaio?: string };
 export type ConcretagemRow = {
-  id: string; codigo: string | null; status: string; origem: string;
+  id: string; codigo: string | null; numero_relatorio: string | null; status: string; origem: string;
   data_programada: string | null; data_real: string | null; hora_programada?: string | null; hora_inicio?: string | null; hora_fim?: string | null;
   fornecedor_texto: string | null; fck_previsto: number | null; traco_texto?: string | null;
   dimensao_cp?: string | null; local_texto?: string | null; operational_material_id?: string | null;
@@ -25,7 +25,7 @@ export type CaminhaoRow = {
   slump_medido_cm: number | null; temperatura_concreto_c: number | null; hora_saida_usina?: string | null; hora_chegada_obra?: string | null; hora_inicio_descarga?: string | null; hora_fim_descarga?: string | null; hora_moldagem?: string | null; houve_adicao_agua?: boolean | null; agua_litros?: number | null; rejeitado?: boolean | null; motivo_rejeicao?: string | null; elementos_concretados?: string | null; observacoes?: string | null;
 };
 
-const SEL = 'id, codigo, status, origem, data_programada, data_real, hora_programada, hora_inicio, hora_fim, fornecedor_texto, fck_previsto, traco_texto, dimensao_cp, local_texto, operational_material_id, volume_programado_m3, volume_lancado_m3, bombeado, clima, temperatura_ambiente_c, moldador_id, observacoes, metadata, client_id, work_id, lab_clients(razao_social, nome_fantasia), client_works(nome, cidade, uf), operational_materials(nome, padrao_moldagem, fck_mpa, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos), colaboradores(nome)';
+const SEL = 'id, codigo, numero_relatorio, status, origem, data_programada, data_real, hora_programada, hora_inicio, hora_fim, fornecedor_texto, fck_previsto, traco_texto, dimensao_cp, local_texto, operational_material_id, volume_programado_m3, volume_lancado_m3, bombeado, clima, temperatura_ambiente_c, moldador_id, observacoes, metadata, client_id, work_id, lab_clients(razao_social, nome_fantasia), client_works(nome, cidade, uf), operational_materials(nome, padrao_moldagem, fck_mpa, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos), colaboradores(nome)';
 
 export async function listConcretagens(workId?: string): Promise<ConcretagemRow[]> {
   let q = db.from('concretagens').select(SEL).is('deleted_at', null);
@@ -105,7 +105,7 @@ function padraoFromValues(values: Record<string, unknown>, conc: ConcretagemRow)
 }
 
 // Cria caminhão + amostra + CPs pelo padrão de moldagem do caminhão, da concretagem ou do traço.
-export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie: number, values: Record<string, unknown>): Promise<string> {
+export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie: number, values: Record<string, unknown>): Promise<void> {
   const receiptPayload = sanitizeCaminhaoValues(values);
   const { data: rec, error: e1 } = await db.from('material_receipts').insert({ ...receiptPayload, tenant_id: tenantId, concretagem_id: conc.id, serie } as unknown as Database['public']['Tables']['material_receipts']['Insert']).select('id').single();
   if (e1) throw new Error(e1.message);
@@ -130,7 +130,6 @@ export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie:
     }
   }
   if (cps.length) { const { error: e3 } = await db.from('corpos_prova').insert(cps as unknown as Database['public']['Tables']['corpos_prova']['Insert'][]); if (e3) throw new Error(e3.message); }
-  return receiptId;
 }
 
 export async function invokeFichaBranco(): Promise<Blob> {

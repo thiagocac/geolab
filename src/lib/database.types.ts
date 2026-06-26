@@ -247,6 +247,57 @@ export type Database = {
           },
         ]
       }
+      client_notifications: {
+        Row: {
+          client_id: string | null
+          corpo: string | null
+          created_at: string
+          created_by: string | null
+          deep_link: string | null
+          deleted_at: string | null
+          entity_id: string | null
+          entity_table: string | null
+          id: string
+          lida_at: string | null
+          tenant_id: string
+          tipo: string
+          titulo: string
+          work_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          corpo?: string | null
+          created_at?: string
+          created_by?: string | null
+          deep_link?: string | null
+          deleted_at?: string | null
+          entity_id?: string | null
+          entity_table?: string | null
+          id?: string
+          lida_at?: string | null
+          tenant_id: string
+          tipo: string
+          titulo: string
+          work_id: string
+        }
+        Update: {
+          client_id?: string | null
+          corpo?: string | null
+          created_at?: string
+          created_by?: string | null
+          deep_link?: string | null
+          deleted_at?: string | null
+          entity_id?: string | null
+          entity_table?: string | null
+          id?: string
+          lida_at?: string | null
+          tenant_id?: string
+          tipo?: string
+          titulo?: string
+          work_id?: string
+        }
+        Relationships: []
+      }
       client_telemetry_log: {
         Row: {
           app_version: string | null
@@ -339,6 +390,7 @@ export type Database = {
           nome: string
           precos: Json
           responsavel_tecnico: string | null
+          sigla: string | null
           status: string
           tenant_id: string
           tipo: string | null
@@ -362,6 +414,7 @@ export type Database = {
           nome: string
           precos?: Json
           responsavel_tecnico?: string | null
+          sigla?: string | null
           status?: string
           tenant_id: string
           tipo?: string | null
@@ -385,6 +438,7 @@ export type Database = {
           nome?: string
           precos?: Json
           responsavel_tecnico?: string | null
+          sigla?: string | null
           status?: string
           tenant_id?: string
           tipo?: string | null
@@ -538,9 +592,11 @@ export type Database = {
           local_texto: string | null
           metadata: Json
           moldador_id: string | null
+          numero_relatorio: string | null
           observacoes: string | null
           operational_material_id: string | null
           origem: string
+          relatorio_seq: number | null
           responsavel_member_id: string | null
           retroativa_justificativa: string | null
           status: Database["public"]["Enums"]["record_status"]
@@ -573,9 +629,11 @@ export type Database = {
           local_texto?: string | null
           metadata?: Json
           moldador_id?: string | null
+          numero_relatorio?: string | null
           observacoes?: string | null
           operational_material_id?: string | null
           origem?: string
+          relatorio_seq?: number | null
           responsavel_member_id?: string | null
           retroativa_justificativa?: string | null
           status?: Database["public"]["Enums"]["record_status"]
@@ -608,9 +666,11 @@ export type Database = {
           local_texto?: string | null
           metadata?: Json
           moldador_id?: string | null
+          numero_relatorio?: string | null
           observacoes?: string | null
           operational_material_id?: string | null
           origem?: string
+          relatorio_seq?: number | null
           responsavel_member_id?: string | null
           retroativa_justificativa?: string | null
           status?: Database["public"]["Enums"]["record_status"]
@@ -2100,6 +2160,7 @@ export type Database = {
       }
       magic_links: {
         Row: {
+          access_count: number
           consumed_at: string | null
           created_at: string
           created_by: string | null
@@ -2107,11 +2168,13 @@ export type Database = {
           entity_table: string
           expires_at: string
           id: string
+          last_access_at: string | null
           purpose: string
           tenant_id: string
           token_hash: string
         }
         Insert: {
+          access_count?: number
           consumed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -2119,11 +2182,13 @@ export type Database = {
           entity_table: string
           expires_at: string
           id?: string
+          last_access_at?: string | null
           purpose: string
           tenant_id: string
           token_hash: string
         }
         Update: {
+          access_count?: number
           consumed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -2131,6 +2196,7 @@ export type Database = {
           entity_table?: string
           expires_at?: string
           id?: string
+          last_access_at?: string | null
           purpose?: string
           tenant_id?: string
           token_hash?: string
@@ -2739,6 +2805,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_selected: boolean
+          portal_permissoes: Json | null
           role: string
           roles: string[]
           telefone: string | null
@@ -2755,6 +2822,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_selected?: boolean
+          portal_permissoes?: Json | null
           role?: string
           roles?: string[]
           telefone?: string | null
@@ -2771,6 +2839,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_selected?: boolean
+          portal_permissoes?: Json | null
           role?: string
           roles?: string[]
           telefone?: string | null
@@ -3681,6 +3750,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      portal_comentarios: {
+        Row: {
+          autor_member_id: string | null
+          autor_nome: string | null
+          autor_tipo: string
+          concretagem_id: string | null
+          created_at: string
+          deleted_at: string | null
+          id: string
+          lab_report_id: string | null
+          mensagem: string
+          resolvido_at: string | null
+          resolvido_by: string | null
+          tenant_id: string
+          tipo: string
+          work_id: string
+        }
+        Insert: {
+          autor_member_id?: string | null
+          autor_nome?: string | null
+          autor_tipo: string
+          concretagem_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          lab_report_id?: string | null
+          mensagem: string
+          resolvido_at?: string | null
+          resolvido_by?: string | null
+          tenant_id: string
+          tipo?: string
+          work_id: string
+        }
+        Update: {
+          autor_member_id?: string | null
+          autor_nome?: string | null
+          autor_tipo?: string
+          concretagem_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          lab_report_id?: string | null
+          mensagem?: string
+          resolvido_at?: string | null
+          resolvido_by?: string | null
+          tenant_id?: string
+          tipo?: string
+          work_id?: string
+        }
+        Relationships: []
       }
       role_notification_types: {
         Row: {
@@ -4831,7 +4951,12 @@ export type Database = {
         Args: { p_actor_key: string; p_bucket_start: string }
         Returns: number
       }
+      bump_magic_link_access: { Args: { p_hash: string }; Returns: undefined }
       calcular_aceitacao_lote: { Args: { p_lote: string }; Returns: Json }
+      cancelar_programacao_cliente: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       computar_medicao: {
         Args: {
           p_escopo: string
@@ -4857,6 +4982,7 @@ export type Database = {
         Returns: string
       }
       current_member_id: { Args: never; Returns: string }
+      current_member_pode: { Args: { p_feature: string }; Returns: boolean }
       current_tenant_id: { Args: never; Returns: string }
       emitir_fatura: {
         Args: { p_medicao_id: string; p_vencimento?: string }
@@ -4886,6 +5012,61 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      fn_laudos_por_obras: {
+        Args: { p_work_ids: string[] }
+        Returns: {
+          concretagem_id: string
+          data_emissao: string
+          escopo: string
+          id: string
+          numero: string
+          parcial_final: string
+          revisao: number
+          status: string
+          tem_pdf: boolean
+          work_id: string
+          work_nome: string
+        }[]
+      }
+      fn_resultados_por_obras: {
+        Args: { p_work_ids: string[] }
+        Returns: {
+          amostra_codigo: string
+          amostra_id: string
+          carga_ruptura_kn: number
+          client_id: string
+          concretagem_codigo: string
+          concretagem_id: string
+          conforme: boolean
+          cp_altura_mm: number
+          cp_codigo: string
+          cp_diametro_mm: number
+          cp_id: string
+          data_concretagem: string
+          data_moldagem: string
+          data_prevista_rompimento: string
+          data_real_rompimento: string
+          data_rompimento: string
+          fck_previsto: number
+          fck_ref: number
+          fornecedor_texto: string
+          idade_controle: number
+          idade_dias: number
+          idade_unidade: string
+          is_controle: boolean
+          local_texto: string
+          material_test_type_id: string
+          nota_fiscal: string
+          numeracao_lab: string
+          receipt_id: string
+          resultado_valor: number
+          serie: string
+          situacao: string
+          tipo_ruptura: string
+          work_id: string
+          work_nome: string
+        }[]
+      }
       frontend_canary_run: { Args: never; Returns: Json }
       gerar_contraprova_cp: { Args: { payload: Json }; Returns: string }
       gerar_ncs_cp_atrasado: { Args: never; Returns: number }
@@ -4895,6 +5076,27 @@ export type Database = {
       is_tenant_writer: { Args: { p_tenant_id: string }; Returns: boolean }
       lancar_rompimento_cp: { Args: { payload: Json }; Returns: Json }
       lancar_situacao_cp: { Args: { payload: Json }; Returns: undefined }
+      laudos_parcial_final: {
+        Args: never
+        Returns: {
+          id: string
+          parcial_final: string
+        }[]
+      }
+      listar_magic_links_portal: {
+        Args: never
+        Returns: {
+          access_count: number
+          ativo: boolean
+          client_id: string
+          client_nome: string
+          consumed_at: string
+          created_at: string
+          expires_at: string
+          id: string
+          last_access_at: string
+        }[]
+      }
       log_ef_invocation: {
         Args: {
           p_actor_id: string
@@ -4909,7 +5111,104 @@ export type Database = {
         }
         Returns: undefined
       }
+      marcar_notificacao_cliente: {
+        Args: { p_id?: string; p_todas?: boolean }
+        Returns: undefined
+      }
       member_can_access_work: { Args: { p_work_id: string }; Returns: boolean }
+      notificar_cliente: {
+        Args: {
+          p_corpo?: string
+          p_deep_link?: string
+          p_entity_id?: string
+          p_entity_table?: string
+          p_tipo: string
+          p_titulo: string
+          p_work_id: string
+        }
+        Returns: string
+      }
+      obra_prefixo_relatorio: { Args: { p_work_id: string }; Returns: string }
+      portal_financeiro: {
+        Args: never
+        Returns: {
+          competencia: string
+          created_at: string
+          data_emissao: string
+          id: string
+          numero: string
+          periodo_fim: string
+          periodo_inicio: string
+          status: string
+          tipo: string
+          valor: number
+        }[]
+      }
+      portal_laudos: {
+        Args: { p_work_id?: string }
+        Returns: {
+          concretagem_id: string
+          data_emissao: string
+          escopo: string
+          id: string
+          numero: string
+          parcial_final: string
+          revisao: number
+          status: string
+          tem_pdf: boolean
+          work_id: string
+          work_nome: string
+        }[]
+      }
+      portal_resultados: {
+        Args: { p_work_id?: string }
+        Returns: {
+          amostra_codigo: string
+          amostra_id: string
+          carga_ruptura_kn: number
+          client_id: string
+          concretagem_codigo: string
+          concretagem_id: string
+          conforme: boolean
+          cp_altura_mm: number
+          cp_codigo: string
+          cp_diametro_mm: number
+          cp_id: string
+          data_concretagem: string
+          data_moldagem: string
+          data_prevista_rompimento: string
+          data_real_rompimento: string
+          data_rompimento: string
+          fck_previsto: number
+          fck_ref: number
+          fornecedor_texto: string
+          idade_controle: number
+          idade_dias: number
+          idade_unidade: string
+          is_controle: boolean
+          local_texto: string
+          material_test_type_id: string
+          nota_fiscal: string
+          numeracao_lab: string
+          receipt_id: string
+          resultado_valor: number
+          serie: string
+          situacao: string
+          tipo_ruptura: string
+          work_id: string
+          work_nome: string
+        }[]
+      }
+      postar_comentario_portal: {
+        Args: {
+          p_concretagem_id?: string
+          p_lab_report_id?: string
+          p_mensagem: string
+          p_tipo?: string
+          p_work_id: string
+        }
+        Returns: string
+      }
       prune_client_telemetry: { Args: never; Returns: undefined }
       raise_telemetry_alert: {
         Args: {
@@ -4981,6 +5280,11 @@ export type Database = {
         Args: { p_active_keys: string[] }
         Returns: number
       }
+      resolver_comentario_portal: {
+        Args: { p_id: string; p_resolvido?: boolean }
+        Returns: undefined
+      }
+      revogar_magic_link: { Args: { p_id: string }; Returns: undefined }
       rollup_telemetry_daily: { Args: { p_day: string }; Returns: number }
       rollup_telemetry_daily_recent: {
         Args: { p_days?: number }

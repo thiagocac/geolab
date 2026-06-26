@@ -8,11 +8,10 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, notificarLaudoEmitido, type LaudoRow } from '../../lib/api/laudo';
+import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, type LaudoRow } from '../../lib/api/laudo';
 import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
 import type { ParcialFinal } from '../../lib/portal/types';
 import { saveUrl, openDeferredTab, blobUrlAutoRevoke } from '../../lib/pdf';
-import { ComentariosLaudo } from '../../components/portal/ComentariosLaudo';
 
 export function LaudosPage() {
   const { hasRole, member } = useAuth();
@@ -23,8 +22,7 @@ export function LaudosPage() {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
-  const [coment, setComent] = useState<Set<string>>(new Set());
-  function toggleComent(id: string) { setComent((c) => { const n = new Set(c); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
+  const [busca, setBusca] = useState('');
 
   const q = useQuery({ queryKey: ['laudos'], queryFn: listLaudos });
   const cls = useQuery({ queryKey: ['laudos-cls'], queryFn: listLaudosClassificacao });
@@ -65,13 +63,12 @@ export function LaudosPage() {
     const filename = 'Laudo ' + r.numero.replace('/', '-') + (r.revisao > 0 ? ' R' + r.revisao : '') + '.pdf';
     try { const url = await downloadUrl(r.storage_path, filename); saveUrl(url, filename); } catch (e) { toast((e as Error).message, 'error'); }
   }
-  async function aprovar(row: LaudoRow) {
+  async function aprovar(id: string) {
     try {
-      await aprovarLaudo(row.id);
+      await aprovarLaudo(id);
       await Promise.all([qc.invalidateQueries({ queryKey: ['laudos'] }), qc.invalidateQueries({ queryKey: ['laudos-cls'] })]);
-      void notificarLaudoEmitido(row.work_id ?? '', row.numero);
-      if (cls.data?.[row.id] === 'final') {
-        try { const r = await enviarLaudoCliente(row.id); toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configuracoes de e-mail.')), r.sent ? 'success' : 'info'); }
+      if (cls.data?.[id] === 'final') {
+        try { const r = await enviarLaudoCliente(id); toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configuracoes de e-mail.')), r.sent ? 'success' : 'info'); }
         catch { toast('Laudo Final emitido. Falha ao enviar ao cliente.', 'warning'); }
       } else { toast('Laudo emitido.', 'success'); }
     } catch (e) { toast((e as Error).message, 'error'); }
@@ -95,29 +92,27 @@ export function LaudosPage() {
   }
 
   const rows = q.data ?? [];
+  const termo = busca.trim().toLowerCase();
+  const filtradas = termo ? rows.filter((r) => [r.numero, r.client_works?.nome].some((v) => String(v ?? '').toLowerCase().includes(termo))) : rows;
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <PageHeader kicker="Concreto" title="Laudos" description="Emissao de relatorios de ensaio (NBR 5739)." />
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
-      {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><input className="input" placeholder="Filtrar por Nº do relatório ou obra" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 360 }} /><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
+      {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : filtradas.length === 0 ? <EmptyState /> : (
         <Card>
           <div style={{ display: 'grid', gap: 6 }}>
-            {rows.map((r) => (
-              <div key={r.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
+            {filtradas.map((r) => (
+              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
                 <span style={{ fontSize: 13 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissao'}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
                   <Button variant="ghost" onClick={() => void baixar(r)}>Baixar</Button>
-                  {podeAprovar && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r)}>Emitir</Button> : null}
+                  {podeAprovar && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
                   {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void reabrir(r.id)}>Reabrir</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void enviarCliente(r.id)}>Enviar ao cliente</Button> : null}
-                  <Button variant="ghost" onClick={() => toggleComent(r.id)}>{coment.has(r.id) ? 'Ocultar comentários' : 'Comentários'}</Button>
                 </div>
-              </div>
-                {coment.has(r.id) ? <div style={{ border: '1px solid var(--line)', borderRadius: 8, marginTop: 4 }}><ComentariosLaudo labReportId={r.id} workId={r.work_id} podeResolver={podeAprovar} /></div> : null}
               </div>
             ))}
           </div>

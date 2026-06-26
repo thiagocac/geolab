@@ -92,7 +92,7 @@ export function ImportacoesPage() {
           <div style={{ minWidth: 280 }}>
             <SelectField label="Concretagem (com CPs pendentes)" value={concId} onChange={(e) => resetConc(e.target.value)}>
               <option value="">Selecione...</option>
-              {(concs.data ?? []).map((c) => <option key={c.id} value={c.id}>{(c.codigo ?? c.id.slice(0, 8)) + ' - ' + (c.work_nome ?? '-')}</option>)}
+              {(concs.data ?? []).map((c) => <option key={c.id} value={c.id}>{(c.numero_relatorio ?? c.codigo ?? c.id.slice(0, 8)) + ' - ' + (c.work_nome ?? '-')}</option>)}
             </SelectField>
           </div>
           <Field label="Data do rompimento" type="date" value={data} onChange={(e) => setData(e.target.value)} />

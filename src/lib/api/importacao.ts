@@ -6,16 +6,16 @@ import { calcMPa, maybeNotifyAbaixoFck } from './rompimento';
 // fecha o CP, com rastreabilidade em lotes_importacao(+linhas) e external_key idempotente.
 const db = supabase as unknown as { from: (t: string) => any };
 
-export type ConcOption = { id: string; codigo: string | null; work_nome: string | null };
+export type ConcOption = { id: string; codigo: string | null; numero_relatorio: string | null; work_nome: string | null };
 export async function listConcretagensComPendentes(): Promise<ConcOption[]> {
   const { data, error } = await db.from('corpos_prova')
-    .select('concretagem_id, concretagens(id, codigo, client_works(nome))')
+    .select('concretagem_id, concretagens(id, codigo, numero_relatorio, client_works(nome))')
     .eq('situacao', 'pendente').is('deleted_at', null);
   if (error) throw new Error(error.message);
   const seen = new Map<string, ConcOption>();
   for (const r of (data ?? []) as Record<string, any>[]) {
     const c = r.concretagens; if (!c || seen.has(c.id)) continue;
-    seen.set(c.id, { id: String(c.id), codigo: c.codigo ?? null, work_nome: c.client_works?.nome ?? null });
+    seen.set(c.id, { id: String(c.id), codigo: c.codigo ?? null, numero_relatorio: c.numero_relatorio ?? null, work_nome: c.client_works?.nome ?? null });
   }
   return [...seen.values()];
 }

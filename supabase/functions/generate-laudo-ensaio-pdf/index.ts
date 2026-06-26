@@ -56,7 +56,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     if (!ures?.user) return json({ error: 'não autenticado' }, 401);
 
     const { data: conc, error: e1 } = await sb.from('concretagens')
-      .select('id, codigo, data_real, data_programada, hora_programada, hora_inicio, hora_fim, work_id, client_id, tenant_id, fck_previsto, operational_material_id, traco_texto, fornecedor_texto, volume_programado_m3, volume_lancado_m3, dimensao_cp, local_texto, clima, temperatura_ambiente_c, bombeado, observacoes, moldador_id')
+      .select('id, codigo, numero_relatorio, data_real, data_programada, hora_programada, hora_inicio, hora_fim, work_id, client_id, tenant_id, fck_previsto, operational_material_id, traco_texto, fornecedor_texto, volume_programado_m3, volume_lancado_m3, dimensao_cp, local_texto, clima, temperatura_ambiente_c, bombeado, observacoes, moldador_id')
       .eq('id', concretagemId).is('deleted_at', null).maybeSingle();
     if (e1) return json({ error: e1.message }, 403);
     if (!conc) return json({ error: 'concretagem não encontrada' }, 404);
@@ -130,7 +130,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const conforme = usaLote ? (fck > 0 ? (loteFckEst as number) >= fck : null) : (menorExemplar != null && fck > 0 ? menorExemplar >= fck : null);
     const statusTxt = conforme == null ? 'AGUARDANDO IDADE DE CONTROLE' : conforme ? 'CONFORME' : 'NÃO CONFORME';
     const statusCor = conforme == null ? FAINT : conforme ? OKG : DANGER;
-    const numero = `${String(conc.codigo ?? '').replace(/[^0-9]/g, '').slice(-6).padStart(6, '0')}/${String(conc.data_real ?? conc.data_programada ?? '').slice(0, 4) || '2026'}`;
+    const numero = String(conc.numero_relatorio ?? '').trim() || `${String(conc.codigo ?? '').replace(/[^0-9]/g, '').slice(-6).padStart(6, '0')}/${String(conc.data_real ?? conc.data_programada ?? '').slice(0, 4) || '2026'}`;
     const codVal = `LAU-${String(conc.codigo ?? 'XXXX')}`;
     const interessado = String(cliente?.razao_social || cliente?.nome_fantasia || tenant?.name || '-');
     const rt = String(cfg?.responsavel_tecnico || work?.responsavel_tecnico || '');
@@ -320,8 +320,8 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
         await admin.storage.from('lab-reports').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
         const hoje = new Date().toISOString().slice(0, 10);
         const campos = { laboratorio_nome: tenant?.name ?? 'Laboratorio', responsavel_tecnico: rt || null, crea_rt: creaRt || null, storage_path: path, hash_sha256: hash, data_emissao: hoje };
-        const { data: existing } = await admin.from('lab_reports').select('id, revisao').eq('tenant_id', conc.tenant_id).eq('numero', numero).is('deleted_at', null).maybeSingle();
-        if (existing) { await admin.from('lab_reports').update({ ...campos, revisao: (Number(existing.revisao) || 0) + 1, status: 'em_revisao', updated_at: new Date().toISOString() }).eq('id', existing.id); labReportId = existing.id as string; }
+        const { data: existing } = await admin.from('lab_reports').select('id, revisao').eq('tenant_id', conc.tenant_id).eq('concretagem_id', conc.id).eq('escopo', 'concretagem').is('deleted_at', null).maybeSingle();
+        if (existing) { await admin.from('lab_reports').update({ ...campos, numero, revisao: (Number(existing.revisao) || 0) + 1, status: 'em_revisao', updated_at: new Date().toISOString() }).eq('id', existing.id); labReportId = existing.id as string; }
         else { const { data: novo } = await admin.from('lab_reports').insert({ tenant_id: conc.tenant_id, client_id: conc.client_id, work_id: conc.work_id, escopo: 'concretagem', concretagem_id: conc.id, numero, origem: 'sistema', status: 'rascunho', revisao: 0, ...campos }).select('id').maybeSingle(); labReportId = (novo?.id as string) ?? null; }
         if (labReportId) { await admin.from('laudo_resultados').update({ deleted_at: new Date().toISOString() }).eq('lab_report_id', labReportId).is('deleted_at', null); const vincs = tlist.map((t) => ({ tenant_id: conc.tenant_id, lab_report_id: labReportId, material_test_id: t.id as string, vinculo_origem: 'sistema' })).filter((v) => v.material_test_id); if (vincs.length) await admin.from('laudo_resultados').insert(vincs); }
       } catch (_) { /* best-effort */ }

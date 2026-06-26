@@ -21,6 +21,7 @@ export function ConcretagensPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
+  const [busca, setBusca] = useState('');
 
   const q = useQuery({ queryKey: ['concretagens'], queryFn: () => listConcretagens() });
   const clientes = useQuery({ queryKey: ['ref', 'lab_clients'], queryFn: () => listReference('lab_clients', 'razao_social') });
@@ -42,16 +43,19 @@ export function ConcretagensPage() {
   async function fichaBranco() { try { dl(await invokeFichaBranco(), 'ficha-moldagem-em-branco.pdf'); } catch (e) { toast((e as Error).message, 'error'); } }
 
   const rows = q.data ?? [];
+  const termo = busca.trim().toLowerCase();
+  const filtradas = termo ? rows.filter((c) => [c.numero_relatorio, c.codigo, c.lab_clients?.razao_social, c.client_works?.nome, c.fornecedor_texto].some((v) => String(v ?? '').toLowerCase().includes(termo))) : rows;
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <PageHeader kicker="Concreto" title="Concretagens" description="Programacoes e concretagens do laboratorio." />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><Button variant="ghost" onClick={() => void fichaBranco()}>Ficha em branco (PDF)</Button><Button variant="ghost" onClick={() => nav('/nova-obra')}>Nova obra</Button><Button onClick={() => { setForm({ origem: 'programada' }); setOpen(true); }}>Nova concretagem</Button></div>
-      {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
+      <input className="input" placeholder="Filtrar por Nº relatório, código, cliente, obra ou fornecedor" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 460 }} />
+      {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : filtradas.length === 0 ? <EmptyState /> : (
         <div style={{ display: 'grid', gap: 8 }}>
-          {rows.map((c) => (
+          {filtradas.map((c) => (
             <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 14, border: '1px solid var(--line)', borderRadius: 10 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700 }}>{c.codigo ?? '(sem codigo)'} <small style={{ color: 'var(--ink-faint)', fontWeight: 400 }}>- {c.status}</small></div>
+                <div style={{ fontWeight: 700 }}>Relatório Nº {c.numero_relatorio ?? '-'} <small style={{ color: 'var(--ink-faint)', fontWeight: 400 }}>· {c.codigo ?? '(sem codigo)'} · {c.status}</small></div>
                 <div style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{c.lab_clients?.razao_social ?? '-'} - {c.client_works?.nome ?? '-'} - {c.data_programada ?? c.data_real ?? '-'} - {c.fornecedor_texto ?? '-'}</div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
