@@ -26,6 +26,7 @@ export function ClienteUsuariosPage() {
   const [busy, setBusy] = useState(false);
   const [senha, setSenha] = useState<{ username: string; password: string } | null>(null);
   const [linkClient, setLinkClient] = useState('');
+  const [linkDias, setLinkDias] = useState(30);
   const [linkBusy, setLinkBusy] = useState(false);
   const users = useQuery({ queryKey: ['cliente-usuarios'], queryFn: listClienteUsuarios });
   const clients = useQuery({ queryKey: ['cliente-options'], queryFn: listClientesPortal });
@@ -65,8 +66,8 @@ export function ClienteUsuariosPage() {
     if (!linkClient) { toast('Selecione um cliente.', 'error'); return; }
     setLinkBusy(true);
     try {
-      const url = await criarLinkPortal(linkClient, 30);
-      try { await navigator.clipboard.writeText(url); toast('Link do portal copiado (valido 30 dias).', 'success'); }
+      const url = await criarLinkPortal(linkClient, linkDias);
+      try { await navigator.clipboard.writeText(url); toast('Link do portal copiado (valido ' + linkDias + ' dias).', 'success'); }
       catch { toast('Link do portal: ' + url, 'info'); }
       await qc.invalidateQueries({ queryKey: ['portal-magic-links'] });
     } catch (e) { toast((e as Error).message, 'error'); } finally { setLinkBusy(false); }
@@ -84,6 +85,7 @@ export function ClienteUsuariosPage() {
         <CardHeader title="Acesso por link (sem senha)">Gere um link de leitura do portal para um cliente. Libera todas as obras do cliente por 30 dias, sem login.</CardHeader>
         <div className="flex flex-wrap items-end gap-2 p-4">
           <div className="min-w-[240px] flex-1"><SelectField label="Cliente" value={linkClient} onChange={(e) => setLinkClient(e.target.value)}><option value="">Selecione</option>{(clients.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectField></div>
+          <div className="w-36"><SelectField label="Validade" value={String(linkDias)} onChange={(e) => setLinkDias(Number(e.target.value))}><option value="7">7 dias</option><option value="30">30 dias</option><option value="90">90 dias</option></SelectField></div>
           <Button variant="secondary" onClick={() => void gerarLink()} disabled={linkBusy || !linkClient}>{linkBusy ? 'Gerando...' : 'Gerar link do portal'}</Button>
         </div>
       </Card>

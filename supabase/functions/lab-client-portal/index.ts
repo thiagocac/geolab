@@ -37,13 +37,27 @@ Deno.serve(async (req) => {
       return json({ ok: true, url: signed.signedUrl });
     }
 
+    // Download de anexo da concretagem (escopo: a concretagem precisa ser de uma obra do cliente)
+    const anexoPath = typeof body.anexo_path === 'string' ? body.anexo_path : '';
+    if (anexoPath) {
+      const parts = anexoPath.split('/');
+      if (parts.length < 2 || parts[0] !== tenant) return json({ ok: false, error: 'caminho invalido' }, 400);
+      const { data: cc } = await admin.from('concretagens').select('id, work_id').eq('id', parts[1]).eq('tenant_id', tenant).is('deleted_at', null).maybeSingle();
+      if (!cc) return json({ ok: false, error: 'anexo nao encontrado' }, 404);
+      const { data: w2 } = await admin.from('client_works').select('id').eq('id', cc.work_id).eq('client_id', clientId).is('deleted_at', null).maybeSingle();
+      if (!w2) return json({ ok: false, error: 'sem acesso a este anexo' }, 403);
+      const { data: asg, error: ae } = await admin.storage.from('anexos').createSignedUrl(anexoPath, 120);
+      if (ae || !asg?.signedUrl) return json({ ok: false, error: ae?.message ?? 'falha ao assinar' }, 500);
+      return json({ ok: true, url: asg.signedUrl });
+    }
+
     const { data: cli } = await admin.from('lab_clients').select('razao_social, nome_fantasia').eq('id', clientId).eq('tenant_id', tenant).maybeSingle();
     const { data: tnt } = await admin.from('tenants').select('name').eq('id', tenant).maybeSingle();
     const { data: obras } = await admin.from('client_works').select('id, nome, codigo, cidade, uf').eq('client_id', clientId).eq('tenant_id', tenant).is('deleted_at', null);
     const workIds = (obras ?? []).map((o: Record<string, unknown>) => o.id);
     let concretagens: unknown[] = []; let laudos: unknown[] = []; let resultados: unknown[] = [];
     if (workIds.length) {
-      const { data: cs } = await admin.from('concretagens').select('id, codigo, work_id, status, data_real, data_programada, local_texto, volume_lancado_m3, fck_previsto').in('work_id', workIds).is('deleted_at', null).order('data_programada', { ascending: false }).limit(500);
+      const { data: cs } = await admin.from('concretagens').select('id, codigo, work_id, status, data_real, data_programada, local_texto, volume_lancado_m3, fck_previsto, metadata').in('work_id', workIds).is('deleted_at', null).order('data_programada', { ascending: false }).limit(500);
       concretagens = cs ?? [];
       // Laudos com classificacao Parcial/Final por exemplar (RPC compartilhada, migration 063).
       const { data: ls } = await admin.rpc('fn_laudos_por_obras', { p_work_ids: workIds });

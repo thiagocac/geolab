@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, type LaudoRow } from '../../lib/api/laudo';
+import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, notificarLaudoEmitido, type LaudoRow } from '../../lib/api/laudo';
 import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
 import type { ParcialFinal } from '../../lib/portal/types';
 import { saveUrl, openDeferredTab, blobUrlAutoRevoke } from '../../lib/pdf';
@@ -62,12 +62,13 @@ export function LaudosPage() {
     const filename = 'Laudo ' + r.numero.replace('/', '-') + (r.revisao > 0 ? ' R' + r.revisao : '') + '.pdf';
     try { const url = await downloadUrl(r.storage_path, filename); saveUrl(url, filename); } catch (e) { toast((e as Error).message, 'error'); }
   }
-  async function aprovar(id: string) {
+  async function aprovar(row: LaudoRow) {
     try {
-      await aprovarLaudo(id);
+      await aprovarLaudo(row.id);
       await Promise.all([qc.invalidateQueries({ queryKey: ['laudos'] }), qc.invalidateQueries({ queryKey: ['laudos-cls'] })]);
-      if (cls.data?.[id] === 'final') {
-        try { const r = await enviarLaudoCliente(id); toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configuracoes de e-mail.')), r.sent ? 'success' : 'info'); }
+      void notificarLaudoEmitido(row.work_id ?? '', row.numero);
+      if (cls.data?.[row.id] === 'final') {
+        try { const r = await enviarLaudoCliente(row.id); toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configuracoes de e-mail.')), r.sent ? 'success' : 'info'); }
         catch { toast('Laudo Final emitido. Falha ao enviar ao cliente.', 'warning'); }
       } else { toast('Laudo emitido.', 'success'); }
     } catch (e) { toast((e as Error).message, 'error'); }
@@ -105,7 +106,7 @@ export function LaudosPage() {
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
                   <Button variant="ghost" onClick={() => void baixar(r)}>Baixar</Button>
-                  {podeAprovar && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
+                  {podeAprovar && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r)}>Emitir</Button> : null}
                   {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void reabrir(r.id)}>Reabrir</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void enviarCliente(r.id)}>Enviar ao cliente</Button> : null}

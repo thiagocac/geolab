@@ -1,24 +1,21 @@
-# INSTRUÇÕES — Release v84 (revisão tipográfica do laudo + toggle de aceitação)
+# INSTRUÇÕES — Release CONSOLIDADO v85 (portal + ficha + e-mail/anexo cliente) — UM push
 
-## Vai pro GitHub (este zip de patches → Netlify CI builda e publica)
-Suba mantendo os caminhos:
-- src/lib/concreto/camposEnsaioLaudo.ts  → novo toggle "Bloco de aceitação" em CAMPOS_LAUDO
-- public/sw.js                           → CACHE_NAME consultegeo-geolab-v84
-- src/lib/telemetry/core.ts              → APP_VERSION v84
-- SOURCE_VERSION.md                      → changelog v84
-- supabase/functions/generate-laudo-ensaio-pdf/index.ts → PARIDADE (já LIVE via MCP; commit p/ repo ≡ vivo)
+Supersede v80–v84. Contém TODO o trabalho da sessão. **Um push** com os arquivos abaixo.
 
-> Base: v83. Se o GitHub estiver atrás do v83, suba antes o source-completo do v83 (ou o v84 completo).
+## Já aplicado por mim via MCP (NADA a fazer no Supabase)
+Migrations: **063** · **064** · **065**.
+Edge Functions: **lab-client-portal v10** (anexo no portal público) · **portal-anexo v1** · **generate-ficha-moldagem-pdf v12** (Modelo A) · **extract-ficha-vision v4** · **notify-cliente-evento v2** (NOVA — e-mail ao cliente via send-notification).
 
-## Backend — JÁ APLICADO via MCP (independe deste push)
-EF generate-laudo-ensaio-pdf  v14→v15  sha b247c9ac → 3242a328 (ACTIVE, verify_jwt=true).
-acentuação PT-BR completa · m³/kg/m³ · °C · Nº · ± · × · barra de aceitação em 2 linhas (corrige a
-sobreposição "condição A / fck,est") · horários HH:MM · san() endurecido · novo toggle `aceitacao` (default ON).
+## Frontend para commitar (GitHub → Netlify CI)
+Novos: src/lib/portal/{types,resultados}.ts, src/lib/api/portalResultados.ts, src/components/portal/{ParcialFinalBadge,LaudosResultadosPanel,EvolucaoExemplares,TendenciaResistencia}.tsx, src/pages/portal/PortalPublicoPage.tsx + (referência) migrations 063/064/065 e EFs lab-client-portal/portal-anexo/notify-cliente-evento.
+Alterados: src/App.tsx, src/lib/api/{portalCliente,clientUsers,laudo,concretagem,rompimento}.ts, src/pages/portal/{ClientePortalPage,ClienteUsuariosPage}.tsx, src/pages/concreto/{LaudosPage,ConcretagensPage}.tsx, src/lib/telemetry/core.ts (v85), public/sw.js (v85) + (referência) EFs generate-ficha-moldagem-pdf/extract-ficha-vision/lab-client-portal.
 
-## Toggles (config por laboratório em /gestao/controle-laudo ▸ Seções do laudo (PDF))
-- "Bloco Recebimento dos caminhões" (recebimento) — já existia; desligar remove os dados de caminhões.
-- "Bloco de aceitação" (aceitacao) — NOVO; desligar remove a faixa fck,est × fck + veredito.
-Persistência: config_lab.laudo_campos (jsonb). Sem migration / sem mudança de RLS.
+## Novidades v85
+- **E-mail ao cliente quando um resultado fica < fck** na idade de controle: o hook `maybeNotifyAbaixoFck` chama a nova EF `notify-cliente-evento`, que resolve o e-mail do cliente NO SERVIDOR e roteia pela `send-notification` (único ponto de saída Resend; aplica allowlist/supressão/dispatch/dry-run + dedupe por evento). **Laudo emitido** já envia o PDF ao cliente pela `enviar-laudo-cliente` (desde antes).
+- **Download de anexo no portal público** (magic link): `lab-client-portal v10` devolve `metadata.anexos` e assina o anexo (escopo: a concretagem tem de ser de uma obra do cliente).
+
+## ATENÇÃO (e-mail real)
+A produção está com `dispatch_enabled=true, dry_run=false, allowlist=[]` (passa-tudo). Logo, o alerta de **< fck** passa a **enviar e-mail real** ao contato do cliente (`lab_clients.email`), uma vez por exemplar (dedupe). Se quiser segurar, ajuste a allowlist/dry_run em `notification_dispatch_settings`. **Confirme o 1º envio.**
 
 ## Gate
-check-source OK (rodado aqui). biome/tsc/vitest/vite no Netlify CI. Produção VITE_DEMO_MODE=false.
+check-source OK; revisões independentes (portal, EF pdf-lib, v84, v85): SHIP, 0 must-fix. tsc/biome/vitest no Netlify CI.

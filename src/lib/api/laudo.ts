@@ -130,3 +130,8 @@ export async function listLaudosClassificacao(): Promise<Record<string, string>>
   return m;
 }
 
+// Notifica o cliente da obra quando o laudo é emitido (in-app, best-effort). RPC notificar_cliente (065).
+export async function notificarLaudoEmitido(workId: string, numero: string): Promise<void> {
+  if (!workId) return;
+  try { await rpc.rpc('notificar_cliente', { p_work_id: workId, p_tipo: 'laudo_emitido', p_titulo: 'Laudo emitido', p_corpo: 'O laudo ' + numero + ' foi emitido e está disponível no portal.', p_deep_link: '/portal-cliente', p_entity_table: 'lab_report', p_entity_id: null }); } catch { /* best-effort */ }
+}

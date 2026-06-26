@@ -7,6 +7,7 @@ import { LoadingState, ErrorState, EmptyState } from '../ui/State';
 import { FileText, Download, Search, AlertTriangle } from '../ui/icons';
 import { ParcialFinalBadge } from './ParcialFinalBadge';
 import { EvolucaoExemplares } from './EvolucaoExemplares';
+import { TendenciaResistencia } from './TendenciaResistencia';
 import { consolidarExemplares, exportResultadosPdf, exportResultadosXlsx, filtraLaudos, filtraResultados, isAtrasado } from '../../lib/portal/resultados';
 import type { PortalLaudoView, PortalResultadoRow } from '../../lib/portal/types';
 
@@ -81,10 +82,12 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
   const resF = useMemo(() => filtraResultados(resultados, { workId, texto, idade, conformidade: conf, somenteComResultado: true, de, ate }), [resultados, workId, texto, idade, conf, de, ate]);
   const resumo = useMemo(() => consolidarExemplares(resF), [resF]);
   const atrasados = useMemo(() => resultados.filter((r) => isAtrasado(r) && (!workId || r.work_id === workId)), [resultados, workId]);
+  const concCodigo = useMemo(() => { const m = new Map<string, string>(); for (const r of resultados) { if (r.concretagem_id && r.concretagem_codigo) m.set(r.concretagem_id, r.concretagem_codigo); } return m; }, [resultados]);
+  const revCount = useMemo(() => { const m = new Map<string, number>(); for (const l of laudos) m.set(l.numero, (m.get(l.numero) ?? 0) + 1); return m; }, [laudos]);
   const conformes = resumo.filter((e) => e.conforme === true).length;
   const naoConformes = resumo.filter((e) => e.conforme === false).length;
-  const finais = laudos.filter((l) => l.parcial_final === 'final').length;
-  const parciais = laudos.filter((l) => l.parcial_final === 'parcial').length;
+  const finais = laudosF.filter((l) => l.parcial_final === 'final').length;
+  const parciais = laudosF.filter((l) => l.parcial_final === 'parcial').length;
   const totalPages = Math.max(1, Math.ceil(resF.length / PAGE));
   const pageSafe = Math.min(page, totalPages - 1);
   const pageRows = resF.slice(pageSafe * PAGE, pageSafe * PAGE + PAGE);
@@ -106,6 +109,8 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
         <MiniStat label="Não conformes" value={naoConformes} tone={naoConformes ? 'danger' : undefined} />
         <MiniStat label="CPs atrasados" value={atrasados.length} tone={atrasados.length ? 'danger' : undefined} />
       </div>
+
+      {resF.length >= 2 ? <Card><TendenciaResistencia rows={resF} /></Card> : null}
 
       {atrasados.length ? (
         <Card>
@@ -144,12 +149,12 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
                 <div key={l.id} className="p-4 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{l.numero}{l.revisao > 0 ? ' R' + l.revisao : ''}</span><ParcialFinalBadge value={l.parcial_final} /><StatusBadge status={l.status} /></div>
+                      <div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{l.numero}{l.revisao > 0 ? ' R' + l.revisao : ''}</span><ParcialFinalBadge value={l.parcial_final} /><StatusBadge status={l.status} />{(revCount.get(l.numero) ?? 0) > 1 ? <Badge tone="neutral">{revCount.get(l.numero)} revisões</Badge> : null}</div>
                       <div className="mt-1 text-slate-500">{l.work_nome ?? '—'} · {l.data_emissao ?? 'sem emissão'}</div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="secondary" leftIcon={<FileText size={15} />} onClick={() => toggle(l.id)}>{aberto ? 'Ocultar resultados' : 'Ver resultados'}</Button>
-                      {l.tem_pdf ? <Button variant="ghost" leftIcon={<Download size={15} />} disabled={baixando === l.id} onClick={() => void baixar(l.id)}>{baixando === l.id ? 'Abrindo...' : 'Baixar PDF'}</Button> : null}
+                      {l.tem_pdf ? <Button variant="ghost" leftIcon={<Download size={15} />} disabled={baixando === l.id} onClick={() => void baixar(l.id)}>{baixando === l.id ? 'Abrindo...' : 'Baixar PDF'}</Button> : null}{concCodigo.get(l.concretagem_id ?? '') ? <Button variant="ghost" onClick={() => window.open((typeof window !== 'undefined' ? window.location.origin : '') + '/validar/' + concCodigo.get(l.concretagem_id ?? ''), '_blank', 'noopener,noreferrer')}>Validar</Button> : null}
                     </div>
                   </div>
                   {aberto ? <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700">{cps.length ? <><EvolucaoExemplares rows={cps} /><ResultadosTable rows={cps} /></> : <p className="px-3 py-4 text-sm text-slate-500">Sem resultados lançados para este laudo ainda.</p>}</div> : null}
