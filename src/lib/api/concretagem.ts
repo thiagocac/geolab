@@ -105,7 +105,7 @@ function padraoFromValues(values: Record<string, unknown>, conc: ConcretagemRow)
 }
 
 // Cria caminhão + amostra + CPs pelo padrão de moldagem do caminhão, da concretagem ou do traço.
-export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie: number, values: Record<string, unknown>): Promise<void> {
+export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie: number, values: Record<string, unknown>): Promise<string> {
   const receiptPayload = sanitizeCaminhaoValues(values);
   const { data: rec, error: e1 } = await db.from('material_receipts').insert({ ...receiptPayload, tenant_id: tenantId, concretagem_id: conc.id, serie } as unknown as Database['public']['Tables']['material_receipts']['Insert']).select('id').single();
   if (e1) throw new Error(e1.message);
@@ -130,6 +130,7 @@ export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie:
     }
   }
   if (cps.length) { const { error: e3 } = await db.from('corpos_prova').insert(cps as unknown as Database['public']['Tables']['corpos_prova']['Insert'][]); if (e3) throw new Error(e3.message); }
+  return receiptId;
 }
 
 export async function invokeFichaBranco(): Promise<Blob> {
