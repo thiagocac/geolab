@@ -220,39 +220,29 @@ export async function gerarAgendaPdf(payload: Record<string, unknown>): Promise<
   return resp.blob();
 }
 
-// E1 — aceitação por exemplar na idade de controle (28d). Dispara resultado_abaixo_fck
-// SE o exemplar (maior do par no 28d) < fck. Idades menores não reprovam (acompanhamento).
+// E1 — aceitação por exemplar na idade de controle (default 28d, configurável por lab/traço).
+// Dispara resultado_abaixo_fck SE o exemplar (maior do par na idade de controle) < fck.
+// Idades menores não reprovam (acompanhamento).
 // Best-effort: nunca derruba o lançamento. Dedupe por amostra (exemplar).
 export async function maybeNotifyAbaixoFck(
   tenantId: string,
   cp: { id: string; amostra_id: string | null; idade_dias: number | null; idade_unidade: string; codigo?: string | null },
   fck: number | null,
+  idadeControle = 28,
 ): Promise<void> {
   try {
-    const isControle = Number(cp.idade_dias) === 28 && cp.idade_unidade !== 'hora';
+    const isControle = Number(cp.idade_dias) === idadeControle && cp.idade_unidade !== 'hora';
     if (!isControle || !cp.amostra_id || !fck || fck <= 0) return;
     const { data: sibs } = await db.from('corpos_prova').select('id').eq('amostra_id', cp.amostra_id).is('deleted_at', null);
     const ids = ((sibs ?? []) as Rec[]).map((r) => r.id).filter(Boolean);
     if (!ids.length) return;
     const { data: mts } = await db.from('material_tests').select('resultado_valor, idade_dias, idade_unidade').in('corpo_prova_id', ids).is('deleted_at', null);
     const vals = ((mts ?? []) as Rec[])
-      .filter((r) => Number(r.idade_dias) === 28 && String(r.idade_unidade) !== 'hora')
+      .filter((r) => Number(r.idade_dias) === idadeControle && String(r.idade_unidade) !== 'hora')
       .map((r) => Number(r.resultado_valor)).filter((v) => Number.isFinite(v));
     if (!vals.length) return;
     const exemplar = Math.max(...vals);
     if (exemplar >= fck) return;
-    try {
-      const { data: wk } = await db.from('corpos_prova').select('concretagens(work_id)').eq('amostra_id', cp.amostra_id).is('deleted_at', null).limit(1).maybeSingle();
-      const co = (wk as Rec | null)?.concretagens; const workId = co && typeof co === 'object' ? String((co as Rec).work_id ?? '') : '';
-      if (workId) {
-        const corpo = 'Exemplar ' + (cp.codigo ?? '') + ': ' + exemplar.toFixed(1) + ' < ' + fck.toFixed(1) + ' MPa na idade de controle.';
-        const rpc = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: unknown }> };
-        await rpc.rpc('notificar_cliente', { p_work_id: workId, p_tipo: 'resultado_abaixo_fck', p_titulo: 'Resultado abaixo do fck', p_corpo: corpo, p_deep_link: '/portal-cliente', p_entity_table: 'amostra', p_entity_id: cp.amostra_id });
-        const { data: sess2 } = await supabase.auth.getSession();
-        const tk = sess2.session?.access_token ?? '';
-        await fetch(env.supabaseUrl + '/functions/v1/notify-cliente-evento', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + tk }, body: JSON.stringify({ work_id: workId, event_type: 'resultado_abaixo_fck', titulo: 'Resultado abaixo do fck na idade de controle', corpo, deep_link: '/portal-cliente', reference: cp.codigo ?? '', dedupe_key: 'cliente_abaixo_fck:' + cp.amostra_id }) });
-      }
-    } catch { /* notificação/e-mail ao cliente é best-effort */ }
     const { data: sess } = await supabase.auth.getSession();
     const token = sess.session?.access_token ?? '';
     await fetch(env.supabaseUrl + '/functions/v1/notify-event', {
