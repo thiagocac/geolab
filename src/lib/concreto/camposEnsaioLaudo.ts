@@ -49,6 +49,7 @@ export const CAMPOS_LAUDO: CampoCatalogo[] = [
   { key: 'elemento', label: 'Elemento / peça concretada (por NF)', hint: 'Onde cada caminhão foi aplicado.', on: true },
   { key: 'usina', label: 'Usina / central do concreto', on: true },
   { key: 'amostragem', label: 'Detalhe de amostragem (total · condição)', on: true },
+  { key: 'aceitacao', label: 'Bloco de aceitação (fck,est × fck + veredito)', hint: 'Faixa final com a aceitação NBR 12655 e o status Conforme / Não conforme. Desligue para omitir o veredito no corpo do laudo.', on: true },
   { key: 'carga', label: 'Coluna “Carga de ruptura (kN)”', on: false },
   { key: 'contato', label: 'Contato do solicitante (nome/e-mail)', on: false },
   { key: 'temperatura', label: 'Temperatura do concreto (por NF)', on: false },

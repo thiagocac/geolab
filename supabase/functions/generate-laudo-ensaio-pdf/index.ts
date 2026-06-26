@@ -1,5 +1,6 @@
-import { serveWithTelemetry } from '../_shared/telemetry.ts';
-// generate-laudo-ensaio-pdf (GEOLAB) - Laudo NBR 5739 modelo v4 + campos dinamicos + paridade v4 (amostragem/contato/local/componentes/incerteza/capeamento/ART/2a assinatura).
+// generate-laudo-ensaio-pdf (GEOLAB) - Laudo NBR 5739 modelo v4 + campos dinamicos + paridade v4.
+// Revisao tipografica: acentuacao PT-BR completa, m3->m³, °C, Nº, barra de aceitacao em 2 linhas (sem sobreposicao),
+// horarios HH:MM, toggle 'aceitacao'. pdf-lib Helvetica usa WinAnsi (Latin-1): acentos/³/°/º/±/× sao seguros.
 import { PDFDocument, StandardFonts, rgb, PDFImage } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
@@ -19,33 +20,46 @@ const DANGER = rgb(0.78, 0.20, 0.20);
 const WHITE = rgb(1, 1, 1);
 const PW = 595.28, PH = 841.89, MX = 40, RIGHT = PW - MX, CW = RIGHT - MX, BOTTOM = 54;
 
-const san = (s: unknown): string => String(s ?? '').replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/→/g, '->').replace(/≈/g, '~').replace(/[^\x00-\xFF]/g, '?');
+// Helvetica StandardFont = WinAnsi (CP1252). Mantem 0x00-0xFF (acentos PT-BR, ³ ° º ª ± ×) e converte
+// tipografia comum (aspas/travessoes/reticencias) para equivalentes seguros; resto vira '?'.
+const san = (s: unknown): string => String(s ?? '')
+  .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/→/g, '->').replace(/≈/g, '~')
+  .replace(/[‘’‛′]/g, "'").replace(/[“”″]/g, '"')
+  .replace(/[–—−]/g, '-').replace(/…/g, '...').replace(/ /g, ' ')
+  .replace(/[^\x00-\xFF]/g, '?');
 const fmt = (n: number | null | undefined, d = 1) => (n == null || !isFinite(n) ? '-' : n.toFixed(d).replace('.', ','));
 const dbr = (s: unknown) => { const t = String(s ?? '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return '-'; const [y, m, dd] = t.split('-'); return `${dd}/${m}/${y}`; };
+const hhmm = (s: unknown): string => { const t = String(s ?? '').trim(); const m = t.match(/^(\d{1,2}):(\d{2})/); return m ? `${m[1].padStart(2, '0')}:${m[2]}` : (t || '-'); };
 const emb = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? v as Record<string, unknown> : {});
 async function sha256Hex(bytes: Uint8Array): Promise<string> { const d = await crypto.subtle.digest('SHA-256', bytes); return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
 
-serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
+const _ctSvc = () => createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
+const _ctTrace = (req: Request): string | null => { try { const t = new URL(req.url).searchParams.get('trace_id'); return t ? t.slice(0, 128) : null; } catch { return null; } };
+async function _ctActor(req: Request) { try { const a = req.headers.get('Authorization') || ''; const tk = a.startsWith('Bearer ') ? a.slice(7).trim() : ''; if (!tk || tk === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || !tk.startsWith('eyJ')) return { actor_id: null, tenant_id: null }; const svc = _ctSvc(); const { data: u, error } = await svc.auth.getUser(tk); if (error || !u?.user) return { actor_id: null, tenant_id: null }; const { data: m } = await svc.from('members').select('id,tenant_id').eq('auth_id', u.user.id).eq('active', true).is('deleted_at', null).maybeSingle(); return m ? { actor_id: String(m.id), tenant_id: String(m.tenant_id) } : { actor_id: null, tenant_id: null }; } catch { return { actor_id: null, tenant_id: null }; } }
+async function _ctFinalize(req: Request, o: { fnName: string; startedAt: string; durationMs: number; statusCode: number; errorMessage: string | null; traceId: string | null }) { try { const svc = _ctSvc(); const actor = await _ctActor(req); await svc.rpc('log_ef_invocation', { p_fn_name: o.fnName, p_started_at: o.startedAt, p_duration_ms: Math.max(0, Math.round(o.durationMs)), p_status_code: o.statusCode, p_error: o.errorMessage || null, p_actor_id: actor.actor_id, p_tenant_id: actor.tenant_id, p_request_id: req.headers.get('x-request-id') || req.headers.get('cf-ray') || crypto.randomUUID(), p_metadata: { method: req.method, path: new URL(req.url).pathname, ...(o.traceId ? { trace_id: o.traceId } : {}) } }); } catch { /* nunca bloqueia */ } }
+function _ctServeWithTelemetry(fnName: string, handler: (req: Request) => Promise<Response> | Response) { Deno.serve(async (req: Request) => { const startedAt = new Date().toISOString(); const started = performance.now(); const traceId = _ctTrace(req); let statusCode = 500; let errorMessage: string | null = null; try { const res = await handler(req); statusCode = res.status; return res; } catch (e) { errorMessage = e instanceof Error ? e.message : String(e); statusCode = 500; throw e; } finally { const durationMs = performance.now() - started; const p = _ctFinalize(req, { fnName, startedAt, durationMs, statusCode, errorMessage, traceId }); try { const er = (globalThis as Record<string, unknown>).EdgeRuntime as { waitUntil?: (x: Promise<unknown>) => void } | undefined; if (er?.waitUntil) er.waitUntil(p); else p.catch(() => {}); } catch { p.catch(() => {}); } } }); }
+
+_ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
     const body = await req.json().catch(() => ({}));
     const concretagemId = String(body.concretagem_id ?? '');
     const loteId = String(body.lote_id ?? '');
-    if (!concretagemId) return json({ error: 'concretagem_id obrigatorio' }, 400);
+    if (!concretagemId) return json({ error: 'concretagem_id obrigatório' }, 400);
     const url = Deno.env.get('SUPABASE_URL') ?? '';
     const anon = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
     const authz = req.headers.get('Authorization') ?? '';
-    if (!authz) return json({ error: 'nao autenticado' }, 401);
+    if (!authz) return json({ error: 'não autenticado' }, 401);
     const sb = createClient(url, anon, { global: { headers: { Authorization: authz } }, auth: { persistSession: false } });
     const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
     const { data: ures } = await sb.auth.getUser();
-    if (!ures?.user) return json({ error: 'nao autenticado' }, 401);
+    if (!ures?.user) return json({ error: 'não autenticado' }, 401);
 
     const { data: conc, error: e1 } = await sb.from('concretagens')
       .select('id, codigo, data_real, data_programada, hora_programada, hora_inicio, hora_fim, work_id, client_id, tenant_id, fck_previsto, operational_material_id, traco_texto, fornecedor_texto, volume_programado_m3, volume_lancado_m3, dimensao_cp, local_texto, clima, temperatura_ambiente_c, bombeado, observacoes, moldador_id')
       .eq('id', concretagemId).is('deleted_at', null).maybeSingle();
     if (e1) return json({ error: e1.message }, 403);
-    if (!conc) return json({ error: 'concretagem nao encontrada' }, 404);
+    if (!conc) return json({ error: 'concretagem não encontrada' }, 404);
 
     const [{ data: work }, { data: cliente }, { data: tenant }, { data: om }, { data: cfg }] = await Promise.all([
       sb.from('client_works').select('nome, cidade, uf, endereco, responsavel_tecnico, crea').eq('id', conc.work_id).maybeSingle(),
@@ -63,7 +77,7 @@ serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       .select('id, resultado_valor, idade_dias, idade_unidade, data_rompimento, cp_diametro_mm, cp_altura_mm, tipo_ruptura, capeamento, carga_ruptura_kn, equipamento_id, receipt_id, corpo_prova_id')
       .eq('concretagem_id', concretagemId).is('deleted_at', null).not('resultado_valor', 'is', null);
     const tlist = (tests ?? []) as Record<string, unknown>[];
-    if (!tlist.length) return json({ error: 'sem resultados lancados para esta concretagem' }, 422);
+    if (!tlist.length) return json({ error: 'sem resultados lançados para esta concretagem' }, 422);
 
     const cpIds = [...new Set(tlist.map((t) => t.corpo_prova_id).filter(Boolean))] as string[];
     const rcIds = [...new Set(tlist.map((t) => t.receipt_id).filter(Boolean))] as string[];
@@ -85,7 +99,7 @@ serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const defOn = (k: string, d: boolean) => (LC[k] === undefined ? d : LC[k] !== false);
     const defRon = (k: string, d: boolean) => (RC[k] === undefined ? d : RC[k] !== false);
     const defCon = (k: string, d: boolean) => (CC[k] === undefined ? d : CC[k] !== false);
-    ['dim_hd', 'tipo_ruptura', 'dados_concreto', 'cimento', 'cura', 'equipamentos', 'responsavel_tecnico', 'qr_validacao', 'logo_laboratorio', 'elemento', 'usina', 'recebimento', 'amostragem'].forEach((k) => (ON[k] = defOn(k, true)));
+    ['dim_hd', 'tipo_ruptura', 'dados_concreto', 'cimento', 'cura', 'equipamentos', 'responsavel_tecnico', 'qr_validacao', 'logo_laboratorio', 'elemento', 'usina', 'recebimento', 'amostragem', 'aceitacao'].forEach((k) => (ON[k] = defOn(k, true)));
     ['aditivo', 'acreditacao', 'dmax', 'carga', 'temperatura', 'ficha_moldagem', 'observacoes', 'incerteza', 'moldador', 'contato', 'local_ensaio', 'componentes'].forEach((k) => (ON[k] = defOn(k, false)));
     ['nota_fiscal', 'placa', 'motorista', 'volume_m3', 'horarios_transporte', 'horarios_descarga', 'hora_moldagem', 'slump', 'temperatura_concreto', 'agua_adicionada', 'rejeicao', 'elementos_concretados', 'observacoes_caminhao'].forEach((k) => (RON[k] = defRon(k, true)));
     ['traco_fck', 'fornecedor', 'data_hora', 'local_peca', 'volume_programado', 'dimensao_cp', 'moldador', 'clima', 'temperatura_ambiente', 'bombeado', 'observacoes', 'padrao_moldagem'].forEach((k) => (CON[k] = defCon(k, true)));
@@ -114,7 +128,7 @@ serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const loteFckEst = lote && lote.fck_est != null ? Number(lote.fck_est) : null;
     const usaLote = loteFckEst != null;
     const conforme = usaLote ? (fck > 0 ? (loteFckEst as number) >= fck : null) : (menorExemplar != null && fck > 0 ? menorExemplar >= fck : null);
-    const statusTxt = conforme == null ? 'AGUARDANDO IDADE DE CONTROLE' : conforme ? 'CONFORME' : 'NAO CONFORME';
+    const statusTxt = conforme == null ? 'AGUARDANDO IDADE DE CONTROLE' : conforme ? 'CONFORME' : 'NÃO CONFORME';
     const statusCor = conforme == null ? FAINT : conforme ? OKG : DANGER;
     const numero = `${String(conc.codigo ?? '').replace(/[^0-9]/g, '').slice(-6).padStart(6, '0')}/${String(conc.data_real ?? conc.data_programada ?? '').slice(0, 4) || '2026'}`;
     const codVal = `LAU-${String(conc.codigo ?? 'XXXX')}`;
@@ -141,29 +155,29 @@ serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
 
     const topo = PH - 30;
     if (ON.logo_laboratorio && logoImg) { const iw = logoImg.width, ih = logoImg.height; const sc = Math.min(150 / iw, 30 / ih); page.drawImage(logoImg, { x: MX, y: topo - ih * sc, width: iw * sc, height: ih * sc }); }
-    else if (ON.logo_laboratorio) { rect(MX, topo - 26, 150, 26, undefined, LINE); T(String(tenant?.name || 'LABORATORIO'), MX + 8, topo - 16, 8, FB, MUTED); }
+    else if (ON.logo_laboratorio) { rect(MX, topo - 26, 150, 26, undefined, LINE); T(String(tenant?.name || 'LABORATÓRIO'), MX + 8, topo - 16, 8, FB, MUTED); }
     rect(RIGHT - 86, topo - 19, 15, 15, MAG);
     page.drawText('C', { x: RIGHT - 81.5, y: topo - 15.4, size: 9, font: FB, color: WHITE });
     const sw2 = FB.widthOfTextAtSize('soft', 13), cw2 = FB.widthOfTextAtSize('Concre', 13);
     T('soft', RIGHT - sw2, topo - 15.6, 13, FB, MAG); T('Concre', RIGHT - sw2 - cw2, topo - 15.6, 13, FB, NAVY);
-    T('Relatorio de Ensaio', MX, PH - 66, 17, FB, NAVY);
-    T('Resistencia a compressao de corpos de prova cilindricos - ABNT NBR 5739', MX, PH - 77, 8.2, F, MUTED);
-    TR('RELATORIO No', RIGHT, PH - 54, 6.4, F, FAINT); TR(numero, RIGHT, PH - 69, 15, FB, NAVY);
+    T('Relatório de Ensaio', MX, PH - 66, 17, FB, NAVY);
+    T('Resistência à compressão de corpos de prova cilíndricos - ABNT NBR 5739', MX, PH - 77, 8.2, F, MUTED);
+    TR('RELATÓRIO Nº', RIGHT, PH - 54, 6.4, F, FAINT); TR(numero, RIGHT, PH - 69, 15, FB, NAVY);
     page.drawCircle({ x: RIGHT - FB.widthOfTextAtSize(statusTxt, 7.5) - 8, y: PH - 80.2, size: 2.4, color: statusCor });
     TR(statusTxt, RIGHT, PH - 82.5, 7.5, FB, statusCor);
     page.drawLine({ start: { x: MX, y: PH - 90 }, end: { x: MX + 175, y: PH - 90 }, thickness: 2, color: NAVY });
     page.drawLine({ start: { x: MX + 175, y: PH - 90 }, end: { x: RIGHT, y: PH - 90 }, thickness: 2, color: LINE });
     let y = PH - 108;
-    const need = (h: number, contHeader = true) => { if (y - h < BOTTOM) { page = doc.addPage([PW, PH]); y = PH - 50; if (contHeader) { T('Relatorio No ' + numero + ' (continuacao)', MX, y, 8, FB, NAVY); y -= 16; } } };
+    const need = (h: number, contHeader = true) => { if (y - h < BOTTOM) { page = doc.addPage([PW, PH]); y = PH - 50; if (contHeader) { T('Relatório Nº ' + numero + ' (continuação)', MX, y, 8, FB, NAVY); y -= 16; } } };
     const sec = (label: string) => { need(20, false); T(label, MX, y, 8.5, FB, NAVY); y -= 4; hline(MX, y, RIGHT); y -= 10; };
     const kv = (lbl: string, val: string, x: number) => { T(lbl, x, y, 6.3, F, FAINT); T(val, x, y - 10, 8.2, FB, INK); };
 
-    kv('INTERESSADO', interessado, MX); kv('OBRA', String(work?.nome || '-'), MX + CW * 0.34); kv('COD. CONCRETAGEM', String(conc.codigo || '-'), MX + CW * 0.62); kv('EMISSAO', dbr(new Date().toISOString()), MX + CW * 0.84);
+    kv('INTERESSADO', interessado, MX); kv('OBRA', String(work?.nome || '-'), MX + CW * 0.34); kv('COD. CONCRETAGEM', String(conc.codigo || '-'), MX + CW * 0.62); kv('EMISSÃO', dbr(new Date().toISOString()), MX + CW * 0.84);
     y -= 24;
-    kv('ENDERECO', [work?.endereco, work?.cidade, work?.uf].filter(Boolean).join(' - ') || '-', MX);
-    if (ON.responsavel_tecnico) { kv('RESP. TECNICO', rt || '-', MX + CW * 0.34); kv('CREA', creaRt || '-', MX + CW * 0.62); }
+    kv('ENDEREÇO', [work?.endereco, work?.cidade, work?.uf].filter(Boolean).join(' - ') || '-', MX);
+    if (ON.responsavel_tecnico) { kv('RESP. TÉCNICO', rt || '-', MX + CW * 0.34); kv('CREA', creaRt || '-', MX + CW * 0.62); }
     if (ON.contato && contatoEmail) kv('SOLICITANTE', contatoEmail, MX + CW * 0.84);
-    else if (ON.acreditacao) kv('ACREDITACAO', String(cfg?.acreditacao_inmetro || '-'), MX + CW * 0.84);
+    else if (ON.acreditacao) kv('ACREDITAÇÃO', String(cfg?.acreditacao_inmetro || '-'), MX + CW * 0.84);
     if (ON.moldador && moldador?.nome) { y -= 22; kv('RESP. MOLDAGEM', String(moldador.nome), MX); }
     y -= 22; hline(MX, y, RIGHT, LINE); y -= 12;
 
@@ -171,28 +185,28 @@ serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       sec('Dados do concreto e da concretagem');
       const tracoNome = om?.nome ? String(om.nome) : String(conc.traco_texto || '-');
       const pares: [string, string][] = [['Material', 'Concreto']];
-      if (CON.traco_fck) { pares.push(['Traco', tracoNome]); pares.push(['Fck (MPa)', fmt(fck, 1)]); }
-      if (ON.amostragem) pares.push(['Amostragem', 'Total - condicao ' + condicao]);
-      if (om?.condicao_preparo) pares.push(['Condicao de preparo', String(om.condicao_preparo || '-')]);
-      if (om?.slump_previsto_cm != null) pares.push(['Abatimento prev. (cm)', `${fmt(Number(om.slump_previsto_cm), 1)} +/- ${fmt(Number(om.slump_tolerancia_cm ?? 0), 1)}`]);
+      if (CON.traco_fck) { pares.push(['Traço', tracoNome]); pares.push(['Fck (MPa)', fmt(fck, 1)]); }
+      if (ON.amostragem) pares.push(['Amostragem', 'Total - condição ' + condicao]);
+      if (om?.condicao_preparo) pares.push(['Condição de preparo', String(om.condicao_preparo || '-')]);
+      if (om?.slump_previsto_cm != null) pares.push(['Abatimento prev. (cm)', `${fmt(Number(om.slump_previsto_cm), 1)} ± ${fmt(Number(om.slump_tolerancia_cm ?? 0), 1)}`]);
       if (om?.brita) pares.push(['Brita / agregado', String(om.brita || '-')]);
       if (om?.fator_ac != null) pares.push(['A/C projeto', fmt(Number(om.fator_ac), 2)]);
-      if (CON.bombeado) pares.push(['Lancamento', conc.bombeado || om?.bombeado ? 'Bombeado' : 'Convencional']);
-      if (CON.volume_programado) { pares.push(['Volume prog. (m3)', conc.volume_programado_m3 != null ? fmt(Number(conc.volume_programado_m3), 1) : '-']); pares.push(['Volume lancado (m3)', conc.volume_lancado_m3 != null ? fmt(Number(conc.volume_lancado_m3), 1) : '-']); }
-      if (CON.dimensao_cp) pares.push(['Dimensao CP', String(conc.dimensao_cp || '100x200')]);
-      if (CON.data_hora) { pares.push(['Data moldagem', dbr(conc.data_real || conc.data_programada)]); pares.push(['Horario', String(conc.hora_inicio || conc.hora_programada || '-') + (conc.hora_fim ? ' a ' + String(conc.hora_fim) : '')]); }
-      if (CON.local_peca || ON.elemento) pares.push(['Local / peca', String(conc.local_texto || '-')]);
+      if (CON.bombeado) pares.push(['Lançamento', conc.bombeado || om?.bombeado ? 'Bombeado' : 'Convencional']);
+      if (CON.volume_programado) { pares.push(['Volume prog. (m³)', conc.volume_programado_m3 != null ? fmt(Number(conc.volume_programado_m3), 1) : '-']); pares.push(['Volume lançado (m³)', conc.volume_lancado_m3 != null ? fmt(Number(conc.volume_lancado_m3), 1) : '-']); }
+      if (CON.dimensao_cp) pares.push(['Dimensão CP', String(conc.dimensao_cp || '100x200')]);
+      if (CON.data_hora) { pares.push(['Data moldagem', dbr(conc.data_real || conc.data_programada)]); pares.push(['Horário', conc.hora_inicio || conc.hora_programada ? hhmm(conc.hora_inicio || conc.hora_programada) + (conc.hora_fim ? ' a ' + hhmm(conc.hora_fim) : '') : '-']); }
+      if (CON.local_peca || ON.elemento) pares.push(['Local / peça', String(conc.local_texto || '-')]);
       if (ON.usina && CON.fornecedor) pares.push(['Central / usina', String(conc.fornecedor_texto || '-')]);
       if (CON.clima) pares.push(['Clima', String(conc.clima || '-')]);
-      if (CON.temperatura_ambiente) pares.push(['Temp. ambiente', conc.temperatura_ambiente_c != null ? `${fmt(Number(conc.temperatura_ambiente_c), 1)} C` : '-']);
-      if (ON.cimento && om) { pares.push(['Cimento', String(om.cimento_tipo || '-')]); pares.push(['Consumo cimento', om.consumo_cimento_kg_m3 != null ? `${fmt(Number(om.consumo_cimento_kg_m3), 0)} kg/m3` : '-']); }
+      if (CON.temperatura_ambiente) pares.push(['Temp. ambiente', conc.temperatura_ambiente_c != null ? `${fmt(Number(conc.temperatura_ambiente_c), 1)} °C` : '-']);
+      if (ON.cimento && om) { pares.push(['Cimento', String(om.cimento_tipo || '-')]); pares.push(['Consumo cimento', om.consumo_cimento_kg_m3 != null ? `${fmt(Number(om.consumo_cimento_kg_m3), 0)} kg/m³` : '-']); }
       if (ON.cura && om) pares.push(['Cura', String(om.metodo_cura || '-')]);
       if (ON.aditivo && om) pares.push(['Aditivo', String(om.aditivo_tipo || '-')]);
       if (ON.dmax && om) pares.push(['Dmax agregado (mm)', om.dmax_agregado_mm != null ? fmt(Number(om.dmax_agregado_mm), 0) : '-']);
       if (ON.componentes && om?.componentes && typeof om.componentes === 'object') { for (const [ck, cv] of Object.entries(om.componentes as Record<string, unknown>)) { if (!cv) continue; const o = (typeof cv === 'object' ? cv : {}) as Record<string, unknown>; const txt = (o.marca || o.procedencia) ? [o.marca, o.procedencia].filter(Boolean).join(' / ') : String(cv); pares.push([ck.charAt(0).toUpperCase() + ck.slice(1), String(txt).slice(0, 28)]); } }
       const colW = CW / 4;
       for (let i = 0; i < pares.length; i += 4) { need(20, false); for (let j = 0; j < 4 && i + j < pares.length; j++) { const [l, v] = pares[i + j]; const x = MX + j * colW; T(l, x, y, 6.2, F, FAINT); T(v, x, y - 9, 7.6, F, INK); } y -= 21; }
-      need(12, false); T('Normas: NBR 5739/5738/16889/16886 - Aceitacao NBR 12655. Tipos de ruptura: A conica, B conica/bipartida, C colunar, D cisalhada, E paralela as bases, F pontiaguda.', MX, y, 5.6, F, FAINT); y -= 12;
+      need(12, false); T('Normas: NBR 5739/5738/16889/16886 - Aceitação NBR 12655. Tipos de ruptura: A cônica, B cônica/bipartida, C colunar, D cisalhada, E paralela às bases, F pontiaguda.', MX, y, 5.6, F, FAINT); y -= 12;
       y -= 4;
     }
 
@@ -201,18 +215,18 @@ serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       const rows = (receipts ?? []) as Record<string, unknown>[];
       for (const rc of rows) {
         need(28, true);
-        const head = `Caminhao ${String(rc.serie ?? '-')}  -  NF ${String(rc.nota_fiscal ?? '-')}`;
+        const head = `Caminhão ${String(rc.serie ?? '-')}  -  NF ${String(rc.nota_fiscal ?? '-')}`;
         rect(MX, y - 10, CW, 12, NAVYL); T(head, MX + 5, y - 7.6, 6.8, FB, NAVY); y -= 13;
         const partes: string[] = [];
         if (RON.placa && rc.placa) partes.push('Placa ' + String(rc.placa));
         if (RON.motorista && rc.motorista) partes.push('Motorista ' + String(rc.motorista));
-        if (RON.volume_m3 && rc.volume_m3 != null) partes.push('Vol. ' + fmt(Number(rc.volume_m3), 1) + ' m3');
-        if (RON.horarios_transporte) partes.push('Transp. ' + String(rc.hora_saida_usina || '-') + ' -> ' + String(rc.hora_chegada_obra || '-'));
-        if (RON.horarios_descarga) partes.push('Desc. ' + String(rc.hora_inicio_descarga || '-') + ' -> ' + String(rc.hora_fim_descarga || '-'));
-        if (RON.hora_moldagem && rc.hora_moldagem) partes.push('Mold. ' + String(rc.hora_moldagem));
+        if (RON.volume_m3 && rc.volume_m3 != null) partes.push('Vol. ' + fmt(Number(rc.volume_m3), 1) + ' m³');
+        if (RON.horarios_transporte && (rc.hora_saida_usina || rc.hora_chegada_obra)) partes.push('Transp. ' + hhmm(rc.hora_saida_usina) + ' -> ' + hhmm(rc.hora_chegada_obra));
+        if (RON.horarios_descarga && (rc.hora_inicio_descarga || rc.hora_fim_descarga)) partes.push('Desc. ' + hhmm(rc.hora_inicio_descarga) + ' -> ' + hhmm(rc.hora_fim_descarga));
+        if (RON.hora_moldagem && rc.hora_moldagem) partes.push('Mold. ' + hhmm(rc.hora_moldagem));
         if (RON.slump && rc.slump_medido_cm != null) partes.push('Slump ' + fmt(Number(rc.slump_medido_cm), 1) + ' cm');
-        if ((ON.temperatura || RON.temperatura_concreto) && rc.temperatura_concreto_c != null) partes.push('Temp. concreto ' + fmt(Number(rc.temperatura_concreto_c), 0) + ' C');
-        if (RON.agua_adicionada && rc.houve_adicao_agua) partes.push('Agua adicionada ' + fmt(Number(rc.agua_litros ?? 0), 0) + ' L');
+        if ((ON.temperatura || RON.temperatura_concreto) && rc.temperatura_concreto_c != null) partes.push('Temp. concreto ' + fmt(Number(rc.temperatura_concreto_c), 0) + ' °C');
+        if (RON.agua_adicionada && rc.houve_adicao_agua) partes.push('Água adicionada ' + fmt(Number(rc.agua_litros ?? 0), 0) + ' L');
         if (RON.rejeicao && rc.rejeitado) partes.push('Rejeitado: ' + String(rc.motivo_rejeicao || '-'));
         const line = partes.join('  |  ') || 'Sem campos opcionais habilitados';
         T(line.slice(0, 170), MX + 5, y - 7, 6.2, F, MUTED); y -= 11;
@@ -224,7 +238,7 @@ serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
 
     sec('Resultados - por exemplar / nota fiscal');
     type Col = { key: string; label: string; w: number; on: boolean; x?: number; px?: number };
-    const colsAll: Col[] = [{ key: 'cp', label: 'CP', w: 8, on: true }, { key: 'idade', label: 'Idade', w: 12, on: true }, { key: 'data', label: 'Data ruptura', w: 17, on: true }, { key: 'dh', label: 'd x h (mm)', w: 14, on: ON.dim_hd }, { key: 'hd', label: 'h/d', w: 7, on: ON.dim_hd }, { key: 'rup', label: 'Ruptura', w: 9, on: ON.tipo_ruptura }, { key: 'carga', label: 'Carga (kN)', w: 13, on: ON.carga }, { key: 'rcp', label: 'Resist. CP (MPa)', w: 16, on: true }, { key: 'rex', label: 'Resist. exemplar', w: 21, on: true }];
+    const colsAll: Col[] = [{ key: 'cp', label: 'CP', w: 8, on: true }, { key: 'idade', label: 'Idade', w: 12, on: true }, { key: 'data', label: 'Data ruptura', w: 17, on: true }, { key: 'dh', label: 'd × h (mm)', w: 14, on: ON.dim_hd }, { key: 'hd', label: 'h/d', w: 7, on: ON.dim_hd }, { key: 'rup', label: 'Ruptura', w: 9, on: ON.tipo_ruptura }, { key: 'carga', label: 'Carga (kN)', w: 13, on: ON.carga }, { key: 'rcp', label: 'Resist. CP (MPa)', w: 16, on: true }, { key: 'rex', label: 'Resist. exemplar', w: 21, on: true }];
     const cols = colsAll.filter((c) => c.on);
     const wsum = cols.reduce((s, c) => s + c.w, 0);
     let cx = MX; for (const c of cols) { c.x = cx; c.px = (c.w / wsum) * CW; cx += c.px; }
@@ -238,7 +252,7 @@ serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       const ctrl = arr.filter(isCtrl).map((t) => Number(t.resultado_valor)).filter(isFinite);
       const rexVal = ctrl.length ? Math.max(...ctrl) : null;
       need(13, true); rect(MX, y - 11, CW, 12, NAVYL);
-      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m3` : '') + (RON.slump && rc?.slump_medido_cm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_cm), 1)} cm` : '') + (ON.temperatura && RON.temperatura_concreto && rc?.temperatura_concreto_c != null ? `  -  Temp ${fmt(Number(rc.temperatura_concreto_c), 0)}C` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '') + (arr.length && arr[0].capeamento ? '  -  Bases ' + String(arr[0].capeamento) : '');
+      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m³` : '') + (RON.slump && rc?.slump_medido_cm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_cm), 1)} cm` : '') + (ON.temperatura && RON.temperatura_concreto && rc?.temperatura_concreto_c != null ? `  -  Temp ${fmt(Number(rc.temperatura_concreto_c), 0)} °C` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '') + (arr.length && arr[0].capeamento ? '  -  Bases ' + String(arr[0].capeamento) : '');
       T(faixa, MX + 5, y - 8, 6.8, FB, NAVY); y -= 12;
       if (ON.elemento && RON.elementos_concretados && rc?.elementos_concretados) { need(10, true); T(('Local: ' + String(rc.elementos_concretados)).slice(0, 150), MX + 5, y - 7, 6.2, F, MUTED); y -= 11; }
       let first = true;
@@ -246,48 +260,56 @@ serveWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
         const t = arr[i]; need(12, true);
         const cp = cpById.get(t.corpo_prova_id as string) as Record<string, unknown> | undefined;
         const d = Number(t.cp_diametro_mm ?? 0) || 100, h = Number(t.cp_altura_mm ?? 0) || 200;
-        const row: Record<string, string> = { cp: String(cp?.codigo ?? i + 1).split('-').pop() || String(i + 1), idade: `${idade(t)} ${String(t.idade_unidade) === 'hora' ? 'h' : 'dias'}`, data: dbr(t.data_rompimento), dh: `${fmt(d, 0)} x ${fmt(h, 0)}`, hd: fmt(h / d, 2), rup: String(t.tipo_ruptura || '-'), carga: t.carga_ruptura_kn != null ? fmt(Number(t.carga_ruptura_kn), 1) : '-', rcp: fmt(Number(t.resultado_valor), 1), rex: first && rexVal != null ? fmt(rexVal, 1) : '' };
+        const row: Record<string, string> = { cp: String(cp?.codigo ?? i + 1).split('-').pop() || String(i + 1), idade: `${idade(t)} ${String(t.idade_unidade) === 'hora' ? 'h' : 'dias'}`, data: dbr(t.data_rompimento), dh: `${fmt(d, 0)} × ${fmt(h, 0)}`, hd: fmt(h / d, 2), rup: String(t.tipo_ruptura || '-'), carga: t.carga_ruptura_kn != null ? fmt(Number(t.carga_ruptura_kn), 1) : '-', rcp: fmt(Number(t.resultado_valor), 1), rex: first && rexVal != null ? fmt(rexVal, 1) : '' };
         for (const c of cols) { const f = c.key === 'rex' ? FB : F; const col = c.key === 'rex' ? NAVY : INK; T(row[c.key], cellX(c, row[c.key], 6.6, f), y - 8, 6.6, f, col); }
         y -= 11; hline(MX, y, RIGHT, rgb(0.93, 0.95, 0.98), 0.4); first = false;
       }
     }
     y -= 8;
 
-    need(22, false); rect(MX, y - 16, CW, 18, NAVY);
-    T(usaLote ? 'Aceitacao estatistica de lote (ABNT NBR 12655)' : (ON.amostragem ? 'Aceitacao (ABNT NBR 12655 - amostragem total - condicao ' + condicao + ')' : 'Aceitacao (ABNT NBR 12655)'), MX + 6, y - 10.5, 8, FB, WHITE);
-    const aceTxt = usaLote ? `fck,est = ${fmt(loteFckEst as number, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} (n=${lote!.n_exemplares}, Sd ${fmt(Number(lote!.sd), 1)})` : (menorExemplar != null ? `fck,est = ${fmt(menorExemplar, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa` : `${n} exemplar(es) na idade de controle`);
-    T(aceTxt, MX + CW * 0.46, y - 10.5, 8, FB, WHITE);
-    TR(statusTxt, RIGHT - 8, y - 10.5, 8.5, FB, conforme == null ? WHITE : conforme ? rgb(0.6, 1, 0.78) : rgb(1, 0.8, 0.8));
-    y -= 26;
+    if (ON.aceitacao) {
+      need(34, false);
+      rect(MX, y - 26, CW, 28, NAVY);
+      const aceLabel = usaLote
+        ? 'Aceitação estatística de lote (ABNT NBR 12655)'
+        : (ON.amostragem ? 'Aceitação (ABNT NBR 12655 - amostragem total - condição ' + condicao + ')' : 'Aceitação (ABNT NBR 12655)');
+      const aceTxt = usaLote
+        ? `fck,est = ${fmt(loteFckEst as number, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa  (n=${lote!.n_exemplares}, Sd ${fmt(Number(lote!.sd), 1)})`
+        : (menorExemplar != null ? `fck,est = ${fmt(menorExemplar, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa` : `${n} exemplar(es) na idade de controle`);
+      T(aceLabel, MX + 8, y - 10, 7.5, FB, rgb(0.75, 0.80, 0.93));
+      T(aceTxt, MX + 8, y - 21, 9.5, FB, WHITE);
+      TR(statusTxt, RIGHT - 10, y - 16.5, 10, FB, conforme == null ? WHITE : conforme ? rgb(0.62, 1, 0.78) : rgb(1, 0.78, 0.78));
+      y -= 36;
+    }
 
     if (ON.equipamentos && (equips ?? []).length) {
       sec('Equipamentos utilizados');
       rect(MX, y - 11, CW, 12, NAVY);
-      const ec = [['Equipamento', 0.24], ['Classe', 0.08], ['No serie', 0.15], ['Certificado', 0.17], ['Lab. calibrador', 0.20], ['Valido ate', 0.16]] as [string, number][];
+      const ec = [['Equipamento', 0.24], ['Classe', 0.08], ['Nº série', 0.15], ['Certificado', 0.17], ['Lab. calibrador', 0.20], ['Válido até', 0.16]] as [string, number][];
       let ex2 = MX; for (const [l, w] of ec) { T(l, ex2 + 3, y - 8, 6.1, FB, WHITE); ex2 += w * CW; }
       y -= 12;
       for (const eq of (equips ?? []) as Record<string, unknown>[]) { need(12, true); const inc = ON.incerteza && eq.incerteza_mpa != null ? ' (u=' + fmt(Number(eq.incerteza_mpa), 1) + ')' : ''; const vals = [String(eq.marca_modelo || '-') + inc, String(eq.classe || '-'), String(eq.numero_serie || '-'), String(eq.numero_certificado || '-'), String(eq.lab_calibrador || '-'), dbr(eq.validade_calibracao)]; let x2 = MX; for (let k = 0; k < ec.length; k++) { T(vals[k], x2 + 3, y - 8, 6.5, F, INK); x2 += ec[k][1] * CW; } y -= 11; hline(MX, y, RIGHT, rgb(0.93, 0.95, 0.98), 0.4); }
       y -= 6;
     }
 
-    need(40, false); sec('Comentarios e observacoes');
-    const obs = (ON.observacoes && conc.observacoes ? String(conc.observacoes).trim() + ' ' : '') + 'Os resultados tem significado restrito e aplicam-se somente a amostra ensaiada. ' + (usaLote ? ('Aceitacao estatistica por lote ' + String(lote!.numero ?? '') + ' (ABNT NBR 12655): n=' + String(lote!.n_exemplares) + ', fcm=' + fmt(Number(lote!.fcm), 1) + ', Sd=' + fmt(Number(lote!.sd), 1) + ', fck,est=' + fmt(loteFckEst as number, 1) + ' MPa. ') : 'Aceitacao por exemplar na idade de controle (resistencia do exemplar = maior do par); lote ainda sem amostragem suficiente para fck,est estatistico (NBR 12655). ') + 'Coleta na obra; moldagem, cura e ruptura conforme NBR 5738/5739.' + (ON.contato && contatoEmail ? ' Solicitante: ' + contatoEmail + '.' : '') + (ON.local_ensaio && localEnsaio ? ' Ensaios realizados em: ' + localEnsaio + '.' : '') + (ON.incerteza ? ' Incerteza de medicao declarada no certificado de calibracao da prensa.' : '') + (cfg?.nota_rodape ? ' ' + String(cfg.nota_rodape) : '');
+    need(40, false); sec('Comentários e observações');
+    const obs = (ON.observacoes && conc.observacoes ? String(conc.observacoes).trim() + ' ' : '') + 'Os resultados têm significado restrito e aplicam-se somente à amostra ensaiada. ' + (usaLote ? ('Aceitação estatística por lote ' + String(lote!.numero ?? '') + ' (ABNT NBR 12655): n=' + String(lote!.n_exemplares) + ', fcm=' + fmt(Number(lote!.fcm), 1) + ', Sd=' + fmt(Number(lote!.sd), 1) + ', fck,est=' + fmt(loteFckEst as number, 1) + ' MPa. ') : 'Aceitação por exemplar na idade de controle (resistência do exemplar = maior do par); lote ainda sem amostragem suficiente para fck,est estatístico (NBR 12655). ') + 'Coleta na obra; moldagem, cura e ruptura conforme NBR 5738/5739.' + (ON.contato && contatoEmail ? ' Solicitante: ' + contatoEmail + '.' : '') + (ON.local_ensaio && localEnsaio ? ' Ensaios realizados em: ' + localEnsaio + '.' : '') + (ON.incerteza ? ' Incerteza de medição declarada no certificado de calibração da prensa.' : '') + (cfg?.nota_rodape ? ' ' + String(cfg.nota_rodape) : '');
     const words = obs.split(' '); let lineS = '';
     for (const w of words) { const test = lineS ? lineS + ' ' + w : w; if (F.widthOfTextAtSize(test, 7) > CW) { T(lineS, MX, y, 7, F, MUTED); y -= 9.5; lineS = w; } else lineS = test; }
     if (lineS) { T(lineS, MX, y, 7, F, MUTED); y -= 9.5; }
     y -= 8;
 
     need(70, false); const sigY = y;
-    if (ON.qr_validacao) { try { const qr = QRCode.create('https://lab.consultegeo.org/validar/' + codVal, { errorCorrectionLevel: 'M' }); const size = qr.modules.size; const dataq = qr.modules.data; const box = 54; const m = box / size; const ox = MX, oy = y - box; for (let r = 0; r < size; r++) for (let c2 = 0; c2 < size; c2++) if (dataq[r * size + c2]) page.drawRectangle({ x: ox + c2 * m, y: oy + (size - 1 - r) * m, width: m + 0.2, height: m + 0.2, color: INK }); T('Validacao publica', MX + 64, y - 10, 6.4, FB, INK); T('lab.consultegeo.org/validar/', MX + 64, y - 20, 6.2, F, MUTED); T(codVal, MX + 64, y - 29, 6.2, FB, INK); T('Assinatura: QR + validacao publica (ICP-Brasil na v2).', MX + 64, y - 38, 6.2, F, MUTED); } catch (_) { /* QR opcional */ } }
+    if (ON.qr_validacao) { try { const qr = QRCode.create('https://app.concresoft.io/validar/' + codVal, { errorCorrectionLevel: 'M' }); const size = qr.modules.size; const dataq = qr.modules.data; const box = 54; const m = box / size; const ox = MX, oy = y - box; for (let r = 0; r < size; r++) for (let c2 = 0; c2 < size; c2++) if (dataq[r * size + c2]) page.drawRectangle({ x: ox + c2 * m, y: oy + (size - 1 - r) * m, width: m + 0.2, height: m + 0.2, color: INK }); T('Validação pública', MX + 64, y - 10, 6.4, FB, INK); T('app.concresoft.io/validar/', MX + 64, y - 20, 6.2, F, MUTED); T(codVal, MX + 64, y - 29, 6.2, FB, INK); T('Assinatura: QR + validação pública (ICP-Brasil na v2).', MX + 64, y - 38, 6.2, F, MUTED); } catch (_) { /* QR opcional */ } }
     const sx = MX + CW * 0.52;
     hline(sx, sigY - 30, sx + CW * 0.40, MUTED, 0.6);
-    T(rt || 'Responsavel Tecnico', sx, sigY - 40, 8, FB, INK);
-    T('Responsavel Tecnico', sx, sigY - 49, 6.4, F, MUTED);
+    T(rt || 'Responsável Técnico', sx, sigY - 40, 8, FB, INK);
+    T('Responsável Técnico', sx, sigY - 49, 6.4, F, MUTED);
     if (creaRt || art) T('CREA ' + (creaRt || '-') + (art ? ' - ART ' + art : ''), sx, sigY - 57, 6.4, F, FAINT);
     if (gqNome) { hline(MX, sigY - 30, MX + CW * 0.40, MUTED, 0.6); T(gqNome, MX, sigY - 40, 8, FB, INK); T('Gerente da Qualidade', MX, sigY - 49, 6.4, F, MUTED); if (gqCrea) T('CREA ' + gqCrea, MX, sigY - 57, 6.4, F, FAINT); }
 
     const pages = doc.getPages(); const total = pages.length;
-    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: BOTTOM - 9 }, end: { x: RIGHT, y: BOTTOM - 9 }, thickness: 0.6, color: LINE }); p.drawText(san('Validacao publica - lab.consultegeo.org/validar/' + codVal), { x: MX, y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); const pg = san(`Pagina ${i + 1} de ${total}`); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); });
+    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: BOTTOM - 9 }, end: { x: RIGHT, y: BOTTOM - 9 }, thickness: 0.6, color: LINE }); p.drawText(san('Validação pública - app.concresoft.io/validar/' + codVal), { x: MX, y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); const pg = san(`Página ${i + 1} de ${total}`); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); });
 
     const bytes = await doc.save();
     let labReportId: string | null = null;
