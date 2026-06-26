@@ -1,5 +1,9 @@
-# GEOLAB → Concresoft — SOURCE VERSION v96
-CACHE_NAME: consultegeo-geolab-v96 · APP_VERSION: v96
+# GEOLAB → Concresoft — SOURCE VERSION v97
+CACHE_NAME: consultegeo-geolab-v97 · APP_VERSION: v97
+(v97 "FIX DE BUILD": o pipeline **regerou `database.types.ts`** na fonte — o bug do tsc da v95
+(`numero_relatorio`) está corrigido na origem. **Mas o `pdf.ts` ainda NÃO foi injetado** — merge de PDF
+continua (ConcretagensPage/ProgramacoesPage saveBlob + LaudosPage openDeferredTab). Pacotes de conserto
+prontos na pasta.)
 (slug interno `consultegeo-geolab` mantido; marca visivel = **Concresoft**; app em `app.concresoft.io`)
 (v94-v96: rompimentos/operador/export-fila (v94) + cumulativos v95/v96. **v95 exigiu REGERAR
 `database.types.ts` do banco vivo** — usa `numero_relatorio` que os tipos do completo nao tinham → tsc

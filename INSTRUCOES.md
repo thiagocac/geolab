@@ -1,30 +1,32 @@
-# GEOLAB → Concresoft — Patch v96 (cumulativo sobre v93)
-## Sigla da obra (auto 4 letras, editável) + Número de relatório por obra+ano + revisão de Resultados
+# GEOLAB → Concresoft — Patch v97 (cumulativo sobre v93) — FIX DE BUILD
+## Regenera database.types.ts (corrige o tsc quebrado dos patches v95/v96)
 
-Bump: `CACHE_NAME consultegeo-geolab-v96` + `APP_VERSION v96` (juntos).
-Patch **cumulativo** desde v93: inclui revisão da tela de Resultados (v94), numeração de relatório (v95) e a sigla da obra (v96).
+Bump: `CACHE_NAME consultegeo-geolab-v97` + `APP_VERSION v97`.
 
-### Aplicar (sobe no GitHub → Netlify CI)
-1. `unzip -o consultegeo-geolab-source-patches-v96.zip` na raiz do repo.
-2. `git add -A && git commit -m "v96: sigla da obra + numero de relatorio + revisao resultados" && git push`.
-3. Netlify builda (check-source → biome → tsc → vitest → vite). Push do v96 cobre v94/v95.
+### O problema (por que o commit/build falhou)
+A migration 070 adicionou as colunas `concretagens.numero_relatorio`/`relatorio_seq` e `client_works.sigla`
+no banco vivo, **mas `src/lib/database.types.ts` não foi regenerado**. O `src/lib/api/concretagem.ts` usa o
+cliente Supabase **tipado** (`const db = supabase;`) e faz `.select('… numero_relatorio …')` → o `tsc` falha
+("coluna não existe nos tipos"). O **esbuild não checa tipos**, então os patches v95/v96 passavam no meu gate
+local mas **quebravam no `tsc`** do Netlify (2 erros, ambos em `concretagem.ts`). `rompimento.ts` e
+`importacao.ts` usam `db` como `any`, por isso não acusavam.
 
-### v96 — Sigla da obra (este pedido)
-- Campo **`client_works.sigla`** exposto no **cadastro de obra** (Cadastros → Obras, `AdminListPage`) e no **assistente Nova obra** (`NovaObraWizard`).
-- **Auto-geração:** ao digitar o nome, a sigla é preenchida com as **4 primeiras letras** (sem acento/espaço, maiúsculas) **só enquanto estiver vazia**; o usuário pode editar livremente, e a edição é respeitada.
-- Mecanismo genérico novo no `FieldSpec`: `derive: { from, transform: 'first4letters' }`, processado no `AdminListPage` (deriva o destino se vazio). Coluna "Sigla" na lista de obras.
-- A sigla vira o **prefixo do Nº de relatório** (`SIGLA-NNN/AAAA`); sem sigla, usa o sufixo do código da obra (`0001-...`).
+### A correção
+- **`src/lib/database.types.ts` regenerado** do banco vivo (`xbdvyvvxvzmcosnekmfv`) via MCP — agora declara
+  `numero_relatorio`, `relatorio_seq` (concretagens) e `sigla` (client_works) em Row/Insert/Update.
+- Verificado com `tsc --strict` (probe positivo nas colunas novas = OK; controle negativo com coluna
+  inexistente = erro TS2339, provando que o tsc valida de fato).
 
-### Backend — JÁ APLICADO no banco vivo (xbdvyvvxvzmcosnekmfv) via MCP. NÃO re-aplicar.
-- **Migration 070** (LIVE): `client_works.sigla`; `concretagens.relatorio_seq`+`numero_relatorio`; trigger por obra+ano (advisory lock); UNIQUE; backfill.
-- **EF generate-laudo-ensaio-pdf v16** (sha 33e2ba83, LIVE): lê `numero_relatorio`; upsert do laudo por `concretagem_id`.
+### Aplicar
+1. `unzip -o consultegeo-geolab-source-patches-v97.zip` na raiz do repo.
+2. `git add -A && git commit -m "v97: regenera database.types.ts (fix tsc do numero_relatorio)" && git push`.
+3. Netlify builda verde (check-source → biome → tsc → vitest → vite).
 
-### Frontend cumulativo (v94+v95)
-- Resultados/rompimentos (v94): botões duplicados, Enter, re-save de lançados, operador, alerta < fck na idade de controle configurável, etc.
-- Numeração (v95): coluna/exibição + filtro por Nº de relatório em Concretagens, Programações, Rompimentos, Laudos, Importações.
+### Conteúdo (cumulativo v94+v95+v96 + o fix)
+17 arquivos: o **`src/lib/database.types.ts`** regenerado (o fix) + os 15 da v96 (rompimentos v94; numeração de
+relatório v95; sigla da obra v96) + bump + `INSTRUCOES.md`. EF `generate-laudo-ensaio-pdf` (sync do repo; já LIVE).
 
-### Arquivos (15)
-`public/sw.js`, `src/lib/telemetry/core.ts`, `src/lib/api/{types,concretagem,rompimento,importacao}.ts`, `src/components/patterns/AdminListPage.tsx`, `src/pages/cadastros/{CadastrosPage,NovaObraWizard}.tsx`, `src/pages/concreto/{RompimentosPage,ConcretagensPage,ProgramacoesPage,LaudosPage,ImportacoesPage}.tsx`, `supabase/functions/generate-laudo-ensaio-pdf/index.ts` (sync do repo; já LIVE).
-
-### Gate local
-check-source OK · **esbuild** (sintaxe + JSX + imports) OK em todos os arquivos tocados. tsc/vitest/vite rodam no Netlify.
+### Lição (para o pipeline)
+**Sempre regenerar `database.types.ts` quando uma migration adicionar/alterar colunas referenciadas pelo cliente
+Supabase tipado.** O esbuild não pega isso — só o `tsc`. (Migrations seguem sendo aplicadas via MCP; o que faltava
+era levar os tipos junto no patch.)
