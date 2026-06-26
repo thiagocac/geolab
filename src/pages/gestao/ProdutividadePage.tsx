@@ -21,10 +21,24 @@ export function ProdutividadePage() {
 
   async function exportar() {
     if (!linhas.length) return;
-    const XLSX = await import('xlsx');
-    const rows = linhas.map((r) => ({ Colaborador: r.nome, Funcoes: r.funcoes.join(', '), Concretagens: r.concretagens, 'CPs moldados': r.cps_moldados, Rompimentos: r.rompimentos }));
-    const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Produtividade');
-    XLSX.writeFile(wb, 'produtividade_' + (params?.inicio ?? '') + '_' + (params?.fim ?? '') + '.xlsx');
+    const { exportExcel } = await import('../../lib/export/xlsx');
+    const br = (d?: string) => (d ? d.split('-').reverse().join('/') : '-');
+    const rows = linhas.map((r) => ({ colaborador: r.nome, funcoes: r.funcoes.join(', '), concretagens: r.concretagens, cps: r.cps_moldados, rompimentos: r.rompimentos }));
+    await exportExcel(
+      { title: 'Produtividade por colaborador', filename: `produtividade-${params?.inicio ?? ''}-a-${params?.fim ?? ''}.xlsx`, fields: [{ label: 'Período', value: `${br(params?.inicio)} a ${br(params?.fim)}` }] },
+      {
+        name: 'Produtividade',
+        totals: true,
+        columns: [
+          { key: 'colaborador', header: 'Colaborador', width: 28 },
+          { key: 'funcoes', header: 'Funções', width: 24 },
+          { key: 'concretagens', header: 'Concretagens', format: 'int', total: 'sum' },
+          { key: 'cps', header: 'CPs moldados', format: 'int', total: 'sum' },
+          { key: 'rompimentos', header: 'Rompimentos', format: 'int', total: 'sum' },
+        ],
+        rows,
+      },
+    );
   }
 
   return (

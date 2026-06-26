@@ -1,6 +1,7 @@
 // Helpers puros do portal (sem dependencia de Supabase): filtros, consolidacao por
 // exemplar, deteccao de atraso e exportadores Excel/PDF. Reusados pelos dois portais.
 import type { ExemplarResumo, LaudoFiltro, ParcialFinal, PortalLaudoView, PortalResultadoRow, ResultadoFiltro } from './types';
+import { exportExcel, type XlsxColumn } from '../export/xlsx';
 
 const norm = (v: unknown) => String(v ?? '').toLowerCase();
 export const hojeISO = () => new Date().toISOString().slice(0, 10);
@@ -73,27 +74,48 @@ export function consolidarExemplares(rows: PortalResultadoRow[]): ExemplarResumo
   return out;
 }
 
-const conformeTxt = (v: boolean | null) => (v == null ? '' : v ? 'Conforme' : 'Nao conforme');
+const conformeTxt = (v: boolean | null) => (v == null ? '' : v ? 'Conforme' : 'Não conforme');
 
 export async function exportResultadosXlsx(rows: PortalResultadoRow[], filename: string): Promise<void> {
-  const XLSX = await import('xlsx');
-  const detalhe = rows.map((r) => ({
-    Obra: r.work_nome ?? '', Concretagem: r.concretagem_codigo ?? '', Data: r.data_concretagem ?? '',
-    Fornecedor: r.fornecedor_texto ?? '', 'Local/Peca': r.local_texto ?? '', NF: r.nota_fiscal ?? '',
-    Exemplar: r.amostra_codigo ?? '', CP: r.cp_codigo ?? r.numeracao_lab ?? '', 'Idade (dias)': r.idade_dias ?? '',
-    'Data rompimento': r.data_rompimento ?? '', 'Carga (kN)': r.carga_ruptura_kn ?? '', 'Resultado (MPa)': r.resultado_valor ?? '',
-    'FCK (MPa)': r.fck_ref ?? '', 'Idade controle (dias)': r.idade_controle ?? '', 'Idade de controle?': r.is_controle ? 'Sim' : 'Nao',
-    Conforme: conformeTxt(r.conforme), Situacao: r.situacao ?? '',
-  }));
-  const resumo = consolidarExemplares(rows).map((e) => ({
-    Obra: e.work_nome ?? '', Concretagem: e.concretagem_codigo ?? '', Data: e.data ?? '', Exemplar: e.exemplar ?? '', NF: e.nf ?? '',
-    'Idade controle (dias)': e.idade_controle ?? '', 'Resistencia (MPa)': e.resistencia ?? '', 'FCK (MPa)': e.fck ?? '',
-    Conforme: conformeTxt(e.conforme), 'Nro CPs': e.n_cps,
-  }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo), 'Resumo por exemplar');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalhe), 'Detalhe por CP');
-  XLSX.writeFile(wb, filename);
+  const resumo = consolidarExemplares(rows);
+  const colsResumo: XlsxColumn<ExemplarResumo>[] = [
+    { key: 'work_nome', header: 'Obra', width: 24 },
+    { key: 'concretagem_codigo', header: 'Concretagem', width: 18 },
+    { key: 'data', header: 'Data', format: 'date' },
+    { key: 'exemplar', header: 'Exemplar', align: 'center' },
+    { key: 'nf', header: 'NF', align: 'center' },
+    { key: 'idade_controle', header: 'Idade controle (dias)', format: 'int' },
+    { key: 'resistencia', header: 'Resistência (MPa)', format: 'dec1' },
+    { key: 'fck', header: 'FCK (MPa)', format: 'dec1' },
+    { header: 'Conforme', align: 'center', map: (e) => conformeTxt(e.conforme) },
+    { key: 'n_cps', header: 'Nº CPs', format: 'int' },
+  ];
+  const colsDetalhe: XlsxColumn<PortalResultadoRow>[] = [
+    { key: 'work_nome', header: 'Obra', width: 24 },
+    { key: 'concretagem_codigo', header: 'Concretagem', width: 18 },
+    { key: 'data_concretagem', header: 'Data', format: 'date' },
+    { key: 'fornecedor_texto', header: 'Fornecedor', width: 18 },
+    { key: 'local_texto', header: 'Local / peça', width: 16 },
+    { key: 'nota_fiscal', header: 'NF', align: 'center' },
+    { key: 'amostra_codigo', header: 'Exemplar', align: 'center' },
+    { header: 'CP', align: 'center', map: (r) => r.cp_codigo ?? r.numeracao_lab ?? '' },
+    { key: 'idade_dias', header: 'Idade (dias)', format: 'int' },
+    { key: 'data_rompimento', header: 'Data rompimento', format: 'date' },
+    { key: 'carga_ruptura_kn', header: 'Carga (kN)', format: 'dec1' },
+    { key: 'resultado_valor', header: 'Resultado (MPa)', format: 'dec1' },
+    { key: 'fck_ref', header: 'FCK (MPa)', format: 'dec1' },
+    { key: 'idade_controle', header: 'Idade controle (dias)', format: 'int' },
+    { header: 'Idade de controle?', align: 'center', map: (r) => (r.is_controle ? 'Sim' : 'Não') },
+    { header: 'Conforme', align: 'center', map: (r) => conformeTxt(r.conforme) },
+    { key: 'situacao', header: 'Situação', align: 'center' },
+  ];
+  await exportExcel(
+    { title: 'Resultados de ensaios', filename, fields: [{ label: 'Exemplares', value: String(resumo.length) }, { label: 'Corpos de prova', value: String(rows.length) }] },
+    [
+      { name: 'Resumo por exemplar', columns: colsResumo, rows: resumo },
+      { name: 'Detalhe por CP', columns: colsDetalhe, rows },
+    ],
+  );
 }
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>]/g, (c) => (c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;'));

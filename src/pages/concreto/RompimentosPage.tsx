@@ -7,7 +7,6 @@ import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { listReference } from '../../lib/api/client';
-import { saveBlob as downloadBlob } from '../../lib/pdf';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { CAMPOS_ENSAIO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
 import { DIMENSOES_CP, cargaParaMpa, relacaoHD, type UnidadeCarga } from '../../lib/concreto/cp';
@@ -25,6 +24,7 @@ import {
   type CpRompimento,
 } from '../../lib/api/rompimento';
 import { supabase } from '../../lib/supabase';
+import { saveBlob as downloadBlob } from '../../lib/pdf';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (v: string | null | undefined) => !v ? '-' : v.split('-').reverse().join('/');
@@ -50,7 +50,6 @@ function statusBadge(c: CpRompimento): string {
   return 'pendente';
 }
 function isAtrasado(c: CpRompimento, ref: string): boolean { return !resultadoAtual(c) && c.situacao === 'pendente' && !!c.data_prevista_rompimento && c.data_prevista_rompimento < ref; }
-
 
 const RUPTURA_AF: ReadonlyArray<[string, string]> = [
   ['A', 'Cônica'], ['B', 'Cônica e bipartida'], ['C', 'Colunar'],
@@ -227,7 +226,7 @@ export function RompimentosPage() {
   }
 
   async function exportarModelo() {
-    const XLSX = await import('xlsx');
+    const { exportExcel } = await import('../../lib/export/xlsx');
     const data = filtradas.map((r) => ({
       corpo_prova_id: r.id,
       numeracao: cpNumero(r),
@@ -243,9 +242,29 @@ export function RompimentosPage() {
       tipo_ruptura: effectiveTipo(r),
       massa_cp_g: effectiveMassa(r),
     }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'rompimentos');
-    XLSX.writeFile(wb, `modelo-rompimentos-${dataRef}.xlsx`);
+    await exportExcel(
+      { title: 'Modelo de rompimentos', filename: `modelo-rompimentos-${dataRef}.xlsx` },
+      {
+        name: 'rompimentos',
+        template: true,
+        columns: [
+          { key: 'corpo_prova_id', header: 'corpo_prova_id', width: 16 },
+          { key: 'numeracao', header: 'numeracao', align: 'center' },
+          { key: 'codigo_cp', header: 'codigo_cp', align: 'center' },
+          { key: 'nota_fiscal', header: 'nota_fiscal', align: 'center' },
+          { key: 'idade', header: 'idade', align: 'center' },
+          { key: 'data_prevista', header: 'data_prevista', align: 'center' },
+          { key: 'resultado_mpa', header: 'resultado_mpa', align: 'center' },
+          { key: 'carga', header: 'carga', align: 'center' },
+          { key: 'unidade_carga', header: 'unidade_carga', align: 'center' },
+          { key: 'data_rompimento', header: 'data_rompimento', align: 'center' },
+          { key: 'hora_rompimento', header: 'hora_rompimento', align: 'center' },
+          { key: 'tipo_ruptura', header: 'tipo_ruptura', align: 'center' },
+          { key: 'massa_cp_g', header: 'massa_cp_g', align: 'center' },
+        ],
+        rows: data,
+      },
+    );
   }
 
   async function exportarAgenda() {
@@ -260,7 +279,7 @@ export function RompimentosPage() {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        const XLSX = await import('xlsx');
+        const XLSX = await import('xlsx-js-style');
         const wb = XLSX.read(reader.result, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });

@@ -74,14 +74,26 @@ export function MedicaoPage() {
   async function gerarPdf(id: string) { const tab = openDeferredTab(); setBusy(true); try { tab.go(blobUrlAutoRevoke(await pdfMedicaoBlob(id))); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } finally { setBusy(false); } }
   async function exportar() {
     if (!itens) return;
-    const XLSX = await import('xlsx');
-    const rows: Record<string, unknown>[] = [
-      ...itens.map((i) => ({ Item: i.label, Quantidade: i.quantidade, 'Preco unitario': i.preco_unit, Subtotal: i.subtotal })),
-      ...adicionais.map((a) => ({ Item: 'Adicional: ' + a.descricao, Quantidade: 1, 'Preco unitario': a.valor, Subtotal: a.valor })),
-      { Item: 'TOTAL', Quantidade: '', 'Preco unitario': '', Subtotal: total },
+    const { exportExcel } = await import('../../lib/export/xlsx');
+    const br = (d: string) => (d ? d.split('-').reverse().join('/') : '-');
+    const rows = [
+      ...itens.map((i) => ({ item: i.label, quantidade: i.quantidade, preco: i.preco_unit, subtotal: i.subtotal })),
+      ...adicionais.map((a) => ({ item: 'Adicional: ' + a.descricao, quantidade: 1, preco: a.valor, subtotal: a.valor })),
     ];
-    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'medicao');
-    XLSX.writeFile(wb, `medicao-${escopo}-${inicio.slice(0, 7)}.xlsx`);
+    await exportExcel(
+      { title: `Medição — ${escopo}`, filename: `medicao-${escopo}-${inicio.slice(0, 7)}.xlsx`, fields: [{ label: 'Escopo', value: escopo }, { label: 'Período', value: `${br(inicio)} a ${br(fim)}` }] },
+      {
+        name: 'Medição',
+        totals: true,
+        columns: [
+          { key: 'item', header: 'Item', width: 40 },
+          { key: 'quantidade', header: 'Quantidade', format: 'int', total: 'sum' },
+          { key: 'preco', header: 'Preço unitário', format: 'money' },
+          { key: 'subtotal', header: 'Subtotal', format: 'money', total: 'sum' },
+        ],
+        rows,
+      },
+    );
   }
 
   return (
