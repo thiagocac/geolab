@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -12,11 +13,6 @@ import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State'
 import { listLotes, listObrasRef, criarLote, recalcularLote, excluirLote } from '../../lib/api/lotes';
 
 const fmt = (n: number | null, d = 1) => (n == null ? '—' : Number(n).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }));
-const STATUS: Record<string, { label: string; color: string }> = {
-  aceito: { label: 'Aceito', color: '#16a34a' },
-  rejeitado: { label: 'Rejeitado', color: 'var(--magenta)' },
-  em_analise: { label: 'Em analise', color: 'var(--ink-faint)' },
-};
 
 export function LotesPage() {
   const { member, hasRole } = useAuth();
@@ -30,7 +26,7 @@ export function LotesPage() {
   const [form, setForm] = useState({ work_id: '', fck_mpa: '', condicao_preparo: 'A', idade_controle_dias: '28', periodo_inicio: '', periodo_fim: '' });
 
   const obras = useQuery({ queryKey: ['lotes-obras'], queryFn: listObrasRef });
-  const lotes = useQuery({ queryKey: ['lotes', filtroObra], queryFn: () => listLotes(filtroObra || undefined) });
+  const lotes = useQuery({ queryKey: ['lotes', filtroObra, member?.tenant_id], queryFn: () => listLotes(filtroObra || undefined, member?.tenant_id) });
 
   function abrir() { setForm({ work_id: filtroObra || '', fck_mpa: '', condicao_preparo: 'A', idade_controle_dias: '28', periodo_inicio: '', periodo_fim: '' }); setOpen(true); }
 
@@ -77,7 +73,6 @@ export function LotesPage() {
             <table className="table">
               <thead><tr><th>Numero</th><th>Obra</th><th style={{ textAlign: 'right' }}>fck</th><th style={{ textAlign: 'right' }}>Idade</th><th style={{ textAlign: 'right' }}>n</th><th style={{ textAlign: 'right' }}>fcm</th><th style={{ textAlign: 'right' }}>Sd</th><th style={{ textAlign: 'right' }}>fck,est</th><th>Status</th><th></th></tr></thead>
               <tbody>{(lotes.data ?? []).map((l) => {
-                const st = STATUS[l.status] ?? STATUS.em_analise;
                 return (
                   <tr key={l.id}>
                     <td style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>{l.numero}</td>
@@ -88,7 +83,7 @@ export function LotesPage() {
                     <td style={{ textAlign: 'right' }}>{fmt(l.fcm)}</td>
                     <td style={{ textAlign: 'right' }}>{fmt(l.sd)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 800 }}>{fmt(l.fck_est)}</td>
-                    <td style={{ fontWeight: 700, color: st.color }}>{st.label}</td>
+                    <td><StatusBadge status={l.status} /></td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{podeEditar ? <><Button variant="ghost" onClick={() => void recalcular(l.id)}>Recalcular</Button><Button variant="ghost" onClick={() => void excluir(l.id)}>Excluir</Button></> : null}</td>
                   </tr>
                 );

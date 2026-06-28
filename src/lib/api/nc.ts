@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { assertUploadSize } from '../upload';
 
 // Motor de NC (engine configuravel re-derivado do GEOMAT). non_conformities = cabeca;
 // nc_actions = tratativa dirigida por nc_action_templates + nc_action_transitions.
@@ -34,21 +35,25 @@ export async function listObrasRef(): Promise<{ id: string; nome: string }[]> {
   return ((data ?? []) as any[]).map((r) => ({ id: String(r.id), nome: String(r.nome ?? r.id) }));
 }
 
-export async function listNcs(f: { status?: string; work_id?: string }): Promise<NcRow[]> {
+export async function listNcs(f: { status?: string; work_id?: string; page?: number; pageSize?: number }, tenantId?: string): Promise<{ rows: NcRow[]; total: number }> {
+  const pageSize = f.pageSize ?? 25;
+  const page = Math.max(0, f.page ?? 0);
   let q = db.from('non_conformities')
-    .select('id,numero,work_id,classification_code,classification_nome,tipo_code,tipo_nome,origem,severidade,status,data_abertura,descricao,entidade_origem,created_at, client_works(nome)')
+    .select('id,numero,work_id,classification_code,classification_nome,tipo_code,tipo_nome,origem,severidade,status,data_abertura,descricao,entidade_origem,created_at, client_works(nome)', { count: 'exact' })
     .is('deleted_at', null).order('created_at', { ascending: false });
+  if (tenantId) q = q.eq('tenant_id', tenantId); // ativa o índice por tenant; RLS segue garantindo o isolamento
   if (f.status) q = q.eq('status', f.status);
   if (f.work_id) q = q.eq('work_id', f.work_id);
-  const { data, error } = await q;
+  const { data, error, count } = await q.range(page * pageSize, page * pageSize + pageSize - 1);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as any[]).map((r) => ({
+  const rows = ((data ?? []) as any[]).map((r) => ({
     id: String(r.id), numero: String(r.numero), work_id: r.work_id ?? null, obra: String(r.client_works?.nome ?? ''),
     classification_code: r.classification_code ?? null, classification_nome: r.classification_nome ?? null,
     tipo_code: r.tipo_code ?? null, tipo_nome: r.tipo_nome ?? null, origem: String(r.origem), severidade: String(r.severidade),
     status: String(r.status), data_abertura: String(r.data_abertura ?? '').slice(0, 10), descricao: r.descricao ?? null,
     entidade_origem: r.entidade_origem ?? null, created_at: String(r.created_at),
   }));
+  return { rows, total: count ?? rows.length };
 }
 
 export async function listAcoes(ncId: string): Promise<NcAcao[]> {
@@ -94,14 +99,15 @@ export async function excluirNc(id: string): Promise<void> {
 }
 
 export async function uploadAnexo(tenantId: string, ncId: string, file: File): Promise<{ path: string; nome: string }> {
+  assertUploadSize(file);
   const safe = file.name.replace(/[^\w.-]+/g, '_');
   const path = tenantId + '/' + ncId + '/' + Date.now() + '-' + safe;
   const { error } = await supabase.storage.from('anexos').upload(path, file, { upsert: false, contentType: file.type || undefined });
   if (error) throw new Error(error.message);
   return { path, nome: file.name };
 }
-export async function signedAnexo(path: string, filename?: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('anexos').createSignedUrl(path, 300, filename ? { download: filename } : undefined);
+export async function signedAnexo(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('anexos').createSignedUrl(path, 300);
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }

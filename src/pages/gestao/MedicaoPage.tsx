@@ -1,14 +1,16 @@
 import { useState } from 'react';
+import { openDeferredTab } from '../../lib/pdf';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State';
-import { listEscopo, listTestTypes, salvarPrecos, computarMedicao, salvarMedicao, listMedicoes, pdfMedicaoBlob, type EscopoTipo, type MedicaoItem, type Adicional } from '../../lib/api/medicao';
-import { openDeferredTab, blobUrlAutoRevoke } from '../../lib/pdf';
+import { listEscopo, listTestTypes, salvarPrecos, computarMedicao, salvarMedicao, listMedicoes, pdfMedicaoUrl, type EscopoTipo, type MedicaoItem, type Adicional } from '../../lib/api/medicao';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const BRL = (n: number) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const FLAT: [string, string][] = [['forma', 'Formas (cobranca)'], ['laudo', 'Laudo'], ['visita', 'Visita do moldador'], ['fixo_mensal', 'Fixo mensal']];
@@ -19,6 +21,7 @@ export function MedicaoPage() {
   const toast = useToast();
   const qc = useQueryClient();
   const podeEditar = hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'financeiro');
+  const confirm = useConfirm();
   const [escopo, setEscopo] = useState<EscopoTipo>('contrato');
   const [escopoId, setEscopoId] = useState('');
   const opcoes = useQuery({ queryKey: ['escopo-medicao', escopo], queryFn: () => listEscopo(escopo) });
@@ -64,14 +67,16 @@ export function MedicaoPage() {
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function fechar() {
-    if (!member || !itens) return; setBusy(true);
+    if (!member || !itens) return;
+    if (!(await confirm({ title: 'Fechar medição', message: 'Fechar esta medição? Ela passa a ser faturável e os itens do período ficam congelados.', confirmLabel: 'Fechar medição' }))) return;
+    setBusy(true);
     try {
       await salvarMedicao(member.tenant_id, { escopo, escopo_id: escopoId, contract_id: escopo === 'contrato' ? escopoId : null, client_id: clientId, competencia: inicio.slice(0, 7), periodo_inicio: inicio, periodo_fim: fim, status: 'fechada', itens, adicionais, valor_itens: valorItens, valor_adicionais: valorAdic, valor_total: total, created_by: member.id });
       await qc.invalidateQueries({ queryKey: ['medicoes', escopoId] });
       toast('Medicao fechada.', 'success'); setItens(null); setAdicionais([]);
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
-  async function gerarPdf(id: string) { const tab = openDeferredTab(); setBusy(true); try { tab.go(blobUrlAutoRevoke(await pdfMedicaoBlob(id))); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } finally { setBusy(false); } }
+  async function gerarPdf(id: string) { setBusy(true); const tab = openDeferredTab(); try { tab.set(await pdfMedicaoUrl(id)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } finally { setBusy(false); } }
   async function exportar() {
     if (!itens) return;
     const { exportExcel } = await import('../../lib/export/xlsx');
@@ -153,7 +158,7 @@ export function MedicaoPage() {
           {medicoes.isLoading ? <LoadingState /> : medicoes.isError ? <ErrorState message={(medicoes.error as Error).message} /> : (medicoes.data ?? []).length === 0 ? <EmptyState /> : (
             <table className="w-full text-left text-sm">
               <thead><tr className="border-b text-xs uppercase text-slate-500"><th className="py-2">Competencia</th><th>Periodo</th><th>Status</th><th className="text-right">Total</th><th></th></tr></thead>
-              <tbody>{(medicoes.data ?? []).map((md) => <tr key={md.id} className="border-b border-slate-100 dark:border-slate-800"><td className="py-2">{md.competencia ?? '-'}</td><td>{md.periodo_inicio + ' a ' + md.periodo_fim}</td><td>{md.status}</td><td className="text-right font-bold">{BRL(md.valor_total)}</td><td className="text-right"><Button variant="secondary" onClick={() => void gerarPdf(md.id)} disabled={busy}>PDF</Button></td></tr>)}</tbody>
+              <tbody>{(medicoes.data ?? []).map((md) => <tr key={md.id} className="border-b border-slate-100 dark:border-slate-800"><td className="py-2">{md.competencia ?? '-'}</td><td>{md.periodo_inicio + ' a ' + md.periodo_fim}</td><td><StatusBadge status={md.status} /></td><td className="text-right font-bold">{BRL(md.valor_total)}</td><td className="text-right"><Button variant="secondary" onClick={() => void gerarPdf(md.id)} disabled={busy}>PDF</Button></td></tr>)}</tbody>
             </table>
           )}
         </Card>

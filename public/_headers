@@ -1,0 +1,15 @@
+# Netlify headers — cache de performance (aditivo, seguro).
+# Assets com hash no nome (Vite) são imutáveis: cache longo + immutable evita
+# revalidação em visitas recorrentes. O hash muda a cada deploy => cache-bust automático.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Arquivos de raiz que MUDAM por deploy/ambiente => sempre revalidar (deploy reflete na hora).
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+/config.js
+  Cache-Control: public, max-age=0, must-revalidate
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate

@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import type { Database } from '../database.types';
 import { env } from '../env';
 import { normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../concreto';
+import { assertImagem, assertUploadSize } from '../upload';
 
 const db = supabase;
 
@@ -27,17 +28,37 @@ export type CaminhaoRow = {
 
 const SEL = 'id, codigo, numero_relatorio, status, origem, data_programada, data_real, hora_programada, hora_inicio, hora_fim, fornecedor_texto, fck_previsto, traco_texto, dimensao_cp, local_texto, operational_material_id, volume_programado_m3, volume_lancado_m3, bombeado, clima, temperatura_ambiente_c, moldador_id, observacoes, metadata, client_id, work_id, lab_clients(razao_social, nome_fantasia), client_works(nome, cidade, uf), operational_materials(nome, padrao_moldagem, fck_mpa, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos), colaboradores(nome)';
 
-export async function listConcretagens(workId?: string): Promise<ConcretagemRow[]> {
+export async function listConcretagens(workId?: string, tenantId?: string): Promise<ConcretagemRow[]> {
   let q = db.from('concretagens').select(SEL).is('deleted_at', null);
+  if (tenantId) q = q.eq('tenant_id', tenantId);
   if (workId) q = q.eq('work_id', workId);
   const { data, error } = await q.order('data_programada', { ascending: false }).order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as ConcretagemRow[];
 }
 
-export async function listProgramacoes(): Promise<ConcretagemRow[]> {
-  const rows = await listConcretagens();
+export async function listProgramacoes(tenantId?: string): Promise<ConcretagemRow[]> {
+  const rows = await listConcretagens(undefined, tenantId);
   return rows.filter((r) => r.origem === 'programada' || r.origem === 'portal_cliente' || r.status === 'pendente' || !(r.data_real));
+}
+
+// Listagem paginada + busca server-side (tela Concretagens). Busca livre nas colunas-base
+// (numero_relatorio/codigo/fornecedor_texto); cliente/obra via filtros .eq escopados.
+// listConcretagens/listProgramacoes seguem intactas (a programação usa a versão completa).
+export async function listConcretagensPaged(opts: { tenantId?: string; clientId?: string; workId?: string; search?: string; page?: number; pageSize?: number }): Promise<{ rows: ConcretagemRow[]; total: number }> {
+  const pageSize = opts.pageSize ?? 25;
+  const page = Math.max(0, opts.page ?? 0);
+  let q = db.from('concretagens').select(SEL, { count: 'exact' }).is('deleted_at', null);
+  if (opts.tenantId) q = q.eq('tenant_id', opts.tenantId);
+  if (opts.clientId) q = q.eq('client_id', opts.clientId);
+  if (opts.workId) q = q.eq('work_id', opts.workId);
+  const term = (opts.search ?? '').replace(/[,()*%]/g, ' ').trim();
+  if (term) q = q.or(`numero_relatorio.ilike.*${term}*,codigo.ilike.*${term}*,fornecedor_texto.ilike.*${term}*`);
+  const { data, error, count } = await q
+    .order('data_programada', { ascending: false }).order('created_at', { ascending: false })
+    .range(page * pageSize, page * pageSize + pageSize - 1);
+  if (error) throw new Error(error.message);
+  return { rows: (data ?? []) as ConcretagemRow[], total: count ?? (data ?? []).length };
 }
 
 export async function getConcretagem(id: string): Promise<ConcretagemRow | null> {
@@ -178,6 +199,8 @@ export async function listTracosComFck(): Promise<{ value: string; label: string
 
 // OCR da NF/DANFE do caminhao (EF extract-nf-vision). Retorna campos ja nomeados p/ o recebimento.
 async function fileToBase64(file: File): Promise<{ base64: string; mime: string }> {
+  assertUploadSize(file);
+  assertImagem(file);
   const dataUrl: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(new Error('Falha ao ler arquivo')); r.readAsDataURL(file); });
   return { base64: dataUrl.split(',')[1] ?? '', mime: file.type || 'image/jpeg' };
 }
@@ -198,6 +221,8 @@ export async function lerNfImagem(file: File): Promise<{ enabled: boolean; dados
 // Evidências (melhoria 1.2) — fotos da concretagem/CP/ficha física. Bucket 'evidencias' (RLS por tenant).
 export type EvidenciaRow = { id: string; path: string; tipo: string; descricao: string | null; created_at: string; concretagem_id: string | null; receipt_id: string | null };
 export async function uploadEvidencia(tenantId: string, concId: string, file: File, opts?: { receiptId?: string | null; tipo?: string; descricao?: string }): Promise<void> {
+  assertUploadSize(file);
+  assertImagem(file);
   const safe = file.name.replace(/[^\w.-]+/g, '_');
   const path = tenantId + '/conc/' + concId + '/' + Date.now() + '-' + safe;
   const up = await supabase.storage.from('evidencias').upload(path, file, { upsert: false, contentType: file.type || undefined });

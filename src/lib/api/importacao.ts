@@ -7,10 +7,12 @@ import { calcMPa, maybeNotifyAbaixoFck } from './rompimento';
 const db = supabase as unknown as { from: (t: string) => any };
 
 export type ConcOption = { id: string; codigo: string | null; numero_relatorio: string | null; work_nome: string | null };
-export async function listConcretagensComPendentes(): Promise<ConcOption[]> {
-  const { data, error } = await db.from('corpos_prova')
+export async function listConcretagensComPendentes(tenantId?: string): Promise<ConcOption[]> {
+  let q = db.from('corpos_prova')
     .select('concretagem_id, concretagens(id, codigo, numero_relatorio, client_works(nome))')
     .eq('situacao', 'pendente').is('deleted_at', null);
+  if (tenantId) q = q.eq('tenant_id', tenantId);
+  const { data, error } = await q;
   if (error) throw new Error(error.message);
   const seen = new Map<string, ConcOption>();
   for (const r of (data ?? []) as Record<string, any>[]) {

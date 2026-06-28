@@ -39,7 +39,7 @@ export function ImportacoesPage() {
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrMsg, setOcrMsg] = useState<string | null>(null);
 
-  const concs = useQuery({ queryKey: ['imp-concs'], queryFn: listConcretagensComPendentes });
+  const concs = useQuery({ queryKey: ['imp-concs', member?.tenant_id], queryFn: () => listConcretagensComPendentes(member?.tenant_id) });
   const pend = useQuery({ queryKey: ['imp-pend', concId], queryFn: () => getPendentes(concId), enabled: !!concId });
   const cps = pend.data ?? [];
 

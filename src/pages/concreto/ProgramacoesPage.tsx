@@ -3,24 +3,29 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useToast } from '../../lib/toast';
+import { useAuth } from '../../lib/auth';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { VirtualTable } from '../../components/ui/VirtualTable';
 import { listProgramacoes, confirmarProgramacao, cancelarProgramacao, invokeFicha } from '../../lib/api/concretagem';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
+
 import { saveBlob as dl } from '../../lib/pdf';
-function statusCls(s: string) { if (s === 'registrado' || s === 'aprovado') return 'bg-green-100 text-green-700'; if (s === 'cancelada') return 'bg-red-100 text-red-700'; if (s === 'pendente') return 'bg-amber-100 text-amber-800'; return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'; }
 
 export function ProgramacoesPage() {
   const toast = useToast();
   const qc = useQueryClient();
   const nav = useNavigate();
-  const q = useQuery({ queryKey: ['programacoes'], queryFn: listProgramacoes });
+  const confirm = useConfirm();
+  const { member } = useAuth();
+  const q = useQuery({ queryKey: ['programacoes', member?.tenant_id], queryFn: () => listProgramacoes(member?.tenant_id) });
   type Row = NonNullable<typeof q.data>[number];
   const [busca, setBusca] = useState('');
 
   async function confirmar(id: string) { try { await confirmarProgramacao(id); await qc.invalidateQueries({ queryKey: ['programacoes'] }); toast('Programação confirmada.', 'success'); } catch (e) { toast((e as Error).message, 'error'); } }
-  async function cancelar(id: string) { try { await cancelarProgramacao(id); await qc.invalidateQueries({ queryKey: ['programacoes'] }); toast('Programação cancelada.', 'success'); } catch (e) { toast((e as Error).message, 'error'); } }
+  async function cancelar(id: string) { if (!(await confirm({ title: 'Cancelar programação', message: 'Cancelar esta programação? A ação não pode ser desfeita.', danger: true, confirmLabel: 'Cancelar programação', cancelLabel: 'Voltar' }))) return; try { await cancelarProgramacao(id); await qc.invalidateQueries({ queryKey: ['programacoes'] }); toast('Programação cancelada.', 'success'); } catch (e) { toast((e as Error).message, 'error'); } }
   async function ficha(id: string) { try { dl(await invokeFicha(id), 'ficha-programacao.pdf'); } catch (e) { toast((e as Error).message, 'error'); } }
 
   const todas: Row[] = q.data ?? [];
@@ -28,7 +33,7 @@ export function ProgramacoesPage() {
   const rows: Row[] = termo ? todas.filter((r) => [r.numero_relatorio, r.codigo, r.lab_clients?.razao_social, r.client_works?.nome].some((v) => String(v ?? '').toLowerCase().includes(termo))) : todas;
   const columns: ColumnDef<Row, unknown>[] = [
     { id: 'relatorio', header: 'Nº relatório', accessorFn: (r) => r.numero_relatorio ?? '', size: 130, cell: ({ row }) => <span className="font-bold">{row.original.numero_relatorio ?? '-'}</span> },
-    { id: 'status', header: 'Status', accessorFn: (r) => r.status, size: 120, cell: ({ row }) => <div><span className={'rounded-full px-2 py-1 text-xs font-black ' + statusCls(row.original.status)}>{row.original.status}</span><div className="mt-1 text-[11px] text-slate-400">{row.original.origem}</div></div> },
+    { id: 'status', header: 'Status', accessorFn: (r) => r.status, size: 120, cell: ({ row }) => <div><StatusBadge status={row.original.status} /><div className="mt-1 text-[11px] text-slate-400">{row.original.origem}</div></div> },
     { id: 'data', header: 'Data/hora', accessorFn: (r) => r.data_programada ?? r.data_real ?? '', size: 120, cell: ({ row }) => <div><div className="font-bold">{row.original.data_programada ?? row.original.data_real ?? '-'}</div><div className="text-xs text-slate-500">{row.original.hora_programada ?? row.original.hora_inicio ?? '-'}</div></div> },
     { id: 'cliente', header: 'Cliente / obra', accessorFn: (r) => r.lab_clients?.razao_social ?? '', size: 220, cell: ({ row }) => <div><b>{row.original.lab_clients?.razao_social ?? '-'}</b><div className="text-xs text-slate-500">{row.original.client_works?.nome ?? '-'}</div></div> },
     { id: 'local', header: 'Local / peça', accessorFn: (r) => r.local_texto ?? '', size: 140, cell: ({ row }) => <span>{row.original.local_texto ?? '-'}</span> },

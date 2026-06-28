@@ -19,6 +19,7 @@ import {
   listRompimentoAudit,
   maybeNotifyAbaixoFck,
   resultadoAtual,
+  resumoRompimentos,
   setNumeracaoCp,
   type AuditItem,
   type CpRompimento,
@@ -97,7 +98,9 @@ export function RompimentosPage() {
   const [bulkHora, setBulkHora] = useState('');
   const [bulkTipo, setBulkTipo] = useState('');
 
-  const cpsQ = useQuery({ queryKey: ['rompimentos'], queryFn: listCpsRompimento });
+  const carregarTudo = mostrarLancados || mostrarInsatisf;
+  const cpsQ = useQuery({ queryKey: ['rompimentos', member?.tenant_id, carregarTudo], queryFn: () => listCpsRompimento(member?.tenant_id, carregarTudo ? undefined : { situacao: 'pendente' }) });
+  const resumoQ = useQuery({ queryKey: ['rompimentos', 'resumo', member?.tenant_id], enabled: !!member, queryFn: () => resumoRompimentos(member!.tenant_id) });
   const cfgQ = useQuery({ queryKey: ['config_controle_laudo', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
   const equips = useQuery({ queryKey: ['ref', 'equipamentos_prensa'], queryFn: () => listReference('equipamentos', 'marca_modelo') });
   const prensasDet = useQuery({ queryKey: ['prensas_det', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: async () => {
@@ -153,19 +156,17 @@ export function RompimentosPage() {
     if (!mostrarLancados && res != null) return false;
     if (mostrarInsatisf) {
       const esp = esperado(r);
-      if (res == null || esp == null || res >= esp) return false;
+      const naIdade = r.idade_unidade !== 'hora' && Number(r.idade_dias) === idadeControle;
+      if (res == null || esp == null || res >= esp || !naIdade) return false;
     }
     return true;
-  }), [rows, tipoFiltro, idadeFiltro, nfFiltro, janela, dataRef, mostrarLancados, mostrarInsatisf]);
+  }), [rows, tipoFiltro, idadeFiltro, nfFiltro, janela, dataRef, mostrarLancados, mostrarInsatisf, idadeControle]);
 
-  const countPend = rows.filter((r) => !resultadoAtual(r) && r.situacao === 'pendente').length;
-  const countAtr = rows.filter((r) => isAtrasado(r, dataRef)).length;
-  const countRom = rows.filter((r) => resultadoAtual(r)).length;
-  const countIns = rows.filter((r) => {
-    const res = resultadoAtual(r)?.resultado_valor ?? null;
-    const esp = esperado(r);
-    return res != null && esp != null && res < esp;
-  }).length;
+  // Contadores globais vindos da RPC (corretos independentemente do recorte carregado na grade).
+  const countPend = resumoQ.data?.pendente ?? 0;
+  const countAtr = resumoQ.data?.atrasado ?? 0;
+  const countRom = resumoQ.data?.rompido ?? 0;
+  const countIns = resumoQ.data?.insatisfatorio ?? 0;
 
   function patch(id: string, values: Partial<EditState>) { setEdits((s) => ({ ...s, [id]: { ...(s[id] ?? {}), ...values } })); }
   function effectiveData(cp: CpRompimento): string {

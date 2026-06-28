@@ -59,20 +59,36 @@ export function resultadoAtual(cp: CpRompimento): MaterialTestResult | null {
 const SELECT_CP = 'id, codigo, numeracao_lab, external_key, amostra_id, idade_dias, idade_unidade, data_prevista_rompimento, data_real_rompimento, data_moldagem, situacao, motivo_descarte, valor_esperado, metadata, concretagem_id, receipt_id, material_test_type_id, contraprova, contraprova_de_id, material_tests(id, resultado_valor, carga_ruptura_kn, data_rompimento, hora_rompimento, cp_diametro_mm, cp_altura_mm, tipo_ruptura, capeamento, massa_cp_g, equipamento_id, operador_id, created_at), material_receipts(id, nota_fiscal, serie, external_key, volume_m3, slump_medido_cm, temperatura_concreto_c, elementos_concretados), material_test_types(id, codigo, nome, unidade_resultado, idade_controle, idade_controle_unidade, cp_diametro_padrao_mm, cp_altura_padrao_mm), concretagens(id, codigo, numero_relatorio, fck_previsto, fornecedor_texto, client_works(nome), lab_clients(razao_social, nome_fantasia))';
 const SELECT_CP_SEM_NUM = SELECT_CP.replace('numeracao_lab, ', '');
 
-export async function listCpsRompimento(): Promise<CpRompimento[]> {
-  const q = db.from('corpos_prova').select(SELECT_CP).is('deleted_at', null).order('data_prevista_rompimento', { ascending: true });
-  let { data, error } = await q;
+export async function listCpsRompimento(tenantId?: string, opts?: { situacao?: string }): Promise<CpRompimento[]> {
+  const situacao = opts?.situacao;
+  let q = db.from('corpos_prova').select(SELECT_CP).is('deleted_at', null);
+  if (tenantId) q = q.eq('tenant_id', tenantId);
+  if (situacao) q = q.eq('situacao', situacao);
+  let { data, error } = await q.order('data_prevista_rompimento', { ascending: true });
   if (error && /numeracao_lab/i.test(error.message)) {
-    const retry = await db.from('corpos_prova').select(SELECT_CP_SEM_NUM).is('deleted_at', null).order('data_prevista_rompimento', { ascending: true });
+    let rq = db.from('corpos_prova').select(SELECT_CP_SEM_NUM).is('deleted_at', null);
+    if (tenantId) rq = rq.eq('tenant_id', tenantId);
+    if (situacao) rq = rq.eq('situacao', situacao);
+    const retry = await rq.order('data_prevista_rompimento', { ascending: true });
     data = retry.data; error = retry.error;
   }
   if (error) throw new Error(error.message);
   return (data ?? []) as CpRompimento[];
 }
 
-export async function listAgenda(): Promise<CpPendente[]> {
-  const rows = await listCpsRompimento();
-  return rows.filter((r) => r.situacao === 'pendente');
+export async function listAgenda(tenantId?: string): Promise<CpPendente[]> {
+  // Mesmo resultado de antes (CPs pendentes), mas com situacao filtrada NO SERVIDOR
+  // (antes: fetch completo + filter client-side) e escopo de tenant explicito quando informado.
+  return listCpsRompimento(tenantId, { situacao: 'pendente' });
+}
+
+// Contadores globais (pendente/atrasado/rompido/insatisfatorio) calculados NO BANCO via RPC
+// (rompimentos_resumo, SECURITY DEFINER + is_tenant_member) — evita baixar todos os CPs só para somar.
+export async function resumoRompimentos(tenantId: string): Promise<{ pendente: number; atrasado: number; rompido: number; insatisfatorio: number }> {
+  const { data, error } = await db.rpc('rompimentos_resumo', { p_tenant: tenantId });
+  if (error) throw new Error(error.message);
+  const r = (Array.isArray(data) ? data[0] : data) as { pendente?: number; atrasado?: number; rompido?: number; insatisfatorio?: number } | null;
+  return { pendente: r?.pendente ?? 0, atrasado: r?.atrasado ?? 0, rompido: r?.rompido ?? 0, insatisfatorio: r?.insatisfatorio ?? 0 };
 }
 
 // Fator de correcao h/d (ABNT NBR 5739), interpolado.

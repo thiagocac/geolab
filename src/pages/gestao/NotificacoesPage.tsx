@@ -48,7 +48,7 @@ export function NotificacoesPage() {
             </label>
           ))}
         </div>
-        <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '10px 0 0' }}>Aplica-se ao seu usuario. Os disparos ainda estao em modo de simulacao (dry-run) no piloto.</p>
+        <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '10px 0 0' }}>Aplica-se ao seu usuário. O envio efetivo de e-mails depende da configuração de despacho do laboratório (Sistema › E-mails).</p>
       </Card>
 
       <Card>

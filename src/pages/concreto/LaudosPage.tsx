@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { openDeferredTab } from '../../lib/pdf';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -8,25 +9,34 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudos, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, type LaudoRow } from '../../lib/api/laudo';
+import { listLaudosPaged, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao } from '../../lib/api/laudo';
+import { listReference } from '../../lib/api/client';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
 import type { ParcialFinal } from '../../lib/portal/types';
-import { saveUrl, openDeferredTab, blobUrlAutoRevoke } from '../../lib/pdf';
 
 export function LaudosPage() {
   const { hasRole, member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const podeAprovar = hasRole('admin', 'admin_consulte', 'gestor_qualidade');
   const [novo, setNovo] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
   const [busca, setBusca] = useState('');
+  const [buscaQ, setBuscaQ] = useState('');
+  const [obraFiltro, setObraFiltro] = useState('');
+  const [page, setPage] = useState(0);
+  const PAGE = 25;
+  useEffect(() => { const t = setTimeout(() => { setBuscaQ(busca.trim()); setPage(0); }, 300); return () => clearTimeout(t); }, [busca]);
 
-  const q = useQuery({ queryKey: ['laudos'], queryFn: listLaudos });
+  const q = useQuery({ queryKey: ['laudos', member?.tenant_id, obraFiltro, buscaQ, page], queryFn: () => listLaudosPaged({ tenantId: member?.tenant_id, workId: obraFiltro || undefined, search: buscaQ || undefined, page, pageSize: PAGE }), placeholderData: keepPreviousData });
+  const worksFiltro = useQuery({ queryKey: ['ref', 'client_works', 'all'], queryFn: () => listReference('client_works', 'nome') });
   const cls = useQuery({ queryKey: ['laudos-cls'], queryFn: listLaudosClassificacao });
-  const elegiveis = useQuery({ queryKey: ['conc-result'], queryFn: listConcretagensComResultado, enabled: novo });
+  const elegiveis = useQuery({ queryKey: ['conc-result', member?.tenant_id], queryFn: () => listConcretagensComResultado(member?.tenant_id), enabled: novo });
+
 
   function toggle(cid: string) { setSel((s) => { const n = new Set(s); if (n.has(cid)) n.delete(cid); else n.add(cid); return n; }); }
   function fecharNovo() { setNovo(false); setSel(new Set()); setProg(null); }
@@ -34,36 +44,36 @@ export function LaudosPage() {
     const ids = [...sel]; if (ids.length !== 1) { toast('Selecione exatamente uma concretagem para pré-visualizar.', 'error'); return; }
     setBusy(true);
     const tab = openDeferredTab();
-    try { const { blob } = await gerarLaudo(ids[0], false); tab.go(blobUrlAutoRevoke(blob)); toast('Pré-visualização gerada (não persistida).', 'info'); }
+    try { const { blob } = await gerarLaudo(ids[0], false); tab.openBlob(blob); toast('Pré-visualização gerada (não persistida).', 'info'); }
     catch (e) { tab.fail(); toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function gerar() {
     const ids = [...sel]; if (!ids.length) { toast('Selecione ao menos uma concretagem.', 'error'); return; }
     setBusy(true); setProg({ done: 0, total: ids.length });
-    const tab = ids.length === 1 ? openDeferredTab() : null;
     let ok = 0; const erros: string[] = [];
+    const tab = ids.length === 1 ? openDeferredTab() : null;
     for (const cid of ids) {
       try {
         const { blob, labReportId } = await gerarLaudo(cid, true);
-        if (tab) tab.go(blobUrlAutoRevoke(blob));
+        if (tab) tab.openBlob(blob);
         if (labReportId && member) { try { await notifyLaudoPronto(member.tenant_id, labReportId); } catch { /* best-effort */ } }
         ok += 1;
-      } catch (e) { erros.push((e as Error).message); }
+      } catch (e) { tab?.fail(); erros.push((e as Error).message); }
       setProg((pr) => pr ? { ...pr, done: pr.done + 1 } : pr);
     }
-    if (tab && ok === 0) tab.fail();
     await qc.invalidateQueries({ queryKey: ['laudos'] });
     if (ok) toast(ok + ' laudo(s) gerado(s)' + (erros.length ? ' · ' + erros.length + ' com erro' : '') + '.', erros.length ? 'warning' : 'success');
     else toast('Falha ao gerar: ' + (erros[0] ?? 'erro'), 'error');
     setBusy(false); setProg(null);
     if (ok) fecharNovo();
   }
-  async function baixar(r: LaudoRow) {
-    if (!r.storage_path) { toast('Laudo ainda nao persistido.', 'error'); return; }
-    const filename = 'Laudo ' + r.numero.replace('/', '-') + (r.revisao > 0 ? ' R' + r.revisao : '') + '.pdf';
-    try { const url = await downloadUrl(r.storage_path, filename); saveUrl(url, filename); } catch (e) { toast((e as Error).message, 'error'); }
+  async function baixar(path: string | null) {
+    if (!path) { toast('Laudo ainda nao persistido.', 'error'); return; }
+    const tab = openDeferredTab(); try { tab.set(await downloadUrl(path)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
   }
   async function aprovar(id: string) {
+    const ehFinal = cls.data?.[id] === 'final';
+    if (!(await confirm({ title: 'Emitir laudo', message: ehFinal ? 'Emitir este laudo Final? Ele será enviado automaticamente ao cliente por e-mail (conforme a configuração de despacho).' : 'Emitir este laudo? Após a emissão ele fica disponível para download e envio ao cliente.', confirmLabel: 'Emitir' }))) return;
     try {
       await aprovarLaudo(id);
       await Promise.all([qc.invalidateQueries({ queryKey: ['laudos'] }), qc.invalidateQueries({ queryKey: ['laudos-cls'] })]);
@@ -74,6 +84,7 @@ export function LaudosPage() {
     } catch (e) { toast((e as Error).message, 'error'); }
   }
   async function reabrir(id: string) {
+    if (!(await confirm({ title: 'Reabrir laudo', message: 'Reabrir este laudo emitido? Ele volta a rascunho e precisará ser emitido novamente.', danger: true, confirmLabel: 'Reabrir' }))) return;
     try { await reabrirLaudo(id); await qc.invalidateQueries({ queryKey: ['laudos'] }); toast('Laudo reaberto.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
   }
   async function gerarLink(id: string) {
@@ -91,23 +102,23 @@ export function LaudosPage() {
     } catch (e) { toast((e as Error).message, 'error'); }
   }
 
-  const rows = q.data ?? [];
-  const termo = busca.trim().toLowerCase();
-  const filtradas = termo ? rows.filter((r) => [r.numero, r.client_works?.nome].some((v) => String(v ?? '').toLowerCase().includes(termo))) : rows;
+  const rows = q.data?.rows ?? [];
+  const total = q.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE));
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <PageHeader kicker="Concreto" title="Laudos" description="Emissao de relatorios de ensaio (NBR 5739)." />
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><input className="input" placeholder="Filtrar por Nº do relatório ou obra" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 360 }} /><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
-      {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : filtradas.length === 0 ? <EmptyState /> : (
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><input className="input" placeholder="Buscar por Nº do relatório" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 280 }} /><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 240 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
+      {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <Card>
           <div style={{ display: 'grid', gap: 6 }}>
-            {filtradas.map((r) => (
+            {rows.map((r) => (
               <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
                 <span style={{ fontSize: 13 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissao'}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
-                  <Button variant="ghost" onClick={() => void baixar(r)}>Baixar</Button>
+                  <Button variant="ghost" onClick={() => void baixar(r.storage_path)}>Baixar</Button>
                   {podeAprovar && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
                   {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void reabrir(r.id)}>Reabrir</Button> : null}
@@ -118,6 +129,15 @@ export function LaudosPage() {
           </div>
         </Card>
       )}
+      {!q.isLoading && !q.isError && total > 0 ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <span style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{total} laudo(s) · página {page + 1} de {pageCount}</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="ghost" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Anterior</Button>
+            <Button variant="ghost" disabled={page >= pageCount - 1} onClick={() => setPage((p) => p + 1)}>Próxima</Button>
+          </div>
+        </div>
+      ) : null}
       <Modal open={novo} wide title="Novo laudo (individual ou em lote)" onClose={fecharNovo} footer={<><Button variant="ghost" onClick={fecharNovo}>Cancelar</Button><Button variant="secondary" onClick={() => void previewOne()} disabled={busy || sel.size !== 1}>Pré-visualizar</Button><Button onClick={() => void gerar()} disabled={busy || sel.size === 0}>{busy ? (prog ? ('Gerando ' + prog.done + '/' + prog.total + '...') : 'Gerando...') : ('Gerar ' + (sel.size || '') + ' laudo' + (sel.size === 1 ? '' : 's')).replace('  ', ' ').trim()}</Button></>}>
         <div style={{ display: 'grid', gap: 10 }}>
           <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Selecione uma ou mais concretagens com resultados lancados. <strong>Pre-visualizar</strong> gera o PDF sem persistir (apenas com 1 selecionada). <strong>Gerar</strong> persiste como rascunho e dispara a notificacao interna. Aceitacao por exemplar (NF) na idade de controle.</p>

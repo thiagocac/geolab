@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
+import { openDeferredTab } from '../../lib/pdf';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -10,14 +12,9 @@ import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State';
 import { listNcs, listAcoes, listTemplates, listTransitions, listSituacoes, listTipos, listObrasRef, abrirNcManual, registrarAcao, excluirNc, uploadAnexo, signedAnexo, type NcRow } from '../../lib/api/nc';
-import { saveUrl } from '../../lib/pdf';
 
 const dataBR = (s: string) => (s && s.length === 10 ? s.split('-').reverse().join('/') : s);
 const SEV: Record<string, string> = { alta: 'var(--magenta)', media: '#d97706', baixa: 'var(--ink-faint)' };
-const STBADGE: Record<string, { label: string; color: string }> = {
-  aberta: { label: 'Aberta', color: '#d97706' },
-  concluida: { label: 'Concluida', color: '#16a34a' },
-};
 
 export function NcPage() {
   const { member, hasRole } = useAuth();
@@ -30,7 +27,12 @@ export function NcPage() {
 
   const obras = useQuery({ queryKey: ['nc-obras'], queryFn: listObrasRef });
   const situ = useQuery({ queryKey: ['nc-situacoes'], queryFn: listSituacoes });
-  const ncs = useQuery({ queryKey: ['ncs', status, obra], queryFn: () => listNcs({ status: status || undefined, work_id: obra || undefined }) });
+  const PAGE = 25;
+  const [page, setPage] = useState(0);
+  const ncs = useQuery({ queryKey: ['ncs', status, obra, page, member?.tenant_id], queryFn: () => listNcs({ status: status || undefined, work_id: obra || undefined, page, pageSize: PAGE }, member?.tenant_id), placeholderData: keepPreviousData });
+  const ncRows = ncs.data?.rows ?? [];
+  const total = ncs.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE));
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -40,12 +42,12 @@ export function NcPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ minWidth: 180 }}>
-              <SelectField label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <SelectField label="Status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}>
                 <option value="">Todos</option><option value="aberta">Abertas</option><option value="concluida">Concluidas</option>
               </SelectField>
             </div>
             <div style={{ minWidth: 220 }}>
-              <SelectField label="Obra" value={obra} onChange={(e) => setObra(e.target.value)}>
+              <SelectField label="Obra" value={obra} onChange={(e) => { setObra(e.target.value); setPage(0); }}>
                 <option value="">Todas as obras</option>
                 {(obras.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
               </SelectField>
@@ -53,12 +55,11 @@ export function NcPage() {
           </div>
           {podeTratar ? <Button onClick={() => setNovo(true)}>Nova NC manual</Button> : null}
         </div>
-        {ncs.isLoading ? <LoadingState /> : ncs.isError ? <ErrorState message={(ncs.error as Error).message} /> : (ncs.data ?? []).length === 0 ? <EmptyState /> : (
+        {ncs.isLoading ? <LoadingState /> : ncs.isError ? <ErrorState message={(ncs.error as Error).message} /> : ncRows.length === 0 ? <EmptyState /> : (
           <div className="table-scroll">
             <table className="table">
               <thead><tr><th>Numero</th><th>Tipo</th><th>Classificacao</th><th>Obra</th><th>Origem</th><th>Sev.</th><th>Status</th><th>Abertura</th><th></th></tr></thead>
-              <tbody>{(ncs.data ?? []).map((n) => {
-                const st = STBADGE[n.status] ?? { label: n.status, color: 'var(--ink-faint)' };
+              <tbody>{ncRows.map((n) => {
                 return (
                   <tr key={n.id}>
                     <td style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>{n.numero}</td>
@@ -67,7 +68,7 @@ export function NcPage() {
                     <td>{n.obra}</td>
                     <td style={{ color: 'var(--ink-faint)' }}>{n.origem === 'automatica' ? 'Automatica' : 'Manual'}</td>
                     <td style={{ fontWeight: 700, color: SEV[n.severidade] ?? 'var(--ink-faint)' }}>{n.severidade}</td>
-                    <td style={{ fontWeight: 700, color: st.color }}>{st.label}</td>
+                    <td><StatusBadge status={n.status} /></td>
                     <td>{dataBR(n.data_abertura)}</td>
                     <td style={{ textAlign: 'right' }}><Button variant="ghost" onClick={() => setSel(n)}>Abrir</Button></td>
                   </tr>
@@ -76,6 +77,15 @@ export function NcPage() {
             </table>
           </div>
         )}
+        {!ncs.isLoading && !ncs.isError && total > 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 12 }}>
+            <span style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{total} NC(s) · página {page + 1} de {pageCount}</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="ghost" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Anterior</Button>
+              <Button variant="ghost" disabled={page >= pageCount - 1} onClick={() => setPage((p) => p + 1)}>Próxima</Button>
+            </div>
+          </div>
+        ) : null}
       </Card>
 
       {sel ? <NcDetalhe nc={sel} situ={situ.data ?? {}} podeTratar={podeTratar} onClose={() => setSel(null)} onChange={() => { void qc.invalidateQueries({ queryKey: ['ncs'] }); }} /> : null}
@@ -122,10 +132,10 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
       toast(r?.concluida ? 'Acao registrada — NC concluida.' : 'Acao registrada.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
-  async function baixar(path: string, nome?: string) {
-    const filename = nome || path.split('/').pop() || 'anexo';
-    try { const url = await signedAnexo(path, filename); saveUrl(url, filename); }
-    catch (e) { toast((e as Error).message, 'error'); }
+  async function baixar(path: string) {
+    const tab = openDeferredTab();
+    try { tab.set(await signedAnexo(path)); }
+    catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
   }
   async function excluir() {
     if (!(await confirm({ title: 'Excluir NC', message: 'Excluir esta NC?', danger: true, confirmLabel: 'Excluir' }))) return;
@@ -155,7 +165,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{a.template_nome} <span style={{ fontWeight: 400, color: 'var(--ink-faint)' }}>· {situ[a.situacao_codigo ?? ''] ?? a.situacao_codigo} · {dataBR(String(a.executada_em ?? a.created_at).slice(0, 10))}</span></div>
                   {a.descricao ? <div style={{ fontSize: 13 }}>{a.descricao}</div> : null}
                   {a.campos_dinamicos?.anotacao ? <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{String(a.campos_dinamicos.anotacao)}</div> : null}
-                  {a.campos_dinamicos?.arquivo ? <button type="button" onClick={() => void baixar(String(a.campos_dinamicos.arquivo), a.campos_dinamicos.arquivo_nome ? String(a.campos_dinamicos.arquivo_nome) : undefined)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--magenta)', fontWeight: 700, fontSize: 12, padding: 0 }}>Baixar anexo{a.campos_dinamicos.arquivo_nome ? ' (' + String(a.campos_dinamicos.arquivo_nome) + ')' : ''}</button> : null}
+                  {a.campos_dinamicos?.arquivo ? <button type="button" onClick={() => void baixar(String(a.campos_dinamicos.arquivo))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--magenta)', fontWeight: 700, fontSize: 12, padding: 0 }}>Baixar anexo{a.campos_dinamicos.arquivo_nome ? ' (' + String(a.campos_dinamicos.arquivo_nome) + ')' : ''}</button> : null}
                 </div>
               ))}
             </div>

@@ -172,6 +172,6 @@ function FieldRenderer({ spec, value, onChange, error }: { spec: FieldSpec; valu
 }
 
 function ReferenceField({ spec, value, onChange, error }: { spec: FieldSpec; value: string; onChange: (v: unknown) => void; error?: string }) {
-  const q = useQuery({ queryKey: ['ref', spec.refTable, spec.refFilter], queryFn: () => listReference(spec.refTable as string, spec.refLabel ?? 'nome', spec.refFilter) });
+  const q = useQuery({ queryKey: ['ref', spec.refTable, spec.refFilter], staleTime: 5 * 60 * 1000, queryFn: () => listReference(spec.refTable as string, spec.refLabel ?? 'nome', spec.refFilter) });
   return <SelectField label={spec.label} error={error} value={value} onChange={(e) => onChange(e.target.value || null)}><option value="">-</option>{(q.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>;
 }

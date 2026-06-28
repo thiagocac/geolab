@@ -30,3 +30,34 @@ verify_jwt = false
 # Melhorias — envio do laudo ao cliente (staff).
 [functions.enviar-laudo-cliente]
 verify_jwt = true
+
+# ── Trilha de BACKUP (v98) ──────────────────────────────────────────────────
+# Todas acionadas por pg_cron com header x-cron-secret (fail-closed em CRON_SECRET);
+# NUNCA pelo navegador. verify_jwt=false porque a autorização é o segredo de cron.
+[functions.cron-backup]
+verify_jwt = false
+
+[functions.backup-storage-real]
+verify_jwt = false
+
+[functions.backup-health-check]
+verify_jwt = false
+
+[functions.backup-prune]
+verify_jwt = false
+
+[functions.backup-restore-drill]
+verify_jwt = false
+
+[functions.prune-storage-retention]
+verify_jwt = false
+
+# ── Trilha de E-MAIL (v98) ──────────────────────────────────────────────────
+# notify-event: fan-out por papel -> send-notification. Auth: x-notify-secret OU JWT.
+[functions.notify-event]
+verify_jwt = false
+
+# send-notification: ÚNICO ponto de saída Resend. Auth: x-notify-secret OU JWT;
+# gates internos (preferência, papel, quiet-hours, allowlist, supressão, dispatch/dry-run).
+[functions.send-notification]
+verify_jwt = false

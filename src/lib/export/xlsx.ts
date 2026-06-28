@@ -138,8 +138,7 @@ function previewLen<T>(col: XlsxColumn<T>, rows: T[]): number {
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const fmtDateTime = (d: Date) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 const fmtDate = (d: Date) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
-// biome-ignore lint/suspicious/noControlCharactersInRegex: faixa ASCII 0x00-0x7F intencional para slugificar nome de arquivo
-const slug = (s: string) => s.normalize('NFD').replace(/[^\x00-\x7F]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'export';
+const slug = (s: string) => s.normalize('NFD').replace(/[\u0080-\uffff]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'export';
 const safeName = (s: string) => (s || 'Planilha').replace(/[[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'Planilha';
 
 // Monta uma aba (worksheet) já estilizada e a anexa ao workbook.

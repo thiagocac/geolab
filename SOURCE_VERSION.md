@@ -1,81 +1,267 @@
-# GEOLAB → Concresoft — SOURCE VERSION v97
-CACHE_NAME: consultegeo-geolab-v97 · APP_VERSION: v97
-(v97 "FIX DE BUILD": o pipeline **regerou `database.types.ts`** na fonte — o bug do tsc da v95
-(`numero_relatorio`) está corrigido na origem. **Mas o `pdf.ts` ainda NÃO foi injetado** — merge de PDF
-continua (ConcretagensPage/ProgramacoesPage saveBlob + LaudosPage openDeferredTab). Pacotes de conserto
-prontos na pasta.)
-(slug interno `consultegeo-geolab` mantido; marca visivel = **Concresoft**; app em `app.concresoft.io`)
-(v94-v96: rompimentos/operador/export-fila (v94) + cumulativos v95/v96. **v95 exigiu REGERAR
-`database.types.ts` do banco vivo** — usa `numero_relatorio` que os tipos do completo nao tinham → tsc
-quebrava. RompimentosPage: `downloadBlob` virou revoke-adiado no pipeline → MANTIDO, nao mesclado.
-Novo invariante de verificacao: **0 `window.open(await`** no pdfset + `pdf.ts` presente.)
+# GEOLAB → Concresoft — SOURCE VERSION v111
+CACHE_NAME: consultegeo-geolab-v111 · APP_VERSION: v111
 
-Frontend (acumulado v2→v88): …Brand Kit (v30) · Motor de NC (v40-v44) · Financeiro (v49) · React 19 +
-Compiler (v53-54) · Vite 8 + vitest 3 (v56) · Tailwind v4/OKLCH (v60) · Base UI (v63-68) · ⌘K +
-paste-to-fill + TanStack (v69-71) · Recharts (v73) · "Tipos de ensaio" (v75) · icones do menu (v78) ·
-SPA fallback (v79) · **revisao da emissao/abertura de PDFs (v80-A)** · **Portal do cliente** (v80-B/v81) ·
-ficha de moldagem Modelo A (v82) · consolidado (v83) · **revisao tipografica do laudo + toggle de
-aceitacao (v84, v88)** · consolidado portal+ficha+e-mail/anexo ao cliente (v85) · +comentarios/contestacao
-(v86) · +NF/OCR por caminhao (v87) · **export Excel** (xlsx-js-style; v89, v93) · papeis/permissoes do
-cliente (v90-v92) · financeiro do portal + bloco v1.1 (v91) · Tipos de ensaio (v92). (historico v2→v49 em git log.)
+## v111 — Gestão de e-mails A9: catálogo de eventos + rótulos amigáveis — FE-only
+`EmailLogPage` (/gestao/emails): usa `notification_event_types` (RLS de leitura = todos) para mostrar **rótulos
+amigáveis** (`descricao`) no lugar das keys cruas, no **outbox**, no **histórico** e no **detalhe** (com a key como
+tooltip e fallback quando o evento não está catalogado, ex. `digest_nc`/`system`). O detalhe ganhou **categoria** e
+**severidade**. Novo card **Catálogo de eventos** (referência): descrição, código, categoria, severidade, canal
+padrão e flags (sistema/digest/inativo). Sem backend — `emails.ts` ganhou `listEventTypes`/`EventType`. Build verde.
+Detalhes em `docs/CHANGELOG-v111.md`. Quarto item do `docs/BACKLOG-FRONTEND-EMAILS.md` (A1=v108, A6=v109, A7=v110).
 
-## ⚠️ Branch divergente do pipeline (v80-B…v93, SEM `pdf.ts`) — resolvido por MERGE a cada release
-Desde a v80-B o pipeline segue num **branch a partir da v79 que NUNCA reincorporou o `pdf.ts`** (a revisao
-de PDF da v80-A, que esta NO AR). **Todos os completos v80-B…v93 vem sem `pdf.ts`.** Decisao (Thiago):
-**manter tudo** (MERGE manual a cada release). Como detectar quando parar: `test -f completo-vN/src/lib/pdf.ts`
-= SIM → o pipeline finalmente shipou e o merge manual deixa de ser necessario.
+## v110 — Gestão de e-mails A7: editor de allowlist — FE-only
+`EmailLogPage` (/gestao/emails), no card de modo: editor da **allowlist** de envio real. Mostra os endereços como
+chips, permite **adicionar** (e-mail normalizado lower/trim, dedupe), **remover** por chip e **Liberar todos**
+(esvaziar = todos recebem) com confirmação. Deixa explícita a semântica: **vazia = todos recebem; com endereços =
+só eles** em envio real. Sem backend — `saveDispatchSettings` já aceitava `email_allowlist` (grava `null` quando
+esvaziada). Edição restrita a `podeEditar` (admin/admin_consulte), como os toggles. Build verde.
+Detalhes em `docs/CHANGELOG-v110.md`. Terceiro item do `docs/BACKLOG-FRONTEND-EMAILS.md` (A1=v108, A6=v109).
 
-**Procedimento de MERGE por release** (validado v80-B…v93):
-1. `unzip -o patch` sobre o repo (que JA tem `pdf.ts` + os arquivos da revisao de PDF mesclados).
-2. `git diff --name-only HEAD` → ver quais arquivos do *pdfset* o patch tocou.
-3. Para cada um: comparar com o completo da versao ANTERIOR — **identico → `git checkout HEAD -- <f>`**
-   (o patch so re-enviou un-merged; restaura meu merge); **diferente → MESCLAR** (re-aplicar a revisao de PDF
-   sobre o conteudo novo).
-4. **Padroes de merge** (sempre os mesmos):
-   - `src/lib/api/laudo.ts` → `downloadUrl(path, filename?)` + `{ download }`.
-   - `src/pages/concreto/LaudosPage.tsx` → `openDeferredTab`/`saveUrl`/`blobUrlAutoRevoke` (preview/gerar/baixar) + `baixar(r: LaudoRow)`.
-   - `src/pages/portal/ClientePortalPage.tsx` → `openDeferredTab` em `abrir` e `baixarAnexo`.
-   - `src/pages/concreto/ConcretagensPage.tsx` e `ConcretagemDetalhePage.tsx` → `import { saveBlob as dl } from '../../lib/pdf'` (remove o `dl` local).
-   - `src/pages/concreto/RompimentosPage.tsx` → `import { saveBlob as downloadBlob } from '../../lib/pdf'` (remove o `downloadBlob` local). **(novo na v89)**
-   - `src/pages/gestao/MedicaoPage.tsx` → import `pdfMedicaoUrl`→`pdfMedicaoBlob` + `openDeferredTab`/`blobUrlAutoRevoke`; `gerarPdf` usa aba diferida. **(novo na v89)**
-5. **`npm ci` quando `package.json` mudar** (v89 add `xlsx-js-style`) e **re-add o biome-ignore** em
-   `src/lib/export/xlsx.ts` (linha do `slug`: `// biome-ignore lint/suspicious/noControlCharactersInRegex` — regex
-   `/[^\x00-\x7F]/` que o pipeline re-envia sem o ignore → quebra o `biome lint`).
-6. **Validar SEMPRE pelo exit code do BUILD** (`npm run build && echo OK`) — **nunca** `| tail` (mascara o exit) +
-   `grep -c 'window.open'` = 0 nos pdfset. **NAO** confiar no "diff vs completo limpo" (completos branchamento inconsistente).
+## v109 — Gestão de e-mails A6: gerenciar supressões — FE + 2 RPCs de escrita
+`EmailLogPage` (/gestao/emails) ganha um card **Supressões de e-mail** (restrito a `admin_consulte`, que é quem a
+RLS deixa ler): lista e-mails bloqueados (bounce/reclamação/manual) com motivo e data, **formulário para adicionar**
+supressão manual e **remover** (reabilitar) por linha, com confirmação. Escrita via 2 RPCs (migration **085**)
+`email_suppression_add`/`email_suppression_remove`, `SECURITY DEFINER` + `search_path=public`, autorizadas por
+`has_role('admin_consulte')` (espelha a policy de SELECT; trava verificada — contexto não-membro recebe
+`not authorized`), `grant` só a `authenticated`. `emails.ts` ganhou `listSuppressions`/`addSuppression`/
+`removeSuppression`. Build verde. Detalhes em `docs/CHANGELOG-v109.md`. Segundo item entregue do
+`docs/BACKLOG-FRONTEND-EMAILS.md` (após A1=v108).
 
-## Releases v84→v88
-- **v84 / v88 — revisao tipografica do laudo + toggle de aceitacao:** `camposEnsaioLaudo.ts` + EF
-  `generate-laudo-ensaio-pdf` (v84); `LaudosResultadosPanel.tsx` (v88). Sem conflito real de PDF.
-- **v85 — consolidado:** portal (notificacoes, anexo no portal publico) + ficha + **e-mail/anexo ao cliente**
-  (EFs `lab-client-portal` v10, `portal-anexo` v1, `notify-cliente-evento` v2).
-- **v86 — consolidado:** + **comentarios/contestacao** de laudo (`ComentariosLaudo`).
-- **v87 — consolidado:** + **NF/OCR por caminhao** (`extract-nf-vision`; `ConcretagemDetalhePage`).
-- Backend de v84-v88 (migrations + EFs) **aplicado via MCP pelo pipeline** ("JA APLICADO", independe destes pushes).
+## v108 — Gestão de e-mails A1: detalhe por destinatário (drill-down) — FE-only
+`EmailLogPage` (/gestao/emails): clicar numa linha do histórico abre um painel com a **escada de ciclo de vida**
+(enviado → entregue → aberto → clicado → bounce/reclamação) com timestamps, nº de aberturas/cliques, último link
+clicado, user-agent, resend_id, dedupe, entidade de origem, erro/motivo e metadata. Sem backend: os campos já
+existiam em `notification_dispatch_log`; ampliei o `select` de `emails.ts` (+ notification_type, dedupe_key,
+last_clicked_url, last_user_agent, updated_at) e a UI usa a própria linha (sem query extra). Build verde.
+Detalhes em `docs/CHANGELOG-v108.md`. Primeiro item do `docs/BACKLOG-FRONTEND-EMAILS.md`.
 
-## Releases v89→v93
-- **v89 / v93 — helper de exportacao Excel + consolida v88:** novo `src/lib/export/xlsx.ts` (dep **`xlsx-js-style`**);
-  RompimentosPage/MedicaoPage passam a exportar Excel (entram no pdfset de merge). **Fix recorrente:** o `biome-ignore`
-  do control-char no `slug` do `xlsx.ts` (o pipeline re-envia sem ele) + `npm ci` (dep nova).
-- **v90 — consolidado:** + **papeis/permissoes do cliente** (`portalPermissoes`).
-- **v91 — consolidado:** + **financeiro do portal** (`listPortalFinanceiro`) + bloco v1.1.
-- **v92 — consolidado:** + permissoes + **Tipos de ensaio** (catalogo). Sem conflito de PDF novo.
-- Build verde a cada versao: check-source · biome 0 · tsc 0 · vitest · Vite 8.1. `pdf.ts` preservado (0 `window.open` cru).
+## v107 — KPIs do painel agregados no banco (item E) — FE + 1 RPC de leitura
+Fecha o item **E**: `getKpis` deixa de baixar agenda+laudos+equipamentos e contar no cliente; passa a chamar a RPC
+**`dashboard_kpis(p_tenant)`** (8 contadores agregados em 1 ida-e-volta). `SECURITY DEFINER` + `search_path=public`,
+autorizada por **`is_tenant_member(p_tenant)`** (não-membro ⇒ zeros), `grant` só a `authenticated`. Migration **084**.
+Reproduz exatamente os números anteriores (piloto: agenda 6/0/96/102 · laudos 0/2/2 · calibrações 0). `dashboard.ts`
+perde o import órfão de `listAgenda` (que segue em uso na tela de Rompimentos). Build verde. Detalhes em
+`docs/CHANGELOG-v107.md`.
+> Numeração: itens 1+2 sairam como **v106** numa sessão paralela; este item E é **v107** (como aquela sessão previu).
 
-## E-mail transacional — Concresoft Email Kit (fora do pipeline)
-- Template "bulletproof" nos 2 senders Resend: **`send-notification` v10** (hub) e **`enviar-laudo-cliente` v5**.
-  Lockup PNG `public/brand/concresoft-lockup-{white,color}-2x.png` — **repo-only, preservar**. `telemetry-alarm` v4
-  corrigida; e-mail de alertas LIGADO. **REGRA FIXA: e-mail novo usa o Kit** (PK §3). Memoria geolab-email-architecture.
-- Nota: v85 trouxe `notify-cliente-evento` (e-mail ao cliente) — confirmar que delega ao hub `send-notification` (Kit).
+## v106 — Itens 1+2: doc de reconciliação + "insatisfatório" na idade de controle
+**FE quase idêntico ao v105** (muda 1 bloco em `RompimentosPage` + arquivos de versão). **Migration 083**
+(mesma RPC `rompimentos_resumo`, só a regra do `insatisfatorio`). Item 1: `docs/VERSOES-RECONCILIACAO.md`
+atualizado (lineage v103→v106). Item 2: "insatisfatório" deixa de contar abaixo do fck em qualquer idade e passa
+a contar **só na idade de controle** (`config_lab.idade_controle_default`, exceto horas) — alinhando as **3
+superfícies**: badge/RPC, filtro "Mostrar Apenas Insatisfatórios" (`RompimentosPage`) e destaque de linha (que já
+era idade de controle). No piloto: badge 86 → **4**. Build verde. Detalhes em `docs/CHANGELOG-v106.md`.
+> Item 3 (KPIs do dashboard como agregado no banco) está **preparado e aguardando OK** para aplicar a DDL — vira v107.
 
-## Backend / infra (estado vivo; FONTE CANONICA = GEOLAB-Project-Knowledge.md)
-- Migrations: **064+** (062-064 portal LIVE; 065+ de portal-anexo/comentarios/NF aplicadas via MCP pelo pipeline). 66+ tabelas · **EFs ACTIVE** · 13 crons.
-- **E-mail real LIGADO**: `dispatch_enabled=true`, `dry_run=false`, **allowlist ABERTA**. `alert_notify_email=true`.
-  Secrets `CRON_SECRET`/`RESEND_*`/`VISION_API_KEY` ✅.
-- Stack: React 19.2 + Compiler · Vite 8.1 · vitest 3 · Biome 2.5 · Zod 4 · Tailwind 4 · Base UI · RHF · TanStack · Recharts.
+## v105 — Paginação server-side nas listas que crescem (item C completo) — FE + 1 RPC de leitura
+Consolida as **3 fatias** de paginação/escala das listagens. **1 migration** (apenas uma função de leitura;
+não altera tabelas nem dados): `rompimentos_resumo(p_tenant)` — `SECURITY DEFINER` + `search_path=public`,
+autorizada por **`is_tenant_member(p_tenant)`** (espelha o RLS; não-membro ⇒ zeros), `grant` só a `authenticated`.
+**Fatia 1 — `NcPage`:** `listNcs` agora pagina no servidor (`.range()` + `count:'exact'`, retorna `{rows,total}`);
+25/pág, Anterior/Próxima, `keepPreviousData`, reset ao trocar filtros (que já eram server-side). **Fatia 2 —
+`ConcretagensPage`/`LaudosPage`:** novas `listConcretagensPaged`/`listLaudosPaged` (busca server-side por `ilike`
+nas colunas-base + filtros `.eq` de cliente/obra + `.range()` + count); a busca livre por **nome** de cliente/obra
+(que cruzava tabelas juntadas) virou **dropdown server-side** — mesma capacidade, agora escalável; `listConcretagens`/
+`listProgramacoes`/`listLaudos` seguem intactas. **Fatia 3 — `RompimentosPage`:** a grade busca **só pendentes por
+padrão** (escala) e **tudo** quando "Mostrar Lançados/Insatisfatórios" está ligado; os 4 contadores
+(pendente/atrasado/rompido/insatisfatório) vêm da RPC (globais, independem do recorte carregado); colar/selecionar/
+salvar **inalterados**. Build verde ponta-a-ponta (check-source · biome · tsc · vitest 18/18 · vite).
+Detalhes em `docs/CHANGELOG-v105.md`.
+> Notas de comportamento: em Rompimentos, "insatisfatório" no badge usa a **idade de controle** (migration 083,
+> a pedido — alinhado ao destaque de linha da grade; passou de 86 p/ 4 no piloto) e "atrasado" é **global "até
+> hoje"** (independe da Data de Referência da grade).
+> Reconciliar a numeração v103/v104 (sessão paralela) quando puder.
 
-## Proximo: continuar portal/ficha. **Reinjetar `pdf.ts` na fonte do pipeline para encerrar o merge manual.** Piloto aberto.
+## v104 — Performance (passe 2, sobre o v103) + validação de upload — FE-only
+Soma à trilha de performance do **v103** (passe paralelo: filtro server-side em `listAgenda`/`listCpsRompimento`,
+`getKpis(tenantId?)`, cache key do painel). **Nenhuma** migration/EF/mudança de banco; o bump marca o release.
+A auditoria desta sessão (relatório `RELATORIO-PERFORMANCE-GEOLAB.md`, tudo medido: `pg_stat_statements`,
+telemetria, bundle real) **confirma o v103**: no volume atual (piloto, maior tabela ~260 linhas) nenhuma query de
+app está lenta — ganhos **preventivos**. **Performance (net-novo sobre o v103):** **(1)** `getKpis` resolve as 3
+leituras com `Promise.all` (1 ida-e-volta em vez de 3; por cima do threading de tenant do v103); **(2)** filtro
+`tenant_id` em `listConcretagensComResultado` (`material_tests`) e `listConcretagensComPendentes` (`corpos_prova`)
++ threading nos call sites (`LaudosPage`/`ImportacoesPage` passam `member.tenant_id` e incluem o tenant na
+queryKey) — fecha as leituras quentes que o v103 não cobriu; **(3)** `staleTime` 5 min nos dropdowns de referência
+(`AdminListPage`). **Upload:** novo `src/lib/upload.ts` (`assertUploadSize` 15 MB + `assertImagem`) aplicado em foto
+de evidência (`uploadEvidencia`), OCR de NF/ficha (`fileToBase64`) e anexo de NC (`uploadAnexo`, tipo livre p/
+PDF/doc); o anexo do portal mantém os 8 MB próprios. Build verde ponta-a-ponta (check-source · biome · tsc ·
+vitest 18/18 · vite). Detalhes em `docs/CHANGELOG-v104.md`.
+> **Colisão de numeração:** o **v103** foi cortado por uma **sessão paralela** (perf do dashboard/rompimentos), com
+> seu próprio `docs/CHANGELOG-v103.md`. Esta sessão numerou **v104** (próximo livre) — **reconciliar a lineage**
+> depois. Os relatórios `docs/PERF-*` citados pelo v103 **não estão nesta árvore** (ficaram na saída da outra
+> sessão). Fora do release, **precisam de decisão**: paginação server-side nas listas (C, muda UX) e KPIs como
+> agregado no banco (E, DDL em produção). Não dropar índices agora (prematuro).
 
-> Nota: SOURCE_VERSION do pipeline vem stale; reescrito a mao (v60-v88). O branch do pipeline (v80-B…v93) **segue sem o
-> `pdf.ts`** — merge manual a cada release (ver bloco acima). Repo AHEAD do completo de proposito; NAO reconciliar.
-> 2 PNGs de lockup (e-mail) sao repo-only — preservar no clone/overlay.
+## v103 — Performance: escopo de tenant + filtro server-side no caminho do dashboard (FE-only)
+Fruto da **auditoria de performance** (relatórios em `docs/PERF-*`). **Nenhuma** migration/EF/mudança de banco;
+só frontend. Conclusão da auditoria: no volume atual (banco ~18 MB; maiores tabelas com centenas de linhas)
+**nenhuma query de aplicação está lenta** (medido via `pg_stat_statements`); os ganhos são **estruturais/preventivos**.
+Mudanças **seguras e que preservam o resultado**: **(1)** `listAgenda(tenantId?)` filtra `situacao='pendente'` **no
+servidor** (antes: fetch completo + filtro em JS) e aceita escopo de tenant explícito; **(2)** `getKpis(tenantId?)`
+repassa o tenant; **(3)** `DashboardPage` usa `queryKey:['kpis', tenant_id]` e passa o tenant — corrige **isolamento
+de cache multi-tenant** (as demais telas já incluíam o tenant na key) e fecha a única leitura quente que dependia só
+de RLS (Rompimentos/Concretagens já passavam `tenant_id`). Build verde ponta-a-ponta (check-source · biome · tsc ·
+vitest 18/18 · vite).
+> Por que importa à escala: a RLS de SELECT é `is_tenant_member(tenant_id)` (STABLE, **não-sargável**) — sem
+> `tenant_id = <const>` explícito o planner faz seq scan + filtro por linha. O filtro explícito (inócuo em resultado,
+> pois a RLS já restringe) torna o predicado sargável e habilita índice à escala. **Recomendado (NÃO aplicado):**
+> índice composto `corpos_prova(tenant_id, situacao, data_prevista_rompimento) WHERE deleted_at IS NULL` quando a
+> tabela crescer; limpeza dos ~267 índices nunca usados (só ~3 MB hoje — baixa urgência; script opcional em
+> `docs/PERF-INDICES-*`); paginação/limite em combos e contagem `estimated` em listas grandes.
+
+## v102 — UX/UI: confirmações, mobile do VirtualTable, a11y de campos e StatusBadge (FE-only)
+Consolida **4 lotes de UX** da auditoria (`AUDITORIA-UXUI-GEOLAB.md`). **Nenhuma** migration/EF/mudança de
+banco — só frontend; o bump de APP_VERSION/cache marca o release. **L1 — confirmações + texto:** `useConfirm`
+(já existente) em **10 ações** consequentes/irreversíveis (aprovar laudo por link, emitir/reabrir laudo,
+cancelar programação, remover estrutura, fechar medição, ativar envio real de e-mail, desativar usuário,
+revogar link/desativar cliente) + correção do texto **falso** "dry-run/simulação" da `NotificacoesPage`
+(despacho está ATIVO; fonte de verdade = Sistema › E-mails). **L2 — mobile:** `VirtualTable` ganha
+**modo-cartão** (`md:hidden`) espelhando o `DataTable` (hoje beneficia a `ProgramacoesPage`; API inalterada).
+**L3 — a11y (T1):** `Field/TextArea/SelectField` ligam erro/dica por **`aria-describedby`** + **ícone** no erro
+(não-só-cor). **L4 — StatusBadge:** vocabulário central `recordStatusMeta` estendido (lote/laudo/financeiro/
+medição) e **cor-crua trocada por `<StatusBadge>`** em Programações/Lotes/NC(status)/Faturas/Medição/Concretagens.
+Build `npm run build` **verde** ponta-a-ponta (check-source · biome · tsc · vitest 18/18 · vite). Detalhes em
+`docs/CHANGELOG-v102.md`.
+> Fora do lote (de propósito): validade-de-certificação da `ColaboradoresPage` e **severidade** da NC
+> (vocabulários próprios); tabelas bespoke `Rompimentos`/`Lotes`/`Nc` (mobile) seguem pendentes. O T1 só
+> "ativa" quando os formulários passarem `error`. **Não** altera backend nem a pendência de dedupe (resolvida no v101).
+> **Repo:** removido o diretório da EF `cron-watchdog` (aposentada/no-op desde v101, desagendada na 080); o slug
+> em produção é deletado fora do MCP via `supabase functions delete cron-watchdog`.
+
+## v101 — Backend: correção da colisão de dedupe + cobertura de calibração vencida
+Release rotulado costurando 2 mudanças de backend aplicadas em produção via MCP (27/06). **FE = v100
+inalterado**; bump de APP_VERSION/cache só marca o release. **080** desagenda o `cron-watchdog` (legado)
+que duplicava `cp_atrasado`/`calibracao_vencendo` (incidente VIVO — dispatch ligado; log de 27/06 com 2×
+por CP). Reversível; EF cron-watchdog neutralizada (v8, no-op). **081** amplia `notify_scan_calibracao` para incluir calibrações
+**já vencidas** (remove piso de data; dedupe inalterada; texto "venceu há N dias" vs "vence em N dias"),
+fechando o gap da 080 — verificado 0 vencidas no momento (sem rajada). Líquido: 1 e-mail por CP vencido
+(via NC T-10/28D) e 1 por equipamento (a vencer + vencidas). Detalhes em `docs/CHANGELOG-v101.md` e
+`docs/CHANGELOG-hotfix-dedupe-watchdog.md`.
+> Efeitos de escopo da 080: `cp_atrasado` agora só 28D (via NC); calibração coberta de novo pela 081.
+> EF cron-watchdog neutralizada (v8, no-op). Remover slug (opcional): supabase functions delete cron-watchdog.
+
+## v100 — Observabilidade: incidentes investigáveis + sparkline por Edge Function — só frontend
+Reescrita incremental de **`src/pages/gestao/ObservabilidadePage.tsx`** (mantém tudo da v99). **Nenhuma**
+migration/EF/mudança de banco — leitura sobre colunas/views que já existem (conferido via MCP read-only).
+**(1) Incidentes investigáveis:** alternância **Abertos | Resolvidos (7d)** (query de resolvidos por
+`status='resolved'` + `resolved_at`, `enabled` só ao abrir a aba), coluna **“Durou” (TTR = resolved_at −
+first_seen_at)**, e filtros client-side **gravidade / família / “só não notificados”** (combine crítico +
+não-notificado p/ isolar e-mails que não saíram) + contador “X de Y” e estados vazios distintos.
+**(2) Sparkline 24h por Edge Function:** a query de EF passou a trazer a série horária bruta das 24h e a
+tela deriva, por função, a última hora (números) + mini-tendência de chamadas/h numa coluna “24h” — sem
+query extra (mesma `v_ef_metrics_hourly`, agrupada no cliente). Removido helper `latestPerKey` (sem uso).
+Bump `APP_VERSION v99→v100` e `CACHE_NAME …-v100`. Build verde ponta-a-ponta
+(check-source · biome · tsc 0 erros · vitest 18/18 · vite). Detalhes em `docs/CHANGELOG-v100.md`.
+> Banner/KPIs seguem sobre os abertos (alternar p/ resolvidos não mexe no topo). Numeração provisória
+> (FE-only sobre a v99). NÃO altera a pendência de dedupe `cron-watchdog` × scans (074/072) da v98.
+
+## v99 — Melhorias de front na Observabilidade (telemetria) — só frontend
+Reescrita incremental de **`src/pages/gestao/ObservabilidadePage.tsx`** (mantém todas as seções/dados
+anteriores). **Nenhuma** migration/EF/mudança de banco — toda leitura usa colunas/views que já existem em
+produção (conferido por introspecção MCP read-only): **banner de saúde** (críticos abertos · críticos
+**não notificados** · runners atrasados · avisos), **coluna “Notificação”** nos incidentes via
+`telemetry_alert.notified_at` (once-per-incident da 076), **card “Runners de alarme & notificação”** que
+isola o plano de controle da telemetria (`telemetry-alarm/-pg-alarm/-email-alarm/-release-alarm/-ops-alarm/-notify`)
+dos demais jobs — payoff do heartbeat-decouple da **077** (runner travado fica óbvio), **chip de família**
+por `kind` (Frontend/Release/E-mail/Ops/Agenda/Banco/Edge Fn — namespaces disjuntos), **KPIs com cor** + novo
+KPI “Críticos não notificados”, **estado “ao vivo” + botão Atualizar** (refetch geral) e **barra inline de
+crash-free**. Bump `APP_VERSION v98→v99` e `CACHE_NAME …-v99`. Build verde ponta-a-ponta
+(check-source · biome · tsc 0 erros · vitest 18/18 · vite). Detalhes em `docs/CHANGELOG-v99.md`.
+> Numeração: a v98 reconstruiu o fonte vivo (3 trilhas + 2 telas). Esta é uma melhoria de FE **nova** (não
+> está no vivo), por isso recebe v99 — mantém a história da v98 honesta. Patch = 1 arquivo de página + bumps.
+> NÃO altera a pendência de dedupe `cron-watchdog` × scans (074/072) da v98 (backend, segue em aberto).
+
+## v98 — Reconstrução do fonte das 3 trilhas vivas (backup/e-mail/telemetria) + 2 telas admin
+As trilhas de **Backup**, **E-mail (dispatcher + quiet-hours)** e **Telemetria (ops + heartbeat)** já estavam **vivas
+na produção** (aplicadas via MCP numa sessão anterior, **sem fonte preservado**). A v98 **reconstrói o fonte
+byte-a-byte** do vivo e o integra: **7 migrations 071–077** (md5 conferido; `pglast` OK), **9 Edge Functions**
+(8 novas + `telemetry-alarm` v5 sobrescrita; `esbuild` OK; `verify_jwt=false` no `config.toml`) e **2 telas admin**
+(`/gestao/backups` e `/gestao/emails`) que leem `backup_log`/`cron_heartbeat` e `notification_dispatch_log`/
+`notification_dispatch_settings`/`notify_event_outbox` (sempre com `tenant_id` explícito; nunca expõe `dispatch_secret`).
+Nada a reaplicar no banco — já está live; este pacote alinha o repo ao vivo e leva o frontend novo ao próximo deploy.
+Build `npm run build` **verde** ponta-a-ponta (check-source · biome · tsc · vitest 18/18 · vite). Detalhes/ordem/segredos/
+cron + pendências em **`docs/CHANGELOG-v98.md`**.
+> ⚠️ **2 pontos a decidir/saber:** (1) `cron-watchdog` v7 colide nas dedupe keys de `cp_atrasado`/`calibracao_vencendo`
+> com os scans 074/072 (duplicata latente — resolver antes de ligar o envio real; hoje `dispatch_enabled=false`/`dry_run=true`).
+> (2) Corrigido um **build-blocker pré-existente** do v97: `biome` (2.5.1) reprovava `src/lib/export/xlsx.ts` por
+> caractere de controle em regex — troca de 1 linha por equivalente `/[\u0080-\uffff]/g` (sem mudança de comportamento).
+> ⚠️ **Dependência:** a 072 usa o núcleo de notificação criado em **065–070**, que **não** está nesta pasta (espelho
+> parcial — pré-existente). Em produção existe; num banco zerado, 065–070 são pré-requisito.
+
+## v93 — Helper único de exportação Excel (Concresoft) + consolida v88 (laudo)
+Padrão ÚNICO e de marca para TODAS as exportações .xlsx do sistema. Nova lib **xlsx-js-style** (fork do SheetJS com
+estilos de célula; o `xlsx` puro não estiliza) + **`src/lib/export/xlsx.ts`** — `exportExcel(meta, sheets)` genérico:
+banda Concresoft (navy) + título + metadados (laboratório/período/filtros/gerado em/registros) + tabela estilizada
+(cabeçalho navy, zebra, bordas, formatos BR int/dec/money/percent/date, autofiltro) + linha de TOTAL opcional; modo
+`template` (cabeçalho na linha 1, sem banda) p/ modelos reimportáveis. Migrados os 4 exports: portal de resultados
+(2 abas), medição, produtividade e modelo de rompimentos (template, round-trip preservado). DS em GEOLAB-Export-Excel-DS.md.
+Sem migration/EF. **Consolida o v88** (revisão do laudo NBR 5739 + toggle `aceitacao`) no mesmo push.
+> NUMERAÇÃO contestada: sessões paralelas avançaram até v92 (não estão na pasta). Numerei **v93** (próx. livre documentado); o nº é provisório — defina na reconciliação. Deltas cirúrgicos → cherry-pick sobre o HEAD atual.
+
+## v88 — Revisão tipográfica do laudo (EF) + toggle de aceitação (FE)
+Revisão do modelo de laudo NBR 5739. **EF `generate-laudo-ensaio-pdf` v15 (sha 3242a328) JÁ LIVE via MCP** (independe deste push):
+acentuação PT-BR completa (Relatório, Resistência à compressão, EMISSÃO, ENDEREÇO, Traço, Lançamento, Câmara úmida, Comentários e observações, Validação pública, Página…), `m³`/`kg/m³`, `°C`, `Nº`, `±`, `×`; **barra de aceitação em 2 linhas** (corrige a sobreposição "condição A / fck,est"); horários **HH:MM**; `san()` endurecido. **Novo toggle `aceitacao`** (default ON) some com a faixa de aceitação; `recebimento` (já existente) some com o bloco de caminhões.
+**Delta de FRONTEND = 1 arquivo:** `src/lib/concreto/camposEnsaioLaudo.ts` ganha a seção "Bloco de aceitação" em CAMPOS_LAUDO (aparece em /gestao/controle-laudo ▸ Seções do laudo). Sem migration/RLS. Bump v88.
+> **ATENÇÃO numeração/base:** esta árvore parte do source **v83** (o mais recente NA PASTA do projeto). A memória indica v84–v87 já feitos (portal/comentários/NF-OCR) cujos fontes NÃO estão na pasta. Por isso numerei **v88** (próximo livre) e o patch é **cherry-pick de 1 arquivo** — aplicar sobre o HEAD atual do repo. `camposEnsaioLaudo.ts` não foi tocado em v84–v87, então o cherry-pick é seguro.
+
+## v83 — RELEASE CONSOLIDADO (portal + ficha) — substitui v80/v81/v82 num push só
+Consolida portal em abas/Parcial-Final/Excel (era v80), 12 melhorias do portal (era v81) e ficha de moldagem
+Modelo A + OCR (era v82) em um único release, resolvendo as colisões de numeração. Backend já LIVE via MCP:
+migrations 063+064; EFs lab-client-portal v9, portal-anexo v1, generate-ficha-moldagem-pdf v12 (Modelo A),
+extract-ficha-vision v4. check-source OK; revisões independentes SHIP. Detalhe dos arquivos em INSTRUCOES.md.
+
+
+## v82 — Ficha de moldagem Modelo A (em branco + pré-preenchida) + OCR alinhado
+EF `generate-ficha-moldagem-pdf` **v12** (sha 846fadcf) reescrita para o Modelo A paisagem; modos em branco (`{mode:'blank'}`) e pré-preenchida (`{concretagem_id}` + QR). EF `extract-ficha-vision` **v4** (sha fcf31a6e) com prompt do OCR alinhado às colunas do Modelo A. Frontend: `invokeFichaBranco()` + botão "Ficha em branco (PDF)" na Central de Concretagens; o resto do fluxo (Gerar ficha, Ler ficha preenchida→OCR→conferência→addCaminhao) já existia. Local: Concreto ▸ Concretagens (central + detalhe). Gate: check-source OK; revisão independente SHIP (EF conferido numericamente). 3 modelos de ficha em branco (A/B/C) também entregues como PDF.
+
+
+## v81 — 12 melhorias do portal do cliente (em ordem de prioridade)
+Sobre o v80 (portal em abas + Parcial/Final + Excel). Itens: (1) curva de evolução por exemplar; (2) alerta de CP atrasado; (3) selo Parcial/Final na LaudosPage staff + auto enviar-laudo-cliente ao emitir laudo Final; (4) painel-resumo (cards); (5) filtro por período; (6) export PDF (print do navegador); (7) StatusBadge na programação; (8) anexo NF/DANFE na programação (EF portal-anexo); (9) gestão de magic links (último acesso + revogar); (10) ARIA nas abas; (11) paginação; (12) toggle de detalhes técnicos.
+- **Banco (APLICADO via MCP — migration 064):** laudos_parcial_final() (staff), magic_links.last_access_at/access_count, bump_magic_link_access(), revogar_magic_link(), listar_magic_links_portal().
+- **EFs (DEPLOYADAS via MCP):** lab-client-portal **v9** (sha dfe2b8b1, marca acesso); **portal-anexo v1** (sha 2d65bdeb, verify_jwt=true, upload/download no bucket anexos).
+- **Gate:** check-source OK; revisão independente SHIP (0 must-fix). tsc/biome/vitest no Netlify CI.
+
+
+## v80 — Portal do cliente: abas, filtros, Parcial/Final, resultados inline, Excel
+Separação Programação × Resultados&Laudos em **abas** no `/portal-cliente`. Aba Resultados: filtros (obra, busca, tipo Parcial/Final, status, idade, conformidade), **selo Parcial/Final por exemplar** (Final = todos os exemplares com idade de controle), botão **Ver resultados** inline (sem baixar o PDF) e **Exportar Excel** (Resumo por exemplar + Detalhe por CP) respeitando o filtro. Paridade no portal **magic link**: página pública `/portal/acesso/:token` reusando os componentes + ação staff "Gerar link do portal".
+- **Banco (APLICADO via MCP — migration 063):** fn_resultados_por_obras / fn_laudos_por_obras (núcleo SECURITY DEFINER, service_role) + portal_resultados / portal_laudos (wrappers escopados por member_can_access_work, grant authenticated). Cliente não lê corpos_prova/material_tests/laudo_resultados (is_tenant_member exclui 'cliente').
+- **EF (DEPLOYADA via MCP):** lab-client-portal v8 (sha b9c4035d…) — devolve resultados + laudos com parcial_final. Self-contained.
+- **Gate:** check-source OK. tsc/biome/vitest no Netlify CI. Revisão independente: SHIP, 0 must-fix.
+
+
+## v78 — Revisão dos ícones do menu lateral
+Concretagens→caminhão betoneira; Rompimentos→prensa de compressão; Preferências→engrenagem; Medição→régua; Faturas→recibo; Fôrmas→molde cilíndrico; Usuários de clientes→pessoas; Config de NC→sliders. Resolve colisões de ícone (FileText/Boxes/Building2/Gauge). Apenas src/components/ui/icons.tsx (novos SVG) + src/components/Layout.tsx (mapeamento) — sem banco/EF/rota/lógica; Truck/Flame seguem exportados. Gate verde: check-source / biome (0 erros) / tsc --noEmit / vitest 18.
+
+## v59 — Observabilidade + Melhorias APLICADAS (banco) + tipos reais + melhoria do db tipado
+Sobre o v58 (release combinado). Backend aplicado em producao via MCP; frontend buildando verde.
+
+### Banco (APLICADO em xbdvyvvxvzmcosnekmfv — migrations 049-056)
+- COLISAO resolvida: o vivo ja estava em 048_magic_links_portal -> o release foi renumerado 049-056.
+- 049 core (9 tabelas telemetria + RLS) · 050 funcoes (11 SECURITY DEFINER) · 051 views (9 security_invoker) ·
+  052 alarmes SQL (pg/release/email + 3 crons) · 053 cron (4 jobs; placeholders preenchidos) ·
+  054 evidencias (tabela + RLS + storage) · 055 magic_link_aprovacao (criar_magic_link SUPERSET FIEL do vivo
+  +'aprovacao_laudo' + consume_magic_link_laudo) · 056 evento_laudo_cliente (catalogo).
+- Advisor seguranca pos-DDL: 0 ERROR (so 2 INFO rls_enabled_no_policy intencionais + WARN generico de SECURITY DEFINER).
+
+### Tipos
+- src/lib/database.types.ts REGENERADO do banco vivo (gen_types) — substitui os 7 stubs do v58 pelos tipos reais
+  (telemetria + evidencias + views).
+
+### Frontend (melhoria do db tipado)
+- src/lib/api/concretagem.ts: removido o cast untyped `db = supabase as unknown as {from:(t)=>any}` -> `db = supabase`
+  (client tipado). 3 casts localizados `as unknown as Database[...]['Insert']` so nos payloads dinamicos
+  (createConcretagem, addCaminhao receipt+cps). Type-safety do fluxo de concretagem restaurada.
+- Bump v59. npm run build verde: check-source · biome 0 erros · tsc 0 erros · vitest 18/18 · vite 8.1 build.
+
+### Edge Functions
+- DEPLOYADAS (2 novas, self-contained): approve-laudo-link (v1, public) · enviar-laudo-cliente (v1).
+- PENDENTES (9, importam _shared -> exigem inline self-contained; nao deployadas p/ nao arriscar):
+  NOVAS: client-telemetry, telemetry-alarm, extract-ficha-vision.
+  INSTRUMENTADAS (redeploy de EFs VIVAS criticas — alto risco): generate-ficha-moldagem-pdf, generate-laudo-ensaio-pdf,
+  portal-laudo-url, consulta-fiscal, client-portal-submit-programacoes, admin-create-client-user.
+
+### PENDENTE (voce)
+- Secrets no vault: CRON_SECRET (alarme/crons), VISION_API_KEY (OCR ficha), RESEND_FROM_EMAIL (envio ao cliente).
+- Deploy das 9 EFs (inline self-contained — derivar as 6 instrumentadas do corpo VIVO via get_edge_function).
+- Reconciliar o slot cron 'concresoft-telemetria' (033) que coexiste no minuto 0 com 'concresoft-telemetry-alarm'.
+- H3: notification_dispatch_settings (dispatch_enabled/dry_run/allowlist) para envio real.

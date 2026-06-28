@@ -9,6 +9,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { listMembers, inviteMember, setMemberActive, createLab, type MemberRow } from '../../lib/api/operacao';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const PERFIS: [string, string][] = [['admin', 'Admin do laboratorio'], ['gestor_qualidade', 'Gestor da qualidade / RT'], ['laboratorista', 'Laboratorista'], ['operador_campo', 'Operador de campo'], ['financeiro', 'Financeiro'], ['cliente', 'Cliente (portal)']];
 
@@ -16,6 +17,7 @@ export function OperacaoPage() {
   const { hasRole } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const isConsulte = hasRole('admin_consulte');
   const [tab, setTab] = useState<'usuarios' | 'labs'>('usuarios');
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -46,6 +48,7 @@ export function OperacaoPage() {
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function toggle(m: MemberRow) {
+    if (m.active && !(await confirm({ title: 'Desativar usuário', message: 'Desativar ' + (m.full_name ?? m.email) + '? A pessoa perde o acesso ao laboratório até ser reativada.', danger: true, confirmLabel: 'Desativar' }))) return;
     try { await setMemberActive(m.id, !m.active); await qc.invalidateQueries({ queryKey: ['op-members'] }); }
     catch (e) { toast((e as Error).message, 'error'); }
   }

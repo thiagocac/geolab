@@ -5,7 +5,7 @@ import { useTheme } from '../lib/theme';
 import { APP_VERSION } from '../lib/telemetry/core';
 import { Tooltip } from './ui/Tooltip';
 import { CommandPalette, type Command } from './ui/CommandPalette';
-import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Ruler, Mold, Users, Sliders } from './ui/icons';
+import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Ruler, Mold, Users, Sliders, Download } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
@@ -43,7 +43,11 @@ const sections: Section[] = [
     { to: '/gestao/campos-concretagem', label: 'Campos concretagem', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/nc-config', label: 'Config de NC', icon: Sliders, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
   ] },
-  { title: 'Operação interna', items: [{ to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles }] },
+  { title: 'Operação interna', items: [
+    { to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles },
+    { to: '/gestao/backups', label: 'Backups', icon: Download, roles: adminRoles },
+    { to: '/gestao/emails', label: 'E-mails', icon: FileText, roles: adminRoles },
+  ] },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

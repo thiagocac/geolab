@@ -16,10 +16,11 @@ export async function listObrasRef(): Promise<{ id: string; nome: string }[]> {
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ id: String(r.id), nome: String(r.nome ?? r.id) }));
 }
 
-export async function listLotes(workId?: string): Promise<LoteRow[]> {
+export async function listLotes(workId?: string, tenantId?: string): Promise<LoteRow[]> {
   let q = db.from('lotes_aceitacao')
     .select('id, numero, work_id, fck_mpa, condicao_preparo, idade_controle_dias, periodo_inicio, periodo_fim, status, n_exemplares, fcm, sd, fck_est, created_at, client_works(nome)')
     .is('deleted_at', null).order('created_at', { ascending: false });
+  if (tenantId) q = q.eq('tenant_id', tenantId); // ativa o índice por tenant; RLS segue garantindo o isolamento
   if (workId) q = q.eq('work_id', workId);
   const { data, error } = await q;
   if (error) throw new Error(error.message);

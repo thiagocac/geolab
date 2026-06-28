@@ -1,25 +1,23 @@
 import { useState } from 'react';
+import { openDeferredTab } from '../../lib/pdf';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { FileText, Bell } from '../../components/ui/icons';
+import { FileText } from '../../components/ui/icons';
 import { useToast } from '../../lib/toast';
 import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosPanel';
-import { AcompanhamentoPortal } from '../../components/portal/AcompanhamentoPortal';
-import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, openPortalLaudo, uploadPortalAnexo, downloadPortalAnexo, listPortalNotificacoes, marcarNotificacao, cancelarProgramacao, type PortalProgramacaoInput, type PortalAnexo, type PortalNotificacao } from '../../lib/api/portalCliente';
-import { listPortalResultados, listPortalLaudosView, listPortalFinanceiro } from '../../lib/api/portalResultados';
-import { getMinhasPermissoes, type FeatureKey } from '../../lib/api/portalPermissoes';
-import { openDeferredTab } from '../../lib/pdf';
+import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, openPortalLaudo, uploadPortalAnexo, downloadPortalAnexo, type PortalProgramacaoInput, type PortalAnexo } from '../../lib/api/portalCliente';
+import { listPortalResultados, listPortalLaudosView } from '../../lib/api/portalResultados';
 
 const blank = (): PortalProgramacaoInput & { key: string } => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown): number | null => { const s = str(v).replace(',', '.'); if (!s) return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
 const anexosDe = (md: unknown): PortalAnexo[] => { const o = md as Record<string, unknown> | null; return o && Array.isArray(o.anexos) ? o.anexos as PortalAnexo[] : []; };
 
-type Tab = 'programacao' | 'resultados' | 'acompanhamento';
+type Tab = 'programacao' | 'resultados';
 
 export function ClientePortalPage() {
   const toast = useToast();
@@ -28,17 +26,11 @@ export function ClientePortalPage() {
   const [rows, setRows] = useState([blank()]);
   const [busy, setBusy] = useState(false);
   const [anexBusy, setAnexBusy] = useState<string | null>(null);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const notifs = useQuery({ queryKey: ['portal-notificacoes'], queryFn: listPortalNotificacoes });
-  const unread = (notifs.data ?? []).filter((n) => !n.lida_at).length;
 
   const works = useQuery({ queryKey: ['portal-works'], queryFn: listPortalWorks });
   const concretagens = useQuery({ queryKey: ['portal-concretagens-status'], queryFn: () => listPortalConcretagens('') });
   const laudos = useQuery({ queryKey: ['portal-laudos-view'], queryFn: () => listPortalLaudosView(), enabled: tab === 'resultados' });
-  const resultados = useQuery({ queryKey: ['portal-resultados'], queryFn: () => listPortalResultados(), enabled: tab === 'resultados' || tab === 'acompanhamento' });
-  const perms = useQuery({ queryKey: ['portal-perms'], queryFn: getMinhasPermissoes });
-  const can = (k: FeatureKey) => (perms.data ? perms.data[k] : true);
-  const financeiro = useQuery({ queryKey: ['portal-financeiro'], queryFn: listPortalFinanceiro, enabled: tab === 'acompanhamento' && can('ver_medicao') });
+  const resultados = useQuery({ queryKey: ['portal-resultados'], queryFn: () => listPortalResultados(), enabled: tab === 'resultados' });
 
   function patch(key: string, field: keyof PortalProgramacaoInput, value: unknown) { setRows((list) => list.map((r) => r.key === key ? { ...r, [field]: value } : r)); }
   async function enviar() {
@@ -52,54 +44,27 @@ export function ClientePortalPage() {
       toast(inserted + ' programação(ões) enviada(s) ao laboratório.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
-  async function abrir(reportId: string) { const tab = openDeferredTab(); try { tab.go(await openPortalLaudo(reportId)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } }
+  async function abrir(reportId: string) { const tab = openDeferredTab(); try { tab.set(await openPortalLaudo(reportId)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } }
   async function anexar(concId: string, file: File | null) {
     if (!file) return;
     setAnexBusy(concId);
     try { await uploadPortalAnexo(concId, file); await qc.invalidateQueries({ queryKey: ['portal-concretagens-status'] }); toast('Anexo enviado.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); } finally { setAnexBusy(null); }
   }
-  async function baixarAnexo(path: string) { const tab = openDeferredTab(); try { tab.go(await downloadPortalAnexo(path)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } }
-  async function abrirNotif(n: PortalNotificacao) {
-    try { if (!n.lida_at) { await marcarNotificacao(n.id); await qc.invalidateQueries({ queryKey: ['portal-notificacoes'] }); } } catch { /* best-effort */ }
-    if (n.deep_link === '/portal-cliente') setTab('resultados');
-    setNotifOpen(false);
-  }
-  async function marcarTodas() { try { await marcarNotificacao(undefined, true); await qc.invalidateQueries({ queryKey: ['portal-notificacoes'] }); } catch (e) { toast((e as Error).message, 'error'); } }
-  async function cancelar(id: string) { try { await cancelarProgramacao(id); await qc.invalidateQueries({ queryKey: ['portal-concretagens-status'] }); toast('Programação cancelada.', 'success'); } catch (e) { toast((e as Error).message, 'error'); } }
+  async function baixarAnexo(path: string) { const tab = openDeferredTab(); try { tab.set(await downloadPortalAnexo(path)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); } }
 
   return (
     <section className="space-y-5">
       <PageHeader kicker="Portal do cliente" title="Programações, resultados e laudos" description="Solicite concretagens e acompanhe resultados e laudos emitidos pelo laboratório." />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="tablist" aria-label="Seções do portal" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-          <button role="tab" type="button" aria-selected={tab === 'programacao'} onClick={() => setTab('programacao')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'programacao' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Programação</button>
-          {can('ver_resultados') ? <button role="tab" type="button" aria-selected={tab === 'resultados'} onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button> : null}
-        {can('ver_agenda') || can('ver_medicao') || can('ver_nc') ? <button role="tab" type="button" aria-selected={tab === 'acompanhamento'} onClick={() => setTab('acompanhamento')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'acompanhamento' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Acompanhamento</button> : null}
-        </div>
-        <div className="relative">
-          <Button variant="secondary" leftIcon={<Bell size={16} />} onClick={() => setNotifOpen((o) => !o)}>Notificações{unread > 0 ? <span className="ml-1 rounded-full bg-pink-600 px-1.5 py-0.5 text-xs font-bold text-white">{unread}</span> : null}</Button>
-          {notifOpen ? (
-            <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-              <div className="flex items-center justify-between border-b border-slate-100 p-3 dark:border-slate-800"><span className="text-sm font-bold">Notificações</span><button type="button" className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => void marcarTodas()}>Marcar todas lidas</button></div>
-              <div className="max-h-96 overflow-auto">{(notifs.data ?? []).length === 0 ? <p className="p-4 text-sm text-slate-500">Sem notificações.</p> : (notifs.data ?? []).map((n) => (
-                <button key={n.id} type="button" onClick={() => void abrirNotif(n)} className={'block w-full border-b border-slate-50 p-3 text-left text-sm hover:bg-slate-50 dark:border-slate-800/60 dark:hover:bg-slate-800 ' + (n.lida_at ? '' : 'bg-pink-50/60 dark:bg-pink-900/10')}>
-                  <div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-50">{n.lida_at ? null : <span className="h-2 w-2 rounded-full bg-pink-600" />}{n.titulo}</div>
-                  {n.corpo ? <div className="mt-0.5 text-xs text-slate-500">{n.corpo}</div> : null}
-                  <div className="mt-0.5 text-[11px] text-slate-400">{new Date(n.created_at).toLocaleString('pt-BR')}</div>
-                </button>
-              ))}</div>
-            </div>
-          ) : null}
-        </div>
+      <div role="tablist" aria-label="Seções do portal" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+        <button role="tab" type="button" aria-selected={tab === 'programacao'} onClick={() => setTab('programacao')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'programacao' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Programação</button>
+        <button role="tab" type="button" aria-selected={tab === 'resultados'} onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button>
       </div>
 
-      {tab === 'acompanhamento' ? (
-        <AcompanhamentoPortal resultados={resultados.data ?? []} financeiro={financeiro.data ?? []} verAgenda={can('ver_agenda')} verMedicao={can('ver_medicao')} verNc={can('ver_nc')} />
-      ) : (tab === 'programacao' || !can('ver_resultados')) ? (
+      {tab === 'programacao' ? (
         <>
-          {can('programar') ? <Card>
+          <Card>
             <CardHeader title="Nova programação de concretagem">Preencha uma linha por concretagem e envie tudo para confirmação do laboratório.</CardHeader>
             <div className="overflow-x-auto p-4">
               <table className="w-full min-w-[1120px] text-left text-sm">
@@ -123,7 +88,7 @@ export function ClientePortalPage() {
               </table>
             </div>
             <div className="flex flex-wrap justify-between gap-2 border-t border-slate-100 p-4 dark:border-slate-800"><Button variant="secondary" onClick={() => setRows((r) => [...r, blank()])}>+ Adicionar linha</Button><Button onClick={() => void enviar()} disabled={busy}>{busy ? 'Enviando...' : 'Enviar programações ao laboratório'}</Button></div>
-          </Card> : null}
+          </Card>
 
           <Card>
             <CardHeader title="Minhas concretagens">Status das programações enviadas. Anexe a NF/DANFE ou documentos por concretagem.</CardHeader>
@@ -134,7 +99,7 @@ export function ClientePortalPage() {
                   <div key={c.id} className="p-4 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'}</span><StatusBadge status={c.status} /></div><div className="mt-1 text-slate-500">{c.client_works?.nome ?? '-'} · {c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}</div></div>
-                      <div className="flex flex-wrap gap-2">{c.status === 'pendente' && can('cancelar_programacao') ? <Button variant="ghost" onClick={() => void cancelar(c.id)}>Cancelar</Button> : null}{can('anexar') ? <label className="btn btn-secondary cursor-pointer whitespace-nowrap">{anexBusy === c.id ? 'Enviando...' : '+ Anexar arquivo'}<input type="file" className="hidden" disabled={anexBusy === c.id} onChange={(e) => void anexar(c.id, e.target.files?.[0] ?? null)} /></label> : null}</div>
+                      <label className="btn btn-secondary cursor-pointer whitespace-nowrap">{anexBusy === c.id ? 'Enviando...' : '+ Anexar arquivo'}<input type="file" className="hidden" disabled={anexBusy === c.id} onChange={(e) => void anexar(c.id, e.target.files?.[0] ?? null)} /></label>
                     </div>
                     {anexos.length ? <div className="mt-2 flex flex-wrap gap-2">{anexos.map((a, i) => <button key={a.path || i} type="button" className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200" onClick={() => void baixarAnexo(a.path)}><FileText size={13} /> {a.filename}</button>)}</div> : null}
                   </div>
@@ -152,11 +117,6 @@ export function ClientePortalPage() {
           error={laudos.isError ? (laudos.error as Error).message : resultados.isError ? (resultados.error as Error).message : null}
           onDownload={(id) => abrir(id)}
           fileLabel="meus-resultados"
-          permiteComentarios
-          podeComentar={can('comentar')}
-          podeContestar={can('contestar')}
-          podeBaixar={can('baixar_laudo')}
-          podeDossie={can('ver_dossie')}
         />
       )}
     </section>

@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import { openDeferredTab } from '../../lib/pdf';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { FileText } from '../../components/ui/icons';
 import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosPanel';
 import type { PortalLaudoView, PortalResultadoRow } from '../../lib/portal/types';
 import { env } from '../../lib/env';
@@ -14,7 +14,7 @@ type PortalData = {
   laboratorio: string | null;
   cliente: { razao_social?: string | null; nome_fantasia?: string | null } | null;
   obras: { id: string; nome: string; codigo?: string | null; cidade?: string | null; uf?: string | null }[];
-  concretagens: { id: string; codigo: string | null; status: string; data_real: string | null; data_programada: string | null; local_texto: string | null; volume_lancado_m3: number | null; fck_previsto: number | null; metadata?: Record<string, unknown> | null }[];
+  concretagens: { id: string; codigo: string | null; status: string; data_real: string | null; data_programada: string | null; local_texto: string | null; volume_lancado_m3: number | null; fck_previsto: number | null }[];
   laudos: PortalLaudoView[];
   resultados: PortalResultadoRow[];
 };
@@ -30,9 +30,6 @@ async function callPortal(token: string, extra?: Record<string, unknown>): Promi
   if (!resp.ok || payload.ok === false) throw new Error(String(payload.error ?? 'Link inválido ou expirado.'));
   return payload;
 }
-
-type Anexo = { path: string; filename: string };
-const anexosDe = (md: unknown): Anexo[] => { const o = md as Record<string, unknown> | null; return o && Array.isArray(o.anexos) ? o.anexos as Anexo[] : []; };
 
 type Tab = 'concretagens' | 'resultados';
 
@@ -58,14 +55,11 @@ export function PortalPublicoPage() {
   });
 
   async function abrir(reportId: string) {
+    const tab = openDeferredTab();
     try {
       const r = await callPortal(token, { lab_report_id: reportId });
-      if (r.url) window.open(String(r.url), '_blank', 'noopener,noreferrer');
-    } catch (e) { toast((e as Error).message, 'error'); }
-  }
-  async function baixarAnexo(path: string) {
-    try { const r = await callPortal(token, { anexo_path: path }); if (r.url) window.open(String(r.url), '_blank', 'noopener,noreferrer'); }
-    catch (e) { toast((e as Error).message, 'error'); }
+      if (r.url) tab.set(String(r.url)); else tab.fail();
+    } catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
   }
 
   const d = q.data;
@@ -92,7 +86,7 @@ export function PortalPublicoPage() {
             {tab === 'concretagens' ? (
               <Card>
                 <CardHeader title="Concretagens">Programações e concretagens registradas para suas obras.</CardHeader>
-                {d.concretagens.length === 0 ? <EmptyState /> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{d.concretagens.map((c) => <div key={c.id} className="p-4 text-sm"><div className="flex flex-wrap items-center gap-2 font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'} <StatusBadge status={c.status} /></div><div className="mt-1 text-slate-500">{c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}{c.fck_previsto ? ' · FCK ' + c.fck_previsto : ''}{c.volume_lancado_m3 ? ' · ' + c.volume_lancado_m3 + ' m³' : ''}</div>{anexosDe(c.metadata).length ? <div className="mt-2 flex flex-wrap gap-2">{anexosDe(c.metadata).map((a, i) => <button key={a.path || i} type="button" className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200" onClick={() => void baixarAnexo(a.path)}><FileText size={13} /> {a.filename}</button>)}</div> : null}</div>)}</div>}
+                {d.concretagens.length === 0 ? <EmptyState /> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{d.concretagens.map((c) => <div key={c.id} className="p-4 text-sm"><div className="flex flex-wrap items-center gap-2 font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'} <StatusBadge status={c.status} /></div><div className="mt-1 text-slate-500">{c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}{c.fck_previsto ? ' · FCK ' + c.fck_previsto : ''}{c.volume_lancado_m3 ? ' · ' + c.volume_lancado_m3 + ' m³' : ''}</div></div>)}</div>}
               </Card>
             ) : (
               <LaudosResultadosPanel

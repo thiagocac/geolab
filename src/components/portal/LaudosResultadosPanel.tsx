@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, lazy, Suspense } from 'react';
 import { Card, CardHeader } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -6,10 +6,8 @@ import { StatusBadge } from '../ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../ui/State';
 import { FileText, Download, Search, AlertTriangle } from '../ui/icons';
 import { ParcialFinalBadge } from './ParcialFinalBadge';
-import { EvolucaoExemplares } from './EvolucaoExemplares';
-import { TendenciaResistencia } from './TendenciaResistencia';
-import { ComentariosLaudo } from './ComentariosLaudo';
-import { LinhaTempoConcretagem } from './LinhaTempoConcretagem';
+// Lazy: o gráfico (recharts, ~424 kB no chunk 'charts') só baixa quando um laudo é expandido.
+const EvolucaoExemplares = lazy(() => import('./EvolucaoExemplares').then((m) => ({ default: m.EvolucaoExemplares })));
 import { consolidarExemplares, exportResultadosPdf, exportResultadosXlsx, filtraLaudos, filtraResultados, isAtrasado } from '../../lib/portal/resultados';
 import type { PortalLaudoView, PortalResultadoRow } from '../../lib/portal/types';
 
@@ -21,11 +19,6 @@ export type LaudosResultadosPanelProps = {
   error?: string | null;
   onDownload: (reportId: string) => void | Promise<void>;
   fileLabel?: string;
-  permiteComentarios?: boolean;
-  podeComentar?: boolean;
-  podeContestar?: boolean;
-  podeBaixar?: boolean;
-  podeDossie?: boolean;
 };
 
 const PAGE = 50;
@@ -68,7 +61,7 @@ function ResultadosTable({ rows, tech }: { rows: PortalResultadoRow[]; tech?: bo
   );
 }
 
-export function LaudosResultadosPanel({ works, laudos, resultados, loading, error, onDownload, fileLabel = 'resultados', permiteComentarios = false, podeComentar = true, podeContestar = true, podeBaixar = true, podeDossie = false }: LaudosResultadosPanelProps) {
+export function LaudosResultadosPanel({ works, laudos, resultados, loading, error, onDownload, fileLabel = 'resultados' }: LaudosResultadosPanelProps) {
   const [workId, setWorkId] = useState('');
   const [texto, setTexto] = useState('');
   const [tipo, setTipo] = useState<'todos' | 'parcial' | 'final'>('todos');
@@ -89,12 +82,10 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
   const resF = useMemo(() => filtraResultados(resultados, { workId, texto, idade, conformidade: conf, somenteComResultado: true, de, ate }), [resultados, workId, texto, idade, conf, de, ate]);
   const resumo = useMemo(() => consolidarExemplares(resF), [resF]);
   const atrasados = useMemo(() => resultados.filter((r) => isAtrasado(r) && (!workId || r.work_id === workId)), [resultados, workId]);
-  const concCodigo = useMemo(() => { const m = new Map<string, string>(); for (const r of resultados) { if (r.concretagem_id && r.concretagem_codigo) m.set(r.concretagem_id, r.concretagem_codigo); } return m; }, [resultados]);
-  const revCount = useMemo(() => { const m = new Map<string, number>(); for (const l of laudos) m.set(l.numero, (m.get(l.numero) ?? 0) + 1); return m; }, [laudos]);
   const conformes = resumo.filter((e) => e.conforme === true).length;
   const naoConformes = resumo.filter((e) => e.conforme === false).length;
-  const finais = laudosF.filter((l) => l.parcial_final === 'final').length;
-  const parciais = laudosF.filter((l) => l.parcial_final === 'parcial').length;
+  const finais = laudos.filter((l) => l.parcial_final === 'final').length;
+  const parciais = laudos.filter((l) => l.parcial_final === 'parcial').length;
   const totalPages = Math.max(1, Math.ceil(resF.length / PAGE));
   const pageSafe = Math.min(page, totalPages - 1);
   const pageRows = resF.slice(pageSafe * PAGE, pageSafe * PAGE + PAGE);
@@ -103,7 +94,6 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
   async function baixar(id: string) { setBaixando(id); try { await onDownload(id); } finally { setBaixando(null); } }
   async function exportarXlsx() { setExp('xlsx'); try { await exportResultadosXlsx(resF, fileLabel + '-' + new Date().toISOString().slice(0, 10) + '.xlsx'); } finally { setExp(''); } }
   function exportarPdf() { setExp('pdf'); try { exportResultadosPdf(resF, 'Resultados de ensaio — ' + fileLabel); } finally { setExp(''); } }
-  async function dossie() { setExp('xlsx'); try { await exportResultadosXlsx(resF, 'dossie-' + fileLabel + '-' + new Date().toISOString().slice(0, 10) + '.xlsx'); exportResultadosPdf(resF, 'Dossiê da obra — ' + fileLabel); } finally { setExp(''); } }
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -117,10 +107,6 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
         <MiniStat label="Não conformes" value={naoConformes} tone={naoConformes ? 'danger' : undefined} />
         <MiniStat label="CPs atrasados" value={atrasados.length} tone={atrasados.length ? 'danger' : undefined} />
       </div>
-
-      {resF.length >= 2 ? <Card><TendenciaResistencia rows={resF} /></Card> : null}
-
-      {resultados.length >= 5000 ? <Card><div className="flex items-center gap-2 p-4 text-sm text-amber-700 dark:text-amber-300"><AlertTriangle size={16} /> Mostrando os 5000 resultados mais recentes. Filtre por obra ou período para ver os demais.</div></Card> : null}
 
       {atrasados.length ? (
         <Card>
@@ -159,15 +145,15 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
                 <div key={l.id} className="p-4 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{l.numero}{l.revisao > 0 ? ' R' + l.revisao : ''}</span><ParcialFinalBadge value={l.parcial_final} /><StatusBadge status={l.status} />{(revCount.get(l.numero) ?? 0) > 1 ? <Badge tone="neutral">{revCount.get(l.numero)} revisões</Badge> : null}</div>
+                      <div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{l.numero}{l.revisao > 0 ? ' R' + l.revisao : ''}</span><ParcialFinalBadge value={l.parcial_final} /><StatusBadge status={l.status} /></div>
                       <div className="mt-1 text-slate-500">{l.work_nome ?? '—'} · {l.data_emissao ?? 'sem emissão'}</div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="secondary" leftIcon={<FileText size={15} />} onClick={() => toggle(l.id)}>{aberto ? 'Ocultar resultados' : 'Ver resultados'}</Button>
-                      {l.tem_pdf && podeBaixar ? <Button variant="ghost" leftIcon={<Download size={15} />} disabled={baixando === l.id} onClick={() => void baixar(l.id)}>{baixando === l.id ? 'Abrindo...' : 'Baixar PDF'}</Button> : null}{concCodigo.get(l.concretagem_id ?? '') ? <Button variant="ghost" onClick={() => window.open((typeof window !== 'undefined' ? window.location.origin : '') + '/validar/' + concCodigo.get(l.concretagem_id ?? ''), '_blank', 'noopener,noreferrer')}>Validar</Button> : null}
+                      {l.tem_pdf ? <Button variant="ghost" leftIcon={<Download size={15} />} disabled={baixando === l.id} onClick={() => void baixar(l.id)}>{baixando === l.id ? 'Abrindo...' : 'Baixar PDF'}</Button> : null}
                     </div>
                   </div>
-                  {aberto ? <div className="mt-3 space-y-3"><div className="rounded-xl border border-slate-200 dark:border-slate-700"><LinhaTempoConcretagem laudo={l} cps={cps} /></div><div className="rounded-xl border border-slate-200 dark:border-slate-700">{cps.length ? <><EvolucaoExemplares rows={cps} /><ResultadosTable rows={cps} /></> : <p className="px-3 py-4 text-sm text-slate-500">Sem resultados lançados para este laudo ainda.</p>}</div>{permiteComentarios ? <div className="rounded-xl border border-slate-200 dark:border-slate-700"><div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800">Comentários e contestações</div><ComentariosLaudo labReportId={l.id} workId={l.work_id} podeComentar={podeComentar} podeContestar={podeContestar} /></div> : null}</div> : null}
+                  {aberto ? <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700">{cps.length ? <><Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />}><EvolucaoExemplares rows={cps} /></Suspense><ResultadosTable rows={cps} /></> : <p className="px-3 py-4 text-sm text-slate-500">Sem resultados lançados para este laudo ainda.</p>}</div> : null}
                 </div>
               );
             })}
@@ -180,7 +166,7 @@ export function LaudosResultadosPanel({ works, laudos, resultados, loading, erro
           <div><p className="kicker">Resultados</p><h2 className="mt-1 text-lg display text-slate-950 dark:text-slate-50">Corpos de prova ({resF.length})</h2><p className="mt-1 text-xs text-slate-500">Exemplares: {resumo.length} · {conformes} conformes · {naoConformes} não conformes</p></div>
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => setTech((v) => !v)}>{tech ? 'Menos colunas' : 'Detalhes técnicos'}</Button>
-            {podeDossie ? <Button variant="secondary" leftIcon={<Download size={15} />} disabled={exp !== '' || resF.length === 0} onClick={() => void dossie()}>Dossiê</Button> : null}<Button variant="secondary" leftIcon={<Download size={15} />} disabled={exp !== '' || resF.length === 0} onClick={() => exportarPdf()}>{exp === 'pdf' ? 'Gerando...' : 'PDF'}</Button>
+            <Button variant="secondary" leftIcon={<Download size={15} />} disabled={exp !== '' || resF.length === 0} onClick={() => exportarPdf()}>{exp === 'pdf' ? 'Gerando...' : 'PDF'}</Button>
             <Button leftIcon={<Download size={15} />} disabled={exp !== '' || resF.length === 0} onClick={() => void exportarXlsx()}>{exp === 'xlsx' ? 'Gerando...' : 'Excel'}</Button>
           </div>
         </div>

@@ -13,20 +13,39 @@ export type LaudoRow = {
   work_id: string | null; client_works?: { nome: string } | null;
 };
 
-export async function listLaudos(): Promise<LaudoRow[]> {
-  const { data, error } = await db.from('lab_reports')
+export async function listLaudos(tenantId?: string): Promise<LaudoRow[]> {
+  let q = db.from('lab_reports')
     .select('id, numero, status, revisao, data_emissao, storage_path, concretagem_id, work_id, client_works(nome)')
-    .is('deleted_at', null).order('created_at', { ascending: false });
+    .is('deleted_at', null);
+  if (tenantId) q = q.eq('tenant_id', tenantId); // filtro explícito ativa o índice por tenant; RLS segue garantindo o isolamento
+  const { data, error } = await q.order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as LaudoRow[];
+}
+// Listagem paginada + busca server-side (tela Laudos): busca livre no Nº do laudo; obra via filtro .eq.
+export async function listLaudosPaged(opts: { tenantId?: string; workId?: string; search?: string; page?: number; pageSize?: number }): Promise<{ rows: LaudoRow[]; total: number }> {
+  const pageSize = opts.pageSize ?? 25;
+  const page = Math.max(0, opts.page ?? 0);
+  let q = db.from('lab_reports')
+    .select('id, numero, status, revisao, data_emissao, storage_path, concretagem_id, work_id, client_works(nome)', { count: 'exact' })
+    .is('deleted_at', null);
+  if (opts.tenantId) q = q.eq('tenant_id', opts.tenantId);
+  if (opts.workId) q = q.eq('work_id', opts.workId);
+  const term = (opts.search ?? '').replace(/[%]/g, ' ').trim();
+  if (term) q = q.ilike('numero', `%${term}%`);
+  const { data, error, count } = await q.order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1);
+  if (error) throw new Error(error.message);
+  return { rows: (data ?? []) as LaudoRow[], total: count ?? (data ?? []).length };
 }
 
 export type ConcretagemElegivel = { id: string; codigo: string | null; work_nome: string | null };
 
-export async function listConcretagensComResultado(): Promise<ConcretagemElegivel[]> {
-  const { data, error } = await db.from('material_tests')
+export async function listConcretagensComResultado(tenantId?: string): Promise<ConcretagemElegivel[]> {
+  let q = db.from('material_tests')
     .select('concretagem_id, concretagens(id, codigo, client_works(nome))')
     .not('resultado_valor', 'is', null).is('deleted_at', null);
+  if (tenantId) q = q.eq('tenant_id', tenantId);
+  const { data, error } = await q;
   if (error) throw new Error(error.message);
   const seen = new Map<string, ConcretagemElegivel>();
   for (const r of (data ?? []) as Record<string, any>[]) {
@@ -56,8 +75,8 @@ export async function gerarLaudo(concId: string, persist = true): Promise<{ blob
   return { blob, labReportId };
 }
 
-export async function downloadUrl(path: string, filename?: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('lab-reports').createSignedUrl(path, 120, filename ? { download: filename } : undefined);
+export async function downloadUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('lab-reports').createSignedUrl(path, 120);
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }
@@ -130,8 +149,3 @@ export async function listLaudosClassificacao(): Promise<Record<string, string>>
   return m;
 }
 
-// Notifica o cliente da obra quando o laudo é emitido (in-app, best-effort). RPC notificar_cliente (065).
-export async function notificarLaudoEmitido(workId: string, numero: string): Promise<void> {
-  if (!workId) return;
-  try { await rpc.rpc('notificar_cliente', { p_work_id: workId, p_tipo: 'laudo_emitido', p_titulo: 'Laudo emitido', p_corpo: 'O laudo ' + numero + ' foi emitido e está disponível no portal.', p_deep_link: '/portal-cliente', p_entity_table: 'lab_report', p_entity_id: null }); } catch { /* best-effort */ }
-}

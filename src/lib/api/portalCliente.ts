@@ -124,22 +124,3 @@ export async function downloadPortalAnexo(path: string): Promise<string> {
   const r = await callAnexo({ action: 'download', path });
   return String(r.url);
 }
-
-
-// ---- Notificações in-app do cliente (migration 065) ----
-export type PortalNotificacao = { id: string; tipo: string; titulo: string; corpo: string | null; deep_link: string | null; lida_at: string | null; created_at: string; work_id: string };
-export async function listPortalNotificacoes(): Promise<PortalNotificacao[]> {
-  const { data, error } = await db.from('client_notifications').select('id, tipo, titulo, corpo, deep_link, lida_at, created_at, work_id').is('deleted_at', null).order('created_at', { ascending: false }).limit(50);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as PortalNotificacao[];
-}
-export async function marcarNotificacao(id?: string, todas = false): Promise<void> {
-  const r = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
-  const { error } = await r.rpc('marcar_notificacao_cliente', { p_id: id ?? null, p_todas: todas });
-  if (error) throw new Error(error.message);
-}
-export async function cancelarProgramacao(id: string): Promise<void> {
-  const r = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
-  const { error } = await r.rpc('cancelar_programacao_cliente', { p_id: id });
-  if (error) throw new Error(error.message);
-}

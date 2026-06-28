@@ -9,6 +9,7 @@ import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, EmptyState } from '../../components/ui/State';
 import { listReference } from '../../lib/api/client';
 import { listObrasEstrutura, listGrupos, listTipos, listPecas, addEstrutura, delEstrutura } from '../../lib/api/estrutura';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown): number | null => { const s = String(v ?? '').trim(); return s === '' ? null : Number(s); };
@@ -17,6 +18,7 @@ export function EstruturaPage() {
   const { member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const [work, setWork] = useState('');
   const [g, setG] = useState<Record<string, unknown>>({});
   const [t, setT] = useState<Record<string, unknown>>({});
@@ -40,6 +42,7 @@ export function EstruturaPage() {
     } catch (e) { toast((e as Error).message, 'error'); }
   }
   async function rm(table: string, id: string, key: string) {
+    if (!(await confirm({ title: 'Remover item', message: 'Remover este item da estrutura? Itens vinculados (tipos/peças) podem ficar sem referência.', danger: true, confirmLabel: 'Remover' }))) return;
     try { await delEstrutura(table, id); await qc.invalidateQueries({ queryKey: [key, work] }); } catch (e) { toast((e as Error).message, 'error'); }
   }
 

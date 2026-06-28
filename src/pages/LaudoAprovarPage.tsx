@@ -1,21 +1,30 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { decidirLaudoLink } from '../lib/api/laudo';
+import { useConfirm } from '../components/ui/ConfirmDialog';
 
 // Página PÚBLICA (fora do gate de auth) — alvo do magic link de aprovação de laudo.
 // Aprovar / Devolver / Reprovar + comentário. Uso único: o backend (consume_magic_link_laudo)
 // valida hash + expiry + consumed_at. Estilo espelha a ValidarPage (inline + CSS vars).
 type Decision = 'aprovar' | 'devolver' | 'reprovar';
 
+const CONFIRM_DECISAO: Record<Decision, { title: string; message: string; confirmLabel: string; danger?: boolean }> = {
+  aprovar: { title: 'Aprovar laudo', message: 'Confirma a aprovação deste laudo? Este link é de uso único e a decisão não poderá ser desfeita.', confirmLabel: 'Aprovar' },
+  devolver: { title: 'Devolver laudo', message: 'Confirma a devolução do laudo para correção? Este link é de uso único.', confirmLabel: 'Devolver' },
+  reprovar: { title: 'Reprovar laudo', message: 'Confirma a reprovação deste laudo? Este link é de uso único e a decisão não poderá ser desfeita.', confirmLabel: 'Reprovar', danger: true },
+};
+
 export function LaudoAprovarPage() {
   const { token = '' } = useParams();
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState<Decision | null>(null);
   const [done, setDone] = useState<{ ok: boolean; msg: string } | null>(null);
+  const confirm = useConfirm();
 
   async function decide(d: Decision) {
     if (!token) { setDone({ ok: false, msg: 'Link inválido: token não informado.' }); return; }
     if ((d === 'devolver' || d === 'reprovar') && !comment.trim()) { setDone({ ok: false, msg: 'Informe um comentário para devolver ou reprovar.' }); return; }
+    if (!(await confirm(CONFIRM_DECISAO[d]))) return;
     setBusy(d);
     const r = await decidirLaudoLink(token, d, comment.trim());
     setBusy(null);

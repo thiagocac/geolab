@@ -47,6 +47,20 @@ const META: Record<string, { label: string; tone: StatusTone }> = {
   falhou: { label: 'Falha', tone: 'danger' },
   endurecido: { label: 'Endurecido', tone: 'info' },
   fresco: { label: 'Fresco', tone: 'info' },
+
+  // lote (aceitação estatística NBR 12655)
+  aceito: { label: 'Aceito', tone: 'success' },
+  rejeitado: { label: 'Rejeitado', tone: 'danger' },
+  em_analise: { label: 'Em análise', tone: 'warning' },
+
+  // laudo / financeiro
+  emitido: { label: 'Emitido', tone: 'success' },
+  emitida: { label: 'Emitida', tone: 'warning' },
+  paga: { label: 'Paga', tone: 'success' },
+
+  // medição
+  fechada: { label: 'Fechada', tone: 'success' },
+  faturada: { label: 'Faturada', tone: 'info' },
 };
 
 export function recordStatusMeta(status?: string | null): { label: string; tone: StatusTone } {

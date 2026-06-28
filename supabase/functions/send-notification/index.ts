@@ -1,0 +1,150 @@
+// send-notification (Concresoft) - UNICO ponto de saida Resend.
+// Gates INLINE, branding Concresoft, fail-closed em RESEND_API_KEY.
+// Gate: auth -> inativo -> preferencia -> papel -> QUIET HOURS (is_in_quiet_hours, fail-open) -> allowlist -> supressao -> dispatch/dry-run.
+// QUIET HOURS (v11): eventos NAO-system respeitam o silencio do membro (fuso proprio); falha na checagem = envia (fail-open).
+import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
+
+const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type, x-notify-secret', 'access-control-allow-methods': 'POST,OPTIONS' };
+const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...cors } });
+const fail = (m: string, status = 400, details?: unknown) => json({ ok: false, error: m, details }, status);
+const asStr = (v: unknown, f = '') => (typeof v === 'string' && v.trim() ? v.trim() : f);
+const lower = (v: unknown) => asStr(v).toLowerCase();
+
+const TITLES: Record<string, string> = {
+  laudo_pronto: 'Laudo pronto para conferencia',
+  resultado_abaixo_fck: 'Resultado abaixo do fck na idade de controle',
+  cp_atrasado: 'Corpo de prova atrasado',
+  calibracao_vencendo: 'Calibracao de equipamento vencendo',
+};
+const KICKERS: Record<string, string> = {
+  laudo_pronto: 'LAUDO',
+  resultado_abaixo_fck: 'ALERTA DE RESULTADO',
+  cp_atrasado: 'AGENDA DE ROMPIMENTO',
+  calibracao_vencendo: 'CALIBRACAO',
+};
+const GRAD = 'linear-gradient(135deg,#182863 0%,#3E2D71 55%,#C5117E 100%)';
+const BRAND_LOGO = 'https://app.concresoft.io/brand/concresoft-lockup-white-2x.png';
+const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
+
+// Template transacional "bulletproof" do Concresoft Email Kit. Valores ja escapados pelo chamador.
+function emailShell(o: { preheader: string; kicker: string; titulo: string; corpoHtml: string; url?: string; botaoLabel?: string; referencia?: string; data?: string; motivoEnvio: string; urlPreferencias?: string }) {
+  const btn = (o.url && o.botaoLabel) ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 4px;"><tr><td align="center" bgcolor="#182863" style="border-radius:6px;background-color:#182863;background-image:${GRAD};"><!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${o.url}" style="height:46px;v-text-anchor:middle;width:240px;" arcsize="13%" stroke="f" fillcolor="#3E2D71"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${o.botaoLabel}</center></v:roundrect><![endif]--><!--[if !mso]><!-- --><a class="btn-a" href="${o.url}" style="display:inline-block;height:46px;line-height:46px;padding:0 26px;border-radius:6px;font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;background:${GRAD};">${o.botaoLabel}</a><!--<![endif]--></td></tr></table>` : '';
+  const detRows = `${o.referencia ? `<tr><td style="font-size:13px;color:#8a8275;padding-bottom:7px;">Referencia</td><td align="right" style="font-size:13px;font-family:'JetBrains Mono',monospace;color:#182863;padding-bottom:7px;">${o.referencia}</td></tr>` : ''}${o.data ? `<tr><td style="font-size:13px;color:#8a8275;">Data</td><td align="right" style="font-size:13px;font-family:'JetBrains Mono',monospace;color:#182863;">${o.data}</td></tr>` : ''}`;
+  const details = (o.referencia || o.data) ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;background:#faf9f7;border:1px solid #e6e1d6;border-radius:8px;"><tr><td style="padding:16px 18px;font-family:-apple-system,'Segoe UI',Arial,sans-serif;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${detRows}</table></td></tr></table>` : '';
+  const urlFallback = o.url ? `<p style="margin:20px 0 0;font-size:12px;line-height:1.55;color:#8a8275;">Se o botao nao funcionar, copie e cole no navegador:<br><span style="font-family:'JetBrains Mono',monospace;color:#182863;word-break:break-all;">${o.url}</span></p>` : '';
+  const prefs = o.urlPreferencias ? ` &middot; <a href="${o.urlPreferencias}" style="color:#8a8275;text-decoration:underline;">Gerenciar notificacoes</a>` : '';
+  return `<!DOCTYPE html><html lang="pt-BR" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>Concresoft</title><!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]--><style>body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table{border-collapse:collapse!important}img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic}a{text-decoration:none}@media only screen and (max-width:620px){.container{width:100%!important;border-radius:0!important}.px{padding-left:24px!important;padding-right:24px!important}.btn-a{display:block!important;text-align:center!important}}</style></head><body style="margin:0;padding:0;background:#faf9f7;"><div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#faf9f7;opacity:0;">${o.preheader}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf9f7;"><tr><td align="center" style="padding:32px 16px;"><table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#ffffff;border:1px solid #e6e1d6;border-radius:8px;overflow:hidden;"><tr><td style="background-color:#182863;background-image:${GRAD};padding:22px 32px;"><img src="${BRAND_LOGO}" alt="Concresoft" height="24" style="height:24px;width:auto;display:block;border:0;"></td></tr><tr><td class="px" style="padding:36px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#16213e;"><p style="margin:0 0 12px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#8a8275;">${o.kicker}</p><h1 style="margin:0;font-size:22px;line-height:1.25;font-weight:800;letter-spacing:-0.01em;color:#16213e;">${o.titulo}</h1><p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:#3a3528;">${o.corpoHtml}</p>${btn}${details}${urlFallback}</td></tr><tr><td style="padding:0 40px;"><div style="height:1px;background:#efe9dd;line-height:1px;font-size:0;">&nbsp;</div></td></tr><tr><td class="px" style="padding:24px 40px;background:#faf9f7;font-family:-apple-system,'Segoe UI',Arial,sans-serif;"><p style="margin:0;font-size:11px;line-height:1.6;color:#a89f8d;">${o.motivoEnvio}<br>Concresoft &middot; &copy; 2026${prefs}</p></td></tr></table></td></tr></table></body></html>`;
+}
+
+function render(eventType: string, p: Record<string, unknown>) {
+  const title = asStr(p.title, TITLES[eventType] ?? 'Atualizacao na Concresoft');
+  const appUrl = Deno.env.get('APP_URL') ?? 'https://app.concresoft.io';
+  const dl = asStr(p.deep_link, '/laudos');
+  const ctaUrl = /^https?:\/\//.test(dl) ? dl : `${appUrl}${dl.startsWith('/') ? dl : '/' + dl}`;
+  const base = asStr(p.body, asStr(p.message, 'Ha uma atualizacao que requer sua atencao na Concresoft.'));
+  const obra = p.obra_nome ? `\n\nObra: ${asStr(p.obra_nome)}` : '';
+  const corpoHtml = esc(`${base}${obra}`).replace(/\n/g, '<br>');
+  const html = emailShell({
+    preheader: title,
+    kicker: KICKERS[eventType] ?? 'CONCRESOFT',
+    titulo: esc(title),
+    corpoHtml,
+    url: esc(ctaUrl),
+    botaoLabel: esc(asStr(p.cta_label, 'Abrir na Concresoft')),
+    referencia: p.reference ? esc(asStr(p.reference)) : '',
+    data: p.data ? esc(asStr(p.data)) : '',
+    motivoEnvio: `Voce recebeu este e-mail por causa das suas preferencias de notificacao na Concresoft.${(p.tenant_name || p.obra_nome) ? ' Laboratorio: ' + esc(asStr(p.tenant_name, asStr(p.obra_nome, '-'))) : ''}`,
+    urlPreferencias: `${appUrl}/preferencias`,
+  });
+  const text = `${title}\n\n${base}${obra}\n\n${asStr(p.cta_label, 'Abrir')}: ${ctaUrl}`;
+  return { subject: `[Concresoft] ${title}`, html, text };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  try {
+    const url = Deno.env.get('SUPABASE_URL') ?? '';
+    const svc = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
+    const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const { data: settings, error: se } = await svc.from('notification_dispatch_settings').select('*').eq('id', true).maybeSingle();
+    if (se) return fail(se.message, 500);
+
+    const notifySecret = req.headers.get('x-notify-secret') ?? '';
+    const bearer = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
+    let jwtOk = false;
+    if (bearer) { const { data } = await svc.auth.getUser(bearer); jwtOk = !!data.user; }
+    const secretOk = !!settings?.dispatch_secret && notifySecret === settings.dispatch_secret;
+    if (!secretOk && !jwtOk) return fail('nao autorizado', 401);
+
+    const eventType = asStr(body.event_type, 'system.event');
+    const memberId = asStr(body.member_id);
+    let to = lower(body.email);
+    let member: Record<string, unknown> | null = null;
+    if (memberId) {
+      const { data, error } = await svc.from('members').select('id, tenant_id, email, full_name, role, roles, active').eq('id', memberId).maybeSingle();
+      if (error) return fail(error.message, 500);
+      member = data as Record<string, unknown> | null;
+      to = to || lower(member?.email);
+      if (member && member.active === false) return json({ ok: true, status: 'skipped', reason: 'member_inactive' });
+    }
+    if (!to) return fail('email obrigatorio');
+    const tenantId = asStr(body.tenant_id, asStr(member?.tenant_id));
+    const dedupeKey = asStr(body.dedupe_key, `${eventType}:${asStr(body.entity_type, 'generic')}:${asStr(body.entity_id, crypto.randomUUID())}:${to}`);
+    const rendered = render(eventType, { ...body, email: to });
+    const logBase = { tenant_id: tenantId || null, dedupe_key: dedupeKey, recipient_email: to, event_type: eventType, notification_type: eventType, payload: body, track_token: crypto.randomUUID() };
+    const log = (extra: Record<string, unknown>) => svc.from('notification_dispatch_log').upsert({ ...logBase, ...extra }, { onConflict: 'dedupe_key' });
+
+    if (memberId) {
+      const { data: prefs } = await svc.from('member_notification_prefs').select('channel').eq('member_id', memberId).eq('event_type', eventType);
+      if ((prefs ?? []).some((r: Record<string, unknown>) => ['off', 'none', 'disabled'].includes(asStr(r.channel)))) {
+        await log({ status: 'skipped', metadata: { reason: 'preference' } });
+        return json({ ok: true, status: 'skipped', reason: 'preference' });
+      }
+    }
+    if (memberId && member) {
+      const { data: roleRows } = await svc.from('role_notification_types').select('role_code').eq('event_type', eventType).eq('enabled', true);
+      const allowed = (roleRows ?? []).map((r: Record<string, unknown>) => asStr(r.role_code)).filter(Boolean);
+      if (allowed.length) {
+        const mine = [asStr(member.role), ...(Array.isArray(member.roles) ? (member.roles as unknown[]).map((x) => asStr(x)) : [])];
+        if (!mine.some((r) => allowed.includes(r))) {
+          await log({ status: 'skipped', metadata: { reason: 'role_gate' } });
+          return json({ ok: true, status: 'skipped', reason: 'role_gate' });
+        }
+      }
+    }
+    // QUIET HOURS (v11): eventos NAO-system respeitam o silencio do membro (fuso proprio). Fail-open.
+    if (memberId) {
+      try {
+        const { data: inQuiet } = await svc.rpc('is_in_quiet_hours', { p_member_id: memberId, p_event_type: eventType });
+        if (inQuiet === true) {
+          await log({ status: 'skipped', metadata: { reason: 'quiet_hours' } });
+          return json({ ok: true, status: 'skipped', reason: 'quiet_hours' });
+        }
+      } catch (_e) { /* fail-open: silencio nao confiavel nao deve impedir o envio */ }
+    }
+    const allowlist = Array.isArray(settings?.email_allowlist) ? settings.email_allowlist.map((x: unknown) => lower(x)).filter(Boolean) : [];
+    if (allowlist.length && !allowlist.includes(to)) {
+      await log({ status: 'skipped', metadata: { reason: 'allowlist' } });
+      return json({ ok: true, status: 'skipped', reason: 'allowlist' });
+    }
+    const { data: supp } = await svc.from('email_suppressions').select('email, reason').eq('email', to).maybeSingle();
+    if (supp) { await log({ status: 'suppressed', metadata: { reason: supp.reason } }); return json({ ok: true, status: 'suppressed', reason: supp.reason }); }
+
+    const dispatchEnabled = settings?.dispatch_enabled === true;
+    const dryRun = settings?.dry_run !== false;
+    if (!dispatchEnabled || dryRun) {
+      await log({ status: 'queued', entity_type: asStr(body.entity_type), entity_id: asStr(body.entity_id), metadata: { dry_run: true, dispatch_enabled: dispatchEnabled } });
+      return json({ ok: true, status: 'queued', dry_run: true, dedupe_key: dedupeKey });
+    }
+    const apiKey = Deno.env.get('RESEND_API_KEY');
+    const from = Deno.env.get('RESEND_FROM_EMAIL') ?? Deno.env.get('RESEND_FROM') ?? 'nao-responda@avisos.consultegeo.org';
+    if (!apiKey) return fail('RESEND_API_KEY ausente: fail-closed', 500);
+    const res = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body: JSON.stringify({ from, to: [to], subject: rendered.subject, html: rendered.html, text: rendered.text, headers: { 'X-Entity-Ref-ID': dedupeKey } }) });
+    const sent = await res.json().catch(() => ({})) as Record<string, unknown>;
+    if (!res.ok) { await log({ status: 'failed', error_message: JSON.stringify(sent) }); return fail('falha ao enviar pelo Resend', 502, sent); }
+    await log({ status: 'sent', entity_type: asStr(body.entity_type), entity_id: asStr(body.entity_id), resend_id: asStr(sent.id), metadata: { provider: 'resend' } });
+    return json({ ok: true, status: 'sent', dedupe_key: dedupeKey, resend_id: sent.id });
+  } catch (e) {
+    return fail((e as Error).message, 500);
+  }
+});

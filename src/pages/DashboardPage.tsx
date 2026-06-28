@@ -14,7 +14,7 @@ const DashboardCharts = lazy(() => import('./DashboardCharts'));
 export function DashboardPage() {
   const { member } = useAuth();
   const nav = useNavigate();
-  const q = useQuery({ queryKey: ['kpis'], queryFn: getKpis });
+  const q = useQuery({ queryKey: ['kpis', member?.tenant_id], queryFn: () => getKpis(member?.tenant_id) });
   const k = q.data;
   return (
     <div style={{ display: 'grid', gap: 16 }}>

@@ -6,8 +6,9 @@ const db = supabase as unknown as { from: (t: string) => any; rpc: (fn: string, 
 export type FaturaRow = { id: string; numero: string; medicao_id: string | null; cliente: string; competencia: string | null; valor: number; status: string; data_emissao: string; data_vencimento: string | null; data_pagamento: string | null; forma_pagamento: string | null };
 export type MedicaoFaturavel = { id: string; competencia: string | null; valor_total: number; cliente: string };
 
-export async function listFaturas(status?: string): Promise<FaturaRow[]> {
+export async function listFaturas(status?: string, tenantId?: string): Promise<FaturaRow[]> {
   let q = db.from('faturas').select('id, numero, medicao_id, competencia, valor, status, data_emissao, data_vencimento, data_pagamento, forma_pagamento, lab_clients(razao_social)').is('deleted_at', null).order('created_at', { ascending: false });
+  if (tenantId) q = q.eq('tenant_id', tenantId); // ativa o índice por tenant; RLS segue garantindo o isolamento
   if (status) q = q.eq('status', status);
   const { data, error } = await q;
   if (error) throw new Error(error.message);

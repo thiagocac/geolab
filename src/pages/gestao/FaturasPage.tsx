@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -13,13 +14,10 @@ import { listFaturas, listMedicoesFaturaveis, emitirFatura, baixarFatura, cancel
 
 const BRL = (n: number) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dataBR = (s: string | null) => (s && s.length === 10 ? s.split('-').reverse().join('/') : '—');
-const ST: Record<string, { label: string; color: string }> = {
-  emitida: { label: 'Emitida', color: '#d97706' }, paga: { label: 'Paga', color: '#16a34a' }, cancelada: { label: 'Cancelada', color: 'var(--ink-faint)' },
-};
 const hoje = () => new Date().toISOString().slice(0, 10);
 
 export function FaturasPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -28,7 +26,7 @@ export function FaturasPage() {
   const [emitir, setEmitir] = useState(false);
   const [baixar, setBaixar] = useState<FaturaRow | null>(null);
 
-  const faturas = useQuery({ queryKey: ['faturas', status], queryFn: () => listFaturas(status || undefined) });
+  const faturas = useQuery({ queryKey: ['faturas', status, member?.tenant_id], queryFn: () => listFaturas(status || undefined, member?.tenant_id) });
   const linhas = faturas.data ?? [];
   const aReceber = linhas.filter((f) => f.status === 'emitida').reduce((s, f) => s + f.valor, 0);
   const pago = linhas.filter((f) => f.status === 'paga').reduce((s, f) => s + f.valor, 0);
@@ -62,7 +60,6 @@ export function FaturasPage() {
             <table className="table">
               <thead><tr><th>Numero</th><th>Cliente</th><th>Compet.</th><th style={{ textAlign: 'right' }}>Valor</th><th>Emissao</th><th>Vencim.</th><th>Status</th><th>Pagto</th><th></th></tr></thead>
               <tbody>{linhas.map((f) => {
-                const st = ST[f.status] ?? { label: f.status, color: 'var(--ink-faint)' };
                 return (
                   <tr key={f.id}>
                     <td style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>{f.numero}</td>
@@ -71,7 +68,7 @@ export function FaturasPage() {
                     <td style={{ textAlign: 'right', fontWeight: 700 }}>{BRL(f.valor)}</td>
                     <td>{dataBR(f.data_emissao)}</td>
                     <td>{dataBR(f.data_vencimento)}</td>
-                    <td style={{ fontWeight: 700, color: st.color }}>{st.label}</td>
+                    <td><StatusBadge status={f.status} /></td>
                     <td>{dataBR(f.data_pagamento)}{f.forma_pagamento ? ' · ' + f.forma_pagamento : ''}</td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{pode && f.status === 'emitida' ? <><Button variant="ghost" onClick={() => setBaixar(f)}>Baixar</Button><Button variant="ghost" onClick={() => void cancelar(f)}>Cancelar</Button></> : null}</td>
                   </tr>

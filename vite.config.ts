@@ -11,7 +11,10 @@ export default defineConfig({
     react(),
   ],
   build: {
-    sourcemap: true,
+    // Produção: NÃO publicar .map. Sourcemaps públicos expõem o código-fonte (IP) e incham o
+    // deploy (~1,5 MB+ por chunk). Se um dia for simbolicar erros, troque por 'hidden' (gera o
+    // .map sem o comentário sourceMappingURL) e exclua *.map do publish no Netlify.
+    sourcemap: false,
     chunkSizeWarningLimit: 180,
     rollupOptions: {
       output: {
