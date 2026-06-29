@@ -54,7 +54,7 @@ function flushUnload() {
   if (!queue.length) return;
   const events = queue.splice(0, queue.length);
   try {
-    const url = `${env.supabaseUrl}/functions/v1/client-telemetry`; // OBS-001/LGPD-001: apikey vai no header, fora da query (não vaza em logs)
+    const url = `${env.supabaseUrl}/functions/v1/client-telemetry?apikey=${env.supabaseAnonKey}`;
     const payload = JSON.stringify({ events });
     void fetch(url, { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json', apikey: env.supabaseAnonKey }, body: payload });
   } catch {

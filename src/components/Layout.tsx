@@ -47,6 +47,7 @@ const sections: Section[] = [
     { to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles },
     { to: '/gestao/backups', label: 'Backups', icon: Download, roles: adminRoles },
     { to: '/gestao/emails', label: 'E-mails', icon: FileText, roles: adminRoles },
+    { to: '/gestao/timeline', label: 'Linha do tempo', icon: Clock, roles: adminRoles },
   ] },
 ];
 

@@ -1,7 +1,12 @@
-# GEOLAB → Concresoft — SOURCE VERSION v119
-CACHE_NAME: consultegeo-geolab-v119 · APP_VERSION: v119
+# GEOLAB → Concresoft — SOURCE VERSION v120
+CACHE_NAME: consultegeo-geolab-v120 · APP_VERSION: v120
 
-> **v119 — backlog da auditoria (por Claude):** **Backend (migration 092 via MCP):** REVOKE EXECUTE de `authenticated` em 11 funções SECURITY DEFINER INTERNAS (cron/scan/seed/alarme: `notify_event_dispatch`, `notify_scan_*`, `gerar_ncs_cp_atrasado`, `telemetry_ops_alarm_run`, `telemetry_notify_pending_alerts`, `is_in_quiet_hours`, `seed_nc_*`, `list_public_tables`) — confirmado 0 refs no frontend e 0 callers SECURITY INVOKER; helpers de RLS e RPCs de app intactos. **Frontend (OBS-001/LGPD-001):** `instrument.ts` para de pôr `apikey` na query string do flush keepalive (mantém no header; sendBeacon fallback inalterado). **Decisão técnica:** NÃO migrei o trace de EF para header `x-trace-id` (recomendação do GPT) — o design atual usa `?trace_id=` DE PROPÓSITO para não disparar preflight CORS contra a allow-list das EFs; mudar exigiria editar CORS+readTraceId e redeploy das ~35 EFs (alto risco / ganho marginal). Trace segue: query em EF, header em REST.
+> **RENUMERADO v119→v120 (Claude):** havia um v119 anterior não-pushado (fix apikey/instrument.ts). Live=v116; fila de push: v117→v118→v119(apikey)→**v120 (timeline, esta)**. Backend 093/094 já aplicado via MCP.
+
+
+## v120 — Onda 1 (renumerado de v119) GeoCon→GEOLAB: auditoria genérica + linha do tempo
+Porta a fundação regulatória do GeoCon para o domínio do laboratório. Backend separado: migrations 093/094 criam `audit_log`, `audit_row_change()` e RPCs `list_tenant_timeline`, `list_work_timeline` e `list_concretagem_timeline` com marcos de domínio. Frontend: nova tela `/gestao/timeline`, API `timeline.ts`, navegação e busca global. Build esperado: check-source · biome · tsc · vitest · vite. Aplicação do backend via Claude/MCP antes de liberar a tela em produção.
+
 
 > **RECONCILIAÇÃO (29/06):** este arquivo vinha **stale em v111** no zip (gotcha do pipeline; REL-002 da auditoria). Cabeçalho reconciliado para **v118**. Resumo v112→v117: `pdf.ts` (v112) · e-mail A2/A4/A5/A10/A11/A12 (v113→v115) · NC-RAC (v116) · Central cockpit + RPC paginado de concretagens/migration 088 (v117). Banco vivo em **migrations 001→091**, **35 EFs**, 22 crons.
 
