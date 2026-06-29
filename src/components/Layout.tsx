@@ -52,6 +52,9 @@ const sections: Section[] = [
     { to: '/gestao/rbac', label: 'Permissões', icon: Users, roles: adminRoles },
     { to: '/gestao/delegacoes', label: 'Delegações', icon: Users, roles: adminRoles },
     { to: '/gestao/seguranca-conta', label: 'Segurança da conta', icon: ShieldAlert, roles: labRoles },
+    { to: '/gestao/comunicados', label: 'Comunicados', icon: Bell, roles: adminRoles },
+    { to: '/gestao/backlog', label: 'Backlog interno', icon: ClipboardCheck, roles: adminRoles },
+    { to: '/gestao/webhooks', label: 'Webhooks/API', icon: Settings, roles: adminRoles },
   ] },
 ];
 

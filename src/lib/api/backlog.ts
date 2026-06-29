@@ -1,0 +1,9 @@
+import { supabase } from '../supabase';
+const db = supabase as unknown as { rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+export type BacklogItem = { id:string; titulo:string; descricao:string|null; modulo:string; prioridade:string; status:string; due_date:string|null; created_at:string };
+const rec=(v:unknown)=>(v&&typeof v==='object'?v as Record<string,unknown>:{}); const str=(v:unknown)=>String(v??''); const nul=(v:unknown)=>v==null?null:String(v);
+const row=(v:unknown):BacklogItem=>{const r=rec(v); return {id:str(r.id),titulo:str(r.titulo),descricao:nul(r.descricao),modulo:str(r.modulo),prioridade:str(r.prioridade),status:str(r.status),due_date:nul(r.due_date),created_at:str(r.created_at)}};
+export async function listAdminBacklog(statuses:string[]=[]) { const {data,error}=await db.rpc('list_admin_backlog',{p_status:statuses.length?statuses:null,p_limit:200}); if(error) throw new Error(error.message); return ((data??[]) as unknown[]).map(row); }
+export async function upsertAdminBacklog(i:{id?:string|null; titulo:string; descricao?:string; modulo:string; prioridade:string; status:string; dueDate?:string|null}) { const {data,error}=await db.rpc('upsert_admin_backlog',{p_id:i.id||null,p_titulo:i.titulo,p_descricao:i.descricao||null,p_modulo:i.modulo,p_prioridade:i.prioridade,p_status:i.status,p_due_date:i.dueDate||null}); if(error) throw new Error(error.message); return String(data??''); }
+export async function closeAdminBacklog(id:string,status='concluido') { const {error}=await db.rpc('close_admin_backlog',{p_id:id,p_status:status}); if(error) throw new Error(error.message); }
+export async function deleteAdminBacklog(id:string) { const {error}=await db.rpc('delete_admin_backlog',{p_id:id}); if(error) throw new Error(error.message); }

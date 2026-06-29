@@ -42,6 +42,9 @@ const DocGatePage = lazy(() => import('./pages/gestao/DocGatePage').then((m) => 
 const RbacPage = lazy(() => import('./pages/gestao/RbacPage').then((m) => ({ default: m.RbacPage })));
 const DelegacoesPage = lazy(() => import('./pages/gestao/DelegacoesPage').then((m) => ({ default: m.DelegacoesPage })));
 const SegurancaContaPage = lazy(() => import('./pages/gestao/SegurancaContaPage').then((m) => ({ default: m.SegurancaContaPage })));
+const BroadcastsPage = lazy(() => import('./pages/gestao/BroadcastsPage').then((m) => ({ default: m.BroadcastsPage })));
+const AdminBacklogPage = lazy(() => import('./pages/gestao/AdminBacklogPage').then((m) => ({ default: m.AdminBacklogPage })));
+const WebhooksPage = lazy(() => import('./pages/gestao/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
 const LaudoAprovarPage = lazy(() => import('./pages/LaudoAprovarPage').then((m) => ({ default: m.LaudoAprovarPage })));
 const PortalPublicoPage = lazy(() => import('./pages/portal/PortalPublicoPage').then((m) => ({ default: m.PortalPublicoPage })));
@@ -137,6 +140,9 @@ export function App() {
             <Route path="/gestao/rbac" element={podeOperacao ? <RbacPage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/delegacoes" element={podeOperacao ? <DelegacoesPage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/seguranca-conta" element={podeLab ? <SegurancaContaPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/comunicados" element={podeOperacao ? <BroadcastsPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/backlog" element={podeOperacao ? <AdminBacklogPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/webhooks" element={podeOperacao ? <WebhooksPage /> : <Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

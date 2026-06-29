@@ -1,10 +1,16 @@
-# GEOLAB → Concresoft — SOURCE VERSION v122
-CACHE_NAME: consultegeo-geolab-v122 · APP_VERSION: v122
+# GEOLAB → Concresoft — SOURCE VERSION v123
+CACHE_NAME: consultegeo-geolab-v123 · APP_VERSION: v123
 
-> **RENUMERADO v121→v122 (Claude):** v121 já era a Onda 2 (docgate). Este pacote é CUMULATIVO Ondas 1+2+3 (timeline + matriz/gate + RBAC/delegações/segurança da conta) sobre base v118. Backend 093–102 já aplicado via MCP. EFs: generate-laudo-ensaio-pdf v17 (gate) + auth-password-hook v1 (opcional, requer AUTH_HOOK_SECRET + painel).
+> **RENUMERADO v122→v123 (Claude):** v122 já era a Onda 3. Pacote CUMULATIVO Ondas 1+2+3+4 (timeline + matriz/gate + RBAC/deleg/segconta + broadcast/backlog/webhooks) sobre base v118. Backend 093–106 aplicado via MCP. EFs: generate-laudo-ensaio-pdf v17 (gate) + auth-password-hook v1 + dispatch-outgoing-webhooks v1 (ambos opcionais/inertes até config manual).
 
 
-## v122 — Onda 3 GeoCon port: RBAC granular + delegações + segurança da conta — FE + backend separado
+## v123 — Onda 4 GeoCon port: comunicados com ciência + backlog interno + webhooks/API — FE + backend separado
+Entrega `/gestao/comunicados`, `/gestao/backlog` e `/gestao/webhooks`. Backend separado: migrations 101–103 criam broadcast com confirmação de ciência, backlog admin-only, webhooks assinados com fila/retry e API keys hashadas. Inclui EF `dispatch-outgoing-webhooks` (verify_jwt=false, CRON_SECRET). Base: v121/Onda 3. Aplicar depois das migrations 093–100 das ondas anteriores.
+
+# GEOLAB → Concresoft — SOURCE VERSION v121
+CACHE_NAME: consultegeo-geolab-v121 · APP_VERSION: v121
+
+## v121 — Onda 3 GeoCon port: RBAC granular + delegações + segurança da conta — FE + backend separado
 Entrega as telas `/gestao/rbac`, `/gestao/delegacoes` e `/gestao/seguranca-conta`. Backend separado: migrations 098–100 criam catálogo de permissões, matriz papel×permissão, helpers `member_has_permission`/`current_has_permission`, delegações temporárias de aprovação e trilha de login/tentativas de senha. Base: v120/Onda 2. Aplicar depois das migrations 095–097 da Onda 2.
 
 # GEOLAB → Concresoft — SOURCE VERSION v120
