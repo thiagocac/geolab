@@ -12,6 +12,8 @@ const EVENTS: [string, string][] = [
   ['cp_atrasado', 'CP atrasado (rompimento vencido)'],
   ['calibracao_vencendo', 'Calibracao de equipamento vencendo (30d)'],
 ];
+const EVENT_LABELS: Record<string, string> = { laudo_pronto: 'Laudo pronto', resultado_abaixo_fck: 'Resultado < fck (idade de controle)', cp_atrasado: 'CP atrasado', calibracao_vencendo: 'Calibracao vencendo', digest_agenda: 'Resumo da agenda', digest_nc: 'Resumo de NC', system: 'Sistema' };
+const labelEvt = (k: string): string => EVENT_LABELS[k] ?? k;
 const OFF = ['off', 'none', 'disabled'];
 const statusCor = (s: string): string => s === 'sent' ? '#16a34a' : s === 'queued' ? 'var(--ink-faint)' : s === 'failed' || s === 'suppressed' ? 'var(--magenta)' : '#d97706';
 
@@ -60,7 +62,7 @@ export function NotificacoesPage() {
               const reason = String(md.reason ?? (md.dry_run ? 'dry-run' : ''));
               return (
                 <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
-                  <span style={{ fontSize: 13 }}>{(r.created_at ?? '').slice(0, 16).replace('T', ' ')} - {r.recipient_email} - <span style={{ color: 'var(--ink-faint)' }}>{r.event_type}</span></span>
+                  <span style={{ fontSize: 13 }}>{(r.created_at ?? '').slice(0, 16).replace('T', ' ')} - {r.recipient_email} - <span style={{ color: 'var(--ink-faint)' }} title={r.event_type}>{labelEvt(r.event_type)}</span></span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: statusCor(r.status) }}>
                     <span style={{ width: 7, height: 7, borderRadius: 99, background: statusCor(r.status) }} />{r.status}{reason ? ' (' + reason + ')' : ''}
                   </span>

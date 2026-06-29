@@ -155,3 +155,38 @@ export async function emailFunnel(tenantId: string, days = 30): Promise<EmailFun
     reclamacoes: Number(r?.reclamacoes ?? 0), suprimidos: Number(r?.suprimidos ?? 0), falhas: Number(r?.falhas ?? 0),
   };
 }
+
+// A4: saude por tipo de evento (RPC email_health_by_event, mesmo padrao de seguranca do funil).
+export type EventHealth = { event_type: string; total: number; enviados: number; entregues: number; abertos: number; bounces: number; reclamacoes: number };
+export async function emailHealthByEvent(tenantId: string, days = 30): Promise<EventHealth[]> {
+  const { data, error } = await db.rpc('email_health_by_event', { p_tenant: tenantId, p_days: days });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+    event_type: String(r.event_type ?? ''), total: Number(r.total ?? 0), enviados: Number(r.enviados ?? 0),
+    entregues: Number(r.entregues ?? 0), abertos: Number(r.abertos ?? 0), bounces: Number(r.bounces ?? 0), reclamacoes: Number(r.reclamacoes ?? 0),
+  }));
+}
+
+// A11: log paginado server-side (range + count) com busca (email/evento/resend_id) e janela em dias.
+export async function listDispatchLogPaged(tenantId: string, opts: { status?: string; search?: string; days?: number; page?: number; pageSize?: number } = {}): Promise<{ rows: DispatchLogRow[]; total: number }> {
+  if (!tenantId) return { rows: [], total: 0 };
+  const page = opts.page ?? 0; const pageSize = opts.pageSize ?? 25;
+  let q = db.from('notification_dispatch_log').select(LOG_SELECT, { count: 'exact' }).eq('tenant_id', tenantId).is('deleted_at', null);
+  if (opts.status) q = q.eq('status', opts.status);
+  if (opts.days && opts.days > 0) q = q.gte('created_at', new Date(Date.now() - opts.days * 86400000).toISOString());
+  const s = (opts.search ?? '').trim();
+  if (s) { const like = '%' + s.replace(/[%,]/g, ' ') + '%'; q = q.or('recipient_email.ilike.' + like + ',event_type.ilike.' + like + ',resend_id.ilike.' + like); }
+  const from = page * pageSize;
+  const { data, error, count } = await q.order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+  if (error) throw new Error(error.message);
+  return { rows: (data ?? []) as DispatchLogRow[], total: count ?? 0 };
+}
+
+// A10: matriz papel x evento. role_notification_types e GLOBAL (sem tenant_id) - default de sistema;
+// RLS permite SELECT a authenticated. Read-only no cliente (nenhuma policy de escrita).
+export type RoleNotifRow = { role_code: string; event_type: string; enabled: boolean; channel: string | null };
+export async function listRoleNotificationTypes(): Promise<RoleNotifRow[]> {
+  const { data, error } = await db.from('role_notification_types').select('role_code, event_type, enabled, channel').order('event_type', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as RoleNotifRow[];
+}

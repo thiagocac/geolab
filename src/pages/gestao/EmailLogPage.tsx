@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Stat } from '../../components/ui/Stat';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listDispatchLog, dispatchCountsByStatus, getDispatchSettings, saveDispatchSettings, listOutbox, listSuppressions, addSuppression, removeSuppression, listEventTypes, emailFunnel, type DispatchLogRow, type OutboxRow, type SuppressionRow, type EventType } from '../../lib/api/emails';
+import { listDispatchLog, listDispatchLogPaged, emailHealthByEvent, dispatchCountsByStatus, getDispatchSettings, saveDispatchSettings, listOutbox, listSuppressions, addSuppression, removeSuppression, listEventTypes, emailFunnel, listRoleNotificationTypes, type DispatchLogRow, type OutboxRow, type SuppressionRow, type EventType } from '../../lib/api/emails';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -23,6 +24,12 @@ import { Modal } from '../../components/ui/Modal';
 
 const REFRESH_MS = 60_000;
 const STATUSES = ['queued', 'sent', 'skipped', 'suppressed', 'failed', 'bounced'] as const;
+function rotaEntidade(t: string | null, id: string | null): string | null {
+  if (!t) return null;
+  if (t === 'concretagem' && id) return '/concretagens/' + id;
+  const m: Record<string, string> = { lab_report: '/laudos', non_conformity: '/nc', corpo_prova: '/rompimentos', telemetry_alert: '/observabilidade' };
+  return m[t] ?? null;
+}
 
 const STATUS_TONE: Record<string, string> = {
   sent: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
@@ -68,6 +75,7 @@ function Info({ label, value, mono, full, danger }: { label: string; value: stri
 
 export function EmailLogPage() {
   const { member, hasRole } = useAuth();
+  const nav = useNavigate();
   const tenantId = member?.tenant_id ?? '';
   const podeEditar = hasRole('admin', 'admin_consulte');
   const confirm = useConfirm();
@@ -75,6 +83,11 @@ export function EmailLogPage() {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<string>('');
   const [detalhe, setDetalhe] = useState<DispatchLogRow | null>(null);
+  const [logBusca, setLogBusca] = useState('');
+  const [logBuscaQ, setLogBuscaQ] = useState('');
+  const [logDias, setLogDias] = useState(30);
+  const [logPage, setLogPage] = useState(0);
+  useEffect(() => { const tm = setTimeout(() => { setLogBuscaQ(logBusca.trim()); setLogPage(0); }, 300); return () => clearTimeout(tm); }, [logBusca]);
   const [novoEmail, setNovoEmail] = useState('');
   const [novoMotivo, setNovoMotivo] = useState('');
   const [suprBusy, setSuprBusy] = useState(false);
@@ -83,15 +96,20 @@ export function EmailLogPage() {
 
   const counts = useQuery({ queryKey: ['eml', 'counts', tenantId], enabled: !!tenantId, refetchInterval: REFRESH_MS, queryFn: () => dispatchCountsByStatus(tenantId, 7) });
   const settings = useQuery({ queryKey: ['eml', 'settings'], refetchInterval: REFRESH_MS, queryFn: () => getDispatchSettings() });
-  const log = useQuery({ queryKey: ['eml', 'log', tenantId, filtro], enabled: !!tenantId, refetchInterval: REFRESH_MS, queryFn: () => listDispatchLog(tenantId, { status: filtro || undefined, limit: 100 }) });
+  const log = useQuery({ queryKey: ['eml', 'log', tenantId, filtro, logBuscaQ, logDias, logPage], enabled: !!tenantId, refetchInterval: REFRESH_MS, placeholderData: keepPreviousData, queryFn: () => listDispatchLogPaged(tenantId, { status: filtro || undefined, search: logBuscaQ || undefined, days: logDias, page: logPage, pageSize: 25 }) });
   const outbox = useQuery({ queryKey: ['eml', 'outbox', tenantId], enabled: !!tenantId, refetchInterval: REFRESH_MS, queryFn: () => listOutbox(tenantId, { limit: 60 }) });
   const podeSupressao = hasRole('admin_consulte');
   const supr = useQuery({ queryKey: ['eml', 'suppr'], enabled: podeSupressao, refetchInterval: REFRESH_MS, queryFn: () => listSuppressions() });
   const evtypes = useQuery({ queryKey: ['eml', 'evtypes'], staleTime: 300_000, queryFn: listEventTypes });
   const [funilDias, setFunilDias] = useState(30);
   const funil = useQuery({ queryKey: ['eml', 'funil', tenantId, funilDias], enabled: !!tenantId, refetchInterval: REFRESH_MS, queryFn: () => emailFunnel(tenantId, funilDias) });
+  const saude = useQuery({ queryKey: ['eml', 'saude', tenantId, funilDias], enabled: !!tenantId, refetchInterval: REFRESH_MS, queryFn: () => emailHealthByEvent(tenantId, funilDias) });
+  const matriz = useQuery({ queryKey: ['eml', 'rolematrix'], refetchInterval: REFRESH_MS, queryFn: () => listRoleNotificationTypes() });
   const evMap = useMemo(() => new Map((evtypes.data ?? []).map((t) => [t.key, t] as const)), [evtypes.data]);
   const labelEvento = (key: string) => evMap.get(key)?.descricao || key;
+  const matrizRoles = useMemo(() => Array.from(new Set((matriz.data ?? []).map((r) => r.role_code))).sort(), [matriz.data]);
+  const matrizEvents = useMemo(() => Array.from(new Set((matriz.data ?? []).map((r) => r.event_type))).sort(), [matriz.data]);
+  const matrizSet = useMemo(() => new Set((matriz.data ?? []).filter((r) => r.enabled).map((r) => r.role_code + '|' + r.event_type)), [matriz.data]);
 
   const s = settings.data;
   const envioReal = !!s?.dispatch_enabled && s?.dry_run === false;
@@ -277,6 +295,29 @@ export function EmailLogPage() {
         </div>
       </Card>
 
+      {/* A4 - Saude por tipo de evento */}
+      <Card>
+        <CardHeader kicker="Entregabilidade" title="Saude por tipo de evento">Volume e desfecho de cada evento no periodo do funil - para achar o que mais falha ou gera reclamacao.</CardHeader>
+        <div className="p-5">
+          {saude.isLoading ? <LoadingState /> : saude.error ? <ErrorState message={(saude.error as Error).message} /> : (saude.data?.length ?? 0) === 0 ? <EmptyState /> : (
+            <div className="table-scroll"><table className="table">
+              <thead><tr><th>Evento</th><th>Total</th><th>Enviados</th><th>Entregues</th><th>Abertos</th><th>Bounces</th><th>Reclam.</th></tr></thead>
+              <tbody>{saude.data!.map((e) => (
+                <tr key={e.event_type} className={e.bounces > 0 || e.reclamacoes > 0 ? 'bg-red-50/60 dark:bg-red-950/20' : ''}>
+                  <td className="font-medium"><span title={e.event_type}>{labelEvento(e.event_type)}</span></td>
+                  <td className="tabular-nums">{e.total}</td>
+                  <td className="tabular-nums text-slate-500">{e.enviados}</td>
+                  <td className="tabular-nums text-slate-500">{e.entregues}</td>
+                  <td className="tabular-nums text-slate-500">{e.abertos}</td>
+                  <td className={'tabular-nums ' + (e.bounces > 0 ? 'font-bold text-red-600' : 'text-slate-500')}>{e.bounces}</td>
+                  <td className={'tabular-nums ' + (e.reclamacoes > 0 ? 'font-bold text-red-600' : 'text-slate-500')}>{e.reclamacoes}</td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          )}
+        </div>
+      </Card>
+
       {/* Backlog do outbox */}
       <Card>
         <CardHeader kicker="Fila" title="Outbox do dispatcher">Eventos pendentes/erro do dispatcher SQL (notify_event_outbox).</CardHeader>
@@ -335,18 +376,25 @@ export function EmailLogPage() {
       <Card>
         <CardHeader kicker="Histórico" title="Envios recentes">Últimos registros do notification_dispatch_log do laboratório.</CardHeader>
         <div className="p-5">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <input className="input max-w-[280px]" placeholder="Buscar e-mail, evento ou resend_id" value={logBusca} onChange={(e) => setLogBusca(e.target.value)} />
+            <span className="text-xs font-bold text-slate-500">Periodo:</span>
+            {[7, 30, 90].map((d) => (
+              <button key={d} type="button" onClick={() => { setLogDias(d); setLogPage(0); }} className={`rounded-full px-3 py-1 text-xs font-semibold ${logDias === d ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{d}d</button>
+            ))}
+          </div>
           <div className="mb-3 flex flex-wrap gap-2">
-            <button type="button" onClick={() => setFiltro('')} className={`rounded-full px-3 py-1 text-xs font-semibold ${filtro === '' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>todos</button>
+            <button type="button" onClick={() => { setFiltro(''); setLogPage(0); }} className={`rounded-full px-3 py-1 text-xs font-semibold ${filtro === '' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>todos</button>
             {STATUSES.map((st) => (
-              <button key={st} type="button" onClick={() => setFiltro(st)} className={`rounded-full px-3 py-1 text-xs font-semibold ${filtro === st ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{st}</button>
+              <button key={st} type="button" onClick={() => { setFiltro(st); setLogPage(0); }} className={`rounded-full px-3 py-1 text-xs font-semibold ${filtro === st ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{st}</button>
             ))}
           </div>
           {log.isLoading ? <LoadingState /> : log.error ? <ErrorState message={(log.error as Error).message} />
-            : (log.data?.length ?? 0) === 0 ? <EmptyState />
+            : (log.data?.rows.length ?? 0) === 0 ? <EmptyState />
             : (
             <div className="table-scroll"><table className="table">
               <thead><tr><th>Quando</th><th>Destinatário</th><th>Evento</th><th>Status</th><th>Aberturas</th><th>Detalhe</th></tr></thead>
-              <tbody>{log.data!.map((r: DispatchLogRow) => (
+              <tbody>{log.data!.rows.map((r: DispatchLogRow) => (
                 <tr key={r.id} onClick={() => setDetalhe(r)} title="Ver detalhe do envio" className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40">
                   <td className="text-slate-500 whitespace-nowrap">{new Date(r.created_at).toLocaleString('pt-BR')}</td>
                   <td className="font-medium">{r.recipient_email}</td>
@@ -354,6 +402,31 @@ export function EmailLogPage() {
                   <td><StatusPill s={r.status} /></td>
                   <td className="tabular-nums text-slate-500">{r.open_count ?? 0}</td>
                   <td className="text-xs text-slate-500">{r.error_message ? <span className="text-red-600 dark:text-red-400">{r.error_message}</span> : (r.metadata && typeof r.metadata === 'object' && 'reason' in (r.metadata as Record<string, unknown>) ? String((r.metadata as Record<string, unknown>).reason) : (r.resend_id ?? '—'))}</td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          )}
+          <div className="mt-3 flex items-center justify-between text-sm text-slate-500">
+            <span>{log.data?.total ?? 0} registro(s)</span>
+            <span className="flex gap-2">
+              <Button variant="ghost" disabled={logPage <= 0} onClick={() => setLogPage((p) => Math.max(0, p - 1))}>Anterior</Button>
+              <Button variant="ghost" disabled={((logPage + 1) * 25) >= (log.data?.total ?? 0)} onClick={() => setLogPage((p) => p + 1)}>Proxima</Button>
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      {/* A10 - Matriz papel x evento (default global do sistema, read-only) */}
+      <Card>
+        <CardHeader kicker="Roteamento" title="Matriz papel x evento">Quais papeis recebem cada evento por e-mail. Padrao global do sistema (nao por laboratorio) - referencia.</CardHeader>
+        <div className="p-5">
+          {matriz.isLoading ? <LoadingState /> : matriz.error ? <ErrorState message={(matriz.error as Error).message} /> : matrizEvents.length === 0 ? <EmptyState /> : (
+            <div className="table-scroll"><table className="table">
+              <thead><tr><th>Evento</th>{matrizRoles.map((rc) => <th key={rc} className="text-center">{rc}</th>)}</tr></thead>
+              <tbody>{matrizEvents.map((ev) => (
+                <tr key={ev}>
+                  <td className="font-medium"><span title={ev}>{labelEvento(ev)}</span></td>
+                  {matrizRoles.map((rc) => <td key={rc} className="text-center">{matrizSet.has(rc + '|' + ev) ? <span className="font-bold text-emerald-600">✓</span> : <span className="text-slate-300">—</span>}</td>)}
                 </tr>
               ))}</tbody>
             </table></div>
@@ -419,6 +492,7 @@ export function EmailLogPage() {
                 <Info label="Resend ID" value={detalhe.resend_id} mono />
                 <Info label="Dedupe" value={detalhe.dedupe_key} mono />
                 <Info label="Entidade de origem" value={detalhe.entity_type ? `${detalhe.entity_type}${detalhe.entity_id ? ` · ${detalhe.entity_id}` : ''}` : null} />
+                {rotaEntidade(detalhe.entity_type, detalhe.entity_id) ? <div className="sm:col-span-2"><Button variant="secondary" onClick={() => { const rota = rotaEntidade(detalhe!.entity_type, detalhe!.entity_id); if (rota) { setDetalhe(null); nav(rota); } }}>Abrir registro</Button></div> : null}
                 <Info label="Última atividade" value={fmtDT(detalhe.updated_at)} />
                 <Info label="Último link clicado" value={detalhe.last_clicked_url} full mono />
                 <Info label="User-agent" value={detalhe.last_user_agent} full />
