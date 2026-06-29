@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { recordLoginEvent } from './api/accountSecurity';
 
 // Auth do GEOLAB (lab = tenant). Adaptado do GEOMAT: aqui resolvemos o vínculo
 // direto de `members` (a RLS deixa o usuário ver os próprios vínculos) + RPC select_tenant.
@@ -32,6 +33,19 @@ function tenantName(row: MemberRow): string {
   const t = row.tenants;
   if (!t) return '';
   return Array.isArray(t) ? (t[0]?.name ?? '') : t.name;
+}
+
+
+let lastRecordedLoginKey: string | null = null;
+function loginEventKey(s: Session | null): string | null {
+  if (!s?.user) return null;
+  return s.user.id + ':' + (s.user.last_sign_in_at ?? s.expires_at ?? 'current');
+}
+async function recordLoginEventOnce(s: Session | null) {
+  const key = loginEventKey(s);
+  if (!key || key === lastRecordedLoginKey) return;
+  lastRecordedLoginKey = key;
+  try { await recordLoginEvent(s?.user.last_sign_in_at ?? null); } catch { /* segurança da conta é best-effort e não bloqueia login */ }
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -68,13 +82,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
       setSession(data.session);
-      if (data.session) await loadContext();
+      if (data.session) { await loadContext(); await recordLoginEventOnce(data.session); }
       setReady(true);
     });
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, s) => {
       if (!active) return;
       setSession(s);
-      if (s) await loadContext(); else { setMember(null); setTenants([]); }
+      if (s) { await loadContext(); await recordLoginEventOnce(s); } else { setMember(null); setTenants([]); }
     });
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, [loadContext]);

@@ -1,4 +1,0 @@
--- Relatorio de produtividade por colaborador (RPC). Corpo completo aplicado via MCP (banco vivo = fonte de verdade).
--- relatorio_produtividade(p_inicio date, p_fim date) returns jsonb (SECURITY DEFINER, tenant-scoped via current_tenant_id):
---   por colaborador com atividade no periodo -> { nome, funcoes, concretagens (moldador_id), cps_moldados
---   (corpos_prova via concretagem.moldador_id), rompimentos (material_tests.operador_id) }. grant authenticated.

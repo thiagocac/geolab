@@ -1,10 +1,16 @@
-# GEOLAB → Concresoft — SOURCE VERSION v121
-CACHE_NAME: consultegeo-geolab-v121 · APP_VERSION: v121
+# GEOLAB → Concresoft — SOURCE VERSION v122
+CACHE_NAME: consultegeo-geolab-v122 · APP_VERSION: v122
 
-> **RENUMERADO v120→v121 (Claude):** o v120 já estava ocupado pela Onda 1 (timeline). Este pacote é CUMULATIVO Onda 1 + Onda 2 (timeline + matriz documental/gate) sobre base v118. Backend 093–097 já aplicado via MCP. EF de laudo com gate: ver INSTRUCOES.
+> **RENUMERADO v121→v122 (Claude):** v121 já era a Onda 2 (docgate). Este pacote é CUMULATIVO Ondas 1+2+3 (timeline + matriz/gate + RBAC/delegações/segurança da conta) sobre base v118. Backend 093–102 já aplicado via MCP. EFs: generate-laudo-ensaio-pdf v17 (gate) + auth-password-hook v1 (opcional, requer AUTH_HOOK_SECRET + painel).
 
 
-## v121 — Onda 2 GeoCon port: matriz documental + gate de laudo — FE + backend separado
+## v122 — Onda 3 GeoCon port: RBAC granular + delegações + segurança da conta — FE + backend separado
+Entrega as telas `/gestao/rbac`, `/gestao/delegacoes` e `/gestao/seguranca-conta`. Backend separado: migrations 098–100 criam catálogo de permissões, matriz papel×permissão, helpers `member_has_permission`/`current_has_permission`, delegações temporárias de aprovação e trilha de login/tentativas de senha. Base: v120/Onda 2. Aplicar depois das migrations 095–097 da Onda 2.
+
+# GEOLAB → Concresoft — SOURCE VERSION v120
+CACHE_NAME: consultegeo-geolab-v120 · APP_VERSION: v120
+
+## v120 — Onda 2 GeoCon port: matriz documental + gate de laudo — FE + backend separado
 Entrega a tela `/gestao/documentos` para conformidade documental e pré-checagem de emissão de laudo. O backend separado contém as migrations 095–097 para tipos/requisitos/documentos, visão `v_lab_document_conformity`, RPCs `list_docgate_conformity`, `docgate_laudo_blocks`, `can_emit_lab_report` e `assert_can_emit_lab_report`, além do patch da EF `generate-laudo-ensaio-pdf` para bloquear emissão com pendências técnicas. Base: v119/Onda 1.
 
 # GEOLAB → Concresoft — SOURCE VERSION v119

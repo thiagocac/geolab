@@ -1,6 +1,0 @@
--- Motor de NC (Fase C final): autoconclusao por tolerancia. Re-derivado do GEOMAT (sem RAC).
--- Corpo completo aplicado via MCP em xbdvyvvxvzmcosnekmfv (banco vivo = fonte de verdade).
--- + template 'Conclusao automatica por tolerancia' (CLS-002, acao_automatica, conclui_nc, permissao 'sistema').
--- nc_autoconclude_tolerancia() + trigger AFTER INSERT em non_conformities: para NC automatica T-02,
---   pct = resultado/fck*100; le nc_parameters (classificacao > geral); se pct >= conclusao_auto_pct
---   conclui auto (Liberada com Ressalvas, SIT-07); senao se pct >= acao_imediata_pct rebaixa severidade p/ media.

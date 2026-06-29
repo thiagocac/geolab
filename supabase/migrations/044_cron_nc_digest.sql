@@ -1,2 +1,0 @@
--- Motor de NC (Fase C final): agenda o digest diario de NCs (EF cron-nc-digest), 0 11 * * *.
--- Aplicado via MCP. cron.schedule('concresoft-nc-digest', ...) chamando a EF com x-cron-secret (vault).

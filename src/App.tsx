@@ -39,6 +39,9 @@ const BackupsPage = lazy(() => import('./pages/gestao/BackupsPage').then((m) => 
 const EmailLogPage = lazy(() => import('./pages/gestao/EmailLogPage').then((m) => ({ default: m.EmailLogPage })));
 const TimelinePage = lazy(() => import('./pages/gestao/TimelinePage').then((m) => ({ default: m.TimelinePage })));
 const DocGatePage = lazy(() => import('./pages/gestao/DocGatePage').then((m) => ({ default: m.DocGatePage })));
+const RbacPage = lazy(() => import('./pages/gestao/RbacPage').then((m) => ({ default: m.RbacPage })));
+const DelegacoesPage = lazy(() => import('./pages/gestao/DelegacoesPage').then((m) => ({ default: m.DelegacoesPage })));
+const SegurancaContaPage = lazy(() => import('./pages/gestao/SegurancaContaPage').then((m) => ({ default: m.SegurancaContaPage })));
 const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
 const LaudoAprovarPage = lazy(() => import('./pages/LaudoAprovarPage').then((m) => ({ default: m.LaudoAprovarPage })));
 const PortalPublicoPage = lazy(() => import('./pages/portal/PortalPublicoPage').then((m) => ({ default: m.PortalPublicoPage })));
@@ -92,6 +95,7 @@ export function App() {
   if (!session) return <LoginScreen />;
   if (needsTenantSelection) return <TenantSelectionPage />;
   const podeOperacao = hasRole('admin', 'admin_consulte');
+  const podeLab = hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro');
   const podeGerirClientes = hasRole('admin', 'admin_consulte');
   return (
     <BrowserRouter>
@@ -130,6 +134,9 @@ export function App() {
             <Route path="/gestao/emails" element={podeOperacao ? <EmailLogPage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/timeline" element={podeOperacao ? <TimelinePage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/documentos" element={podeOperacao ? <DocGatePage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/rbac" element={podeOperacao ? <RbacPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/delegacoes" element={podeOperacao ? <DelegacoesPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/seguranca-conta" element={podeLab ? <SegurancaContaPage /> : <Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
