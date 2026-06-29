@@ -1,0 +1,4 @@
+-- P1-4: cockpit da Central. RPC concretagens_central_paged: replica a agregacao da v_concretagens_central
+-- (contadores + status_tecnico) + numero_relatorio + nomes cliente/obra, com filtros (cliente/obra/status_tecnico/
+-- janela de data/busca) + paginacao server-side (total via count(*) over()). SECURITY DEFINER +
+-- is_tenant_member(p_tenant) + tenant_id explicito; revoke public/anon; grant so authenticated. (corpo aplicado via MCP)

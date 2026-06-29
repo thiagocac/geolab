@@ -260,3 +260,35 @@ export async function lerFichaImagem(file: File, concId: string): Promise<{ enab
   if (!resp.ok || out.ok === false) throw new Error(out.error ?? out.reason ?? 'Falha ao ler a ficha.');
   return { enabled: out.enabled !== false, caminhoes: out.dados?.caminhoes ?? [], confianca: out.dados?.confianca ?? null, reason: out.reason };
 }
+
+// P1-4 (cockpit da Central): RPC concretagens_central_paged (contadores + status_tecnico + nomes +
+// numero_relatorio, com filtros e paginacao num round-trip). RPC nova nao tipada em database.types.ts
+// => cast permissivo so para esta chamada (o db tipado quebraria o tsc com o nome de funcao desconhecido).
+const rpcLoose = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+export type ConcretagemCentralRow = {
+  id: string; codigo: string | null; numero_relatorio: string | null; status: string; status_tecnico: string; origem: string;
+  data_programada: string | null; data_real: string | null; fornecedor_texto: string | null; fck_previsto: number | null;
+  cliente: string | null; obra: string | null;
+  n_caminhoes: number; n_cps: number; n_cps_rompidos: number; n_cps_atrasados: number; n_laudos: number;
+};
+export async function listConcretagensCentral(opts: { tenantId?: string; clientId?: string; workId?: string; status?: string; search?: string; from?: string; to?: string; page?: number; pageSize?: number }): Promise<{ rows: ConcretagemCentralRow[]; total: number }> {
+  if (!opts.tenantId) return { rows: [], total: 0 };
+  const pageSize = opts.pageSize ?? 25; const page = Math.max(0, opts.page ?? 0);
+  const { data, error } = await rpcLoose.rpc('concretagens_central_paged', {
+    p_tenant: opts.tenantId, p_client: opts.clientId || null, p_work: opts.workId || null,
+    p_status: opts.status || null, p_search: opts.search || null, p_from: opts.from || null, p_to: opts.to || null,
+    p_limit: pageSize, p_offset: page * pageSize,
+  });
+  if (error) throw new Error(error.message);
+  const arr = (data ?? []) as Array<Record<string, unknown>>;
+  const total = arr.length ? Number(arr[0].total_count ?? 0) : 0;
+  const rows: ConcretagemCentralRow[] = arr.map((r) => ({
+    id: String(r.id), codigo: (r.codigo as string | null) ?? null, numero_relatorio: (r.numero_relatorio as string | null) ?? null,
+    status: String(r.status ?? ''), status_tecnico: String(r.status_tecnico ?? ''), origem: String(r.origem ?? ''),
+    data_programada: (r.data_programada as string | null) ?? null, data_real: (r.data_real as string | null) ?? null,
+    fornecedor_texto: (r.fornecedor_texto as string | null) ?? null, fck_previsto: r.fck_previsto == null ? null : Number(r.fck_previsto),
+    cliente: (r.cliente as string | null) ?? null, obra: (r.obra as string | null) ?? null,
+    n_caminhoes: Number(r.n_caminhoes ?? 0), n_cps: Number(r.n_cps ?? 0), n_cps_rompidos: Number(r.n_cps_rompidos ?? 0), n_cps_atrasados: Number(r.n_cps_atrasados ?? 0), n_laudos: Number(r.n_laudos ?? 0),
+  }));
+  return { rows, total };
+}
