@@ -38,6 +38,7 @@ const ObservabilidadePage = lazy(() => import('./pages/gestao/ObservabilidadePag
 const BackupsPage = lazy(() => import('./pages/gestao/BackupsPage').then((m) => ({ default: m.BackupsPage })));
 const EmailLogPage = lazy(() => import('./pages/gestao/EmailLogPage').then((m) => ({ default: m.EmailLogPage })));
 const TimelinePage = lazy(() => import('./pages/gestao/TimelinePage').then((m) => ({ default: m.TimelinePage })));
+const DocGatePage = lazy(() => import('./pages/gestao/DocGatePage').then((m) => ({ default: m.DocGatePage })));
 const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
 const LaudoAprovarPage = lazy(() => import('./pages/LaudoAprovarPage').then((m) => ({ default: m.LaudoAprovarPage })));
 const PortalPublicoPage = lazy(() => import('./pages/portal/PortalPublicoPage').then((m) => ({ default: m.PortalPublicoPage })));
@@ -128,6 +129,7 @@ export function App() {
             <Route path="/gestao/backups" element={podeOperacao ? <BackupsPage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/emails" element={podeOperacao ? <EmailLogPage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/timeline" element={podeOperacao ? <TimelinePage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/documentos" element={podeOperacao ? <DocGatePage /> : <Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

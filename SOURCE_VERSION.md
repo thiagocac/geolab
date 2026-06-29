@@ -1,10 +1,16 @@
-# GEOLAB → Concresoft — SOURCE VERSION v120
-CACHE_NAME: consultegeo-geolab-v120 · APP_VERSION: v120
+# GEOLAB → Concresoft — SOURCE VERSION v121
+CACHE_NAME: consultegeo-geolab-v121 · APP_VERSION: v121
 
-> **RENUMERADO v119→v120 (Claude):** havia um v119 anterior não-pushado (fix apikey/instrument.ts). Live=v116; fila de push: v117→v118→v119(apikey)→**v120 (timeline, esta)**. Backend 093/094 já aplicado via MCP.
+> **RENUMERADO v120→v121 (Claude):** o v120 já estava ocupado pela Onda 1 (timeline). Este pacote é CUMULATIVO Onda 1 + Onda 2 (timeline + matriz documental/gate) sobre base v118. Backend 093–097 já aplicado via MCP. EF de laudo com gate: ver INSTRUCOES.
 
 
-## v120 — Onda 1 (renumerado de v119) GeoCon→GEOLAB: auditoria genérica + linha do tempo
+## v121 — Onda 2 GeoCon port: matriz documental + gate de laudo — FE + backend separado
+Entrega a tela `/gestao/documentos` para conformidade documental e pré-checagem de emissão de laudo. O backend separado contém as migrations 095–097 para tipos/requisitos/documentos, visão `v_lab_document_conformity`, RPCs `list_docgate_conformity`, `docgate_laudo_blocks`, `can_emit_lab_report` e `assert_can_emit_lab_report`, além do patch da EF `generate-laudo-ensaio-pdf` para bloquear emissão com pendências técnicas. Base: v119/Onda 1.
+
+# GEOLAB → Concresoft — SOURCE VERSION v119
+CACHE_NAME: consultegeo-geolab-v119 · APP_VERSION: v119
+
+## v119 — Onda 1 GeoCon→GEOLAB: auditoria genérica + linha do tempo
 Porta a fundação regulatória do GeoCon para o domínio do laboratório. Backend separado: migrations 093/094 criam `audit_log`, `audit_row_change()` e RPCs `list_tenant_timeline`, `list_work_timeline` e `list_concretagem_timeline` com marcos de domínio. Frontend: nova tela `/gestao/timeline`, API `timeline.ts`, navegação e busca global. Build esperado: check-source · biome · tsc · vitest · vite. Aplicação do backend via Claude/MCP antes de liberar a tela em produção.
 
 

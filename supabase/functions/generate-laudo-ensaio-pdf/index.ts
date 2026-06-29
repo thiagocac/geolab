@@ -61,6 +61,19 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     if (e1) return json({ error: e1.message }, 403);
     if (!conc) return json({ error: 'concretagem não encontrada' }, 404);
 
+    // Onda 2 MOD-DOCGATE: gate técnico/documental antes de gerar o PDF.
+    // Bloqueia apenas pendências severidade='bloqueante'. Avisos voltam no payload quando houver bloqueio futuro no front.
+    const { data: gateRows, error: gateErr } = await sb.rpc('docgate_laudo_blocks', { p_concretagem_id: concretagemId });
+    if (gateErr) return json({ error: gateErr.message }, 403);
+    const gateBlocks = ((gateRows ?? []) as Array<Record<string, unknown>>).filter((r) => String(r.severity ?? '') === 'bloqueante');
+    if (gateBlocks.length) {
+      return json({
+        error: 'docgate_laudo_bloqueado',
+        message: 'Regularize as pendências bloqueantes antes de emitir o laudo.',
+        blocks: gateBlocks,
+      }, 422);
+    }
+
     const [{ data: work }, { data: cliente }, { data: tenant }, { data: om }, { data: cfg }] = await Promise.all([
       sb.from('client_works').select('nome, cidade, uf, endereco, responsavel_tecnico, crea').eq('id', conc.work_id).maybeSingle(),
       sb.from('lab_clients').select('razao_social, nome_fantasia, email, telefone').eq('id', conc.client_id).maybeSingle(),
