@@ -1,10 +1,13 @@
-# GEOLAB → Concresoft — SOURCE VERSION v123
-CACHE_NAME: consultegeo-geolab-v123 · APP_VERSION: v123
+# GEOLAB → Concresoft — SOURCE VERSION v124
+CACHE_NAME: consultegeo-geolab-v124 · APP_VERSION: v124
+
+> **v124 (Claude):** FIX do bloqueio de pop-up na emissão de laudo + otimização da EF. `src/lib/pdf.ts`: a aba síncrona deixa de usar `noopener` (com noopener o window.open('') retornava null e o truque falhava) → agora segura a aba de verdade, mostra tela de loading e **cai em download automático** se a aba for bloqueada. EF `generate-laudo-ensaio-pdf` v18 (ezbr 92174d0…): auth+concretagem+gate e o lote de metadados (incl. moldador) em paralelo. Pacote segue CUMULATIVO ondas 1-4 sobre base v118.
+
 
 > **RENUMERADO v122→v123 (Claude):** v122 já era a Onda 3. Pacote CUMULATIVO Ondas 1+2+3+4 (timeline + matriz/gate + RBAC/deleg/segconta + broadcast/backlog/webhooks) sobre base v118. Backend 093–106 aplicado via MCP. EFs: generate-laudo-ensaio-pdf v17 (gate) + auth-password-hook v1 + dispatch-outgoing-webhooks v1 (ambos opcionais/inertes até config manual).
 
 
-## v123 — Onda 4 GeoCon port: comunicados com ciência + backlog interno + webhooks/API — FE + backend separado
+## v124 — Onda 4 GeoCon port: comunicados com ciência + backlog interno + webhooks/API — FE + backend separado
 Entrega `/gestao/comunicados`, `/gestao/backlog` e `/gestao/webhooks`. Backend separado: migrations 101–103 criam broadcast com confirmação de ciência, backlog admin-only, webhooks assinados com fila/retry e API keys hashadas. Inclui EF `dispatch-outgoing-webhooks` (verify_jwt=false, CRON_SECRET). Base: v121/Onda 3. Aplicar depois das migrations 093–100 das ondas anteriores.
 
 # GEOLAB → Concresoft — SOURCE VERSION v121

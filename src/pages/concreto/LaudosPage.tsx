@@ -43,19 +43,19 @@ export function LaudosPage() {
   async function previewOne() {
     const ids = [...sel]; if (ids.length !== 1) { toast('Selecione exatamente uma concretagem para pré-visualizar.', 'error'); return; }
     setBusy(true);
-    const tab = openDeferredTab();
-    try { const { blob } = await gerarLaudo(ids[0], false); tab.openBlob(blob); toast('Pré-visualização gerada (não persistida).', 'info'); }
+    const tab = openDeferredTab('Gerando pré-visualização do laudo…');
+    try { const { blob } = await gerarLaudo(ids[0], false); tab.openBlob(blob, 'laudo-previa.pdf'); toast('Pré-visualização gerada (não persistida).', 'info'); }
     catch (e) { tab.fail(); toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function gerar() {
     const ids = [...sel]; if (!ids.length) { toast('Selecione ao menos uma concretagem.', 'error'); return; }
     setBusy(true); setProg({ done: 0, total: ids.length });
     let ok = 0; const erros: string[] = [];
-    const tab = ids.length === 1 ? openDeferredTab() : null;
+    const tab = ids.length === 1 ? openDeferredTab('Gerando laudo…') : null;
     for (const cid of ids) {
       try {
         const { blob, labReportId } = await gerarLaudo(cid, true);
-        if (tab) tab.openBlob(blob);
+        if (tab) tab.openBlob(blob, 'laudo.pdf');
         if (labReportId && member) { try { await notifyLaudoPronto(member.tenant_id, labReportId); } catch { /* best-effort */ } }
         ok += 1;
       } catch (e) { tab?.fail(); erros.push((e as Error).message); }

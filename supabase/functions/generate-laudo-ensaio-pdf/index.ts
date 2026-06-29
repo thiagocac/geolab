@@ -52,18 +52,19 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     if (!authz) return json({ error: 'não autenticado' }, 401);
     const sb = createClient(url, anon, { global: { headers: { Authorization: authz } }, auth: { persistSession: false } });
     const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
-    const { data: ures } = await sb.auth.getUser();
+    // Perf: valida auth, carrega a concretagem e roda o gate documental EM PARALELO (dependem só do concretagem_id/token).
+    const [{ data: ures }, { data: conc, error: e1 }, { data: gateRows, error: gateErr }] = await Promise.all([
+      sb.auth.getUser(),
+      sb.from('concretagens')
+        .select('id, codigo, numero_relatorio, data_real, data_programada, hora_programada, hora_inicio, hora_fim, work_id, client_id, tenant_id, fck_previsto, operational_material_id, traco_texto, fornecedor_texto, volume_programado_m3, volume_lancado_m3, dimensao_cp, local_texto, clima, temperatura_ambiente_c, bombeado, observacoes, moldador_id')
+        .eq('id', concretagemId).is('deleted_at', null).maybeSingle(),
+      sb.rpc('docgate_laudo_blocks', { p_concretagem_id: concretagemId }),
+    ]);
     if (!ures?.user) return json({ error: 'não autenticado' }, 401);
-
-    const { data: conc, error: e1 } = await sb.from('concretagens')
-      .select('id, codigo, numero_relatorio, data_real, data_programada, hora_programada, hora_inicio, hora_fim, work_id, client_id, tenant_id, fck_previsto, operational_material_id, traco_texto, fornecedor_texto, volume_programado_m3, volume_lancado_m3, dimensao_cp, local_texto, clima, temperatura_ambiente_c, bombeado, observacoes, moldador_id')
-      .eq('id', concretagemId).is('deleted_at', null).maybeSingle();
     if (e1) return json({ error: e1.message }, 403);
     if (!conc) return json({ error: 'concretagem não encontrada' }, 404);
 
-    // Onda 2 MOD-DOCGATE: gate técnico/documental antes de gerar o PDF.
-    // Bloqueia apenas pendências severidade='bloqueante'. Avisos voltam no payload quando houver bloqueio futuro no front.
-    const { data: gateRows, error: gateErr } = await sb.rpc('docgate_laudo_blocks', { p_concretagem_id: concretagemId });
+    // Onda 2 MOD-DOCGATE: bloqueia apenas pendências severidade='bloqueante' (gate já avaliado acima).
     if (gateErr) return json({ error: gateErr.message }, 403);
     const gateBlocks = ((gateRows ?? []) as Array<Record<string, unknown>>).filter((r) => String(r.severity ?? '') === 'bloqueante');
     if (gateBlocks.length) {
@@ -74,14 +75,14 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       }, 422);
     }
 
-    const [{ data: work }, { data: cliente }, { data: tenant }, { data: om }, { data: cfg }] = await Promise.all([
+    const [{ data: work }, { data: cliente }, { data: tenant }, { data: om }, { data: cfg }, { data: moldador }] = await Promise.all([
       sb.from('client_works').select('nome, cidade, uf, endereco, responsavel_tecnico, crea').eq('id', conc.work_id).maybeSingle(),
       sb.from('lab_clients').select('razao_social, nome_fantasia, email, telefone').eq('id', conc.client_id).maybeSingle(),
       sb.from('tenants').select('name').eq('id', conc.tenant_id).maybeSingle(),
       conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_cm, slump_tolerancia_cm, bombeado, componentes').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
       sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq').eq('tenant_id', conc.tenant_id).maybeSingle(),
+      conc.moldador_id ? sb.from('colaboradores').select('nome').eq('id', conc.moldador_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
-    const { data: moldador } = conc.moldador_id ? await sb.from('colaboradores').select('nome').eq('id', conc.moldador_id).maybeSingle() : { data: null };
 
     let logoBytes: Uint8Array | null = null; let logoPng = true;
     if (cfg?.logo_path) { try { const dl = await admin.storage.from('lab-reports').download(String(cfg.logo_path)); if (dl.data) { logoBytes = new Uint8Array(await dl.data.arrayBuffer()); const lp = String(cfg.logo_path).toLowerCase(); logoPng = !(lp.endsWith('.jpg') || lp.endsWith('.jpeg')); } } catch (_) { logoBytes = null; } }
