@@ -1,5 +1,9 @@
-# GEOLAB → Concresoft — SOURCE VERSION v111
-CACHE_NAME: consultegeo-geolab-v111 · APP_VERSION: v111
+# GEOLAB → Concresoft — SOURCE VERSION v118
+CACHE_NAME: consultegeo-geolab-v118 · APP_VERSION: v118
+
+> **RECONCILIAÇÃO (29/06):** este arquivo vinha **stale em v111** no zip (gotcha do pipeline; REL-002 da auditoria). Cabeçalho reconciliado para **v118**. Resumo v112→v117: `pdf.ts` (v112) · e-mail A2/A4/A5/A10/A11/A12 (v113→v115) · NC-RAC (v116) · Central cockpit + RPC paginado de concretagens/migration 088 (v117). Banco vivo em **migrations 001→091**, **35 EFs**, 22 crons.
+
+> **v118 — pós-auditoria GPT Pro (validada/adaptada por Claude):** backend via MCP — **089** REVOKE EXECUTE em 22 funções SECURITY DEFINER (NC/triggers e portal/magic-link sem `anon`; 4 de EF viram service-role-only); **090** deny-policies em `client_telemetry_rate_limit`/`frontend_canary_checks` (advisor rls_no_policy zerado); **091** 8 índices compostos enxutos (descartadas ~30 duplicatas/redundâncias da proposta). Frontend: a11y do `VirtualTable` (header sortable → `<button>` + reset CSS `.vt-th`) e import morto removido em `EmailLogPage`. Pendente manual: leaked-password protection (Supabase Auth). SW `fetch` handler mantido (remoção não solicitada/arriscada).
 
 ## v111 — Gestão de e-mails A9: catálogo de eventos + rótulos amigáveis — FE-only
 `EmailLogPage` (/gestao/emails): usa `notification_event_types` (RLS de leitura = todos) para mostrar **rótulos

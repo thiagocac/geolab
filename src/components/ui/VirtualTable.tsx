@@ -28,11 +28,15 @@ export function VirtualTable<T>({ data, columns, rowId, height = 560, estimateRo
       <div className="vt-scroll hidden md:block" ref={parentRef} style={{ height }}>
         <div className="vt" style={{ width: totalW, minWidth: '100%' }}>
           <div className="vt-head">
-            {table.getHeaderGroups().map((hg) => hg.headers.map((h) => (
-              <div key={h.id} className={'vt-th' + (h.column.getCanSort() ? ' vt-sortable' : '')} style={{ width: h.getSize() }} onClick={h.column.getToggleSortingHandler()}>
-                {flexRender(h.column.columnDef.header, h.getContext())}{arrow[h.column.getIsSorted() as string] ?? ''}
-              </div>
-            )))}
+            {table.getHeaderGroups().map((hg) => hg.headers.map((h) => {
+              const content = <>{flexRender(h.column.columnDef.header, h.getContext())}{arrow[h.column.getIsSorted() as string] ?? ''}</>;
+              if (!h.column.getCanSort()) return <div key={h.id} className="vt-th" style={{ width: h.getSize() }}>{content}</div>;
+              return (
+                <button key={h.id} type="button" className="vt-th vt-sortable" style={{ width: h.getSize() }} onClick={h.column.getToggleSortingHandler()}>
+                  {content}
+                </button>
+              );
+            }))}
           </div>
           {rows.length === 0 ? <div className="vt-empty">{emptyLabel}</div> : (
             <div className="vt-body" style={{ height: virt.getTotalSize() }}>
