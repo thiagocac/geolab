@@ -11,7 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State';
-import { listNcs, listAcoes, listTemplates, listTransitions, listSituacoes, listTipos, listObrasRef, abrirNcManual, registrarAcao, excluirNc, uploadAnexo, signedAnexo, type NcRow } from '../../lib/api/nc';
+import { listNcs, listAcoes, listTemplates, listTransitions, listSituacoes, listTipos, listObrasRef, abrirNcManual, registrarAcao, excluirNc, uploadAnexo, signedAnexo, racPdfUrl, type NcRow } from '../../lib/api/nc';
 
 const dataBR = (s: string) => (s && s.length === 10 ? s.split('-').reverse().join('/') : s);
 const SEV: Record<string, string> = { alta: 'var(--magenta)', media: '#d97706', baixa: 'var(--ink-faint)' };
@@ -108,6 +108,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
   const [anotacao, setAnotacao] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [racBusy, setRacBusy] = useState(false);
 
   const concluida = nc.status === 'concluida';
   const lastTemplateId = useMemo(() => { const a = acoes.data ?? []; return a.length ? a[a.length - 1].action_template_id : null; }, [acoes.data]);
@@ -137,6 +138,13 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
     try { tab.set(await signedAnexo(path)); }
     catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
   }
+  async function gerarRac() {
+    setRacBusy(true);
+    const tab = openDeferredTab();
+    try { tab.set(await racPdfUrl(nc.id)); }
+    catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
+    finally { setRacBusy(false); }
+  }
   async function excluir() {
     if (!(await confirm({ title: 'Excluir NC', message: 'Excluir esta NC?', danger: true, confirmLabel: 'Excluir' }))) return;
     try { await excluirNc(nc.id); onChange(); onClose(); toast('NC excluida.', 'success'); }
@@ -144,7 +152,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
   }
 
   return (
-    <Modal open title={'NC ' + nc.numero} onClose={onClose} wide footer={<><Button variant="ghost" onClick={onClose}>Fechar</Button>{podeTratar ? <Button variant="ghost" onClick={() => void excluir()}>Excluir NC</Button> : null}</>}>
+    <Modal open title={'NC ' + nc.numero} onClose={onClose} wide footer={<><Button variant="ghost" onClick={onClose}>Fechar</Button><Button variant="ghost" onClick={() => void gerarRac()} disabled={racBusy}>{racBusy ? 'Gerando...' : 'RAC (PDF)'}</Button>{podeTratar ? <Button variant="ghost" onClick={() => void excluir()}>Excluir NC</Button> : null}</>}>
       <div style={{ display: 'grid', gap: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
           <KV k="Tipo" v={nc.tipo_nome ?? nc.tipo_code ?? '—'} />

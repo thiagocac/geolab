@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { assertUploadSize } from '../upload';
+import { env } from '../env';
 
 // Motor de NC (engine configuravel re-derivado do GEOMAT). non_conformities = cabeca;
 // nc_actions = tratativa dirigida por nc_action_templates + nc_action_transitions.
@@ -110,4 +111,14 @@ export async function signedAnexo(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('anexos').createSignedUrl(path, 300);
   if (error) throw new Error(error.message);
   return data.signedUrl;
+}
+
+// RAC (Relatorio de Acao Corretiva) em PDF via EF generate-nc-report-pdf. Espelha pdfMedicaoUrl:
+// fetch autenticado -> blob URL (aberto com openDeferredTab no chamador).
+export async function racPdfUrl(ncId: string): Promise<string> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/generate-nc-report-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token }, body: JSON.stringify({ nc_id: ncId }) });
+  if (!resp.ok) { const tx = await resp.text(); throw new Error('Falha ao gerar RAC: ' + tx.slice(0, 160)); }
+  return URL.createObjectURL(await resp.blob());
 }
