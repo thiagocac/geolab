@@ -5,7 +5,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Stat } from '../../components/ui/Stat';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listDispatchLog, dispatchCountsByStatus, getDispatchSettings, saveDispatchSettings, listOutbox, listSuppressions, addSuppression, removeSuppression, listEventTypes, type DispatchLogRow, type OutboxRow, type SuppressionRow, type EventType } from '../../lib/api/emails';
+import { listDispatchLog, dispatchCountsByStatus, getDispatchSettings, saveDispatchSettings, listOutbox, listSuppressions, addSuppression, removeSuppression, listEventTypes, emailFunnel, type DispatchLogRow, type OutboxRow, type SuppressionRow, type EventType } from '../../lib/api/emails';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -88,6 +88,8 @@ export function EmailLogPage() {
   const podeSupressao = hasRole('admin_consulte');
   const supr = useQuery({ queryKey: ['eml', 'suppr'], enabled: podeSupressao, refetchInterval: REFRESH_MS, queryFn: () => listSuppressions() });
   const evtypes = useQuery({ queryKey: ['eml', 'evtypes'], staleTime: 300_000, queryFn: listEventTypes });
+  const [funilDias, setFunilDias] = useState(30);
+  const funil = useQuery({ queryKey: ['eml', 'funil', tenantId, funilDias], enabled: !!tenantId, refetchInterval: REFRESH_MS, queryFn: () => emailFunnel(tenantId, funilDias) });
   const evMap = useMemo(() => new Map((evtypes.data ?? []).map((t) => [t.key, t] as const)), [evtypes.data]);
   const labelEvento = (key: string) => evMap.get(key)?.descricao || key;
 
@@ -249,6 +251,31 @@ export function EmailLogPage() {
           <Stat label="Backlog (outbox)" value={backlog} />
         </div>
       )}
+
+      {/* A2 - Funil de entrega + taxas (por tenant, agregado no banco) */}
+      <Card>
+        <CardHeader kicker="Entregabilidade" title="Funil de entrega">Enviados &rarr; entregues &rarr; abertos &rarr; clicados, com taxas de bounce e reclamacao, agregados no banco por laboratorio.</CardHeader>
+        <div className="space-y-4 p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">Periodo:</span>
+            {[7, 30, 90].map((d) => <Button key={d} variant={funilDias === d ? 'primary' : 'ghost'} onClick={() => setFunilDias(d)}>{d}d</Button>)}
+          </div>
+          {funil.isLoading ? <LoadingState /> : funil.error ? <ErrorState message={(funil.error as Error).message} /> : (() => {
+            const f = funil.data!;
+            const pct = (num: number, den: number) => den > 0 ? Math.round((num / den) * 1000) / 10 : 0;
+            const bar = (v: number) => f.enviados > 0 ? Math.max(2, Math.round((v / f.enviados) * 100)) : 0;
+            const etapas: Array<[string, number, string]> = [['Enviados', f.enviados, 'bg-slate-400'], ['Entregues', f.entregues, 'bg-blue-500'], ['Abertos', f.abertos, 'bg-green-500'], ['Clicados', f.clicados, 'bg-emerald-600']];
+            const taxas: Array<[string, number]> = [['Entrega', pct(f.entregues, f.enviados)], ['Abertura', pct(f.abertos, f.entregues)], ['Clique', pct(f.clicados, f.entregues)], ['Bounce', pct(f.bounces, f.enviados)], ['Reclamacao', pct(f.reclamacoes, f.entregues)]];
+            return (
+              <>
+                {f.enviados === 0 ? <EmptyState /> : <div className="space-y-2">{etapas.map(([label, val, cor]) => <div key={label} className="flex items-center gap-3"><span className="w-24 text-sm font-bold text-slate-600 dark:text-slate-300">{label}</span><div className="h-5 flex-1 rounded bg-slate-100 dark:bg-slate-800"><div className={'h-5 rounded ' + cor} style={{ width: bar(val) + '%' }} /></div><span className="w-12 text-right text-sm font-black tabular-nums">{val}</span></div>)}</div>}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{taxas.map(([label, v]) => <div key={label} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="text-xs font-bold text-slate-500">{label}</div><div className="text-xl font-black tabular-nums">{v}%</div></div>)}</div>
+                <p className="text-xs text-slate-500">{f.total} registro(s) no periodo{f.suprimidos > 0 ? ' - ' + f.suprimidos + ' suprimido(s)/pulado(s)' : ''}{f.falhas > 0 ? ' - ' + f.falhas + ' falha(s)' : ''}.</p>
+              </>
+            );
+          })()}
+        </div>
+      </Card>
 
       {/* Backlog do outbox */}
       <Card>

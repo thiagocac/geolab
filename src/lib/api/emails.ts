@@ -138,3 +138,20 @@ export async function listEventTypes(): Promise<EventType[]> {
   if (error) throw new Error(error.message);
   return (data ?? []) as EventType[];
 }
+
+// A2: funil de entrega + taxas (bounce/complaint) por tenant, agregado NO BANCO via RPC email_funnel
+// (SECURITY DEFINER + is_tenant_member; notification_dispatch_log TEM tenant_id, ao contrario da view global).
+export type EmailFunnel = {
+  total: number; enviados: number; entregues: number; abertos: number; clicados: number;
+  bounces: number; reclamacoes: number; suprimidos: number; falhas: number;
+};
+export async function emailFunnel(tenantId: string, days = 30): Promise<EmailFunnel> {
+  const { data, error } = await db.rpc('email_funnel', { p_tenant: tenantId, p_days: days });
+  if (error) throw new Error(error.message);
+  const r = (Array.isArray(data) ? data[0] : data) as Partial<EmailFunnel> | undefined;
+  return {
+    total: Number(r?.total ?? 0), enviados: Number(r?.enviados ?? 0), entregues: Number(r?.entregues ?? 0),
+    abertos: Number(r?.abertos ?? 0), clicados: Number(r?.clicados ?? 0), bounces: Number(r?.bounces ?? 0),
+    reclamacoes: Number(r?.reclamacoes ?? 0), suprimidos: Number(r?.suprimidos ?? 0), falhas: Number(r?.falhas ?? 0),
+  };
+}
