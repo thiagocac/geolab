@@ -1,5 +1,7 @@
-# GEOLAB → Concresoft — SOURCE VERSION v118
-CACHE_NAME: consultegeo-geolab-v118 · APP_VERSION: v118
+# GEOLAB → Concresoft — SOURCE VERSION v119
+CACHE_NAME: consultegeo-geolab-v119 · APP_VERSION: v119
+
+> **v119 — backlog da auditoria (por Claude):** **Backend (migration 092 via MCP):** REVOKE EXECUTE de `authenticated` em 11 funções SECURITY DEFINER INTERNAS (cron/scan/seed/alarme: `notify_event_dispatch`, `notify_scan_*`, `gerar_ncs_cp_atrasado`, `telemetry_ops_alarm_run`, `telemetry_notify_pending_alerts`, `is_in_quiet_hours`, `seed_nc_*`, `list_public_tables`) — confirmado 0 refs no frontend e 0 callers SECURITY INVOKER; helpers de RLS e RPCs de app intactos. **Frontend (OBS-001/LGPD-001):** `instrument.ts` para de pôr `apikey` na query string do flush keepalive (mantém no header; sendBeacon fallback inalterado). **Decisão técnica:** NÃO migrei o trace de EF para header `x-trace-id` (recomendação do GPT) — o design atual usa `?trace_id=` DE PROPÓSITO para não disparar preflight CORS contra a allow-list das EFs; mudar exigiria editar CORS+readTraceId e redeploy das ~35 EFs (alto risco / ganho marginal). Trace segue: query em EF, header em REST.
 
 > **RECONCILIAÇÃO (29/06):** este arquivo vinha **stale em v111** no zip (gotcha do pipeline; REL-002 da auditoria). Cabeçalho reconciliado para **v118**. Resumo v112→v117: `pdf.ts` (v112) · e-mail A2/A4/A5/A10/A11/A12 (v113→v115) · NC-RAC (v116) · Central cockpit + RPC paginado de concretagens/migration 088 (v117). Banco vivo em **migrations 001→091**, **35 EFs**, 22 crons.
 
