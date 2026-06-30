@@ -83,3 +83,12 @@ export async function listObrasRef(): Promise<{ value: string; label: string }[]
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ value: String(r.id), label: String(r.nome) }));
 }
+
+export async function resetPassword(memberId: string): Promise<{ temp_password?: string | null }> {
+  return callEF('admin-reset-password', { member_id: memberId }) as Promise<{ temp_password?: string | null }>;
+}
+export async function getMemberEffectivePermissions(memberId: string): Promise<string[]> {
+  const { data, error } = await rpcOp('member_effective_permissions', { p_member_id: memberId });
+  if (error) throw new Error(error.message);
+  return Array.isArray(data) ? (data as string[]) : [];
+}

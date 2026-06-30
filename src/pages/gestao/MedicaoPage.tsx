@@ -17,10 +17,10 @@ const FLAT: [string, string][] = [['forma', 'Formas (cobranca)'], ['laudo', 'Lau
 function mesAtual() { const d = new Date(); const iso = (x: Date) => x.toISOString().slice(0, 10); return { inicio: iso(new Date(d.getFullYear(), d.getMonth(), 1)), fim: iso(new Date(d.getFullYear(), d.getMonth() + 1, 0)) }; }
 
 export function MedicaoPage() {
-  const { member, hasRole } = useAuth();
+  const { member, can } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
-  const podeEditar = hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'financeiro');
+  const podeEditar = can('medicao.gerar');
   const confirm = useConfirm();
   const [escopo, setEscopo] = useState<EscopoTipo>('contrato');
   const [escopoId, setEscopoId] = useState('');

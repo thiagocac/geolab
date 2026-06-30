@@ -17,11 +17,11 @@ const dataBR = (s: string | null) => (s && s.length === 10 ? s.split('-').revers
 const hoje = () => new Date().toISOString().slice(0, 10);
 
 export function FaturasPage() {
-  const { hasRole, member } = useAuth();
+  const { can, member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const pode = hasRole('admin', 'admin_consulte', 'financeiro');
+  const pode = can('fatura.gerar');
   const [status, setStatus] = useState('');
   const [emitir, setEmitir] = useState(false);
   const [baixar, setBaixar] = useState<FaturaRow | null>(null);

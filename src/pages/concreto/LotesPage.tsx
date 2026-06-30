@@ -15,11 +15,11 @@ import { listLotes, listObrasRef, criarLote, recalcularLote, excluirLote } from 
 const fmt = (n: number | null, d = 1) => (n == null ? '—' : Number(n).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }));
 
 export function LotesPage() {
-  const { member, hasRole } = useAuth();
+  const { member, can } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const podeEditar = hasRole('admin', 'admin_consulte', 'gestor_qualidade');
+  const podeEditar = can('lote.aceitar');
   const [filtroObra, setFiltroObra] = useState('');
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);

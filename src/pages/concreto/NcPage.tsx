@@ -17,9 +17,9 @@ const dataBR = (s: string) => (s && s.length === 10 ? s.split('-').reverse().joi
 const SEV: Record<string, string> = { alta: 'var(--magenta)', media: '#d97706', baixa: 'var(--ink-faint)' };
 
 export function NcPage() {
-  const { member, hasRole } = useAuth();
+  const { member, can } = useAuth();
   const qc = useQueryClient();
-  const podeTratar = hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista');
+  const podeTratar = can('nc.gerenciar');
   const [status, setStatus] = useState('');
   const [obra, setObra] = useState('');
   const [sel, setSel] = useState<NcRow | null>(null);

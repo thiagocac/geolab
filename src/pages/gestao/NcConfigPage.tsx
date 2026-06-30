@@ -12,10 +12,10 @@ import { listClassificacoes } from '../../lib/api/nc';
 import { getParametros, salvarParametros, listTemplatesFull, updateTemplate, listTransitions, addTransition, removeTransition, type NcParams, type TemplateFull } from '../../lib/api/ncConfig';
 
 export function NcConfigPage() {
-  const { member, hasRole } = useAuth();
+  const { member, hasRole, can } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
-  const podeTol = hasRole('admin', 'admin_consulte', 'gestor_qualidade');
+  const podeTol = can('nc.gerenciar');
   const podeTpl = hasRole('admin', 'admin_consulte');
 
   const params = useQuery({ queryKey: ['nc-params'], queryFn: getParametros });

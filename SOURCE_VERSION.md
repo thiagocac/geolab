@@ -1,5 +1,7 @@
-# GEOLAB → Concresoft — SOURCE VERSION v128
-CACHE_NAME: consultegeo-geolab-v128 · APP_VERSION: v128
+# GEOLAB → Concresoft — SOURCE VERSION v129
+CACHE_NAME: consultegeo-geolab-v129 · APP_VERSION: v129
+
+> **v129 (Claude):** **RBAC Fase 2.** Migration **111** (`seed_builtin_roles_and_permissions` reutilizável + backfill `member_roles` + `member_effective_permissions`). EFs: **admin-create-lab v8** (semeia papéis+matriz em novos labs) e **admin-reset-password v1** (nova; redefine senha). Frontend: ficha de usuário ganhou **Redefinir senha** + **Permissões efetivas**; gates religados a `can()` em Medição/Faturas/Config. de Campos/Lotes/NC. Base v128.
 
 > **v128 (Claude):** **gestão de usuários robusta + matriz de permissões detalhada (RBAC religado).** Migrations **109** (catálogo de 59 permissões em 17 categorias com risco/descrição + seed da matriz nos 7 papéis built-in) e **110** (RPCs current_member_permissions/list_lab_members/set_member_obras/set_member_override/update_member/upsert_role/clone_role/set_role_active). Frontend: `can()` no auth (autoriza por permissão, guarda-chuva admin); **Operação › Usuários** reformada (busca/filtros, chips, escopo de obras, exceções, último acesso, ficha de edição com múltiplos papéis); **Acessos › Papéis** reformada (matriz agrupada por categoria+risco+busca; criar/clonar/editar/desativar papel custom); Laudos religado a `can('laudo.aprovar')`. Base v127.
 

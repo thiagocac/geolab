@@ -1,19 +1,18 @@
-# INSTRUÇÕES — Patch v128 (Gestão de usuários robusta + matriz de permissões)
+# INSTRUÇÕES — Patch v129 (RBAC Fase 2)
 
-Patch **cumulativo** sobre o repositório (base v127). Copiar por cima do source e dar push (GitHub → Netlify CI).
+Patch **cumulativo** sobre o repositório (base v128). Copiar por cima do source e dar push (GitHub → Netlify CI).
 
-## Arquivos do patch (frontend)
-- `public/sw.js` · `src/lib/telemetry/core.ts`        — bump v128
-- `src/lib/auth.tsx`                                   — `can()` + permissões efetivas
-- `src/lib/api/rbac.ts`                                — catálogo de permissões + papéis (CRUD)
-- `src/lib/api/operacao.ts`                            — membros enriquecidos, escopo, overrides
-- `src/pages/operacao/OperacaoPage.tsx`               — gestão de usuários reformada
-- `src/pages/gestao/RbacPage.tsx`                      — matriz agrupada + papéis custom
-- `src/pages/concreto/LaudosPage.tsx`                 — emitir/aprovar via `can('laudo.aprovar')`
-- `SOURCE_VERSION.md` · `docs/CHANGELOG-v128.md`
+## Frontend
+- `public/sw.js` · `src/lib/telemetry/core.ts`         — bump v129
+- `src/lib/api/operacao.ts`                            — resetPassword + getMemberEffectivePermissions
+- `src/pages/operacao/OperacaoPage.tsx`               — ficha: Redefinir senha + Permissões efetivas
+- `src/pages/gestao/MedicaoPage.tsx` · `FaturasPage.tsx` · `ConfigCamposPage.tsx` · `NcConfigPage.tsx` — gates via can()
+- `src/pages/concreto/LotesPage.tsx` · `NcPage.tsx`   — gates via can()
+- `SOURCE_VERSION.md` · `docs/CHANGELOG-v129.md`
 
-## Backend (sem ação no push)
-- Migrations **109** e **110** — **já aplicadas via MCP** em `xbdvyvvxvzmcosnekmfv`. Referências em `docs/109_*.sql` e `docs/110_*.sql`.
+## Backend (já aplicado via MCP — sem ação no push)
+- Migration **111** aplicada. EFs **admin-create-lab v8** e **admin-reset-password v1** deployadas.
+  Cópias de referência em `supabase/functions/admin-create-lab/index.ts` e `.../admin-reset-password/index.ts`.
 
 ## Gate de build (espelho Netlify)
 `npm run check:source` → `tsc --noEmit` → `vitest run` → `vite build`  · check-source + esbuild validados nesta sessão: OK

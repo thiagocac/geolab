@@ -12,6 +12,7 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import {
   listLabMembers, inviteMember, setMemberActive, createLab, updateMember, setMemberRoles,
   getMemberObras, setMemberObras, getMemberOverrides, setMemberOverride, listObrasRef,
+  resetPassword, getMemberEffectivePermissions,
   type LabMemberRow,
 } from '../../lib/api/operacao';
 import { listRoles, listPermissionsCatalog } from '../../lib/api/rbac';
@@ -52,6 +53,7 @@ export function OperacaoPage() {
   const permsQ = useQuery({ queryKey: ['rbac', 'perms-catalog'], queryFn: listPermissionsCatalog });
   const scopeQ = useQuery({ queryKey: ['member-obras', edit?.member_id], queryFn: () => getMemberObras(edit!.member_id), enabled: !!edit });
   const overQ = useQuery({ queryKey: ['member-over', edit?.member_id], queryFn: () => getMemberOverrides(edit!.member_id), enabled: !!edit });
+  const effQ = useQuery({ queryKey: ['member-eff', edit?.member_id], queryFn: () => getMemberEffectivePermissions(edit!.member_id), enabled: !!edit });
 
   const roles = rolesQ.data ?? [];
   const rolesAtivos = roles.filter((r) => r.active);
@@ -127,6 +129,12 @@ export function OperacaoPage() {
     } catch (e) { toast((e as Error).message, 'error'); }
   }
 
+  async function resetSenha() {
+    if (!edit) return;
+    if (!(await confirm({ title: 'Redefinir senha', message: 'Gerar nova senha provisória para ' + (edit.full_name ?? edit.email) + '? A senha atual deixará de funcionar.', danger: true, confirmLabel: 'Redefinir' }))) return;
+    try { const r = await resetPassword(edit.member_id); setSenha(r.temp_password ?? null); }
+    catch (e) { toast((e as Error).message, 'error'); }
+  }
   function toggleRole(id: string) { setERoleIds((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
   function toggleObra(id: string) { setEObras((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
 
@@ -249,6 +257,18 @@ export function OperacaoPage() {
                   <select className="input max-w-[130px]" value={ovAllowed} onChange={(e) => setOvAllowed(e.target.value)}><option value="true">Permitir</option><option value="false">Negar</option></select>
                   <Button variant="secondary" onClick={() => void aplicarOverride(false)} disabled={!ovPerm}>Aplicar exceção</Button>
                 </div>
+              </div>
+            </details>
+
+            <div>
+              <div className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-200">Conta</div>
+              <Button variant="secondary" onClick={() => void resetSenha()}>Redefinir senha</Button>
+            </div>
+
+            <details className="rounded-lg border border-slate-200 dark:border-slate-700">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-slate-700 dark:text-slate-200">Permissões efetivas ({effQ.data?.length ?? 0})</summary>
+              <div className="space-y-2 p-3">
+                {(() => { const set = new Set(effQ.data ?? []); const grp: Record<string, string[]> = {}; for (const p of (permsQ.data ?? [])) if (set.has(p.key)) { grp[p.category] ??= []; grp[p.category].push(p.name); } const ents = Object.entries(grp); return ents.length ? ents.map(([cat, names]) => <div key={cat}><div className="text-xs font-black uppercase tracking-wide text-slate-500">{cat}</div><div className="mt-1 flex flex-wrap gap-1">{names.map((n) => <span key={n} className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">{n}</span>)}</div></div>) : <span className="text-xs text-slate-500">Sem permissões resolvidas.</span>; })()}
               </div>
             </details>
           </div>

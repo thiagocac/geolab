@@ -33,10 +33,10 @@ const ABAS: { key: AbaKey; label: string; coluna: ColunaKey; cat: CampoCatalogo[
 const ABA_KEYS = ABAS.map((a) => a.key);
 
 export function ConfigCamposPage() {
-  const { member, hasRole } = useAuth();
+  const { member, can } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
-  const podeEditar = hasRole('admin', 'admin_consulte', 'gestor_qualidade');
+  const podeEditar = can('config.campos');
 
   const [aba, setAba] = useState<AbaKey>(() => {
     const a = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('aba') : null;

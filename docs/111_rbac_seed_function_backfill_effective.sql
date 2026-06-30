@@ -1,0 +1,2 @@
+-- 111: seed_builtin_roles_and_permissions(tenant) reutilizavel + backfill member_roles +
+-- member_effective_permissions(member_id). APLICADA via MCP em xbdvyvvxvzmcosnekmfv.
