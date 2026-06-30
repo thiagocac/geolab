@@ -1,7 +1,9 @@
-# GEOLAB → Concresoft — SOURCE VERSION v134
-CACHE_NAME: consultegeo-geolab-v134 · APP_VERSION: v134
+# GEOLAB → Concresoft — SOURCE VERSION v135
+CACHE_NAME: consultegeo-geolab-v135 · APP_VERSION: v135
 (**30/06 — v133**: 2 toggles novos em Config. de Campos › Concretagem, default OFF, para a FICHA: `ficha_contato_equipe` (Contato/Equipe/Ref. no cabeçalho) e `ficha_dosagem` (linha de dosagem detalhada pré-preenchida do traço). Acompanha a EF generate-ficha-moldagem-pdf **v21** (ezbr cb457923) (logo dinâmica do lab, sem Consulte GEO, print-friendly, coluna Numeração gated por numeracao_cp_manual, colunas/campos dinâmicos por Config. de Campos, Cód.→Número do relatório). Cumulativo sobre v132.)
 (**30/06 — v132**: numeração de CP manual na MOLDAGEM. Toggle `recebimento_campos.numeracao_cp_manual` (Config. de Campos › Recebimento, DESMARCADO por padrão) liga, no modal Caminhões + CPs, um campo de numeração por CP + botão **Gerar numeração** (digita o nº do 1º CP — menor idade — e o sistema preenche a sequência via helper `bumpNumeracao`, BigInt, preserva prefixo/zero-pad). `addCaminhao` grava em `corpos_prova.numeracao_lab` (coluna já existia; reusada — aparece em rompimento/laudo/portal). **Frontend-only, sem migration/EF.** Complementa a v131, que registrava a numeração na tela de Rompimentos.)
+
+> **v135 (Claude):** **Delegação ligada à aprovação de laudo** (gap #3 da revisão). Migration **112**: `aprovar_laudo` aceita `laudo.aprovar` **OU delegação ativa** cobrindo a obra (moderniza o gate de papel→permissão); helper `current_tem_delegacao_aprovacao()`. Frontend: em **Laudos**, o botão "Emitir" aparece para quem tem `laudo.aprovar` **ou** é delegado ativo, com banner explicando; Reabrir/Enviar/Link seguem com o gestor/RT. Gate completo local (check-source/tsc 0/vitest 23/vite build verdes).
 
 > **v134 (Claude):** **Linha do tempo embutida** (gap #1 da revisão), **re-baseado sobre v133** — inclui v130/v131/v132/v133 (sessões paralelas) + a timeline. Componente `TimelineList`; na **concretagem** card "Linha do tempo" com toggle [Desta concretagem | Desta obra] + "Abrir completa"; `/gestao/timeline` deep-linkável (`?scope=&id=`). Gate completo rodado local (check-source/tsc/vitest 23/23/vite build verdes).
 

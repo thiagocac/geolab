@@ -1,0 +1,3 @@
+-- 112: aprovar_laudo aceita delegação ativa de 'laudo.aprovar' (delegatee cobre o RT, escopada por obra)
+-- + helper current_tem_delegacao_aprovacao(). Gate modernizado de papel-hardcoded para current_has_permission.
+-- APLICADA via MCP em xbdvyvvxvzmcosnekmfv.

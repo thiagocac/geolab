@@ -11,6 +11,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { listLaudosPaged, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao } from '../../lib/api/laudo';
 import { listReference } from '../../lib/api/client';
+import { temDelegacaoAprovacao } from '../../lib/api/delegacoes';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
 import type { ParcialFinal } from '../../lib/portal/types';
@@ -21,6 +22,8 @@ export function LaudosPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
   const podeAprovar = can('laudo.aprovar');
+  const delegQ = useQuery({ queryKey: ['deleg-aprovacao', member?.id], queryFn: temDelegacaoAprovacao, staleTime: 60_000 });
+  const podeEmitir = podeAprovar || (delegQ.data ?? false);
   const [novo, setNovo] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -108,6 +111,7 @@ export function LaudosPage() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <PageHeader kicker="Concreto" title="Laudos" description="Emissao de relatorios de ensaio (NBR 5739)." />
+      {!podeAprovar && (delegQ.data ?? false) ? <Card className="border-blue-200 bg-blue-50/60 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-200">Você pode <strong>emitir laudos</strong> por uma delegação ativa de aprovação. As demais ações (reabrir, enviar, link) seguem com o gestor/RT.</Card> : null}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><input className="input" placeholder="Buscar por Nº do relatório" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 280 }} /><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 240 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <Card>
@@ -119,7 +123,7 @@ export function LaudosPage() {
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
                   <Button variant="ghost" onClick={() => void baixar(r.storage_path)}>Baixar</Button>
-                  {podeAprovar && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
+                  {podeEmitir && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
                   {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void reabrir(r.id)}>Reabrir</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void enviarCliente(r.id)}>Enviar ao cliente</Button> : null}

@@ -82,3 +82,9 @@ export async function revokeApprovalDelegation(id: string, reason?: string): Pro
   const { error } = await db.rpc('revoke_approval_delegation', { p_delegation_id: id, p_reason: reason?.trim() || null });
   if (error) throw new Error(error.message);
 }
+
+export async function temDelegacaoAprovacao(): Promise<boolean> {
+  const { data, error } = await db.rpc('current_tem_delegacao_aprovacao');
+  if (error) throw new Error(error.message);
+  return data === true;
+}
