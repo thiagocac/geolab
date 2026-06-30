@@ -20,6 +20,8 @@ type AuthState = {
   selectTenant: (tenantId: string) => Promise<void>;
   reload: () => Promise<void>;
   hasRole: (...roles: string[]) => boolean;
+  can: (...permissions: string[]) => boolean;
+  permissions: string[];
   needsTenantSelection: boolean;
 };
 
@@ -56,11 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Member | null>(null);
   const [tenants, setTenants] = useState<TenantOption[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
 
   const loadContext = useCallback(async () => {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
-    if (!uid) { setMember(null); setTenants([]); return; }
+    if (!uid) { setMember(null); setTenants([]); setPermissions([]); return; }
     const { data: rows } = await supabase
       .from('members')
       .select('id, tenant_id, email, full_name, role, roles, is_selected, tenants(name)')
@@ -73,8 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setTenants(options);
     const current = list.find((r) => r.is_selected) ?? (list.length === 1 ? list[0] : null);
-    if (!current) { setMember(null); return; }
+    if (!current) { setMember(null); setPermissions([]); return; }
     setMember({ id: current.id, tenant_id: current.tenant_id, tenant_name: tenantName(current), email: current.email, full_name: current.full_name, role: current.role, roles: current.roles ?? [], is_selected: true });
+    try { const { data: perms } = await (supabase.rpc as unknown as (fn: string) => PromiseLike<{ data: unknown }>)('current_member_permissions'); setPermissions(Array.isArray(perms) ? (perms as string[]) : []); } catch { setPermissions([]); }
   }, []);
 
   useEffect(() => {
@@ -88,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, s) => {
       if (!active) return;
       setSession(s);
-      if (s) { await loadContext(); await recordLoginEventOnce(s); } else { setMember(null); setTenants([]); }
+      if (s) { await loadContext(); await recordLoginEventOnce(s); } else { setMember(null); setTenants([]); setPermissions([]); }
     });
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, [loadContext]);
@@ -98,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error: e } = await supabase.auth.signInWithPassword({ email, password });
     if (e) { setError(e.message); throw e; }
   }
-  async function signOut() { await supabase.auth.signOut(); setMember(null); setTenants([]); }
+  async function signOut() { await supabase.auth.signOut(); setMember(null); setTenants([]); setPermissions([]); }
   async function selectTenant(tenantId: string) {
     const { error: e } = await supabase.rpc('select_tenant', { p_tenant_id: tenantId });
     if (e) throw e;
@@ -109,9 +113,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const set = new Set<string>([member.role, ...(member.roles ?? [])]);
     return roles.some((r) => set.has(r));
   }
+  function can(...perms: string[]) {
+    if (!member) return false;
+    if (member.role === 'admin' || member.role === 'admin_consulte' || (member.roles ?? []).some((r) => r === 'admin' || r === 'admin_consulte')) return true;
+    const set = new Set(permissions);
+    return perms.some((p) => set.has(p));
+  }
   const needsTenantSelection = !!session && tenants.length > 1 && !member;
 
-  const value: AuthState = { ready, session, member, tenants, error, signIn, signOut, selectTenant, reload: loadContext, hasRole, needsTenantSelection };
+  const value: AuthState = { ready, session, member, tenants, error, signIn, signOut, selectTenant, reload: loadContext, hasRole, can, permissions, needsTenantSelection };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

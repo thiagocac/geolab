@@ -1,106 +1,165 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../lib/auth';
+import { useToast } from '../../lib/toast';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { Card, CardHeader } from '../../components/ui/Card';
-import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
+import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { listRbacMatrix, setRolePermissions, type RbacMatrixRow } from '../../lib/api/rbac';
+import { Modal } from '../../components/ui/Modal';
+import { Field, TextArea } from '../../components/ui/Field';
+import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
+import { listRbacMatrix, setRolePermissions, listRoles, listPermissionsCatalog, upsertRole, cloneRole, setRoleActive, type RoleRow } from '../../lib/api/rbac';
 
-type RoleView = { id: string; key: string; name: string };
-type PermissionView = { key: string; name: string; category: string };
-
-function badgeClass(category: string): string {
-  if (category === 'Laudos' || category === 'Resultados') return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200';
-  if (category === 'Financeiro') return 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200';
-  if (category === 'RBAC' || category === 'Segurança') return 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200';
-  return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200';
+function riskDot(risk: string): string {
+  if (risk === 'critico') return 'bg-red-500';
+  if (risk === 'alto') return 'bg-amber-500';
+  if (risk === 'medio') return 'bg-yellow-400';
+  return 'bg-slate-300';
 }
-
-function buildViews(rows: RbacMatrixRow[]) {
-  const roleMap = new Map<string, RoleView>();
-  const permMap = new Map<string, PermissionView>();
-  const enabled = new Map<string, Set<string>>();
-  for (const row of rows) {
-    roleMap.set(row.role_id, { id: row.role_id, key: row.role_key, name: row.role_name });
-    permMap.set(row.permission_key, { key: row.permission_key, name: row.permission_name, category: row.category });
-    if (!enabled.has(row.role_id)) enabled.set(row.role_id, new Set());
-    if (row.enabled) enabled.get(row.role_id)!.add(row.permission_key);
-  }
-  const roles = [...roleMap.values()].sort((a, b) => a.key.localeCompare(b.key));
-  const permissions = [...permMap.values()].sort((a, b) => a.category.localeCompare(b.category) || a.key.localeCompare(b.key));
-  return { roles, permissions, enabled };
+function riskLabel(risk: string): string {
+  return risk === 'critico' ? 'crítico' : risk === 'alto' ? 'alto' : risk === 'medio' ? 'médio' : 'baixo';
 }
 
 export function RbacPage() {
+  const { can, hasRole } = useAuth();
+  const podeGerenciar = can('rbac.gerenciar') || hasRole('admin', 'admin_consulte');
   const qc = useQueryClient();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [tab, setTab] = useState<'matriz' | 'papeis'>('matriz');
+  const [busca, setBusca] = useState('');
   const [saving, setSaving] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const matrix = useQuery({ queryKey: ['rbac', 'matrix'], staleTime: 30_000, queryFn: listRbacMatrix });
-  const rows = matrix.data ?? [];
-  const { roles, permissions, enabled } = useMemo(() => buildViews(rows), [rows]);
-  const canToggle = rows.length > 0;
+  const [pModal, setPModal] = useState<null | { mode: 'novo' | 'editar' | 'clonar'; id?: string; nome: string; desc: string }>(null);
+  const [busy, setBusy] = useState(false);
 
-  async function toggle(role: RoleView, permissionKey: string, checked: boolean) {
-    const current = new Set(enabled.get(role.id) ?? []);
-    if (checked) current.add(permissionKey); else current.delete(permissionKey);
-    setSaving(role.id + ':' + permissionKey);
-    setMsg(null);
+  const matrixQ = useQuery({ queryKey: ['rbac', 'matrix'], queryFn: listRbacMatrix });
+  const rolesQ = useQuery({ queryKey: ['rbac', 'roles'], queryFn: listRoles });
+  const permsQ = useQuery({ queryKey: ['rbac', 'perms-catalog'], queryFn: listPermissionsCatalog });
+
+  const enabled = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const r of matrixQ.data ?? []) { if (!m.has(r.role_id)) m.set(r.role_id, new Set()); if (r.enabled) m.get(r.role_id)!.add(r.permission_key); }
+    return m;
+  }, [matrixQ.data]);
+
+  const allRoles = rolesQ.data ?? [];
+  const roles = allRoles.filter((r) => r.active);
+  const q = busca.trim().toLowerCase();
+  const perms = (permsQ.data ?? []).filter((p) => !q || p.name.toLowerCase().includes(q) || p.key.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+  const cats = useMemo(() => [...new Set(perms.map((p) => p.category))], [perms]);
+
+  async function toggle(roleId: string, permKey: string, checked: boolean) {
+    const cur = new Set(enabled.get(roleId) ?? []);
+    if (checked) cur.add(permKey); else cur.delete(permKey);
+    setSaving(roleId + ':' + permKey);
+    try { await setRolePermissions(roleId, [...cur]); await qc.invalidateQueries({ queryKey: ['rbac', 'matrix'] }); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setSaving(null); }
+  }
+  async function salvarPapel() {
+    if (!pModal) return;
+    setBusy(true);
     try {
-      await setRolePermissions(role.id, [...current]);
+      if (!pModal.nome.trim()) throw new Error('Nome do papel é obrigatório.');
+      if (pModal.mode === 'clonar' && pModal.id) await cloneRole(pModal.id, pModal.nome.trim());
+      else await upsertRole(pModal.mode === 'editar' ? (pModal.id ?? null) : null, pModal.nome.trim(), pModal.desc.trim());
+      await qc.invalidateQueries({ queryKey: ['rbac', 'roles'] });
       await qc.invalidateQueries({ queryKey: ['rbac', 'matrix'] });
-      setMsg('Permissões atualizadas para ' + role.name + '.');
-    } finally {
-      setSaving(null);
-    }
+      toast('Papel salvo.', 'success'); setPModal(null);
+    } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
+  }
+  async function desativar(role: RoleRow) {
+    if (role.active && !(await confirm({ title: 'Desativar papel', message: 'Desativar o papel ' + role.name + '?', danger: true, confirmLabel: 'Desativar' }))) return;
+    try { await setRoleActive(role.id, !role.active); await qc.invalidateQueries({ queryKey: ['rbac', 'roles'] }); await qc.invalidateQueries({ queryKey: ['rbac', 'matrix'] }); }
+    catch (e) { toast((e as Error).message, 'error'); }
   }
 
+  const loading = matrixQ.isLoading || permsQ.isLoading || rolesQ.isLoading;
+  const erro = matrixQ.error || permsQ.error || rolesQ.error;
+
   return (
-    <div className="space-y-6">
-      <PageHeader kicker="Onda 3 · RBAC" title="Permissões granulares" description="Matriz papel × permissão, coexistente com os perfis atuais. Começa separando lançar resultado, emitir laudo e aprovar laudo." />
-      <Card>
-        <CardHeader kicker="Matriz" title="Papéis e permissões">Use esta tela para ajustar permissões após aplicar a migration 098. O seed inicial espelha os perfis atuais.</CardHeader>
-        <div className="p-5">
-          {msg ? <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200">{msg}</div> : null}
-          {matrix.isLoading ? <LoadingState /> : matrix.error ? <ErrorState message={(matrix.error as Error).message} /> : !canToggle ? <EmptyState /> : (
-            <div className="table-scroll">
+    <div className="space-y-4">
+      <PageHeader kicker="Acessos" title="Papéis e permissões" description="Matriz papel × permissão por categoria e gestão de papéis do laboratório." />
+      <div className="flex gap-2">
+        <Button variant={tab === 'matriz' ? 'primary' : 'ghost'} onClick={() => setTab('matriz')}>Matriz</Button>
+        <Button variant={tab === 'papeis' ? 'primary' : 'ghost'} onClick={() => setTab('papeis')}>Papéis</Button>
+      </div>
+
+      {loading ? <LoadingState /> : erro ? <ErrorState message={(erro as Error).message} /> : tab === 'matriz' ? (
+        <Card>
+          <div className="flex flex-wrap items-center gap-2 p-4">
+            <input className="input max-w-[280px]" placeholder="Buscar permissão…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            <span className="text-xs text-slate-500">{perms.length} permissões · {roles.length} papéis</span>
+          </div>
+          {perms.length === 0 ? <div className="p-4"><EmptyState /></div> : (
+            <div className="table-scroll px-2 pb-2">
               <table className="table">
                 <thead>
-                  <tr>
-                    <th>Permissão</th>
-                    {roles.map((role) => <th key={role.id}>{role.name}</th>)}
-                  </tr>
+                  <tr><th className="min-w-[280px]">Permissão</th>{roles.map((r) => <th key={r.id} className="text-center">{r.name}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {permissions.map((perm) => (
-                    <tr key={perm.key}>
-                      <td>
-                        <div className="font-bold text-slate-950 dark:text-slate-50">{perm.name}</div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400"><span className={'badge ' + badgeClass(perm.category)}>{perm.category}</span><span>{perm.key}</span></div>
-                      </td>
-                      {roles.map((role) => {
-                        const checked = enabled.get(role.id)?.has(perm.key) ?? false;
-                        const key = role.id + ':' + perm.key;
-                        return (
-                          <td key={role.id}>
-                            <label className="inline-flex items-center gap-2 text-sm font-semibold">
-                              <input type="checkbox" checked={checked} disabled={!!saving} onChange={(e) => void toggle(role, perm.key, e.target.checked)} />
-                              {saving === key ? 'Salvando' : checked ? 'Sim' : 'Não'}
-                            </label>
+                  {cats.map((cat) => (
+                    <Fragment key={cat}>
+                      <tr><td colSpan={roles.length + 1} className="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500 dark:bg-slate-800/60 dark:text-slate-300">{cat}</td></tr>
+                      {perms.filter((p) => p.category === cat).map((p) => (
+                        <tr key={p.key}>
+                          <td>
+                            <div className="flex items-center gap-2 font-bold text-slate-950 dark:text-slate-50"><span className={'inline-block h-2 w-2 rounded-full ' + riskDot(p.risk_level)} title={'Risco: ' + riskLabel(p.risk_level)} />{p.name}</div>
+                            <div className="mt-0.5 text-xs text-slate-500">{p.key}{p.description ? ' · ' + p.description : ''}</div>
                           </td>
-                        );
-                      })}
-                    </tr>
+                          {roles.map((r) => {
+                            const checked = enabled.get(r.id)?.has(p.key) ?? false;
+                            const k = r.id + ':' + p.key;
+                            return <td key={r.id} className="text-center"><input type="checkbox" checked={checked} disabled={!podeGerenciar || saving === k} onChange={(e) => void toggle(r.id, p.key, e.target.checked)} /></td>;
+                          })}
+                        </tr>
+                      ))}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
-      </Card>
-      <Card className="p-5">
-        <p className="text-sm text-slate-600 dark:text-slate-300">Transição segura: as funções novas consultam a matriz, mas mantêm fallback para <code>members.role</code>/<code>roles[]</code>. O corte rígido pode ser feito depois, quando o Thiago validar a matriz por laboratório.</p>
-        <div className="mt-3"><Button variant="secondary" onClick={() => void matrix.refetch()}>Recarregar matriz</Button></div>
-      </Card>
+        </Card>
+      ) : (
+        <Card>
+          <div className="flex items-center justify-between p-4">
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Papéis do laboratório</span>
+            {podeGerenciar ? <Button onClick={() => setPModal({ mode: 'novo', nome: '', desc: '' })}>Novo papel</Button> : null}
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {allRoles.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-black text-slate-950 dark:text-slate-50">{r.name}</span>
+                    <span className={'rounded px-1.5 py-0.5 text-[11px] font-bold ' + (r.built_in ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300')}>{r.built_in ? 'built-in' : 'custom'}</span>
+                    {!r.active ? <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-700">inativo</span> : null}
+                    <span className="text-xs text-slate-400">{enabled.get(r.id)?.size ?? 0} permissões</span>
+                  </div>
+                  {r.description ? <div className="mt-0.5 text-xs text-slate-500">{r.description}</div> : null}
+                </div>
+                {podeGerenciar ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="ghost" onClick={() => setPModal({ mode: 'clonar', id: r.id, nome: r.name + ' (cópia)', desc: '' })}>Clonar</Button>
+                    {!r.built_in ? <Button variant="ghost" onClick={() => setPModal({ mode: 'editar', id: r.id, nome: r.name, desc: r.description ?? '' })}>Editar</Button> : null}
+                    {!r.built_in ? <Button variant="ghost" onClick={() => void desativar(r)}>{r.active ? 'Desativar' : 'Ativar'}</Button> : null}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <Modal open={!!pModal} title={pModal?.mode === 'clonar' ? 'Clonar papel' : pModal?.mode === 'editar' ? 'Editar papel' : 'Novo papel'} onClose={() => setPModal(null)} footer={<><Button variant="ghost" onClick={() => setPModal(null)}>Cancelar</Button><Button onClick={() => void salvarPapel()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
+        {pModal ? (
+          <div className="space-y-3">
+            <Field label="Nome do papel*" value={pModal.nome} onChange={(e) => setPModal({ ...pModal, nome: e.target.value })} />
+            {pModal.mode !== 'clonar' ? <TextArea label="Descrição" value={pModal.desc} onChange={(e) => setPModal({ ...pModal, desc: e.target.value })} /> : <p className="text-xs text-slate-500">O clone copia todas as permissões do papel de origem; ajuste a matriz depois.</p>}
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

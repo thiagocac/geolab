@@ -1,5 +1,7 @@
-# GEOLAB → Concresoft — SOURCE VERSION v127
-CACHE_NAME: consultegeo-geolab-v127 · APP_VERSION: v127
+# GEOLAB → Concresoft — SOURCE VERSION v128
+CACHE_NAME: consultegeo-geolab-v128 · APP_VERSION: v128
+
+> **v128 (Claude):** **gestão de usuários robusta + matriz de permissões detalhada (RBAC religado).** Migrations **109** (catálogo de 59 permissões em 17 categorias com risco/descrição + seed da matriz nos 7 papéis built-in) e **110** (RPCs current_member_permissions/list_lab_members/set_member_obras/set_member_override/update_member/upsert_role/clone_role/set_role_active). Frontend: `can()` no auth (autoriza por permissão, guarda-chuva admin); **Operação › Usuários** reformada (busca/filtros, chips, escopo de obras, exceções, último acesso, ficha de edição com múltiplos papéis); **Acessos › Papéis** reformada (matriz agrupada por categoria+risco+busca; criar/clonar/editar/desativar papel custom); Laudos religado a `can('laudo.aprovar')`. Base v127.
 
 > **v127 (Claude):** **escopo de construtora para traços** (obra › construtora › catálogo do lab). Migration **108** adiciona `operational_materials.client_id` (FK lab_clients) + backfill dos traços de obra. Os seletores de traço (Nova programação, Central, Detalhe) passam a respeitar a **cadeia de escopo** e agrupam por origem ("Desta obra/Da construtora/Catálogo" — componente `TracoOptions`). **Materiais** ganha picker de escopo, filtro por construtora, badge de origem e ação **Duplicar/Promover**. Verificado vivo: traço repete entre obras da mesma construtora, isolado entre construtoras. Base v126.
 

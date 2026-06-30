@@ -1,0 +1,2 @@
+-- 109: catalogo de permissoes (59 em 17 categorias, risco/descricao) + seed da matriz nos 7 papeis built-in.
+-- APLICADA via MCP em xbdvyvvxvzmcosnekmfv. Ver corpo completo no historico de migrations do projeto.

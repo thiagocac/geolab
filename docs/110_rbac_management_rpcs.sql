@@ -1,0 +1,3 @@
+-- 110: RPCs current_member_permissions/list_lab_members/set_member_obras/set_member_override/
+-- update_member/upsert_role/clone_role/set_role_active (SECURITY DEFINER + guards + search_path).
+-- APLICADA via MCP em xbdvyvvxvzmcosnekmfv.

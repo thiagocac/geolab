@@ -16,11 +16,11 @@ import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
 import type { ParcialFinal } from '../../lib/portal/types';
 
 export function LaudosPage() {
-  const { hasRole, member } = useAuth();
+  const { can, member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const podeAprovar = hasRole('admin', 'admin_consulte', 'gestor_qualidade');
+  const podeAprovar = can('laudo.aprovar');
   const [novo, setNovo] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
