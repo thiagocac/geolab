@@ -1,5 +1,7 @@
-# GEOLAB → Concresoft — SOURCE VERSION v130
-CACHE_NAME: consultegeo-geolab-v130 · APP_VERSION: v130
+# GEOLAB → Concresoft — SOURCE VERSION v131
+CACHE_NAME: consultegeo-geolab-v131 · APP_VERSION: v131
+
+> **v131 (Claude):** **Numeração do laboratório vira toggle de ensaio** (`numeracao_lab`, ligado por padrão) — em Config. de Campos › Ensaio; desligado, some o botão "+ numeração lab" de cada CP na tela de Rompimentos. E o **label do filtro de busca em Rompimentos** mudou de "Nota fiscal" para **"Buscar"** (o campo aceita Nº relatório, NF, código ou numeração). Base v130.
 
 > **v130 (Claude) — FIX crítico do RBAC:** corrige o erro `Cannot read properties of undefined (reading 'rest')` em **Papéis e permissões**, **Operação › Usuários**, **Linha do tempo** e **Documentos e gate**, e o carregamento de permissões no login. Causa: helpers extraíam `const rpc = supabase.rpc` (perde o `this`; no supabase-js v2.45 o `.rpc()` usa `this.rest`). Correção: `.bind` em rbac.ts/operacao.ts/auth.tsx/docgate.ts/timeline.ts. Sem o fix, `current_member_permissions` falhava em silêncio e **não-admins ficavam sem permissões** (só admin via guarda-chuva). Base v129.
 
