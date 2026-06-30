@@ -12,7 +12,7 @@ type Section = { title?: string; items: Item[] };
 const labRoles = ['admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro'];
 const adminRoles = ['admin', 'admin_consulte'];
 const sections: Section[] = [
-  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }] },
+  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles }] },
   { title: 'Concreto', items: [
     { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
     { to: '/concretagens', label: 'Concretagens', icon: MixerTruck, roles: labRoles },
@@ -21,6 +21,7 @@ const sections: Section[] = [
     { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
     { to: '/nao-conformidades', label: 'Não-conformidades', icon: AlertTriangle, roles: labRoles },
     { to: '/importacoes', label: 'Importações', icon: Import, roles: labRoles },
+    { to: '/importacoes/excel', label: 'Importação Excel', icon: Download, roles: labRoles },
     { to: '/tracos', label: 'Traços', icon: Beaker, roles: labRoles },
   ] },
   { title: 'Cadastros', items: [
@@ -37,6 +38,7 @@ const sections: Section[] = [
     { to: '/medicoes', label: 'Medição', icon: Ruler, roles: adminRoles },
     { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
     { to: '/faturas', label: 'Faturas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
+    { to: '/gestao/contratos-financeiro', label: 'Contratos e financeiro', icon: Receipt, roles: adminRoles },
     { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles },
     { to: '/gestao/config-campos', label: 'Config. de Campos', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/nc-config', label: 'Config de NC', icon: Sliders, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },

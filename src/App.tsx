@@ -18,6 +18,9 @@ const ConcretagensPage = lazy(() => import('./pages/concreto/ConcretagensPage').
 const ConcretagemDetalhePage = lazy(() => import('./pages/concreto/ConcretagemDetalhePage').then((m) => ({ default: m.ConcretagemDetalhePage })));
 const RompimentosPage = lazy(() => import('./pages/concreto/RompimentosPage').then((m) => ({ default: m.RompimentosPage })));
 const LaudosPage = lazy(() => import('./pages/concreto/LaudosPage').then((m) => ({ default: m.LaudosPage })));
+const LabDashboardsPage = lazy(() => import('./pages/dashboards/LabDashboardsPage').then((m) => ({ default: m.LabDashboardsPage })));
+const ImportacaoExcelPage = lazy(() => import('./pages/concreto/ImportacaoExcelPage').then((m) => ({ default: m.ImportacaoExcelPage })));
+const ContratosFinanceiroPage = lazy(() => import('./pages/gestao/ContratosFinanceiroPage').then((m) => ({ default: m.ContratosFinanceiroPage })));
 const ImportacoesPage = lazy(() => import('./pages/concreto/ImportacoesPage').then((m) => ({ default: m.ImportacoesPage })));
 const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
 const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
@@ -118,6 +121,9 @@ export function App() {
             <Route path="/nao-conformidades" element={<NcPage />} />
             <Route path="/gestao/nc-config" element={<NcConfigPage />} />
             <Route path="/importacoes" element={<ImportacoesPage />} />
+            <Route path="/importacoes/excel" element={podeLab ? <ImportacaoExcelPage /> : <Navigate to="/" replace />} />
+            <Route path="/dashboards" element={podeLab ? <LabDashboardsPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/contratos-financeiro" element={podeOperacao ? <ContratosFinanceiroPage /> : <Navigate to="/" replace />} />
             <Route path="/notificacoes" element={<NotificacoesPage />} />
             <Route path="/preferencias" element={<PreferenciasPage />} />
             <Route path="/medicoes" element={<MedicaoPage />} />

@@ -1,14 +1,20 @@
-# INSTRUÇÕES — Patch v136 (UI de documentos na DocGate)
+# INSTRUÇÕES — Patch v137 (Dashboards + Contratos/Financeiro + Importação Excel — GPT Pro, re-baseado)
 
-Patch **cumulativo** sobre v135 (se houver release paralela mais nova, prefira o **completo-v136**).
+Patch **cumulativo** sobre v136. **Recomendado: use o `consultegeo-geolab-source-completo-v137.zip`** (re-baseado, à prova de buraco entre releases paralelas).
 
-## Arquivos do patch (frontend — sem mudança de banco)
-- `public/sw.js` · `src/lib/telemetry/core.ts`        — bump v136
-- `src/lib/api/docgate.ts`                            — anexar/decidir/signed (PostgREST + storage)
-- `src/pages/gestao/DocGatePage.tsx`                  — ações Anexar/Baixar/Aprovar/Recusar + modais
-- `SOURCE_VERSION.md` · `docs/CHANGELOG-v136.md`
+## Frontend (arquivos do patch)
+- `public/sw.js` · `src/lib/telemetry/core.ts`            — bump v137
+- `src/App.tsx` · `src/components/Layout.tsx`             — 3 rotas + 3 menus (Dashboards, Importação Excel, Contratos e financeiro)
+- `src/lib/api/dashboards.ts` · `contractFinance.ts` · `excelImport.ts`
+- `src/lib/importacao/excelModel.ts` · `excelTemplates.ts` · `excelParser.ts`
+- `src/pages/dashboards/LabDashboardsPage.tsx`
+- `src/pages/gestao/ContratosFinanceiroPage.tsx`
+- `src/pages/concreto/ImportacaoExcelPage.tsx`
+- `SOURCE_VERSION.md` · `docs/CHANGELOG-v137.md` · `docs/ANALISE-DASHBOARDS-REFERENCIA-v134.md`
 
-## Backend
-- **Sem migration.** Usa as tabelas/policies da Onda 2 (lab_documents/events) e o bucket `anexos` (policy nc_anexos_rw, path por tenant).
+## Backend (já aplicado via MCP — sem ação no push)
+- Migrations **113-116** (renumeradas de 112-115 do GPT). Sem EFs. Referências em `docs/11{3,4,5,6}_gpt_v134_ref.sql`.
 
-## Gate (rodado nesta sessão): check-source OK · tsc 0 erros · vitest 23/23 · vite build OK
+## Gate de build (rodado nesta sessão)
+- `check-source` OK · `esbuild` OK (todos os arquivos) · **`vite build` OK** (gera o dist) · `vitest` **23/23**.
+- `tsc --noEmit` completo: trava por I/O do ambiente local (.d.ts do recharts v3); roda normalmente no Netlify.
