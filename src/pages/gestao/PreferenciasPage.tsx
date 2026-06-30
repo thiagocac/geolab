@@ -37,10 +37,14 @@ export function PreferenciasPage() {
   useEffect(() => {
     const c = q.data;
     if (c === undefined) return;
-    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '' });
+    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '', certificacoes: Array.isArray(c?.certificacoes) ? c?.certificacoes : [] });
   }, [q.data]);
 
   function set(k: string, v: unknown) { setF((s) => ({ ...s, [k]: v })); }
+  const certs = (Array.isArray(f.certificacoes) ? f.certificacoes : []) as Array<Record<string, unknown>>;
+  function setCert(i: number, k: string, v: unknown) { const arr = certs.slice(); arr[i] = { ...arr[i], [k]: v }; set('certificacoes', arr); }
+  function addCert() { set('certificacoes', [...certs, { tipo: '', numero: '', orgao: '', validade: '' }]); }
+  function removeCert(i: number) { set('certificacoes', certs.filter((_, j) => j !== i)); }
 
   async function salvar() {
     if (!member) return;
@@ -51,6 +55,7 @@ export function PreferenciasPage() {
         acreditacao_inmetro: str(f.acreditacao_inmetro) || null, validade_acreditacao: str(f.validade_acreditacao) || null,
         idade_controle_default: num(f.idade_controle_default, 28), cp_overdue_days: num(f.cp_overdue_days, 2),
         nota_rodape: str(f.nota_rodape) || null, local_ensaio: str(f.local_ensaio) || null, art_numero: str(f.art_numero) || null, gerente_qualidade: str(f.gerente_qualidade) || null, crea_gq: str(f.crea_gq) || null,
+        certificacoes: certs,
       });
       toast('Preferencias salvas.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
@@ -85,6 +90,22 @@ export function PreferenciasPage() {
               {podeEditar ? <><input type="file" accept="image/png,image/jpeg" disabled={logoBusy} onChange={(e) => void handleLogo(e.target.files?.[0] ?? undefined)} />{q.data?.logo_path ? <Button variant="ghost" onClick={() => void removeLogo()}>Remover</Button> : null}</> : null}
             </div>
           </div>
+        </div>
+      </Card>
+      <Card>
+        <CardHeader kicker="Laudo" title="Certificações do laboratório" />
+        <div style={{ display: 'grid', gap: 12, padding: 16 }}>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Cadastre as certificações/acreditações do laboratório. Saem no laudo quando o bloco “Certificações do laboratório” estiver ligado em <b>Config. de Campos › Laudo</b>.</p>
+          {certs.map((ce, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <Field label="Tipo / nome" value={String(ce.tipo ?? '')} onChange={(e) => setCert(i, 'tipo', e.target.value)} disabled={!podeEditar} />
+              <Field label="Número" value={String(ce.numero ?? '')} onChange={(e) => setCert(i, 'numero', e.target.value)} disabled={!podeEditar} />
+              <Field label="Órgão" value={String(ce.orgao ?? '')} onChange={(e) => setCert(i, 'orgao', e.target.value)} disabled={!podeEditar} />
+              <Field label="Validade" type="date" value={String(ce.validade ?? '')} onChange={(e) => setCert(i, 'validade', e.target.value)} disabled={!podeEditar} />
+              {podeEditar ? <Button variant="ghost" onClick={() => removeCert(i)}>Remover</Button> : null}
+            </div>
+          ))}
+          {podeEditar ? <div><Button variant="secondary" onClick={addCert}>Adicionar certificação</Button></div> : null}
         </div>
       </Card>
       <Card>

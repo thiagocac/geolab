@@ -72,6 +72,11 @@ export const CAMPOS_LAUDO: CampoCatalogo[] = [
   { key: 'responsavel_tecnico', label: 'Responsável técnico + CREA + ART', hint: 'Identificação configurada em Preferências.', on: true },
   { key: 'qr_validacao', label: 'QR / validação pública', hint: 'QR e link público de validação do laudo.', on: true },
   { key: 'logo_laboratorio', label: 'Logo do laboratório no cabeçalho', hint: 'Logo enviado em Preferências.', on: true },
+  { key: 'certificacoes', label: 'Bloco “Certificações do laboratório”', hint: 'Lista cadastrada em Preferências (tipo, número, validade) — sai no corpo do laudo.', on: false },
+  { key: 'norma_5739', label: 'Norma NBR 5739:2018 — compressão de CP', hint: 'Referência citada no laudo.', on: true },
+  { key: 'norma_5738', label: 'Norma NBR 5738:2015 — moldagem e cura', hint: 'Referência citada no laudo.', on: true },
+  { key: 'norma_16889', label: 'Norma NBR 16889:2020 — abatimento (slump)', hint: 'Referência citada no laudo.', on: true },
+  { key: 'norma_16886', label: 'Norma NBR 16886:2020 — amostragem do concreto fresco', hint: 'Referência citada no laudo.', on: true },
 ];
 
 export function initCampoState(cat: CampoCatalogo[], cfg: Record<string, unknown> | null | undefined): Record<string, boolean> {
