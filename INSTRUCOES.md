@@ -1,22 +1,18 @@
-# INSTRUÇÕES — Patch v133 (cumulativo; inclui v132)
+# INSTRUÇÕES — Patch v134 (linha do tempo embutida) — ATENÇÃO: sessões paralelas
 
-Patch **cumulativo** sobre o repositório (base v131). Inclui a v132 (numeração de CP manual) + v133
-(toggles da ficha). Copiar por cima do source e dar push (GitHub → Netlify CI). **Supersede o patch v132.**
+**Contexto:** durante esta sessão, outras sessões publicaram **v132** (numeração de CP na moldagem) e **v133**
+(toggles da ficha). Esta entrega foi **re-baseada sobre o completo v133**, então o **completo v134 contém tudo**
+(v130→v133 + a linha do tempo). **Recomendado: use o `consultegeo-geolab-source-completo-v134.zip` como fonte da
+verdade** (extrair por cima do repo) para evitar buraco entre as releases paralelas.
 
-## Arquivos do patch
-- `public/sw.js` · `src/lib/telemetry/core.ts`            — bump v133
-- `src/lib/concreto/camposEnsaioLaudo.ts`                — v132: recebimento `numeracao_cp_manual`; v133: concretagem `ficha_contato_equipe` + `ficha_dosagem`
-- `src/lib/concreto.ts`                                  — v132: helper bumpNumeracao()
-- `src/lib/concreto.numeracao.test.ts`                   — v132: teste
-- `src/lib/api/concretagem.ts`                           — v132: numeracao_lab por CP
-- `src/pages/concreto/ConcretagemDetalhePage.tsx`       — v132: UI de numeração no modal
-- `SOURCE_VERSION.md` · `docs/CHANGELOG-v132.md` · `docs/CHANGELOG-v133.md`
+## Arquivos alterados nesta entrega (sobre v133)
+- `public/sw.js` · `src/lib/telemetry/core.ts`            — bump v134
+- `src/components/TimelineList.tsx`                       — NOVO
+- `src/pages/gestao/TimelinePage.tsx`                     — usa TimelineList + deep-link
+- `src/pages/concreto/ConcretagemDetalhePage.tsx`        — card "Linha do tempo" (preserva a numeração na moldagem do v132/v133)
+- `SOURCE_VERSION.md` · `docs/CHANGELOG-v134.md`
 
 ## Backend
-- **EF `generate-ficha-moldagem-pdf` v21 (ezbr cb457923)** já publicada via MCP (logo dinâmica, sem Consulte GEO,
-  print-friendly, coluna Numeração, gating por Config. de Campos, Número do relatório, dosagem do traço).
-- Sem migration. Coluna `corpos_prova.numeracao_lab` já existia.
+- Sem mudança (RPCs de timeline já existiam).
 
-## Gate de build (espelho Netlify)
-`npm run check:source` → `biome lint src` → `tsc --noEmit` → `vitest run` → `vite build`
-- check-source + esbuild validados nesta sessão: OK. node_modules ausente → tsc/biome/vitest no CI.
+## Gate (rodado nesta sessão): check-source OK · tsc 0 erros · vitest 23/23 · vite build OK

@@ -12,6 +12,8 @@ import { LoadingState, ErrorState } from '../../components/ui/State';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
 import { getConcretagem, listCaminhoes, listCpsDaConcretagem, addCaminhao, invokeFicha, updateConcretagem, listTracosComFck, padraoMoldagemDaConcretagem, lerNfImagem, uploadEvidencia, listEvidencias, signedEvidencia, excluirEvidencia, lerFichaImagem, type ConcretagemRow, type FichaCaminhaoOCR } from '../../lib/api/concretagem';
 import { TracoOptions } from '../../components/TracoOptions';
+import { TimelineList } from '../../components/TimelineList';
+import { listConcretagemTimeline, listWorkTimeline } from '../../lib/api/timeline';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { listColaboradores } from '../../lib/api/colaboradores';
 import { listPecasObra } from '../../lib/api/estrutura';
@@ -86,6 +88,8 @@ export function ConcretagemDetalhePage() {
   const colaboradores = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradores });
   const cfg = useQuery({ queryKey: ['config_concretagem_recebimento', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
   const pecas = useQuery({ queryKey: ['pecas-conc-detail', conc.data?.work_id ?? 'none'], queryFn: () => listPecasObra(conc.data?.work_id ?? ''), enabled: !!conc.data?.work_id });
+  const [tlScope, setTlScope] = useState<'concretagem' | 'obra'>('concretagem');
+  const tl = useQuery({ queryKey: ['conc-timeline', id, tlScope, conc.data?.work_id ?? null], queryFn: () => { const w = conc.data?.work_id; return (tlScope === 'obra' && w) ? listWorkTimeline(w) : listConcretagemTimeline(id); }, enabled: !!conc.data });
 
   useEffect(() => {
     const c = conc.data;
@@ -389,6 +393,17 @@ export function ConcretagemDetalhePage() {
           )}
         </div>
       </Modal>
+      <Card>
+        <CardHeader kicker="Onda 1" title="Linha do tempo">Eventos e marcos auditáveis desta concretagem e da obra.</CardHeader>
+        <div className="p-5 pt-0">
+          <div className="mb-3 flex gap-1">
+            <Button variant={tlScope === 'concretagem' ? 'primary' : 'ghost'} onClick={() => setTlScope('concretagem')}>Desta concretagem</Button>
+            {c.work_id ? <Button variant={tlScope === 'obra' ? 'primary' : 'ghost'} onClick={() => setTlScope('obra')}>Desta obra</Button> : null}
+          </div>
+          {tl.isLoading ? <LoadingState /> : tl.error ? <ErrorState message={(tl.error as Error).message} /> : (tl.data ?? []).length === 0 ? <p className="text-sm text-slate-500">Sem eventos ainda.</p> : <TimelineList events={tl.data ?? []} hideOrigin={tlScope === 'concretagem'} />}
+          {c.work_id ? <div className="mt-3"><Button variant="secondary" onClick={() => nav('/gestao/timeline?scope=' + tlScope + '&id=' + (tlScope === 'obra' ? c.work_id : id))}>Abrir linha do tempo completa</Button></div> : null}
+        </div>
+      </Card>
     </section>
   );
 }
