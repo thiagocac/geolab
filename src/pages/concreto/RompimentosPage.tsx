@@ -14,16 +14,17 @@ import {
   gerarAgendaPdf,
   gerarContraprova,
   lancarRompimentoCp,
+  lancarRompimentosLote,
   lancarSituacaoCp,
   listCpsRompimento,
-  listRompimentoAudit,
-  maybeNotifyAbaixoFck,
+  notifyAbaixoFck,
   resultadoAtual,
   resumoRompimentos,
   setNumeracaoCp,
-  type AuditItem,
   type CpRompimento,
 } from '../../lib/api/rompimento';
+import { TimelineList } from '../../components/TimelineList';
+import { listCpTimeline, type TimelineEvent } from '../../lib/api/timeline';
 import { supabase } from '../../lib/supabase';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -97,7 +98,7 @@ export function RompimentosPage() {
   const [busy, setBusy] = useState(false);
   const [curvaCp, setCurvaCp] = useState<CpRompimento | null>(null);
   const [auditCp, setAuditCp] = useState<CpRompimento | null>(null);
-  const [auditItems, setAuditItems] = useState<AuditItem[]>([]);
+  const [auditItems, setAuditItems] = useState<TimelineEvent[]>([]);
   const [numCp, setNumCp] = useState<CpRompimento | null>(null);
   const [numValor, setNumValor] = useState('');
   const [importOpen, setImportOpen] = useState(false);
@@ -207,16 +208,16 @@ export function RompimentosPage() {
     if (!member) return;
     setBusy(true);
     try {
-      let ok = 0;
+      const itens: Array<Record<string, unknown>> = [];
       let skip = 0;
       for (const cp of linhas) {
-        // Não re-grava um CP já lançado que não foi editado: evita churn em material_tests,
-        // ruído na trilha e re-disparo de notificação.
+        // Não re-grava um CP já lançado que não foi editado.
         if (resultadoAtual(cp) && !edits[cp.id]) continue;
         const data = effectiveData(cp);
         const resultNumber = entrarCarga ? cargaParaMpa(Number(effectiveCarga(cp)), cargaUnidade, diametro, altura) : Number(effectiveValor(cp));
         if (!data || !Number.isFinite(resultNumber) || resultNumber <= 0) { skip++; continue; }
-        await lancarRompimentoCp(member.tenant_id, cp, {
+        itens.push({
+          corpo_prova_id: cp.id,
           resultado_valor: resultNumber,
           carga_ruptura: entrarCarga ? Number(effectiveCarga(cp)) : null,
           carga_unidade: cargaUnidade,
@@ -232,10 +233,11 @@ export function RompimentosPage() {
           hora_rompimento: effectiveHora(cp) || null,
           origem_log: 'rompimentos_geolab_v23',
         });
-        await maybeNotifyAbaixoFck(member.tenant_id, cp, esperado(cp), idadeControle);
-        ok++;
       }
-      if (!ok) throw new Error(skip ? 'Nenhum CP com resultado e data válidos para salvar.' : 'Nada a salvar: os CPs do recorte já estão lançados (edite um valor para regravar).');
+      if (!itens.length) throw new Error(skip ? 'Nenhum CP com resultado e data válidos para salvar.' : 'Nada a salvar: os CPs do recorte já estão lançados (edite um valor para regravar).');
+      // 1 RPC de lote (transacao server-side) + notifica 1x por amostra abaixo do fck.
+      const { ok, abaixoFck } = await lancarRompimentosLote(itens, idadeControle);
+      for (const a of abaixoFck) await notifyAbaixoFck(member.tenant_id, a);
       await qc.invalidateQueries({ queryKey: ['rompimentos'] });
       toast(`${ok} resultado(s) salvo(s)${skip ? ` · ${skip} sem resultado/data ignorado(s)` : ''}.`, 'success');
       setSelecionados(new Set());
@@ -257,7 +259,7 @@ export function RompimentosPage() {
 
   async function abrirAudit(cp: CpRompimento) {
     setAuditCp(cp); setAuditItems([]);
-    try { setAuditItems(await listRompimentoAudit(cp.id)); } catch (e) { toast((e as Error).message, 'error'); }
+    try { setAuditItems(await listCpTimeline(cp.id)); } catch (e) { toast((e as Error).message, 'error'); }
   }
 
   async function exportarModelo() {
@@ -559,7 +561,7 @@ export function RompimentosPage() {
       </Modal>
 
       <Modal open={!!auditCp} wide title={'Trilha de alterações - ' + (auditCp ? cpNumero(auditCp) : '')} onClose={() => setAuditCp(null)}>
-        {auditItems.length === 0 ? <p className="text-sm text-slate-500">Nenhuma alteração registrada para este CP.</p> : <div className="space-y-2">{auditItems.map((a, i) => <pre key={i} className="overflow-auto rounded-xl bg-slate-50 p-3 text-xs dark:bg-slate-800">{JSON.stringify(a, null, 2)}</pre>)}</div>}
+        {auditItems.length === 0 ? <p className="text-sm text-slate-500">Nenhuma alteração registrada para este CP.</p> : <TimelineList events={auditItems} hideOrigin />}
       </Modal>
 
       <Modal open={!!numCp} title="Numeração do laboratório" onClose={() => setNumCp(null)} footer={<><Button variant="ghost" onClick={() => setNumCp(null)}>Cancelar</Button><Button onClick={() => { if (!numCp) return; void setNumeracaoCp(numCp, numValor).then(() => { setNumCp(null); return qc.invalidateQueries({ queryKey: ['rompimentos'] }); }).catch((e: Error) => toast(e.message, 'error')); }}>Salvar</Button></>}>

@@ -268,3 +268,29 @@ export async function maybeNotifyAbaixoFck(
     });
   } catch { /* best-effort */ }
 }
+
+export type LoteAbaixoFck = { amostra_id: string; codigo: string | null; exemplar: number; fck: number };
+
+// Item D: 1 chamada (transacao server-side) em vez de N. O servidor calcula as amostras
+// abaixo do fck na idade de controle e devolve a lista para notificar 1x por amostra.
+export async function lancarRompimentosLote(itens: Array<Record<string, unknown>>, idadeControle = 28): Promise<{ ok: number; abaixoFck: LoteAbaixoFck[] }> {
+  const res = await db.rpc('lancar_rompimentos_lote', { payload: { itens, idade_controle: idadeControle } });
+  if (res.error) throw new Error(res.error.message);
+  const d = (res.data ?? {}) as Rec;
+  const abaixo = Array.isArray(d.abaixo_fck)
+    ? (d.abaixo_fck as Rec[]).map((a) => ({ amostra_id: String(a.amostra_id), codigo: a.codigo == null ? null : String(a.codigo), exemplar: Number(a.exemplar), fck: Number(a.fck) }))
+    : [];
+  return { ok: Number(d.ok ?? 0), abaixoFck: abaixo };
+}
+
+export async function notifyAbaixoFck(tenantId: string, a: LoteAbaixoFck): Promise<void> {
+  try {
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token ?? '';
+    await fetch(env.supabaseUrl + '/functions/v1/notify-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ tenant_id: tenantId, event_type: 'resultado_abaixo_fck', entity_type: 'amostra', entity_id: a.amostra_id, reference: a.codigo ?? '', deep_link: '/laudos', body: 'Exemplar abaixo do fck na idade de controle: ' + a.exemplar.toFixed(1) + ' < ' + a.fck.toFixed(1) + ' MPa.' }),
+    });
+  } catch { /* best-effort */ }
+}

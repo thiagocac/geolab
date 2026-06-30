@@ -86,3 +86,9 @@ export async function listConcretagemTimeline(concretagemId: string, opts: { kin
   if (error) throw new Error(error.message);
   return mapRows(data);
 }
+
+export async function listCpTimeline(cpId: string): Promise<TimelineEvent[]> {
+  const { data, error } = await rpc('cp_timeline', { p_cp_id: cpId });
+  if (error) throw new Error(error.message);
+  return mapRows(data ?? null);
+}
