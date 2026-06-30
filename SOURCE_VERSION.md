@@ -1,5 +1,7 @@
-# GEOLAB → Concresoft — SOURCE VERSION v125
-CACHE_NAME: consultegeo-geolab-v125 · APP_VERSION: v125
+# GEOLAB → Concresoft — SOURCE VERSION v126
+CACHE_NAME: consultegeo-geolab-v126 · APP_VERSION: v126
+
+> **v126 (Claude):** novo campo **Operador (quem rompeu)** em **Config. de Campos › Ensaio**, **desligado por padrão**. Quando desligado, o seletor de operador some da tela de **Rompimentos** e o `operador_id` não é gravado; a **DocGate** também deixa de emitir os avisos de operador (`operador_nao_informado`/`operador_certificacao_vencida`) — migration **107** (já aplicada). Frontend cumulativo sobre base v125.
 
 > **v125 (Claude):** tela única **Config. de Campos** (`/gestao/config-campos`) com abas Ensaio/Laudo/Recebimento/Concretagem, substituindo os 3 itens de menu (Campos do ensaio e laudo / Campos recebimento / Campos concretagem) — rotas antigas redirecionam. Os toggles de "Campos exibidos no laudo" saíram de **Preferências** (eram duplicados de laudo_campos; agora só na aba Laudo). Defaults de recebimento/concretagem alinhados ao consumidor (EF) p/ a tela refletir o laudo real; hints e rótulos revisados. Frontend cumulativo sobre base v118.
 

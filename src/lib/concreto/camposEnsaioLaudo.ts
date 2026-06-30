@@ -9,6 +9,7 @@ export const CAMPOS_ENSAIO: CampoCatalogo[] = [
   { key: 'prensa', label: 'Prensa utilizada (rastreabilidade)', hint: 'Seletor por leva; vincula o equipamento calibrado e alimenta o gate de calibração.', on: false },
   { key: 'capeamento', label: 'Capeamento / bases', hint: 'Retífica, enxofre ou neoprene; aplicado à leva.', on: false },
   { key: 'massa_cp_g', label: 'Massa do CP (g)', hint: 'Para densidade; coluna por CP. Em geral desligado.', on: false },
+  { key: 'operador', label: 'Operador (quem rompeu)', hint: 'Quem realizou o rompimento; gravado por CP e alimenta o gate de certificacao. Desligado por padrao.', on: false },
 ];
 
 export const CAMPOS_RECEBIMENTO: CampoCatalogo[] = [

@@ -115,6 +115,7 @@ export function RompimentosPage() {
   const campoPrensa = EC.prensa !== false;
   const campoCapeamento = EC.capeamento !== false;
   const campoMassa = EC.massa_cp_g !== false;
+  const campoOperador = EC.operador !== false;
 
   // Lote A — apoio às validações inline (2.1) e à incerteza (2.2)
   const idadeControle = Number(cfgQ.data?.idade_controle_default) || 28;
@@ -204,7 +205,7 @@ export function RompimentosPage() {
           capeamento: campoCapeamento ? capeamento || resultadoAtual(cp)?.capeamento || null : null,
           massa_cp_g: campoMassa && effectiveMassa(cp) ? Number(effectiveMassa(cp)) : null,
           equipamento_id: campoPrensa ? prensaId || resultadoAtual(cp)?.equipamento_id || null : null,
-          operador_id: operadorId || resultadoAtual(cp)?.operador_id || null,
+          operador_id: campoOperador ? (operadorId || resultadoAtual(cp)?.operador_id || null) : null,
           data_rompimento: data,
           hora_rompimento: effectiveHora(cp) || null,
           origem_log: 'rompimentos_geolab_v23',
@@ -466,7 +467,7 @@ export function RompimentosPage() {
           </div>
           {entrarCarga ? <div className="mt-3 grid gap-3 md:grid-cols-4"><label className="block space-y-1"><span className="text-sm font-bold">Unidade da carga</span><select className="input" value={cargaUnidade} onChange={(e) => setCargaUnidade(e.target.value as UnidadeCarga)}><option value="kn">kN</option><option value="tf">tf</option><option value="kgf">kgf</option></select></label><label className="block space-y-1"><span className="text-sm font-bold">Diâmetro (mm)</span><input className="input" type="number" value={diametro} onChange={(e) => setDiametro(Number(e.target.value) || 100)} /></label><label className="block space-y-1"><span className="text-sm font-bold">Altura (mm)</span><input className="input" type="number" value={altura} onChange={(e) => setAltura(Number(e.target.value) || 200)} /></label><div className="flex flex-wrap items-end gap-2">{DIMENSOES_CP.map((d) => <button type="button" key={d.label} className="rounded-md border border-slate-200 px-2 py-2 text-xs font-bold" onClick={() => { setDiametro(d.diametroMm); setAltura(d.alturaMm); }}>{d.label}</button>)}</div></div> : null}
           {(campoPrensa || campoCapeamento) ? <div className="mt-3 grid gap-3 md:grid-cols-2">{campoPrensa ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa utilizada</span><select className="input" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">-</option>{(equips.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>{prensaSel ? <span className="mt-1 block text-xs font-bold text-slate-500">{prensaSel.incerteza_mpa != null ? `Incerteza: ± ${nfmt(prensaSel.incerteza_mpa, 2)} MPa` : 'Incerteza não cadastrada'}{prensaSel.validade_calibracao ? ` · calibração até ${fmtDate(prensaSel.validade_calibracao)}` : ''}</span> : null}{calibVencida ? <span className="mt-1 block text-xs font-bold text-amber-600">⚠ Calibração vencida — o resultado gerará NC (T-14). Não bloqueia o lançamento.</span> : null}</label> : null}{campoCapeamento ? <label className="block space-y-1"><span className="text-sm font-bold">Capeamento / bases</span><select className="input" value={capeamento} onChange={(e) => setCapeamento(e.target.value)}><option value="">-</option>{['Retífica', 'Neoprene', 'Enxofre', 'Sem capeamento'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label> : null}</div> : null}
-          <div className="mt-3 grid gap-3 md:grid-cols-2"><label className="block space-y-1"><span className="text-sm font-bold">Operador (quem rompeu)</span><select className="input" value={operadorId} onChange={(e) => setOperadorId(e.target.value)} aria-label="Operador do rompimento"><option value="">-</option>{(operadores.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><span className="mt-1 block text-xs text-slate-500">Gravado em cada CP lançado nesta sessão.</span></label></div>
+          {campoOperador ? <div className="mt-3 grid gap-3 md:grid-cols-2"><label className="block space-y-1"><span className="text-sm font-bold">Operador (quem rompeu)</span><select className="input" value={operadorId} onChange={(e) => setOperadorId(e.target.value)} aria-label="Operador do rompimento"><option value="">-</option>{(operadores.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><span className="mt-1 block text-xs text-slate-500">Gravado em cada CP lançado nesta sessão.</span></label></div> : null}
         </div>
       </Card>
 

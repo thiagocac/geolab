@@ -1,0 +1,5 @@
+-- 107: docgate_laudo_blocks so emite avisos de operador quando o lab habilita
+-- config_lab.ensaio_campos.operador (default off). Aditiva/idempotente (CREATE OR REPLACE).
+-- APLICADA via MCP em xbdvyvvxvzmcosnekmfv. Corpo completo = funcao viva docgate_laudo_blocks(uuid).
+-- Mudanca em relacao a 098: + var v_operador_on lida de config_lab; blocos operador_nao_informado e
+-- operador_certificacao_vencida envoltos em "if v_operador_on then ... end if".
