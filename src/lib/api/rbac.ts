@@ -2,7 +2,7 @@ import { supabase } from '../supabase';
 
 const db = supabase;
 type RpcResult<T> = PromiseLike<{ data: T | null; error: { message: string } | null }>;
-const rpc = db.rpc as unknown as (fn: string, args: Record<string, unknown>) => RpcResult<unknown[]>;
+const rpc = db.rpc.bind(db) as unknown as (fn: string, args: Record<string, unknown>) => RpcResult<unknown[]>;
 
 export type RbacMatrixRow = {
   role_id: string;
@@ -34,7 +34,7 @@ export async function listRbacMatrix(): Promise<RbacMatrixRow[]> {
 }
 
 export async function setRolePermissions(roleId: string, permissionKeys: string[]): Promise<void> {
-  const { error } = await (db.rpc as unknown as (fn: string, args: Record<string, unknown>) => RpcResult<unknown>)('set_role_permissions', { p_role_id: roleId, p_permission_keys: permissionKeys });
+  const { error } = await (db.rpc.bind(db) as unknown as (fn: string, args: Record<string, unknown>) => RpcResult<unknown>)('set_role_permissions', { p_role_id: roleId, p_permission_keys: permissionKeys });
   if (error) throw new Error(error.message);
 }
 
@@ -54,7 +54,7 @@ export async function listRoles(): Promise<RoleRow[]> {
   return (data ?? []) as RoleRow[];
 }
 
-const rpcAny = supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+const rpcAny = supabase.rpc.bind(supabase) as unknown as (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
 export async function upsertRole(id: string | null, name: string, description: string): Promise<string> {
   const { data, error } = await rpcAny('upsert_role', { p_role_id: id, p_key: null, p_name: name, p_description: description });
   if (error) throw new Error(error.message);

@@ -1,5 +1,7 @@
-# GEOLAB → Concresoft — SOURCE VERSION v129
-CACHE_NAME: consultegeo-geolab-v129 · APP_VERSION: v129
+# GEOLAB → Concresoft — SOURCE VERSION v130
+CACHE_NAME: consultegeo-geolab-v130 · APP_VERSION: v130
+
+> **v130 (Claude) — FIX crítico do RBAC:** corrige o erro `Cannot read properties of undefined (reading 'rest')` em **Papéis e permissões**, **Operação › Usuários**, **Linha do tempo** e **Documentos e gate**, e o carregamento de permissões no login. Causa: helpers extraíam `const rpc = supabase.rpc` (perde o `this`; no supabase-js v2.45 o `.rpc()` usa `this.rest`). Correção: `.bind` em rbac.ts/operacao.ts/auth.tsx/docgate.ts/timeline.ts. Sem o fix, `current_member_permissions` falhava em silêncio e **não-admins ficavam sem permissões** (só admin via guarda-chuva). Base v129.
 
 > **v129 (Claude):** **RBAC Fase 2.** Migration **111** (`seed_builtin_roles_and_permissions` reutilizável + backfill `member_roles` + `member_effective_permissions`). EFs: **admin-create-lab v8** (semeia papéis+matriz em novos labs) e **admin-reset-password v1** (nova; redefine senha). Frontend: ficha de usuário ganhou **Redefinir senha** + **Permissões efetivas**; gates religados a `can()` em Medição/Faturas/Config. de Campos/Lotes/NC. Base v128.
 

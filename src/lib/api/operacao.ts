@@ -36,7 +36,7 @@ export async function createLab(input: { lab_nome: string; lab_slug?: string; ad
   return callEF('admin-create-lab', input) as Promise<{ temp_password?: string | null; tenant_id?: string }>;
 }
 
-const rpcOp = supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+const rpcOp = supabase.rpc.bind(supabase) as unknown as (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
 
 export type LabMemberRow = {
   member_id: string; full_name: string | null; email: string; cargo: string | null; telefone: string | null;

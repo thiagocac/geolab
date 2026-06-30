@@ -3,7 +3,7 @@ import { supabase } from '../supabase';
 const db = supabase;
 
 type RpcResult<T> = PromiseLike<{ data: T | null; error: { message: string } | null }>;
-const rpc = db.rpc as unknown as (fn: string, args: Record<string, unknown>) => RpcResult<unknown[]>;
+const rpc = db.rpc.bind(db) as unknown as (fn: string, args: Record<string, unknown>) => RpcResult<unknown[]>;
 
 export type TimelineEvent = {
   event_kind: string;

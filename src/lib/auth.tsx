@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const current = list.find((r) => r.is_selected) ?? (list.length === 1 ? list[0] : null);
     if (!current) { setMember(null); setPermissions([]); return; }
     setMember({ id: current.id, tenant_id: current.tenant_id, tenant_name: tenantName(current), email: current.email, full_name: current.full_name, role: current.role, roles: current.roles ?? [], is_selected: true });
-    try { const { data: perms } = await (supabase.rpc as unknown as (fn: string) => PromiseLike<{ data: unknown }>)('current_member_permissions'); setPermissions(Array.isArray(perms) ? (perms as string[]) : []); } catch { setPermissions([]); }
+    try { const { data: perms } = await (supabase.rpc.bind(supabase) as unknown as (fn: string) => PromiseLike<{ data: unknown }>)('current_member_permissions'); setPermissions(Array.isArray(perms) ? (perms as string[]) : []); } catch { setPermissions([]); }
   }, []);
 
   useEffect(() => {
