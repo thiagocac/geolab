@@ -80,7 +80,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       sb.from('lab_clients').select('razao_social, nome_fantasia, email, telefone').eq('id', conc.client_id).maybeSingle(),
       sb.from('tenants').select('name').eq('id', conc.tenant_id).maybeSingle(),
       conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_cm, slump_tolerancia_cm, bombeado, componentes').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
-      sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq').eq('tenant_id', conc.tenant_id).maybeSingle(),
+      sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes').eq('tenant_id', conc.tenant_id).maybeSingle(),
       conc.moldador_id ? sb.from('colaboradores').select('nome').eq('id', conc.moldador_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
 
@@ -113,8 +113,8 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const defOn = (k: string, d: boolean) => (LC[k] === undefined ? d : LC[k] !== false);
     const defRon = (k: string, d: boolean) => (RC[k] === undefined ? d : RC[k] !== false);
     const defCon = (k: string, d: boolean) => (CC[k] === undefined ? d : CC[k] !== false);
-    ['dim_hd', 'tipo_ruptura', 'dados_concreto', 'cimento', 'cura', 'equipamentos', 'responsavel_tecnico', 'qr_validacao', 'logo_laboratorio', 'elemento', 'usina', 'recebimento', 'amostragem', 'aceitacao'].forEach((k) => (ON[k] = defOn(k, true)));
-    ['aditivo', 'acreditacao', 'dmax', 'carga', 'temperatura', 'ficha_moldagem', 'observacoes', 'incerteza', 'moldador', 'contato', 'local_ensaio', 'componentes'].forEach((k) => (ON[k] = defOn(k, false)));
+    ['dim_hd', 'tipo_ruptura', 'dados_concreto', 'cimento', 'cura', 'equipamentos', 'responsavel_tecnico', 'qr_validacao', 'logo_laboratorio', 'elemento', 'usina', 'recebimento', 'amostragem', 'aceitacao', 'norma_5739', 'norma_5738', 'norma_16889', 'norma_16886'].forEach((k) => (ON[k] = defOn(k, true)));
+    ['aditivo', 'acreditacao', 'dmax', 'carga', 'temperatura', 'ficha_moldagem', 'observacoes', 'incerteza', 'moldador', 'contato', 'local_ensaio', 'componentes', 'certificacoes'].forEach((k) => (ON[k] = defOn(k, false)));
     ['nota_fiscal', 'placa', 'motorista', 'volume_m3', 'horarios_transporte', 'horarios_descarga', 'hora_moldagem', 'slump', 'temperatura_concreto', 'agua_adicionada', 'rejeicao', 'elementos_concretados', 'observacoes_caminhao'].forEach((k) => (RON[k] = defRon(k, true)));
     ['traco_fck', 'fornecedor', 'data_hora', 'local_peca', 'volume_programado', 'dimensao_cp', 'moldador', 'clima', 'temperatura_ambiente', 'bombeado', 'observacoes', 'padrao_moldagem'].forEach((k) => (CON[k] = defCon(k, true)));
 
@@ -155,6 +155,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const gqCrea = String(cfg?.crea_gq || '');
     const localEnsaio = String(cfg?.local_ensaio || '');
     const condicao = String(om?.condicao_preparo || 'A');
+    const certs = (Array.isArray(cfg?.certificacoes) ? cfg!.certificacoes : []) as Array<Record<string, unknown>>;
 
     const doc = await PDFDocument.create();
     const F = await doc.embedFont(StandardFonts.Helvetica);
@@ -166,14 +167,12 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const TR = (s: unknown, xr: number, y: number, size: number, f = F, c = INK) => { const w = f.widthOfTextAtSize(san(s), size); page.drawText(san(s), { x: xr - w, y, size, font: f, color: c }); };
     const rect = (x: number, y: number, w: number, h: number, c: unknown, border?: unknown) => page.drawRectangle({ x, y, width: w, height: h, color: c as undefined, borderColor: border as undefined, borderWidth: border ? 0.6 : 0 });
     const hline = (x1: number, y: number, x2: number, c = LINE, w = 0.6) => page.drawLine({ start: { x: x1, y }, end: { x: x2, y }, thickness: w, color: c });
+    const clip = (str: string, size: number, maxw: number, f = F) => { let out = san(str); if (f.widthOfTextAtSize(out, size) <= maxw) return out; while (out.length > 1 && f.widthOfTextAtSize(out + '...', size) > maxw) out = out.slice(0, -1); return out + '...'; };
 
     const topo = PH - 30;
     if (ON.logo_laboratorio && logoImg) { const iw = logoImg.width, ih = logoImg.height; const sc = Math.min(150 / iw, 30 / ih); page.drawImage(logoImg, { x: MX, y: topo - ih * sc, width: iw * sc, height: ih * sc }); }
     else if (ON.logo_laboratorio) { rect(MX, topo - 26, 150, 26, undefined, LINE); T(String(tenant?.name || 'LABORATÓRIO'), MX + 8, topo - 16, 8, FB, MUTED); }
-    rect(RIGHT - 86, topo - 19, 15, 15, MAG);
-    page.drawText('C', { x: RIGHT - 81.5, y: topo - 15.4, size: 9, font: FB, color: WHITE });
-    const sw2 = FB.widthOfTextAtSize('soft', 13), cw2 = FB.widthOfTextAtSize('Concre', 13);
-    T('soft', RIGHT - sw2, topo - 15.6, 13, FB, MAG); T('Concre', RIGHT - sw2 - cw2, topo - 15.6, 13, FB, NAVY);
+    // (Onda 4) wordmark "Concresoft" removido do cabecalho; identidade fica na logo do laboratorio (esquerda).
     T('Relatório de Ensaio', MX, PH - 66, 17, FB, NAVY);
     T('Resistência à compressão de corpos de prova cilíndricos - ABNT NBR 5739', MX, PH - 77, 8.2, F, MUTED);
     TR('RELATÓRIO Nº', RIGHT, PH - 54, 6.4, F, FAINT); TR(numero, RIGHT, PH - 69, 15, FB, NAVY);
@@ -220,7 +219,13 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       if (ON.componentes && om?.componentes && typeof om.componentes === 'object') { for (const [ck, cv] of Object.entries(om.componentes as Record<string, unknown>)) { if (!cv) continue; const o = (typeof cv === 'object' ? cv : {}) as Record<string, unknown>; const txt = (o.marca || o.procedencia) ? [o.marca, o.procedencia].filter(Boolean).join(' / ') : String(cv); pares.push([ck.charAt(0).toUpperCase() + ck.slice(1), String(txt).slice(0, 28)]); } }
       const colW = CW / 4;
       for (let i = 0; i < pares.length; i += 4) { need(20, false); for (let j = 0; j < 4 && i + j < pares.length; j++) { const [l, v] = pares[i + j]; const x = MX + j * colW; T(l, x, y, 6.2, F, FAINT); T(v, x, y - 9, 7.6, F, INK); } y -= 21; }
-      need(12, false); T('Normas: NBR 5739/5738/16889/16886 - Aceitação NBR 12655. Tipos de ruptura: A cônica, B cônica/bipartida, C colunar, D cisalhada, E paralela às bases, F pontiaguda.', MX, y, 5.6, F, FAINT); y -= 12;
+      const normasArr: string[] = [];
+      if (ON.norma_5739) normasArr.push('NBR 5739:2018');
+      if (ON.norma_5738) normasArr.push('NBR 5738:2015');
+      if (ON.norma_16889) normasArr.push('NBR 16889:2020');
+      if (ON.norma_16886) normasArr.push('NBR 16886:2020');
+      const normasLinha = (normasArr.length ? 'Normas: ' + normasArr.join(', ') + ' - ' : '') + 'Aceitação NBR 12655. Tipos de ruptura: A cônica, B cônica/bipartida, C colunar, D cisalhada, E paralela às bases, F pontiaguda.';
+      need(12, false); T(normasLinha, MX, y, 5.6, F, FAINT); y -= 12;
       y -= 4;
     }
 
@@ -266,8 +271,8 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       const ctrl = arr.filter(isCtrl).map((t) => Number(t.resultado_valor)).filter(isFinite);
       const rexVal = ctrl.length ? Math.max(...ctrl) : null;
       need(13, true); rect(MX, y - 11, CW, 12, NAVYL);
-      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m³` : '') + (RON.slump && rc?.slump_medido_cm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_cm), 1)} cm` : '') + (ON.temperatura && RON.temperatura_concreto && rc?.temperatura_concreto_c != null ? `  -  Temp ${fmt(Number(rc.temperatura_concreto_c), 0)} °C` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '') + (arr.length && arr[0].capeamento ? '  -  Bases ' + String(arr[0].capeamento) : '');
-      T(faixa, MX + 5, y - 8, 6.8, FB, NAVY); y -= 12;
+      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m³` : '') + (RON.slump && rc?.slump_medido_cm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_cm), 1)} cm` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '') + (arr.length && arr[0].capeamento ? '  -  Bases ' + String(arr[0].capeamento) : '');
+      T(clip(faixa, 6.8, CW - 10, FB), MX + 5, y - 8, 6.8, FB, NAVY); y -= 12;
       if (ON.elemento && RON.elementos_concretados && rc?.elementos_concretados) { need(10, true); T(('Local: ' + String(rc.elementos_concretados)).slice(0, 150), MX + 5, y - 7, 6.2, F, MUTED); y -= 11; }
       let first = true;
       for (let i = 0; i < arr.length; i++) {
@@ -303,6 +308,19 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       let ex2 = MX; for (const [l, w] of ec) { T(l, ex2 + 3, y - 8, 6.1, FB, WHITE); ex2 += w * CW; }
       y -= 12;
       for (const eq of (equips ?? []) as Record<string, unknown>[]) { need(12, true); const inc = ON.incerteza && eq.incerteza_mpa != null ? ' (u=' + fmt(Number(eq.incerteza_mpa), 1) + ')' : ''; const vals = [String(eq.marca_modelo || '-') + inc, String(eq.classe || '-'), String(eq.numero_serie || '-'), String(eq.numero_certificado || '-'), String(eq.lab_calibrador || '-'), dbr(eq.validade_calibracao)]; let x2 = MX; for (let k = 0; k < ec.length; k++) { T(vals[k], x2 + 3, y - 8, 6.5, F, INK); x2 += ec[k][1] * CW; } y -= 11; hline(MX, y, RIGHT, rgb(0.93, 0.95, 0.98), 0.4); }
+      y -= 6;
+    }
+
+    if (ON.certificacoes && certs.length) {
+      sec('Certificações do laboratório');
+      rect(MX, y - 11, CW, 12, NAVY);
+      const cc = [['Tipo / escopo', 0.40], ['Número', 0.22], ['Órgão', 0.20], ['Validade', 0.18]] as [string, number][];
+      let cxc = MX; for (const [l, w] of cc) { T(l, cxc + 3, y - 8, 6.1, FB, WHITE); cxc += w * CW; }
+      y -= 12;
+      for (const ce of certs) {
+        need(12, true);
+        const vals = [String(ce.tipo ?? ce.nome ?? '-'), String(ce.numero ?? '-'), String(ce.orgao ?? '-'), ce.validade ? dbr(ce.validade) : '-'];
+        let x3 = MX; for (let k = 0; k < cc.length; k++) { T(clip(vals[k], 6.5, cc[k][1] * CW - 6), x3 + 3, y - 8, 6.5, F, INK); x3 += cc[k][1] * CW; } y -= 11; hline(MX, y, RIGHT, rgb(0.93, 0.95, 0.98), 0.4); }
       y -= 6;
     }
 
