@@ -32,9 +32,13 @@ export type TracoRow = {
   observacoes: string | null;
   padrao_moldagem: PadraoMoldagem[] | PadraoIdade[];
   ativo: boolean;
+  work_id: string | null;
+  client_id: string | null;
+  lab_clients?: { razao_social: string | null; nome_fantasia: string | null } | null;
+  client_works?: { nome: string | null } | null;
 };
 
-const SELECT_TRACO = 'id, codigo, nome, aplicacao, fck_mpa, fcj_mpa, desvio_padrao_mpa, condicao_preparo, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, brita, dmax_agregado_mm, fator_ac, cimento_tipo, consumo_cimento_kg_m3, aditivo_tipo, metodo_cura, especificacao, schema_campos, bombeado, observacoes, padrao_moldagem, componentes, ativo';
+const SELECT_TRACO = 'id, codigo, nome, aplicacao, fck_mpa, fcj_mpa, desvio_padrao_mpa, condicao_preparo, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, brita, dmax_agregado_mm, fator_ac, cimento_tipo, consumo_cimento_kg_m3, aditivo_tipo, metodo_cura, especificacao, schema_campos, bombeado, observacoes, padrao_moldagem, componentes, ativo, work_id, client_id, lab_clients(razao_social, nome_fantasia), client_works(nome)';
 
 export async function listTracos(): Promise<TracoRow[]> {
   const { data, error } = await db.from('operational_materials')
@@ -51,7 +55,7 @@ export async function saveTraco(tenantId: string, id: string | null, values: Rec
     const { error } = await db.from('operational_materials').update(values).eq('id', id);
     if (error) throw new Error(error.message);
   } else {
-    const { error } = await db.from('operational_materials').insert({ ...values, tenant_id: tenantId, material_kind: 'concreto', work_id: null });
+    const { error } = await db.from('operational_materials').insert({ work_id: null, client_id: null, ...values, tenant_id: tenantId, material_kind: 'concreto' });
     if (error) throw new Error(error.message);
   }
 }

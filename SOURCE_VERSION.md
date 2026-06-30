@@ -1,5 +1,7 @@
-# GEOLAB → Concresoft — SOURCE VERSION v126
-CACHE_NAME: consultegeo-geolab-v126 · APP_VERSION: v126
+# GEOLAB → Concresoft — SOURCE VERSION v127
+CACHE_NAME: consultegeo-geolab-v127 · APP_VERSION: v127
+
+> **v127 (Claude):** **escopo de construtora para traços** (obra › construtora › catálogo do lab). Migration **108** adiciona `operational_materials.client_id` (FK lab_clients) + backfill dos traços de obra. Os seletores de traço (Nova programação, Central, Detalhe) passam a respeitar a **cadeia de escopo** e agrupam por origem ("Desta obra/Da construtora/Catálogo" — componente `TracoOptions`). **Materiais** ganha picker de escopo, filtro por construtora, badge de origem e ação **Duplicar/Promover**. Verificado vivo: traço repete entre obras da mesma construtora, isolado entre construtoras. Base v126.
 
 > **v126 (Claude):** novo campo **Operador (quem rompeu)** em **Config. de Campos › Ensaio**, **desligado por padrão**. Quando desligado, o seletor de operador some da tela de **Rompimentos** e o `operador_id` não é gravado; a **DocGate** também deixa de emitir os avisos de operador (`operador_nao_informado`/`operador_certificacao_vencida`) — migration **107** (já aplicada). Frontend cumulativo sobre base v125.
 

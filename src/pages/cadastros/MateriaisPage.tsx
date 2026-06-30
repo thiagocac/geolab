@@ -10,6 +10,8 @@ import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { listTracos, saveTraco, softDeleteTraco, type TracoRow } from '../../lib/api/materiais';
+import { listClientesRef } from '../../lib/api/obras';
+import { listReference } from '../../lib/api/client';
 import {
   PADRAO_MOLDAGEM_SHORTCUTS,
   TIPO_ENSAIO_OPCOES,
@@ -61,12 +63,16 @@ type FormState = {
   comp_aditivo_marca: string;
   comp_aditivo_proc: string;
   comp_agua_proc: string;
+  escopo: 'lab' | 'construtora' | 'obra';
+  client_id: string;
+  work_id: string;
 };
 
 function vazio(): FormState {
   return {
     descricao: 'FCK 30 | BRITA 1 | SLUMP 10±2 CM', aplicacao: 'Sapata, Cortina, Blocos', fck_mpa: '30', fcj_mpa: '', desvio_padrao_mpa: '',
     slump_previsto_cm: '10', slump_tolerancia_cm: '2', validade_concreto_minutos: '150', condicao_preparo: 'A', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false, comp_cimento_marca: '', comp_cimento_proc: '', comp_brita_marca: '', comp_brita_proc: '', comp_areia_marca: '', comp_areia_proc: '', comp_aditivo_marca: '', comp_aditivo_proc: '', comp_agua_proc: '',
+    escopo: 'lab', client_id: '', work_id: '',
   };
 }
 
@@ -98,6 +104,9 @@ function fromRow(t: TracoRow): FormState {
     comp_areia_marca: compVal('areia','marca'), comp_areia_proc: compVal('areia','procedencia'),
     comp_aditivo_marca: compVal('aditivo','marca'), comp_aditivo_proc: compVal('aditivo','procedencia'),
     comp_agua_proc: compVal('agua','procedencia'),
+    escopo: t.work_id ? 'obra' : (t.client_id ? 'construtora' : 'lab'),
+    client_id: t.client_id ?? '',
+    work_id: t.work_id ?? '',
   };
 }
 
@@ -130,6 +139,9 @@ export function MateriaisPage() {
   const [padrao, setPadrao] = useState<PadraoMoldagem[]>(padroesMoldagemPadrao(30));
   const [busy, setBusy] = useState(false);
   const q = useQuery({ queryKey: ['tracos'], queryFn: listTracos });
+  const [filtroConstrutora, setFiltroConstrutora] = useState('');
+  const construtoras = useQuery({ queryKey: ['ref', 'lab_clients', 'tracos'], queryFn: () => listClientesRef() });
+  const obrasDoEscopo = useQuery({ queryKey: ['ref', 'client_works', f.client_id, 'tracos'], queryFn: () => listReference('client_works', 'nome', f.client_id ? { client_id: f.client_id } : undefined), enabled: !!f.client_id });
 
   const fckAtual = useMemo(() => num(f.fck_mpa), [f.fck_mpa]);
 
@@ -147,6 +159,13 @@ export function MateriaisPage() {
     setOpen(true);
   }
 
+  function duplicar(t: TracoRow) {
+    setEditId(null);
+    setF(fromRow(t));
+    setPadrao(normalizePadroes(t.padrao_moldagem, t.fck_mpa));
+    setOpen(true);
+  }
+
   function patch<K extends keyof FormState>(key: K, value: FormState[K]) { setF((s) => ({ ...s, [key]: value })); }
   function addAtalho(sc: (typeof PADRAO_MOLDAGEM_SHORTCUTS)[number]) { setPadrao((s) => [...s, linhaDeAtalho(sc, fckAtual)]); }
   function setPm(i: number, patchRow: Partial<PadraoMoldagem>) { setPadrao((s) => s.map((r, idx) => idx === i ? { ...r, ...patchRow } : r)); }
@@ -158,6 +177,8 @@ export function MateriaisPage() {
     setBusy(true);
     try {
       if (!str(f.descricao)) throw new Error('Descrição é obrigatória.');
+      if (f.escopo !== 'lab' && !str(f.client_id)) throw new Error('Selecione a construtora do traço.');
+      if (f.escopo === 'obra' && !str(f.work_id)) throw new Error('Selecione a obra do traço.');
       const slump = parseSlumpFromDescricao(f.descricao);
       const descricao = str(f.descricao);
       const payload = {
@@ -184,10 +205,13 @@ export function MateriaisPage() {
         padrao_moldagem: padroesToDb(padrao),
         componentes: (() => { const c: Record<string, unknown> = {}; const add = (k: string, m: unknown, pr: unknown) => { const mm = str(m), pp = str(pr); if (mm || pp) c[k] = { marca: mm || null, procedencia: pp || null }; }; add('cimento', f.comp_cimento_marca, f.comp_cimento_proc); add('brita', f.comp_brita_marca, f.comp_brita_proc); add('areia', f.comp_areia_marca, f.comp_areia_proc); add('aditivo', f.comp_aditivo_marca, f.comp_aditivo_proc); { const pp = str(f.comp_agua_proc); if (pp) c['agua'] = { procedencia: pp }; } return c; })(),
         schema_campos: { origem_ui: 'geolab-v23-geomat-tracos' },
+        work_id: f.escopo === 'obra' ? (str(f.work_id) || null) : null,
+        client_id: f.escopo === 'lab' ? null : (str(f.client_id) || null),
       };
       await saveTraco(member.tenant_id, editId, payload);
       await qc.invalidateQueries({ queryKey: ['tracos'] });
       await qc.invalidateQueries({ queryKey: ['tracos_ref'] });
+      await qc.invalidateQueries({ queryKey: ['tracos-fck'] });
       toast('Traço salvo.', 'success');
       setOpen(false);
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
@@ -200,21 +224,23 @@ export function MateriaisPage() {
   }
 
   const rows = q.data ?? [];
+  const rowsView = rows.filter((t) => !filtroConstrutora ? true : filtroConstrutora === '__lab__' ? (!t.client_id && !t.work_id) : t.client_id === filtroConstrutora);
   return (
     <div className="space-y-4">
       <PageHeader kicker="Cadastros" title="Traços de concreto" description="Cadastro de traços, slump, validade e padrão de moldagem no mesmo modelo da Nova obra." />
-      <div className="flex justify-end"><Button onClick={novo}>+ Adicionar traço</Button></div>
-      {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
+      <div className="flex flex-wrap items-center justify-between gap-2"><select className="input max-w-[280px]" value={filtroConstrutora} onChange={(e) => setFiltroConstrutora(e.target.value)} aria-label="Filtrar por escopo"><option value="">Todos os escopos</option><option value="__lab__">Catálogo do laboratório</option>{(construtoras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><Button onClick={novo}>+ Adicionar traço</Button></div>
+      {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rowsView.length === 0 ? <EmptyState /> : (
         <Card>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {rows.map((t) => (
+            {rowsView.map((t) => (
               <div key={t.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
-                  <div className="font-black text-slate-950 dark:text-slate-50">{t.nome}</div>
+                  <div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{t.nome}</span>{t.work_id ? <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">Obra: {t.client_works?.nome ?? '—'}</span> : t.client_id ? <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">Construtora: {t.lab_clients?.nome_fantasia || t.lab_clients?.razao_social || '—'}</span> : <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">Catálogo do lab</span>}</div>
                   <div className="mt-1 text-xs text-slate-500">{t.aplicacao || '-'} · FCK {t.fck_mpa ?? '-'} MPa · slump {t.slump_previsto_cm ?? '-'}±{t.slump_tolerancia_cm ?? '-'} cm · validade {t.validade_concreto_minutos ?? '-'} min · {normalizePadroes(t.padrao_moldagem, t.fck_mpa).length} idade(s)</div>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="ghost" onClick={() => editar(t)}>Editar</Button>
+                  <Button variant="ghost" onClick={() => duplicar(t)}>Duplicar</Button>
                   <Button variant="ghost" onClick={() => void excluir(t)}>Excluir</Button>
                 </div>
               </div>
@@ -225,6 +251,11 @@ export function MateriaisPage() {
 
       <Modal open={open} wide title={editId ? 'Editar traço de concreto' : 'Novo traço de concreto'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar traço'}</Button></>}>
         <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+            <SelectField label="Escopo do traço" value={f.escopo} onChange={(e) => { const v = e.target.value as FormState['escopo']; setF((s) => ({ ...s, escopo: v, client_id: v === 'lab' ? '' : s.client_id, work_id: v === 'obra' ? s.work_id : '' })); }}><option value="lab">Catálogo do laboratório (todas as obras)</option><option value="construtora">Construtora (reutilizável nas obras dela)</option><option value="obra">Obra específica</option></SelectField>
+            {f.escopo !== 'lab' ? <SelectField label="Construtora" value={f.client_id} onChange={(e) => setF((s) => ({ ...s, client_id: e.target.value, work_id: '' }))}><option value="">-</option>{(construtoras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField> : null}
+            {f.escopo === 'obra' ? <SelectField label="Obra" value={f.work_id} onChange={(e) => setF((s) => ({ ...s, work_id: e.target.value }))}><option value="">-</option>{(obrasDoEscopo.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField> : null}
+          </div>
           <div>
             <div className="text-xs font-bold text-slate-500">Traços-padrão:</div>
             <div className="mt-2 flex flex-wrap gap-2">

@@ -11,6 +11,7 @@ import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
 import { getConcretagem, listCaminhoes, listCpsDaConcretagem, addCaminhao, invokeFicha, updateConcretagem, listTracosComFck, padraoMoldagemDaConcretagem, lerNfImagem, uploadEvidencia, listEvidencias, signedEvidencia, excluirEvidencia, lerFichaImagem, type ConcretagemRow, type FichaCaminhaoOCR } from '../../lib/api/concretagem';
+import { TracoOptions } from '../../components/TracoOptions';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { listColaboradores } from '../../lib/api/colaboradores';
 import { listPecasObra } from '../../lib/api/estrutura';
@@ -79,7 +80,7 @@ export function ConcretagemDetalhePage() {
     const linhas = await listEvidencias(id);
     return Promise.all(linhas.map(async (r) => ({ ...r, url: await signedEvidencia(r.path).catch(() => '') })));
   } });
-  const tracos = useQuery({ queryKey: ['tracos-fck'], queryFn: listTracosComFck });
+  const tracos = useQuery({ queryKey: ['tracos-fck', conc.data?.work_id, conc.data?.client_id], queryFn: () => listTracosComFck(conc.data?.work_id ?? null, conc.data?.client_id ?? null), enabled: !!conc.data });
   const colaboradores = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradores });
   const cfg = useQuery({ queryKey: ['config_concretagem_recebimento', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
   const pecas = useQuery({ queryKey: ['pecas-conc-detail', conc.data?.work_id ?? 'none'], queryFn: () => listPecasObra(conc.data?.work_id ?? ''), enabled: !!conc.data?.work_id });
@@ -224,7 +225,7 @@ export function ConcretagemDetalhePage() {
             <div className="grid gap-3 md:grid-cols-3">
               <Field label="Cliente" value={c.lab_clients?.razao_social ?? '-'} readOnly />
               <Field label="Obra" value={c.client_works?.nome ?? '-'} readOnly />
-              <SelectField label="Traço cadastrado" value={val(form.operational_material_id)} onChange={(e) => { const idv = e.target.value; const t = (tracos.data ?? []).find((x) => x.value === idv); setForm((s) => ({ ...s, operational_material_id: idv, fck_previsto: t?.fck ?? s.fck_previsto, traco_texto: idv ? s.traco_texto : s.traco_texto })); if (t?.padrao_moldagem?.length) setPadrao(normalizePadroes(t.padrao_moldagem, t.fck)); }}><option value="">Manual / texto livre</option>{(tracos.data ?? []).map((t) => <option key={t.value} value={t.value}>{t.label}{t.fck != null ? ' · FCK ' + t.fck : ''}</option>)}</SelectField>
+              <SelectField label="Traço cadastrado" value={val(form.operational_material_id)} onChange={(e) => { const idv = e.target.value; const t = (tracos.data ?? []).find((x) => x.value === idv); setForm((s) => ({ ...s, operational_material_id: idv, fck_previsto: t?.fck ?? s.fck_previsto, traco_texto: idv ? s.traco_texto : s.traco_texto })); if (t?.padrao_moldagem?.length) setPadrao(normalizePadroes(t.padrao_moldagem, t.fck)); }}><option value="">Manual / texto livre</option><TracoOptions tracos={tracos.data ?? []} workId={conc.data?.work_id ?? null} clientId={conc.data?.client_id ?? null} /></SelectField>
               {!form.operational_material_id ? <Field label="Traço / descrição manual" value={val(form.traco_texto)} onChange={(e) => patch('traco_texto', e.target.value)} /> : null}
               <Field label="FCK previsto (MPa)" type="number" value={val(form.fck_previsto)} onChange={(e) => patch('fck_previsto', e.target.value)} />
               {onC('fornecedor') ? <Field label="Fornecedor / central" value={val(form.fornecedor_texto)} onChange={(e) => patch('fornecedor_texto', e.target.value)} /> : null}

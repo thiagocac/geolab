@@ -17,6 +17,8 @@ export async function createObra(tenantId: string, values: Record<string, unknow
 }
 
 export async function createTracoObra(tenantId: string, workId: string, values: Record<string, unknown>): Promise<void> {
-  const { error } = await db.from('operational_materials').insert({ ...values, tenant_id: tenantId, work_id: workId, material_kind: 'concreto' });
+  const { data: w } = await db.from('client_works').select('client_id').eq('id', workId).maybeSingle();
+  const clientId = (w?.client_id as string | undefined) ?? null;
+  const { error } = await db.from('operational_materials').insert({ ...values, tenant_id: tenantId, work_id: workId, client_id: clientId, material_kind: 'concreto' });
   if (error) throw new Error(error.message);
 }

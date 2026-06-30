@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
 import { createConcretagem, listTracosComFck } from '../../lib/api/concretagem';
+import { TracoOptions } from '../../components/TracoOptions';
 import { listReference } from '../../lib/api/client';
 import { listColaboradores } from '../../lib/api/colaboradores';
 import { normalizePadroes, padroesMoldagemPadrao, padroesToDb, toNumber, type PadraoMoldagem } from '../../lib/concreto';
@@ -28,7 +29,7 @@ export function NovaProgramacaoPage() {
 
   const clientes = useQuery({ queryKey: ['ref', 'lab_clients', 'prog'], queryFn: () => listReference('lab_clients', 'razao_social') });
   const obras = useQuery({ queryKey: ['ref', 'client_works', form.client_id, 'prog'], queryFn: () => listReference('client_works', 'nome', form.client_id ? { client_id: String(form.client_id) } : undefined), enabled: !!form.client_id });
-  const tracos = useQuery({ queryKey: ['tracos-fck'], queryFn: listTracosComFck });
+  const tracos = useQuery({ queryKey: ['tracos-fck', form.work_id, form.client_id], queryFn: () => listTracosComFck(form.work_id ? String(form.work_id) : null, form.client_id ? String(form.client_id) : null) });
   const moldadores = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradores });
 
   function patch(k: string, v: unknown) { setForm((s) => ({ ...s, [k]: v })); }
@@ -69,7 +70,7 @@ export function NovaProgramacaoPage() {
           <div className="grid gap-3 md:grid-cols-3">
             <SelectField label="Cliente*" value={val(form.client_id)} onChange={(e) => setForm((s) => ({ ...s, client_id: e.target.value, work_id: '' }))}><option value="">-</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
             <SelectField label="Obra*" value={val(form.work_id)} onChange={(e) => patch('work_id', e.target.value)}><option value="">-</option>{(obras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
-            <SelectField label="Traço cadastrado" value={val(form.operational_material_id)} onChange={(e) => { const id = e.target.value; const t = (tracos.data ?? []).find((x) => x.value === id); setForm((s) => ({ ...s, operational_material_id: id, fck_previsto: t?.fck ?? s.fck_previsto })); setPadrao(normalizePadroes(t?.padrao_moldagem ?? [], t?.fck ?? null)); }}><option value="">Manual</option>{(tracos.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}{o.fck != null ? ' · FCK ' + o.fck : ''}</option>)}</SelectField>
+            <SelectField label="Traço cadastrado" value={val(form.operational_material_id)} onChange={(e) => { const id = e.target.value; const t = (tracos.data ?? []).find((x) => x.value === id); setForm((s) => ({ ...s, operational_material_id: id, fck_previsto: t?.fck ?? s.fck_previsto })); setPadrao(normalizePadroes(t?.padrao_moldagem ?? [], t?.fck ?? null)); }}><option value="">Manual</option><TracoOptions tracos={tracos.data ?? []} workId={form.work_id ? String(form.work_id) : null} clientId={form.client_id ? String(form.client_id) : null} /></SelectField>
             {!form.operational_material_id ? <Field label="Traço manual" value={val(form.traco_texto)} onChange={(e) => patch('traco_texto', e.target.value)} /> : null}
             <Field label="FCK (MPa)" type="number" value={val(form.fck_previsto)} onChange={(e) => patch('fck_previsto', e.target.value)} />
             <Field label="Fornecedor / central" value={val(form.fornecedor_texto)} onChange={(e) => patch('fornecedor_texto', e.target.value)} />

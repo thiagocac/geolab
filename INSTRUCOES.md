@@ -1,23 +1,22 @@
-# INSTRUÇÕES — Patch v126 (Operador "quem rompeu" como toggle de ensaio)
+# INSTRUÇÕES — Patch v127 (Escopo de construtora para traços)
 
-Patch **cumulativo** sobre o repositório (base v125). Copiar os arquivos por cima do source e dar push (GitHub → Netlify CI).
+Patch **cumulativo** sobre o repositório (base v126). Copiar os arquivos por cima do source e dar push (GitHub → Netlify CI).
 
 ## Arquivos do patch (frontend)
-- `public/sw.js`                           — bump CACHE_NAME=consultegeo-geolab-v126
-- `src/lib/telemetry/core.ts`              — bump APP_VERSION=v126
-- `src/lib/concreto/camposEnsaioLaudo.ts`  — catálogo CAMPOS_ENSAIO += `operador` (off por padrão)
-- `src/pages/concreto/RompimentosPage.tsx` — gate do seletor de operador + da gravação de `operador_id`
-- `SOURCE_VERSION.md`
-- `docs/CHANGELOG-v126.md`
+- `public/sw.js` · `src/lib/telemetry/core.ts`         — bump v127
+- `src/components/TracoOptions.tsx`                     — NOVO (dropdown agrupado por origem)
+- `src/lib/api/concretagem.ts`                          — listTracosComFck(workId, clientId) com cadeia de escopo
+- `src/lib/api/obras.ts`                                — createTracoObra deriva client_id da obra
+- `src/lib/api/materiais.ts`                            — TracoRow/SELECT/saveTraco com escopo
+- `src/pages/concreto/NovaProgramacaoPage.tsx`         — dropdown escopado + agrupado
+- `src/pages/concreto/ConcretagensPage.tsx`            — idem
+- `src/pages/concreto/ConcretagemDetalhePage.tsx`      — idem
+- `src/pages/cadastros/MateriaisPage.tsx`              — picker de escopo + filtro + badge + Duplicar
+- `SOURCE_VERSION.md` · `docs/CHANGELOG-v127.md`
 
 ## Backend (sem ação no push)
-- Migration **107_docgate_operador_blocks_respeitam_ensaio_campos** — **já aplicada via MCP** em `xbdvyvvxvzmcosnekmfv`.
-  Verificada viva nos dois sentidos (campo off: 0 avisos de operador; on: avisos voltam). SQL de referência em `docs/107_*.sql`.
-
-## Comportamento
-- **Config. de Campos › Ensaio** ganha "Operador (quem rompeu)", **desligado por padrão**.
-- Desligado: some o seletor em **Rompimentos**, `operador_id` não é gravado, e a **DocGate** não mostra avisos de operador.
-- Ligado: seletor reaparece, grava `operador_id` e a DocGate volta a evidenciar operador/certificação.
+- Migration **108_operational_materials_client_scope** — **já aplicada via MCP** em `xbdvyvvxvzmcosnekmfv`
+  (coluna `client_id` + backfill + índice). SQL de referência em `docs/108_*.sql`.
 
 ## Gate de build (espelho Netlify)
-`npm run check:source` → `tsc --noEmit` → `vitest run` → `vite build`  · check-source validado nesta sessão: OK
+`npm run check:source` → `tsc --noEmit` → `vitest run` → `vite build`  · check-source + esbuild validados nesta sessão: OK
