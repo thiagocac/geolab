@@ -1,5 +1,6 @@
-# GEOLAB → Concresoft — SOURCE VERSION v132
-CACHE_NAME: consultegeo-geolab-v132 · APP_VERSION: v132
+# GEOLAB → Concresoft — SOURCE VERSION v133
+CACHE_NAME: consultegeo-geolab-v133 · APP_VERSION: v133
+(**30/06 — v133**: 2 toggles novos em Config. de Campos › Concretagem, default OFF, para a FICHA: `ficha_contato_equipe` (Contato/Equipe/Ref. no cabeçalho) e `ficha_dosagem` (linha de dosagem detalhada pré-preenchida do traço). Acompanha a EF generate-ficha-moldagem-pdf **v21** (ezbr cb457923) (logo dinâmica do lab, sem Consulte GEO, print-friendly, coluna Numeração gated por numeracao_cp_manual, colunas/campos dinâmicos por Config. de Campos, Cód.→Número do relatório). Cumulativo sobre v132.)
 (**30/06 — v132**: numeração de CP manual na MOLDAGEM. Toggle `recebimento_campos.numeracao_cp_manual` (Config. de Campos › Recebimento, DESMARCADO por padrão) liga, no modal Caminhões + CPs, um campo de numeração por CP + botão **Gerar numeração** (digita o nº do 1º CP — menor idade — e o sistema preenche a sequência via helper `bumpNumeracao`, BigInt, preserva prefixo/zero-pad). `addCaminhao` grava em `corpos_prova.numeracao_lab` (coluna já existia; reusada — aparece em rompimento/laudo/portal). **Frontend-only, sem migration/EF.** Complementa a v131, que registrava a numeração na tela de Rompimentos.)
 
 > **v131 (Claude):** **Numeração do laboratório vira toggle de ensaio** (`numeracao_lab`, ligado por padrão) — em Config. de Campos › Ensaio; desligado, some o botão "+ numeração lab" de cada CP na tela de Rompimentos. E o **label do filtro de busca em Rompimentos** mudou de "Nota fiscal" para **"Buscar"** (o campo aceita Nº relatório, NF, código ou numeração). Base v130.

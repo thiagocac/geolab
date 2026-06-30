@@ -41,6 +41,8 @@ export const CAMPOS_CONCRETAGEM: CampoCatalogo[] = [
   { key: 'bombeado', label: 'Tipo de lançamento / bombeado', hint: 'Bombeado x convencional.', on: true },
   { key: 'observacoes', label: 'Observações gerais da concretagem', on: true },
   { key: 'padrao_moldagem', label: 'Padrão de moldagem da concretagem', hint: 'Usado como padrão manual quando não há traço cadastrado.', on: true },
+  { key: 'ficha_contato_equipe', label: 'Ficha: contato, equipe e ref. no cabeçalho', hint: 'Mostra os campos Contato, Equipe e Ref. no cabeçalho da ficha de moldagem (em branco, para preenchimento manual). Aplica-se só à ficha. Desligado por padrão.', on: false },
+  { key: 'ficha_dosagem', label: 'Ficha: dados da dosagem detalhada (puxa do traço)', hint: 'Adiciona à ficha a linha de composição do traço (cimento, consumo, D.máx, a/c, areia, pedra, água, aditivo), pré-preenchida a partir do traço cadastrado. Aplica-se só à ficha. Desligado por padrão.', on: false },
 ];
 
 export const CAMPOS_LAUDO: CampoCatalogo[] = [
