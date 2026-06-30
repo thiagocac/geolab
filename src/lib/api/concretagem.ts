@@ -13,20 +13,21 @@ export type ConcretagemRow = {
   data_programada: string | null; data_real: string | null; hora_programada?: string | null; hora_inicio?: string | null; hora_fim?: string | null;
   fornecedor_texto: string | null; fck_previsto: number | null; traco_texto?: string | null;
   dimensao_cp?: string | null; local_texto?: string | null; operational_material_id?: string | null;
-  volume_programado_m3?: number | null; volume_lancado_m3?: number | null; bombeado?: boolean | null; clima?: string | null; temperatura_ambiente_c?: number | null; moldador_id?: string | null; observacoes?: string | null;
+  volume_programado_m3?: number | null; volume_lancado_m3?: number | null; bombeado?: boolean | null; clima?: string | null; temperatura_ambiente_c?: number | null; moldador_id?: string | null; laboratorista_id?: string | null; formas_previstas?: number | null; observacoes?: string | null;
   metadata?: Rec | null;
   client_id: string; work_id: string;
   lab_clients?: { razao_social: string; nome_fantasia?: string | null } | null;
   client_works?: { nome: string; cidade?: string | null; uf?: string | null } | null;
   operational_materials?: { nome: string; padrao_moldagem?: PadraoItem[]; fck_mpa?: number; slump_previsto_cm?: number | null; slump_tolerancia_cm?: number | null; validade_concreto_minutos?: number | null } | null;
-  colaboradores?: { nome: string } | null;
+  moldador?: { nome: string } | null;
+  laboratorista?: { nome: string } | null;
 };
 export type CaminhaoRow = {
   id: string; serie: number | null; nota_fiscal: string; placa: string | null; motorista?: string | null; volume_m3: number | null;
   slump_medido_cm: number | null; temperatura_concreto_c: number | null; hora_saida_usina?: string | null; hora_chegada_obra?: string | null; hora_inicio_descarga?: string | null; hora_fim_descarga?: string | null; hora_moldagem?: string | null; houve_adicao_agua?: boolean | null; agua_litros?: number | null; rejeitado?: boolean | null; motivo_rejeicao?: string | null; elementos_concretados?: string | null; observacoes?: string | null;
 };
 
-const SEL = 'id, codigo, numero_relatorio, status, origem, data_programada, data_real, hora_programada, hora_inicio, hora_fim, fornecedor_texto, fck_previsto, traco_texto, dimensao_cp, local_texto, operational_material_id, volume_programado_m3, volume_lancado_m3, bombeado, clima, temperatura_ambiente_c, moldador_id, observacoes, metadata, client_id, work_id, lab_clients(razao_social, nome_fantasia), client_works(nome, cidade, uf), operational_materials(nome, padrao_moldagem, fck_mpa, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos), colaboradores!concretagens_moldador_id_fkey(nome)';
+const SEL = 'id, codigo, numero_relatorio, status, origem, data_programada, data_real, hora_programada, hora_inicio, hora_fim, fornecedor_texto, fck_previsto, traco_texto, dimensao_cp, local_texto, operational_material_id, volume_programado_m3, volume_lancado_m3, bombeado, clima, temperatura_ambiente_c, moldador_id, laboratorista_id, formas_previstas, observacoes, metadata, client_id, work_id, lab_clients(razao_social, nome_fantasia), client_works(nome, cidade, uf), operational_materials(nome, padrao_moldagem, fck_mpa, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos), moldador:colaboradores!moldador_id(nome), laboratorista:colaboradores!laboratorista_id(nome)';
 
 export async function listConcretagens(workId?: string, tenantId?: string): Promise<ConcretagemRow[]> {
   let q = db.from('concretagens').select(SEL).is('deleted_at', null);
@@ -82,6 +83,26 @@ export async function updateConcretagem(id: string, values: Record<string, unkno
 
 export async function confirmarProgramacao(id: string): Promise<void> { await updateConcretagem(id, { status: 'registrado' }); }
 export async function cancelarProgramacao(id: string): Promise<void> { await updateConcretagem(id, { status: 'cancelada' }); }
+
+// Atribuição de equipe na programação: moldador (já existente) + laboratorista (FK migration 118).
+export async function atribuirEquipe(id: string, moldadorId: string | null, laboratoristaId: string | null): Promise<void> {
+  await updateConcretagem(id, { moldador_id: moldadorId || null, laboratorista_id: laboratoristaId || null });
+}
+
+// Provisionamento de formas: grava a quantidade prevista (formas_previstas) + o detalhe do cálculo em metadata.formas.
+export type FormasDetalhe = { n_amostras: number; cps_por_amostra: number; capacidade_m3: number; volume_m3: number | null };
+export async function provisionarFormas(id: string, formasPrevistas: number, detalhe: FormasDetalhe, metadataBase?: Rec | null): Promise<void> {
+  const md = (metadataBase && typeof metadataBase === 'object') ? metadataBase : {};
+  await updateConcretagem(id, { formas_previstas: formasPrevistas, metadata: { ...md, formas: detalhe } });
+}
+
+// Colaboradores p/ os seletores de equipe (id, nome, funções). Função alimenta os agrupamentos do modal.
+export type EquipeColab = { id: string; nome: string; funcoes: string[] };
+export async function listEquipeColaboradores(): Promise<EquipeColab[]> {
+  const { data, error } = await db.from('colaboradores').select('id, nome, funcoes').is('deleted_at', null).order('nome', { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, any>[]).map((r) => ({ id: String(r.id), nome: String(r.nome ?? r.id), funcoes: Array.isArray(r.funcoes) ? r.funcoes.map(String) : [] }));
+}
 
 const SEL_CAM = 'id, serie, nota_fiscal, placa, motorista, volume_m3, slump_medido_cm, temperatura_concreto_c, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, houve_adicao_agua, agua_litros, rejeitado, motivo_rejeicao, elementos_concretados, observacoes';
 export async function listCaminhoes(concId: string): Promise<CaminhaoRow[]> {

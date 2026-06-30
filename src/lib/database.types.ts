@@ -592,6 +592,8 @@ export type Database = {
           local_texto: string | null
           metadata: Json
           moldador_id: string | null
+          laboratorista_id: string | null
+          formas_previstas: number | null
           numero_relatorio: string | null
           observacoes: string | null
           operational_material_id: string | null
@@ -629,6 +631,8 @@ export type Database = {
           local_texto?: string | null
           metadata?: Json
           moldador_id?: string | null
+          laboratorista_id?: string | null
+          formas_previstas?: number | null
           numero_relatorio?: string | null
           observacoes?: string | null
           operational_material_id?: string | null
@@ -666,6 +670,8 @@ export type Database = {
           local_texto?: string | null
           metadata?: Json
           moldador_id?: string | null
+          laboratorista_id?: string | null
+          formas_previstas?: number | null
           numero_relatorio?: string | null
           observacoes?: string | null
           operational_material_id?: string | null
@@ -701,6 +707,13 @@ export type Database = {
           {
             foreignKeyName: "concretagens_moldador_id_fkey"
             columns: ["moldador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "concretagens_laboratorista_id_fkey"
+            columns: ["laboratorista_id"]
             isOneToOne: false
             referencedRelation: "colaboradores"
             referencedColumns: ["id"]
