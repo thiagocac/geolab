@@ -1,20 +1,25 @@
-# INSTRUÇÕES — Patch v137 (Dashboards + Contratos/Financeiro + Importação Excel — GPT Pro, re-baseado)
+# INSTRUÇÕES — consultegeo-geolab v138
 
-Patch **cumulativo** sobre v136. **Recomendado: use o `consultegeo-geolab-source-completo-v137.zip`** (re-baseado, à prova de buraco entre releases paralelas).
+Patch cumulativo sobre o repositório (fork de `thiagocac/geomat`). Sobrescreva os arquivos abaixo,
+faça commit e push. O Netlify CI (projeto `geo-labs`) builda e publica em https://app.concresoft.io.
 
-## Frontend (arquivos do patch)
-- `public/sw.js` · `src/lib/telemetry/core.ts`            — bump v137
-- `src/App.tsx` · `src/components/Layout.tsx`             — 3 rotas + 3 menus (Dashboards, Importação Excel, Contratos e financeiro)
-- `src/lib/api/dashboards.ts` · `contractFinance.ts` · `excelImport.ts`
-- `src/lib/importacao/excelModel.ts` · `excelTemplates.ts` · `excelParser.ts`
-- `src/pages/dashboards/LabDashboardsPage.tsx`
-- `src/pages/gestao/ContratosFinanceiroPage.tsx`
-- `src/pages/concreto/ImportacaoExcelPage.tsx`
-- `SOURCE_VERSION.md` · `docs/CHANGELOG-v137.md` · `docs/ANALISE-DASHBOARDS-REFERENCIA-v134.md`
+## Arquivos deste patch (6)
+- public/sw.js                          → bump CACHE_NAME = consultegeo-geolab-v138
+- src/lib/telemetry/core.ts             → bump APP_VERSION = 'v138'
+- src/lib/api/dashboard.ts              → KPIs da home + volume do mês (campo volumeMes)
+- src/pages/DashboardPage.tsx           → home enxuta: 6 KPIs operacionais + atalho /dashboards
+- src/lib/importacao/excelModel.ts      → FIX tsc: cast `as ImportField[]` após `.filter` (pacote GPT v137)
+- src/pages/operacao/OperacaoPage.tsx   → FIX biome noAssignInExpressions (painel de permissões efetivas)
 
-## Backend (já aplicado via MCP — sem ação no push)
-- Migrations **113-116** (renumeradas de 112-115 do GPT). Sem EFs. Referências em `docs/11{3,4,5,6}_gpt_v134_ref.sql`.
+## Banco (JÁ aplicado no vivo via MCP)
+- migration **117_dashboard_kpis_volume_mes** — estende a RPC `dashboard_kpis` com `volume_mes`
+  (m³ do mês corrente; coalesce volume_lancado/programado, data_real/programada). Sem pasta
+  supabase/migrations no repo de frontend; registrado aqui para rastreio.
 
-## Gate de build (rodado nesta sessão)
-- `check-source` OK · `esbuild` OK (todos os arquivos) · **`vite build` OK** (gera o dist) · `vitest` **23/23**.
-- `tsc --noEmit` completo: trava por I/O do ambiente local (.d.ts do recharts v3); roda normalmente no Netlify.
+## Gate (espelho do Netlify) — JÁ RODADO E VERDE
+check-source OK · biome lint 0 erros · tsc --noEmit limpo · vitest 23/23 · vite build OK (VITE_DEMO_MODE=false)
+
+## IMPORTANTE
+O pacote GPT-Pro **v137** (Dashboards/Financeiro/Importação) tinha 2 erros que REPROVAVAM o gate do Netlify
+(tipos em `excelModel.ts` e assign-in-expression em `OperacaoPage.tsx`). Ambos corrigidos aqui — publicar
+**v138** (não v137) para o build passar. Bump de CACHE_NAME + APP_VERSION conferido pelo check-source.

@@ -28,7 +28,7 @@ export function fieldsForResource(resource: ImportResource, cfg?: { concretagem_
     { key: 'metodo_cura', header: 'metodo_cura', type: 'text', example: 'Câmara úmida' },
     { key: 'ativo', header: 'ativo', type: 'boolean', example: 'sim' },
   ];
-  if (resource === 'concretagens') return [
+  if (resource === 'concretagens') return ([
     { key: 'external_key', header: 'external_key', type: 'text', required: true, example: 'PLAN-2026-0001' },
     { key: 'cliente_nome', header: 'cliente_nome', type: 'text', required: true, example: 'Construtora Exemplo' },
     { key: 'obra_nome', header: 'obra_nome', type: 'text', required: true, example: 'Obra Centro' },
@@ -45,8 +45,8 @@ export function fieldsForResource(resource: ImportResource, cfg?: { concretagem_
     { key: 'temperatura_ambiente_c', header: 'temperatura_ambiente_c', type: 'number', enabled: has(cc, 'temperatura_ambiente'), example: '27' },
     { key: 'bombeado', header: 'bombeado', type: 'boolean', enabled: has(cc, 'bombeado'), example: 'sim' },
     { key: 'observacoes', header: 'observacoes', type: 'text', enabled: has(cc, 'observacoes') },
-  ].filter((f) => f.enabled !== false) as ImportField[];
-  if (resource === 'recebimentos') return [
+  ] as ImportField[]).filter((f) => f.enabled !== false);
+  if (resource === 'recebimentos') return ([
     { key: 'concretagem_codigo', header: 'concretagem_codigo', type: 'text', required: true, example: 'CONC-2026-000001' },
     { key: 'external_key', header: 'external_key', type: 'text', required: true, example: 'NF-12345-S1' },
     { key: 'nota_fiscal', header: 'nota_fiscal', type: 'text', required: true, example: '12345' },
@@ -67,8 +67,8 @@ export function fieldsForResource(resource: ImportResource, cfg?: { concretagem_
     { key: 'motivo_rejeicao', header: 'motivo_rejeicao', type: 'text', enabled: has(rc, 'rejeicao') },
     { key: 'elementos_concretados', header: 'elementos_concretados', type: 'text', enabled: has(rc, 'elementos_concretados') },
     { key: 'observacoes', header: 'observacoes', type: 'text', enabled: has(rc, 'observacoes_caminhao') },
-  ].filter((f) => f.enabled !== false) as ImportField[];
-  return [
+  ] as ImportField[]).filter((f) => f.enabled !== false);
+  return ([
     { key: 'cp_codigo', header: 'cp_codigo', type: 'text', required: true, example: 'CONC-2026-000001-28-1' },
     { key: 'concretagem_codigo', header: 'concretagem_codigo', type: 'text', example: 'CONC-2026-000001' },
     { key: 'data_rompimento', header: 'data_rompimento', type: 'date', required: true, example: '2026-07-29' },
@@ -83,7 +83,7 @@ export function fieldsForResource(resource: ImportResource, cfg?: { concretagem_
     { key: 'operador_nome', header: 'operador_nome', type: 'text', enabled: has(ec, 'operador') },
     { key: 'massa_cp_g', header: 'massa_cp_g', type: 'number', enabled: has(ec, 'massa_cp_g') },
     { key: 'observacao', header: 'observacao', type: 'text' },
-  ].filter((f) => f.enabled !== false) as ImportField[];
+  ] as ImportField[]).filter((f) => f.enabled !== false);
 }
 
 export const resourceLabel = (r: ImportResource) => ({ tracos: 'Traços', concretagens: 'Concretagens', recebimentos: 'Recebimentos', resultados: 'Resultados de rompimento' })[r];
