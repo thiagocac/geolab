@@ -16,7 +16,7 @@ import { getConfigLab } from '../../lib/api/preferencias';
 import { listColaboradores } from '../../lib/api/colaboradores';
 import { listPecasObra } from '../../lib/api/estrutura';
 import { CAMPOS_CONCRETAGEM, CAMPOS_RECEBIMENTO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
-import { normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../../lib/concreto';
+import { bumpNumeracao, normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../../lib/concreto';
 
 import { saveBlob as dl } from '../../lib/pdf';
 const str = (v: unknown) => String(v ?? '').trim();
@@ -64,6 +64,8 @@ export function ConcretagemDetalhePage() {
   const [camForm, setCamForm] = useState<Record<string, unknown>>({});
   const [lendoNf, setLendoNf] = useState(false);
   const [camPadrao, setCamPadrao] = useState<PadraoMoldagem[]>([]);
+  const [numeracaoMap, setNumeracaoMap] = useState<Record<string, string>>({});
+  const [primeiroNum, setPrimeiroNum] = useState('');
   const [busy, setBusy] = useState(false);
   const [busyStep, setBusyStep] = useState(false);
   const [upEvi, setUpEvi] = useState(false);
@@ -103,6 +105,25 @@ export function ConcretagemDetalhePage() {
   const onR = (k: string) => rc[k] !== false;
   const selectedTraco = (tracos.data ?? []).find((t) => t.value === form.operational_material_id);
   const fckAtual = num(form.fck_previsto) ?? selectedTraco?.fck ?? conc.data?.fck_previsto ?? null;
+  // Numeração manual de CP (v132): expande os CPs na MESMA ordem em que addCaminhao os cria
+  // (padroesToDb -> qtd por linha). slot.idx = índice de criação; ordenamos por idade só na exibição.
+  const numManual = onR('numeracao_cp_manual');
+  const numSlots = useMemo(() => {
+    if (!numManual) return [] as { key: string; idx: number; ageHours: number; ageLabel: string }[];
+    const dbPad = padroesToDb(normalizePadroes(camPadrao, fckAtual));
+    const slots: { key: string; idx: number; ageHours: number; ageLabel: string }[] = [];
+    let idx = 0;
+    for (const r of dbPad) {
+      const idade = Number(r.idade) || 0;
+      const unidade = String(r.unidade) === 'hora' ? 'hora' : 'dia';
+      const qtd = Number(r.quantidade) || 0;
+      const ageHours = unidade === 'hora' ? idade : idade * 24;
+      const ageLabel = String(idade) + (unidade === 'hora' ? 'h' : 'd');
+      for (let i = 0; i < qtd; i++) { slots.push({ key: String(r.id) + '-' + i, idx, ageHours, ageLabel }); idx++; }
+    }
+    return slots;
+  }, [numManual, camPadrao, fckAtual]);
+  const numSlotsSorted = useMemo(() => [...numSlots].sort((a, b) => a.ageHours - b.ageHours || a.idx - b.idx), [numSlots]);
 
   function patch(k: string, v: unknown) { setForm((s) => ({ ...s, [k]: v })); }
   function patchCam(k: string, v: unknown) { setCamForm((s) => ({ ...s, [k]: v })); }
@@ -128,7 +149,17 @@ export function ConcretagemDetalhePage() {
     const p = padrao.length ? padrao : padraoMoldagemDaConcretagem(conc.data);
     setCamPadrao(p);
     setCamForm({ nota_fiscal: '', houve_adicao_agua: false, rejeitado: false });
+    setNumeracaoMap({});
+    setPrimeiroNum('');
     setOpen(true);
+  }
+  function gerarNumeracao() {
+    const first = primeiroNum.trim();
+    if (!first) { toast('Informe a numeração do primeiro CP (o de menor idade de controle).', 'warning'); return; }
+    if (!numSlotsSorted.length) { toast('Defina as idades e quantidades dos CPs primeiro.', 'warning'); return; }
+    const next: Record<string, string> = {};
+    numSlotsSorted.forEach((sl, j) => { next[sl.key] = bumpNumeracao(first, j); });
+    setNumeracaoMap(next);
   }
   function buscarPadraoCaminhao() {
     const c = conc.data;
@@ -156,7 +187,8 @@ export function ConcretagemDetalhePage() {
     try {
       if (!str(camForm.nota_fiscal)) throw new Error('Nota fiscal é obrigatória.');
       const serie = (cams.data?.length ?? 0) + 1;
-      await addCaminhao(member.tenant_id, c, serie, { ...camForm, padrao_moldagem: camPadrao });
+      const numeracoes = numManual ? numSlots.map((sl) => numeracaoMap[sl.key] ?? null) : undefined;
+      await addCaminhao(member.tenant_id, c, serie, { ...camForm, padrao_moldagem: camPadrao, numeracoes });
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['caminhoes', id] }), qc.invalidateQueries({ queryKey: ['cps', id] }), qc.invalidateQueries({ queryKey: ['rompimentos'] }), qc.invalidateQueries({ queryKey: ['concretagem', id] }),
       ]);
@@ -271,7 +303,7 @@ export function ConcretagemDetalhePage() {
                       {onR('elementos_concretados') ? <div className="text-sm md:col-span-2"><b>Elementos:</b> {cam.elementos_concretados ?? '-'}</div> : null}
                       {onR('observacoes_caminhao') ? <div className="text-sm md:col-span-3"><b>Obs.:</b> {cam.observacoes ?? '-'}</div> : null}
                     </div>
-                    <div className="border-t border-slate-100 p-4 dark:border-slate-800"><div className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Corpos de prova</div>{cpsCam.length ? <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">{cpsCam.map((cp) => <div key={cp.id} className="rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"><b>{cp.codigo ?? cp.id.slice(0, 8)}</b><span className="ml-2 text-slate-500">{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'} · {cp.situacao}</span>{cp.resultado != null ? <span className="ml-2 font-black text-green-700">{cp.resultado} MPa</span> : null}</div>)}</div> : <p className="text-sm text-slate-500">Sem CPs.</p>}</div>
+                    <div className="border-t border-slate-100 p-4 dark:border-slate-800"><div className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Corpos de prova</div>{cpsCam.length ? <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">{cpsCam.map((cp) => <div key={cp.id} className="rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"><b>{cp.codigo ?? cp.id.slice(0, 8)}</b>{cp.numeracao_lab ? <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">Nº {cp.numeracao_lab}</span> : null}<span className="ml-2 text-slate-500">{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'} · {cp.situacao}</span>{cp.resultado != null ? <span className="ml-2 font-black text-green-700">{cp.resultado} MPa</span> : null}</div>)}</div> : <p className="text-sm text-slate-500">Sem CPs.</p>}</div>
                   </Card>
                 );
               })}
@@ -322,6 +354,21 @@ export function ConcretagemDetalhePage() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-black text-slate-950 dark:text-slate-50">Amostra e CPs deste caminhão</h3><p className="text-xs text-slate-500">Ajuste idades e quantidades antes de salvar. O sistema gera os CPs automaticamente.</p></div><Button variant="secondary" onClick={buscarPadraoCaminhao}>Buscar padrão de moldagem</Button></div>
             <MoldingStandardEditor value={camPadrao} onChange={setCamPadrao} fck={fckAtual} />
           </div>
+          {numManual ? (
+            <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+              <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                <div><h3 className="font-black text-slate-950 dark:text-slate-50">Numeração dos corpos de prova</h3><p className="text-xs text-slate-500">Numeração interna do laboratório, gravada em cada CP. Digite a do 1º CP (o de menor idade) e gere a sequência, ou preencha manualmente.</p></div>
+                <div className="flex items-end gap-2"><Field label="Nº do 1º CP" value={primeiroNum} onChange={(e) => setPrimeiroNum(e.target.value)} /><Button variant="secondary" onClick={gerarNumeracao} disabled={!numSlotsSorted.length}>Gerar numeração</Button></div>
+              </div>
+              {numSlotsSorted.length === 0 ? <p className="rounded-xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-500 dark:border-slate-700">Defina as idades e quantidades acima para numerar os CPs.</p> : (
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {numSlotsSorted.map((sl, j) => (
+                    <label key={sl.key} className="flex items-center gap-2 text-sm"><span className="w-16 shrink-0 text-xs font-bold text-slate-500">{j + 1} · {sl.ageLabel}</span><input className="input !min-h-9 w-full px-2 py-1" value={numeracaoMap[sl.key] ?? ''} onChange={(e) => { const v = e.target.value; setNumeracaoMap((prev) => ({ ...prev, [sl.key]: v })); }} aria-label={'Numeração do CP ' + (j + 1)} /></label>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </Modal>
 

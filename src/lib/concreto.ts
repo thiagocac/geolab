@@ -155,6 +155,21 @@ export function padroesToDb(value: PadraoMoldagem[]): Record<string, unknown>[] 
     .filter((r) => Number(r.idade) > 0 && Number(r.quantidade) > 0);
 }
 
+// Numeração sequencial de CP do laboratório (v132). Incrementa o ÚLTIMO grupo de dígitos da
+// numeração-base preservando prefixo/sufixo e o zero-padding. BigInt p/ números longos.
+// Ex.: bumpNumeracao('1235689', 1) => '1235690'; ('A-099', 1) => 'A-100'; ('0001', 12) => '0013'.
+export function bumpNumeracao(base: string, step: number): string {
+  const s = String(base ?? '').trim();
+  if (!s) return '';
+  const m = /^(.*?)(\d+)(\D*)$/.exec(s);
+  if (!m) return s;
+  const [, prefix, digits, suffix] = m;
+  const next = BigInt(digits) + BigInt(Math.trunc(step));
+  const txt = next < 0n ? '0' : next.toString();
+  const padded = txt.length < digits.length ? txt.padStart(digits.length, '0') : txt;
+  return prefix + padded + suffix;
+}
+
 export function codigoTracoFromDescricao(descricao: string): string {
   const clean = descricao.trim().toUpperCase().replace(/\s+/g, ' ');
   return clean ? clean.slice(0, 80) : 'TRAÇO CONCRETO';
