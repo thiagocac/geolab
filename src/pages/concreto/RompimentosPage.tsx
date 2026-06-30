@@ -344,7 +344,7 @@ export function RompimentosPage() {
 
   async function exportarAgenda() {
     try {
-      const blob = await gerarAgendaPdf({ tipo_ensaio: tipoFiltro, idade: idadeFiltro, janela, data_ref: dataRef, nota_fiscal: nfFiltro });
+      const blob = await gerarAgendaPdf({ tipo_ensaio: tipoFiltro, idade: idadeFiltro, janela, data_ref: dataRef, nota_fiscal: nfFiltro, cliente: clienteFiltro, obra: obraFiltro, entrar_carga: entrarCarga, carga_unidade: cargaUnidade });
       downloadBlob(blob, `agenda-rompimentos-${dataRef}.pdf`);
     } catch (e) { toast((e as Error).message, 'error'); }
   }

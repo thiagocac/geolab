@@ -1,28 +1,24 @@
-# INSTRUÇÕES — consultegeo-geolab v141 (Onda 2: desempenho do salvamento + trilha canônica)
+# INSTRUÇÕES — consultegeo-geolab v142 (Onda 3: Agenda de rompimentos PDF refeita)
 
-**Use o COMPLETO v141** — cadeia cumulativa que carrega v138 (home + correções do pacote GPT) + v139 (Programações,
-paralela) + v140 (Onda 1 rompimentos) + v141 (Onda 2). Publicar (GitHub → Netlify `geo-labs` → app.concresoft.io).
+**Use o COMPLETO v142** (cadeia cumulativa: v138 home+correções GPT · v139 Programações · v140 Onda 1 · v141 Onda 2 · v142 Onda 3).
+Publicar (GitHub → Netlify `geo-labs` → app.concresoft.io).
 
-## Banco — JÁ aplicado no vivo via MCP (head agora 121)
-- **119_lancar_rompimentos_lote_e_round4** — RPC `lancar_rompimentos_lote(payload jsonb)` que grava N CPs em UMA
-  transação (reusa `lancar_rompimento_cp` no laço) e devolve as amostras abaixo do fck na idade de controle.
-  Também: `lancar_rompimento_cp` passa a `round(.,4)` (banco guarda 4 casas; tela exibe 1).
-- **120_cp_timeline_from_audit_log** — RPC `cp_timeline(cp_id)`: trilha do CP a partir do `audit_log` (CP + seus
-  `material_tests`), no mesmo shape de `TimelineEvent`.
-- **121_harden_revoke_anon_rompimento_rpcs** — revoga `anon` das 2 funções (paridade de segurança).
+## Edge Function — JÁ deployada no vivo (não vai pelo Netlify)
+- **generate-agenda-rompimento-pdf v8** (ezbr `f94e0c8f…`, era `215bdf0b…`): relatório refeito no **visual da ficha de
+  moldagem** (cabeçalho navy com o nome do laboratório, refs de norma, rodapé app.concresoft.io, grade limpa).
+  Colunas: Numeração · Cliente/obra · NF · Idade · Data prevista + **duas colunas EM BRANCO** para preenchimento à
+  caneta: **"Data / hora rompimento"** e **"Tensão de ruptura (MPa)"**. Se a tela estiver com **"Entrar carga"**
+  marcado, a 2ª coluna em branco vira **"Carga de ruptura (<unidade>)"**. Respeita os filtros do recorte
+  (tipo/idade/janela/data ref/busca + **cliente + obra**). Self-contained, StandardFonts.Helvetica, imports `npm:`.
 
-## Frontend (5 arquivos)
-- public/sw.js · src/lib/telemetry/core.ts → bump **v141**
-- src/lib/api/rompimento.ts        → `lancarRompimentosLote` + `notifyAbaixoFck`
-- src/lib/api/timeline.ts          → `listCpTimeline`
-- src/pages/concreto/RompimentosPage.tsx → **D**: "Salvar resultados" agora faz **1 RPC de lote** (em vez de N
-  chamadas sequenciais + 2 SELECT por CP) e notifica abaixo-do-fck 1×/amostra. **C**: a "Trilha de alterações" lê o
-  `audit_log` canônico (via `cp_timeline`) e renderiza com `TimelineList` — passa a registrar TODAS as alterações
-  (lançamento, edição, situação, descarte), não só o último resultado.
+## Frontend (3 arquivos)
+- public/sw.js · src/lib/telemetry/core.ts → bump **v142**
+- src/pages/concreto/RompimentosPage.tsx → `gerarAgendaPdf` passa `cliente`/`obra`/`entrar_carga`/`carga_unidade`
+  para a EF (a agenda agora bate com o recorte filtrado e com o modo carga).
+
+## Backlog (fase 2 do item G)
+- **OCR da agenda preenchida à caneta** — quando o lab imprime a agenda e preenche os resultados à mão. Padrão
+  `extract-ficha-vision` (QR + OCR dos manuscritos, idempotente por external_key, tela de conferência por confiança).
 
 ## Gate (espelho Netlify)
-check-source OK · biome 0 erros · **tsc --skipLibCheck 0 erros** (tipos do app validados) · vitest 23/23 · esbuild OK.
-O `tsc`/`vite build` completos não fecham no sandbox (contenção de I/O com a sessão paralela) — rodam no Netlify.
-
-## Próxima
-Onda 3 (v142): refazer a Agenda PDF (visual da ficha + 2 colunas em branco; OCR ao backlog).
+check-source OK · biome 0 erros · **tsc --skipLibCheck 0 erros** · vitest 23/23 · esbuild OK. EF parseada por esbuild.
