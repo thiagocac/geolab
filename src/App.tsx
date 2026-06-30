@@ -28,9 +28,7 @@ const MedicaoPage = lazy(() => import('./pages/gestao/MedicaoPage').then((m) => 
 const ProdutividadePage = lazy(() => import('./pages/gestao/ProdutividadePage').then((m) => ({ default: m.ProdutividadePage })));
 const FaturasPage = lazy(() => import('./pages/gestao/FaturasPage').then((m) => ({ default: m.FaturasPage })));
 const FormasPage = lazy(() => import('./pages/gestao/FormasPage').then((m) => ({ default: m.FormasPage })));
-const ControleLaudoPage = lazy(() => import('./pages/gestao/ControleLaudoPage').then((m) => ({ default: m.ControleLaudoPage })));
-const CamposRecebimentoPage = lazy(() => import('./pages/gestao/CamposRecebimentoPage').then((m) => ({ default: m.CamposRecebimentoPage })));
-const CamposConcretagemPage = lazy(() => import('./pages/gestao/CamposConcretagemPage').then((m) => ({ default: m.CamposConcretagemPage })));
+const ConfigCamposPage = lazy(() => import('./pages/gestao/ConfigCamposPage').then((m) => ({ default: m.ConfigCamposPage })));
 const ClientePortalPage = lazy(() => import('./pages/portal/ClientePortalPage').then((m) => ({ default: m.ClientePortalPage })));
 const ClienteUsuariosPage = lazy(() => import('./pages/portal/ClienteUsuariosPage').then((m) => ({ default: m.ClienteUsuariosPage })));
 const OperacaoPage = lazy(() => import('./pages/operacao/OperacaoPage').then((m) => ({ default: m.OperacaoPage })));
@@ -126,9 +124,10 @@ export function App() {
             <Route path="/produtividade" element={<ProdutividadePage />} />
             <Route path="/faturas" element={<FaturasPage />} />
             <Route path="/formas" element={<FormasPage />} />
-            <Route path="/gestao/controle-laudo" element={<ControleLaudoPage />} />
-            <Route path="/gestao/campos-recebimento" element={<CamposRecebimentoPage />} />
-            <Route path="/gestao/campos-concretagem" element={<CamposConcretagemPage />} />
+            <Route path="/gestao/config-campos" element={<ConfigCamposPage />} />
+            <Route path="/gestao/controle-laudo" element={<Navigate to="/gestao/config-campos?aba=laudo" replace />} />
+            <Route path="/gestao/campos-recebimento" element={<Navigate to="/gestao/config-campos?aba=recebimento" replace />} />
+            <Route path="/gestao/campos-concretagem" element={<Navigate to="/gestao/config-campos?aba=concretagem" replace />} />
             <Route path="/portal-cliente" element={<ClientePortalPage />} />
             <Route path="/portal/usuarios-clientes" element={podeGerirClientes ? <ClienteUsuariosPage /> : <Navigate to="/portal-cliente" replace />} />
             <Route path="/operacao" element={podeOperacao ? <OperacaoPage /> : <Navigate to="/" replace />} />

@@ -11,22 +11,12 @@ import { getConfigLab, saveConfigLab, uploadLogo, logoSignedUrl } from '../../li
 
 const num = (v: unknown, d: number): number => { const s = String(v ?? '').trim(); const n = Number(s); return s === '' || !Number.isFinite(n) ? d : n; };
 const str = (v: unknown) => String(v ?? '').trim();
-const TOGGLES: [string, string, boolean][] = [
-  ['usina', 'Mostrar central/usina', true],
-  ['equipamentos', 'Bloco de equipamentos', true],
-  ['carga', 'Coluna de carga (kN)', false],
-  ['observacoes', 'Observacoes da concretagem', false],
-  ['acreditacao', 'Acreditacao INMETRO', false],
-  ['temperatura', 'Temperatura do concreto', false],
-  ['moldador', 'Responsavel pela moldagem', false],
-];
 
 export function PreferenciasPage() {
   const { member, hasRole } = useAuth();
   const toast = useToast();
   const podeEditar = hasRole('admin', 'admin_consulte');
   const [f, setF] = useState<Record<string, unknown>>({});
-  const [lc, setLc] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
 
   const q = useQuery({ queryKey: ['config-lab', member?.tenant_id], queryFn: () => getConfigLab(member!.tenant_id), enabled: !!member?.tenant_id });
@@ -48,10 +38,6 @@ export function PreferenciasPage() {
     const c = q.data;
     if (c === undefined) return;
     setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '' });
-    const cur = (c?.laudo_campos ?? {}) as Record<string, boolean>;
-    const init: Record<string, boolean> = {};
-    for (const [k, , def] of TOGGLES) init[k] = cur[k] ?? def;
-    setLc(init);
   }, [q.data]);
 
   function set(k: string, v: unknown) { setF((s) => ({ ...s, [k]: v })); }
@@ -60,12 +46,11 @@ export function PreferenciasPage() {
     if (!member) return;
     setBusy(true);
     try {
-      const existing = (q.data?.laudo_campos ?? {}) as Record<string, boolean>;
       await saveConfigLab(member.tenant_id, {
         responsavel_tecnico: str(f.responsavel_tecnico) || null, crea_rt: str(f.crea_rt) || null,
         acreditacao_inmetro: str(f.acreditacao_inmetro) || null, validade_acreditacao: str(f.validade_acreditacao) || null,
         idade_controle_default: num(f.idade_controle_default, 28), cp_overdue_days: num(f.cp_overdue_days, 2),
-        nota_rodape: str(f.nota_rodape) || null, local_ensaio: str(f.local_ensaio) || null, art_numero: str(f.art_numero) || null, gerente_qualidade: str(f.gerente_qualidade) || null, crea_gq: str(f.crea_gq) || null, laudo_campos: { ...existing, ...lc },
+        nota_rodape: str(f.nota_rodape) || null, local_ensaio: str(f.local_ensaio) || null, art_numero: str(f.art_numero) || null, gerente_qualidade: str(f.gerente_qualidade) || null, crea_gq: str(f.crea_gq) || null,
       });
       toast('Preferencias salvas.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
@@ -111,13 +96,7 @@ export function PreferenciasPage() {
       </Card>
       <Card>
         <CardHeader kicker="Laudo" title="Campos exibidos no laudo" />
-        <div style={{ display: 'grid', gap: 8, padding: 16 }}>
-          {TOGGLES.map(([k, label]) => (
-            <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
-              <input type="checkbox" checked={!!lc[k]} disabled={!podeEditar} onChange={(e) => setLc((s) => ({ ...s, [k]: e.target.checked }))} /> {label}
-            </label>
-          ))}
-        </div>
+        <p style={{ margin: 0, padding: 16, fontSize: 13, color: 'var(--ink-faint)' }}>Os campos exibidos no laudo (e os blocos/colunas do PDF) agora ficam em <b>Config. de Campos › aba Laudo</b> — junto com os campos de ensaio, recebimento e concretagem.</p>
       </Card>
       {podeEditar ? <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar preferencias'}</Button></div> : null}
     </div>

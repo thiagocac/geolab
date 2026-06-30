@@ -38,9 +38,7 @@ const sections: Section[] = [
     { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
     { to: '/faturas', label: 'Faturas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
     { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles },
-    { to: '/gestao/controle-laudo', label: 'Campos do ensaio e laudo', icon: ClipboardCheck, roles: adminRoles },
-    { to: '/gestao/campos-recebimento', label: 'Campos recebimento', icon: ClipboardCheck, roles: adminRoles },
-    { to: '/gestao/campos-concretagem', label: 'Campos concretagem', icon: ClipboardCheck, roles: adminRoles },
+    { to: '/gestao/config-campos', label: 'Config. de Campos', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/nc-config', label: 'Config de NC', icon: Sliders, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
   ] },
   { title: 'Operação interna', items: [
