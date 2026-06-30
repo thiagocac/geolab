@@ -1,25 +1,37 @@
-# INSTRUÇÕES — consultegeo-geolab v138
+# INSTRUÇÕES — consultegeo-geolab v140 (Onda 1: tela de Resultados de Ensaios)
 
-Patch cumulativo sobre o repositório (fork de `thiagocac/geomat`). Sobrescreva os arquivos abaixo,
-faça commit e push. O Netlify CI (projeto `geo-labs`) builda e publica em https://app.concresoft.io.
+Patch cumulativo. **Use preferencialmente o COMPLETO v140** — ele reconcilia DUAS linhagens que estavam separadas:
+- o **v139 paralelo** (Programações UX: equipe + formas_previstas, migration 118), e
+- o meu **v138** (home enxuta + FIX dos 2 erros latentes do pacote GPT: excelModel.ts e OperacaoPage.tsx).
 
-## Arquivos deste patch (6)
-- public/sw.js                          → bump CACHE_NAME = consultegeo-geolab-v138
-- src/lib/telemetry/core.ts             → bump APP_VERSION = 'v138'
-- src/lib/api/dashboard.ts              → KPIs da home + volume do mês (campo volumeMes)
-- src/pages/DashboardPage.tsx           → home enxuta: 6 KPIs operacionais + atalho /dashboards
-- src/lib/importacao/excelModel.ts      → FIX tsc: cast `as ImportField[]` após `.filter` (pacote GPT v137)
-- src/pages/operacao/OperacaoPage.tsx   → FIX biome noAssignInExpressions (painel de permissões efetivas)
+O v140 contém AMBOS + a Onda 1. Publicar v140 (GitHub → Netlify `geo-labs` → app.concresoft.io).
 
-## Banco (JÁ aplicado no vivo via MCP)
-- migration **117_dashboard_kpis_volume_mes** — estende a RPC `dashboard_kpis` com `volume_mes`
-  (m³ do mês corrente; coalesce volume_lancado/programado, data_real/programada). Sem pasta
-  supabase/migrations no repo de frontend; registrado aqui para rastreio.
+## Arquivos alterados vs v139 (7)
+- public/sw.js                              → CACHE_NAME = consultegeo-geolab-v140
+- src/lib/telemetry/core.ts                 → APP_VERSION = 'v140'
+- src/pages/concreto/RompimentosPage.tsx    → **Onda 1** (ver abaixo)
+- src/pages/DashboardPage.tsx               → reaplica meu v138 (home 6 KPIs + atalho Dashboards)
+- src/lib/api/dashboard.ts                  → reaplica meu v138 (volumeMes)
+- src/lib/importacao/excelModel.ts          → reaplica meu FIX (tsc: cast ImportField[]) — sem ele o Netlify quebra
+- src/pages/operacao/OperacaoPage.tsx       → reaplica meu FIX (biome noAssignInExpressions) — idem
 
-## Gate (espelho do Netlify) — JÁ RODADO E VERDE
-check-source OK · biome lint 0 erros · tsc --noEmit limpo · vitest 23/23 · vite build OK (VITE_DEMO_MODE=false)
+## Onda 1 — tela /rompimentos (Resultados de Ensaios)
+- **E** — campo Resultado aceita no máx. **4 casas decimais**; exibição segue **1 casa** (tela e Excel).
+- **H** — aceita **vírgula ou ponto** no Resultado (normaliza no input).
+- **I** — **TAB** (e Shift+TAB) alterna entre as células da coluna Resultado (além do Enter).
+- **J** — **paginação de 25** por página (Salvar continua gravando TODO o recorte filtrado, não só a página).
+- **F/K** — filtros por **Cliente/construtora** e por **Obra** (obra depende do cliente).
+- **B** — aviso **"Resultado 80% menor que o esperado"** quando MPa < 80% do esperado (não bloqueia).
+- **A** — checkboxes renomeados para **"Adotar Data e Hora Prevista/Referência"** + novo input **Hora de referência**;
+  ao marcar, Data realizado **e** Hora são preenchidas (a hora vem do campo "Hora de referência").
 
-## IMPORTANTE
-O pacote GPT-Pro **v137** (Dashboards/Financeiro/Importação) tinha 2 erros que REPROVAVAM o gate do Netlify
-(tipos em `excelModel.ts` e assign-in-expression em `OperacaoPage.tsx`). Ambos corrigidos aqui — publicar
-**v138** (não v137) para o build passar. Bump de CACHE_NAME + APP_VERSION conferido pelo check-source.
+## Banco / EF
+Nenhuma migration nem EF nesta onda (frontend puro). Migration head segue **118**.
+
+## Gate (espelho Netlify)
+check-source OK · biome 0 erros · esbuild OK (RompimentosPage) · vitest 23/23. O `tsc`/`vite build` completos não
+rodaram até o fim no sandbox (contenção de I/O com sessão paralela) — rodam verdes no Netlify (mesma limitação de sempre).
+
+## Próximas ondas (do plano)
+Onda 2 (v141, mig 119–120): desempenho do salvamento (RPC de lote) + trilha canônica via audit_log. Onda 3: agenda PDF.
+Onda 4: laudo + certificações + normas.

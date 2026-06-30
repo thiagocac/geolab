@@ -29,6 +29,12 @@ import { supabase } from '../../lib/supabase';
 const hoje = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (v: string | null | undefined) => !v ? '-' : v.split('-').reverse().join('/');
 const nfmt = (n: number | null | undefined, d = 1) => n == null || !Number.isFinite(n) ? '-' : n.toFixed(d).replace('.', ',');
+const sanitizeDecimal = (raw: string, maxDec = 4): string => {
+  let v = String(raw).replace(',', '.').replace(/[^0-9.]/g, '');
+  const i = v.indexOf('.');
+  if (i >= 0) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, '').slice(0, maxDec);
+  return v;
+};
 const normalize = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 type EditState = { valor?: string; carga?: string; data?: string; hora?: string; tipo_ruptura?: string; massa_cp_g?: string; numeracao?: string };
@@ -41,6 +47,8 @@ function cpNumero(c: CpRompimento): string {
 function nf(c: CpRompimento): string { return String(c.material_receipts?.nota_fiscal ?? c.material_receipts?.external_key ?? '-'); }
 function idade(c: CpRompimento): string { return `${c.idade_dias ?? '-'} ${c.idade_unidade === 'hora' ? 'horas' : 'dias'}`; }
 function esperado(c: CpRompimento): number | null { return c.valor_esperado ?? c.concretagens?.fck_previsto ?? null; }
+function clienteNome(c: CpRompimento): string { return String(c.concretagens?.lab_clients?.nome_fantasia ?? c.concretagens?.lab_clients?.razao_social ?? ''); }
+function obraNome(c: CpRompimento): string { return String(c.concretagens?.client_works?.nome ?? ''); }
 function statusBadge(c: CpRompimento): string {
   const r = resultadoAtual(c);
   if (c.situacao === 'descartado') return 'descartado';
@@ -97,6 +105,10 @@ export function RompimentosPage() {
   const [bulkData, setBulkData] = useState('');
   const [bulkHora, setBulkHora] = useState('');
   const [bulkTipo, setBulkTipo] = useState('');
+  const [horaRef, setHoraRef] = useState('');
+  const [clienteFiltro, setClienteFiltro] = useState('todas');
+  const [obraFiltro, setObraFiltro] = useState('todas');
+  const [page, setPage] = useState(0);
 
   const carregarTudo = mostrarLancados || mostrarInsatisf;
   const cpsQ = useQuery({ queryKey: ['rompimentos', member?.tenant_id, carregarTudo], queryFn: () => listCpsRompimento(member?.tenant_id, carregarTudo ? undefined : { situacao: 'pendente' }) });
@@ -141,12 +153,16 @@ export function RompimentosPage() {
     for (const r of rows) set.add(`${r.idade_dias ?? '-'} ${r.idade_unidade === 'hora' ? 'horas' : 'dias'}`);
     return [...set].sort((a, b) => Number(a.split(' ')[0]) - Number(b.split(' ')[0]));
   }, [rows]);
+  const clientesOpts = useMemo(() => [...new Set(rows.map(clienteNome).filter(Boolean))].sort(), [rows]);
+  const obrasOpts = useMemo(() => [...new Set(rows.filter((r) => clienteFiltro === 'todas' || clienteNome(r) === clienteFiltro).map(obraNome).filter(Boolean))].sort(), [rows, clienteFiltro]);
 
   const filtradas = useMemo(() => rows.filter((r) => {
     const tipoNome = r.material_test_types?.nome ?? r.material_test_types?.codigo ?? 'compressao';
     const tipoKey = normalize(tipoNome).includes('compress') ? 'compressao' : normalize(tipoNome).replace(/\s+/g, '_') || 'outro';
     if (tipoFiltro !== 'todas' && tipoKey !== tipoFiltro) return false;
     if (idadeFiltro !== 'todas' && idade(r) !== idadeFiltro) return false;
+    if (clienteFiltro !== 'todas' && clienteNome(r) !== clienteFiltro) return false;
+    if (obraFiltro !== 'todas' && obraNome(r) !== obraFiltro) return false;
     const busca = normalize([cpNumero(r), r.codigo, nf(r), r.concretagens?.numero_relatorio, r.concretagens?.codigo, r.concretagens?.client_works?.nome].join(' '));
     if (nfFiltro.trim() && !busca.includes(normalize(nfFiltro))) return false;
     if (janela !== 'todos') {
@@ -162,13 +178,18 @@ export function RompimentosPage() {
       if (res == null || esp == null || res >= esp || !naIdade) return false;
     }
     return true;
-  }), [rows, tipoFiltro, idadeFiltro, nfFiltro, janela, dataRef, mostrarLancados, mostrarInsatisf, idadeControle]);
+  }), [rows, tipoFiltro, idadeFiltro, nfFiltro, janela, dataRef, mostrarLancados, mostrarInsatisf, idadeControle, clienteFiltro, obraFiltro]);
 
   // Contadores globais vindos da RPC (corretos independentemente do recorte carregado na grade).
   const countPend = resumoQ.data?.pendente ?? 0;
   const countAtr = resumoQ.data?.atrasado ?? 0;
   const countRom = resumoQ.data?.rompido ?? 0;
   const countIns = resumoQ.data?.insatisfatorio ?? 0;
+  const PAGE_SIZE = 25;
+  const totalPages = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE));
+  const pageSafe = Math.min(page, totalPages - 1);
+  const pageStart = pageSafe * PAGE_SIZE;
+  const pageRows = filtradas.slice(pageStart, pageStart + PAGE_SIZE);
 
   function patch(id: string, values: Partial<EditState>) { setEdits((s) => ({ ...s, [id]: { ...(s[id] ?? {}), ...values } })); }
   function effectiveData(cp: CpRompimento): string {
@@ -176,7 +197,7 @@ export function RompimentosPage() {
     const saved = resultadoAtual(cp);
     return e?.data ?? saved?.data_rompimento ?? (adotarPrevista ? cp.data_prevista_rompimento ?? '' : adotarReferencia ? dataRef : '');
   }
-  function effectiveHora(cp: CpRompimento): string { return edits[cp.id]?.hora ?? resultadoAtual(cp)?.hora_rompimento ?? ''; }
+  function effectiveHora(cp: CpRompimento): string { return edits[cp.id]?.hora ?? resultadoAtual(cp)?.hora_rompimento ?? ((adotarPrevista || adotarReferencia) ? horaRef : ''); }
   function effectiveValor(cp: CpRompimento): string { return edits[cp.id]?.valor ?? (resultadoAtual(cp)?.resultado_valor != null ? String(resultadoAtual(cp)?.resultado_valor) : ''); }
   function effectiveCarga(cp: CpRompimento): string { return edits[cp.id]?.carga ?? (resultadoAtual(cp)?.carga_ruptura_kn != null ? String(resultadoAtual(cp)?.carga_ruptura_kn) : ''); }
   function effectiveTipo(cp: CpRompimento): string { return edits[cp.id]?.tipo_ruptura ?? resultadoAtual(cp)?.tipo_ruptura ?? ''; }
@@ -450,18 +471,18 @@ export function RompimentosPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Tipo de ensaio</span><select className="input" value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)}><option value="todas">Todos</option>{tipos.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Idade</span><select className="input" value={idadeFiltro} onChange={(e) => setIdadeFiltro(e.target.value)}><option value="todas">Todas</option>{idades.map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
-          <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Buscar</span><input className="input" placeholder="Nº relatório, NF, código ou numeração" value={nfFiltro} onChange={(e) => setNfFiltro(e.target.value)} /></label>
+          <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Buscar</span><input className="input" placeholder="Nº relatório, NF, código ou numeração" value={nfFiltro} onChange={(e) => setNfFiltro(e.target.value)} /></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Cliente / construtora</span><select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setObraFiltro('todas'); setPage(0); }}><option value="todas">Todos</option>{clientesOpts.map((c) => <option key={c} value={c}>{c}</option>)}</select></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Obra</span><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{obrasOpts.map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
         </div>
         <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 text-sm font-bold"><input type="radio" checked={janela === 'ate'} onChange={() => setJanela('ate')} /> Até o Dia Ref.</label>
             <label className="flex items-center gap-2 text-sm font-bold"><input type="radio" checked={janela === 'dia'} onChange={() => setJanela('dia')} /> Do Dia Ref.</label>
             <label className="flex items-center gap-2 text-sm font-bold"><input type="radio" checked={janela === 'todos'} onChange={() => setJanela('todos')} /> Todos</label>
-            <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Data de referência</span><input className="input" type="date" value={dataRef} onChange={(e) => setDataRef(e.target.value)} /></label>
+            <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Data de referência</span><input className="input" type="date" value={dataRef} onChange={(e) => setDataRef(e.target.value)} /></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Hora de referência</span><input className="input max-w-[120px]" type="time" value={horaRef} onChange={(e) => setHoraRef(e.target.value)} /></label>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-4 text-sm font-bold">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={adotarPrevista} onChange={(e) => { setAdotarPrevista(e.target.checked); if (e.target.checked) setAdotarReferencia(false); }} /> Adotar Data Prevista</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={adotarReferencia} onChange={(e) => { setAdotarReferencia(e.target.checked); if (e.target.checked) setAdotarPrevista(false); }} /> Adotar Data Referência</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={adotarPrevista} onChange={(e) => { setAdotarPrevista(e.target.checked); if (e.target.checked) setAdotarReferencia(false); }} /> Adotar Data e Hora Prevista</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={adotarReferencia} onChange={(e) => { setAdotarReferencia(e.target.checked); if (e.target.checked) setAdotarPrevista(false); }} /> Adotar Data e Hora Referência</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={mostrarLancados} onChange={(e) => setMostrarLancados(e.target.checked)} /> Mostrar Lançados</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={mostrarInsatisf} onChange={(e) => setMostrarInsatisf(e.target.checked)} /> Mostrar Apenas Insatisfatórios</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={entrarCarga} onChange={(e) => setEntrarCarga(e.target.checked)} /> Entrar carga (converte p/ MPa)</label>
@@ -496,7 +517,8 @@ export function RompimentosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtradas.map((r, rowIdx) => {
+                {pageRows.map((r, localIdx) => {
+                  const rowIdx = pageStart + localIdx;
                   const res = resultadoAtual(r);
                   const esp = esperado(r);
                   const naIdadeControle = isIdadeControle(r);
@@ -508,7 +530,7 @@ export function RompimentosPage() {
                       <td className="px-3 py-2 align-top"><div className="font-black text-slate-950 dark:text-slate-50">{cpNumero(r)}</div>{campoNumeracao ? <button type="button" className="text-xs font-bold text-blue-600" onClick={() => { setNumCp(r); setNumValor(cpNumero(r)); }}>+ numeração lab</button> : null}<div className="mt-1 text-[11px] text-slate-400">{statusBadge(r)}</div></td>
                       <td className="px-3 py-2 align-top"><span className={isAtrasado(r, dataRef) ? 'font-black text-red-600' : 'font-black'}>{fmtDate(r.data_prevista_rompimento)}{isAtrasado(r, dataRef) ? ' !' : ''}</span></td>
                       <td className="px-3 py-2"><div className="flex gap-2"><input className="input" type="date" value={effectiveData(r)} onChange={(e) => patch(r.id, { data: e.target.value })} /><input className="input max-w-[90px]" type="time" value={effectiveHora(r)} onChange={(e) => patch(r.id, { hora: e.target.value })} /></div></td>
-                      <td className="px-3 py-2"><input id={`romp-val-${rowIdx}`} className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: e.target.value } : { valor: e.target.value })} onPaste={(e) => handlePaste(e, rowIdx)} title="Cole uma coluna do Excel para preencher vários CPs · Enter pula para o próximo" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const n = document.getElementById(`romp-val-${rowIdx + 1}`) as HTMLInputElement | null; n?.focus(); n?.select(); } }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); return (effectiveValor(r) || effectiveCarga(r)) && mpaForaFaixa(mpa) ? <div className="mt-1 text-xs font-bold text-amber-600">⚠ MPa fora de faixa plausível (verifique a digitação)</div> : null; })()}</td>
+                      <td className="px-3 py-2"><input id={`romp-val-${rowIdx}`} className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: sanitizeDecimal(e.target.value) } : { valor: sanitizeDecimal(e.target.value) })} onPaste={(e) => handlePaste(e, rowIdx)} title="Cole uma coluna do Excel para preencher vários CPs · Enter pula para o próximo" onKeyDown={(e) => { if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) { e.preventDefault(); const n = document.getElementById(`romp-val-${rowIdx + 1}`) as HTMLInputElement | null; n?.focus(); n?.select(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = document.getElementById(`romp-val-${rowIdx - 1}`) as HTMLInputElement | null; pv?.focus(); pv?.select(); } }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); return (effectiveValor(r) || effectiveCarga(r)) && mpaForaFaixa(mpa) ? <div className="mt-1 text-xs font-bold text-amber-600">⚠ MPa fora de faixa plausível (verifique a digitação)</div> : null; })()}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); const esp2 = esperado(r); return (effectiveValor(r) || effectiveCarga(r)) && Number.isFinite(mpa) && mpa > 0 && esp2 != null && esp2 > 0 && mpa < 0.8 * esp2 ? <div className="mt-1 text-xs font-bold text-red-600">⚠ Resultado 80% menor que o esperado</div> : null; })()}</td>
                       <td className="px-3 py-2"><span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-800">{esp == null ? 'sem critério' : nfmt(esp, 1)}</span>{ins ? <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold text-red-700">abaixo do fck</span> : abaixoFck ? <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">acompanhamento</span> : null}</td>
                       <td className="px-3 py-2 font-semibold">{nf(r)}{r.concretagens?.numero_relatorio ? <div className="text-[11px] font-normal text-slate-400">Rel. {r.concretagens.numero_relatorio}</div> : null}</td><td className="px-3 py-2 font-semibold">{idade(r)}</td>
                       {campoTipo ? <td className="px-3 py-2"><select className="input min-w-[82px]" value={effectiveTipo(r)} onChange={(e) => patch(r.id, { tipo_ruptura: e.target.value })}><option value="">-</option>{['A', 'B', 'C', 'D', 'E', 'F'].map((x) => <option key={x} value={x}>{x}</option>)}</select></td> : null}
@@ -523,6 +545,14 @@ export function RompimentosPage() {
           </div>
         </Card>
       )}
+
+      {totalPages > 1 ? (
+        <div className="flex items-center justify-center gap-3 text-sm">
+          <Button variant="secondary" disabled={pageSafe <= 0} onClick={() => setPage(pageSafe - 1)}>Anterior</Button>
+          <span className="font-bold text-slate-600 dark:text-slate-300">Página {pageSafe + 1} de {totalPages} · {filtradas.length} CP(s)</span>
+          <Button variant="secondary" disabled={pageSafe >= totalPages - 1} onClick={() => setPage(pageSafe + 1)}>Próxima</Button>
+        </div>
+      ) : null}
 
       <Modal open={!!curvaCp} wide title={'Curva / exemplar - ' + (curvaCp ? cpNumero(curvaCp) : '')} onClose={() => setCurvaCp(null)}>
         <div className="space-y-3 text-sm"><p className="text-slate-600 dark:text-slate-300">CPs do mesmo exemplar/amostra, para conferir evolução por idade.</p><table className="w-full text-left"><thead><tr className="text-xs uppercase text-slate-500"><th>CP</th><th>Idade</th><th>Data</th><th>Resultado</th><th>Esperado</th></tr></thead><tbody>{curvaRows.map((r) => <tr key={r.id} className="border-t border-slate-100"><td className="py-2 font-bold">{cpNumero(r)}</td><td>{idade(r)}</td><td>{fmtDate(resultadoAtual(r)?.data_rompimento ?? r.data_prevista_rompimento)}</td><td>{nfmt(resultadoAtual(r)?.resultado_valor ?? null, 1)}</td><td>{nfmt(esperado(r), 1)}</td></tr>)}</tbody></table></div>
