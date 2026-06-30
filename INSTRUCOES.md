@@ -1,15 +1,14 @@
-# INSTRUÇÕES — Patch v135 (delegação ligada à aprovação de laudo)
+# INSTRUÇÕES — Patch v136 (UI de documentos na DocGate)
 
-Patch **cumulativo** sobre v134. Copiar por cima do source e dar push (GitHub → Netlify CI).
-(Se houver releases paralelas mais novas que v134 na pasta, prefira o **completo-v135** como base.)
+Patch **cumulativo** sobre v135 (se houver release paralela mais nova, prefira o **completo-v136**).
 
-## Arquivos do patch (frontend)
-- `public/sw.js` · `src/lib/telemetry/core.ts`        — bump v135
-- `src/lib/api/delegacoes.ts`                         — temDelegacaoAprovacao()
-- `src/pages/concreto/LaudosPage.tsx`                 — botão Emitir por delegação + banner
-- `SOURCE_VERSION.md` · `docs/CHANGELOG-v135.md`
+## Arquivos do patch (frontend — sem mudança de banco)
+- `public/sw.js` · `src/lib/telemetry/core.ts`        — bump v136
+- `src/lib/api/docgate.ts`                            — anexar/decidir/signed (PostgREST + storage)
+- `src/pages/gestao/DocGatePage.tsx`                  — ações Anexar/Baixar/Aprovar/Recusar + modais
+- `SOURCE_VERSION.md` · `docs/CHANGELOG-v136.md`
 
-## Backend (já aplicado via MCP — sem ação no push)
-- Migration **112** aplicada. Referência em `docs/112_aprovar_laudo_aceita_delegacao.sql`.
+## Backend
+- **Sem migration.** Usa as tabelas/policies da Onda 2 (lab_documents/events) e o bucket `anexos` (policy nc_anexos_rw, path por tenant).
 
 ## Gate (rodado nesta sessão): check-source OK · tsc 0 erros · vitest 23/23 · vite build OK
