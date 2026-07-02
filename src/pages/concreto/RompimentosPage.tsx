@@ -1,4 +1,4 @@
-import { useMemo, useState, type ClipboardEvent } from 'react';
+import { useEffect, useMemo, useState, type ClipboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -8,6 +8,7 @@ import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { listReference } from '../../lib/api/client';
 import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaboradores';
+import { cpPorQr } from '../../lib/api/etiquetas';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { CAMPOS_ENSAIO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
 import { DIMENSOES_CP, cargaParaMpa, relacaoHD, type UnidadeCarga } from '../../lib/concreto/cp';
@@ -111,6 +112,7 @@ export function RompimentosPage() {
   const [clienteFiltro, setClienteFiltro] = useState('todas');
   const [obraFiltro, setObraFiltro] = useState('todas');
   const [page, setPage] = useState(0);
+  const [focoCpId, setFocoCpId] = useState<string | null>(null);
 
   const carregarTudo = mostrarLancados || mostrarInsatisf;
   const cpsQ = useQuery({ queryKey: ['rompimentos', member?.tenant_id, carregarTudo], queryFn: () => listCpsRompimento(member?.tenant_id, carregarTudo ? undefined : { situacao: 'pendente' }) });
@@ -193,6 +195,35 @@ export function RompimentosPage() {
   const pageSafe = Math.min(page, totalPages - 1);
   const pageStart = pageSafe * PAGE_SIZE;
   const pageRows = filtradas.slice(pageStart, pageStart + PAGE_SIZE);
+
+  // Fase 2 das etiquetas: leitor USB de QR age como teclado e digita "CP:<uuid>" na busca.
+  // Localiza o CP no vivo (RLS), zera filtros que poderiam escondê-lo, isola pelo código
+  // (único por CP) e agenda o foco no campo de carga.
+  async function bipEtiqueta(cpId: string) {
+    try {
+      const cp = await cpPorQr(cpId);
+      if (!cp) { toast('CP da etiqueta não encontrado neste laboratório.', 'error'); return; }
+      setTipoFiltro('todas'); setIdadeFiltro('todas'); setClienteFiltro('todas'); setObraFiltro('todas');
+      setJanela('todos'); setMostrarInsatisf(false); setPage(0);
+      if (cp.lancado || (cp.situacao && cp.situacao !== 'pendente')) setMostrarLancados(true);
+      setNfFiltro(cp.codigo ?? cp.numeracao_lab ?? '');
+      setFocoCpId(cp.id);
+      const rotulo = cp.numeracao_lab || cp.codigo || '';
+      if (cp.lancado) toast('CP ' + rotulo + ' já lançado — exibindo para conferência.', 'info');
+      else if (cp.situacao === 'descartado') toast('CP ' + rotulo + ' está descartado.', 'info');
+      else toast('CP ' + rotulo + ' localizado.', 'success');
+    } catch (e) { toast((e as Error).message, 'error'); }
+  }
+  useEffect(() => {
+    if (!focoCpId) return;
+    const idx = pageRows.findIndex((r) => r.id === focoCpId);
+    if (idx < 0) return; // aguardando refetch (lançados) ou re-filtro
+    const el = document.getElementById(`romp-val-${idx}`) as HTMLInputElement | null;
+    if (!el) return;
+    el.focus(); el.select();
+    el.scrollIntoView({ block: 'center' });
+    setFocoCpId(null);
+  }, [focoCpId, pageRows]);
 
   function patch(id: string, values: Partial<EditState>) { setEdits((s) => ({ ...s, [id]: { ...(s[id] ?? {}), ...values } })); }
   function effectiveData(cp: CpRompimento): string {
@@ -475,7 +506,7 @@ export function RompimentosPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Tipo de ensaio</span><select className="input" value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)}><option value="todas">Todos</option>{tipos.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Idade</span><select className="input" value={idadeFiltro} onChange={(e) => setIdadeFiltro(e.target.value)}><option value="todas">Todas</option>{idades.map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
-          <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Buscar</span><input className="input" placeholder="Nº relatório, NF, código ou numeração" value={nfFiltro} onChange={(e) => setNfFiltro(e.target.value)} /></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Cliente / construtora</span><select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setObraFiltro('todas'); setPage(0); }}><option value="todas">Todos</option>{clientesOpts.map((c) => <option key={c} value={c}>{c}</option>)}</select></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Obra</span><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{obrasOpts.map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
+          <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Buscar</span><input className="input" placeholder="Nº relatório, NF, código, numeração ou bipe o QR da etiqueta" value={nfFiltro} onChange={(e) => { const v = e.target.value; const m = /^CP:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/.exec(v.trim()); if (m) { setNfFiltro(''); void bipEtiqueta(m[1]); } else setNfFiltro(v); }} /></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Cliente / construtora</span><select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setObraFiltro('todas'); setPage(0); }}><option value="todas">Todos</option>{clientesOpts.map((c) => <option key={c} value={c}>{c}</option>)}</select></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Obra</span><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{obrasOpts.map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
         </div>
         <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-4">

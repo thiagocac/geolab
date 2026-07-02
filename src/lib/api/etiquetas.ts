@@ -6,6 +6,7 @@ import { env } from '../env';
 // advisory lock, idempotente) + EF generate-etiquetas-cp-pdf (verify_jwt).
 const db = supabase as unknown as {
   rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+  from: (t: string) => any;
 };
 
 export type NumeracaoLote = { ok?: boolean; error?: string; atribuidos?: number; ja_numerados?: number; primeiro?: string | null; ultimo?: string | null; ano?: string };
@@ -32,4 +33,20 @@ export async function etiquetasCpPdfUrl(concretagemId: string, layout: 'rolo' | 
   const resp = await fetch(env.supabaseUrl + '/functions/v1/generate-etiquetas-cp-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token }, body: JSON.stringify(body) });
   if (!resp.ok) { const tx = await resp.text(); throw new Error('Falha ao gerar etiquetas: ' + tx.slice(0, 160)); }
   return URL.createObjectURL(await resp.blob());
+}
+
+// Fase 2 do QR: localizar um CP bipado ("CP:<uuid>", leitor USB age como teclado) para a
+// tela de Rompimentos focar o campo de carga. RLS escopa por tenant (outro lab -> null).
+export type CpQr = { id: string; codigo: string | null; numeracao_lab: string | null; situacao: string | null; lancado: boolean };
+export async function cpPorQr(cpId: string): Promise<CpQr | null> {
+  const { data, error } = await db.from('corpos_prova')
+    .select('id, codigo, numeracao_lab, situacao, material_tests(resultado_valor)')
+    .eq('id', cpId).is('deleted_at', null).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const arr = Array.isArray(data.material_tests) ? (data.material_tests as Record<string, unknown>[]) : [];
+  return {
+    id: String(data.id), codigo: data.codigo ?? null, numeracao_lab: data.numeracao_lab ?? null,
+    situacao: data.situacao ?? null, lancado: arr.some((t) => t.resultado_valor != null),
+  };
 }
