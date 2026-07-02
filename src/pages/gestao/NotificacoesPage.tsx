@@ -11,8 +11,9 @@ const EVENTS: [string, string][] = [
   ['resultado_abaixo_fck', 'Resultado < fck na idade de controle'],
   ['cp_atrasado', 'CP atrasado (rompimento vencido)'],
   ['calibracao_vencendo', 'Calibracao de equipamento vencendo (30d)'],
+  ['certificacao_vencendo', 'Certificacao de colaborador vencendo (30d)'],
 ];
-const EVENT_LABELS: Record<string, string> = { laudo_pronto: 'Laudo pronto', resultado_abaixo_fck: 'Resultado < fck (idade de controle)', cp_atrasado: 'CP atrasado', calibracao_vencendo: 'Calibracao vencendo', digest_agenda: 'Resumo da agenda', digest_nc: 'Resumo de NC', system: 'Sistema' };
+const EVENT_LABELS: Record<string, string> = { laudo_pronto: 'Laudo pronto', resultado_abaixo_fck: 'Resultado < fck (idade de controle)', cp_atrasado: 'CP atrasado', calibracao_vencendo: 'Calibracao vencendo', certificacao_vencendo: 'Certificacao vencendo', digest_agenda: 'Resumo da agenda', digest_nc: 'Resumo de NC', system: 'Sistema' };
 const labelEvt = (k: string): string => EVENT_LABELS[k] ?? k;
 const OFF = ['off', 'none', 'disabled'];
 const statusCor = (s: string): string => s === 'sent' ? '#16a34a' : s === 'queued' ? 'var(--ink-faint)' : s === 'failed' || s === 'suppressed' ? 'var(--magenta)' : '#d97706';

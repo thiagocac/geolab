@@ -11,7 +11,7 @@ import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEd
 import { createConcretagem, listTracosComFck } from '../../lib/api/concretagem';
 import { TracoOptions } from '../../components/TracoOptions';
 import { listReference } from '../../lib/api/client';
-import { listColaboradores } from '../../lib/api/colaboradores';
+import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaboradores';
 import { normalizePadroes, padroesMoldagemPadrao, padroesToDb, toNumber, type PadraoMoldagem } from '../../lib/concreto';
 
 const str = (v: unknown) => String(v ?? '').trim();
@@ -30,7 +30,8 @@ export function NovaProgramacaoPage() {
   const clientes = useQuery({ queryKey: ['ref', 'lab_clients', 'prog'], queryFn: () => listReference('lab_clients', 'razao_social') });
   const obras = useQuery({ queryKey: ['ref', 'client_works', form.client_id, 'prog'], queryFn: () => listReference('client_works', 'nome', form.client_id ? { client_id: String(form.client_id) } : undefined), enabled: !!form.client_id });
   const tracos = useQuery({ queryKey: ['tracos-fck', form.work_id, form.client_id], queryFn: () => listTracosComFck(form.work_id ? String(form.work_id) : null, form.client_id ? String(form.client_id) : null) });
-  const moldadores = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradores });
+  const colabRef = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradoresRef });
+  const moldadores = filtrarPorFuncao(colabRef.data ?? [], 'Moldador');
 
   function patch(k: string, v: unknown) { setForm((s) => ({ ...s, [k]: v })); }
 
@@ -79,7 +80,7 @@ export function NovaProgramacaoPage() {
             <Field label="Volume previsto (m³)" type="number" value={val(form.volume_programado_m3)} onChange={(e) => patch('volume_programado_m3', e.target.value)} />
             <Field label="Local / peça" value={val(form.local_texto)} onChange={(e) => patch('local_texto', e.target.value)} />
             <SelectField label="Dimensão CP" value={val(form.dimensao_cp)} onChange={(e) => patch('dimensao_cp', e.target.value)}><option value="100x200">100 x 200 mm</option><option value="150x300">150 x 300 mm</option></SelectField>
-            <SelectField label="Moldador" value={val(form.moldador_id)} onChange={(e) => patch('moldador_id', e.target.value)}><option value="">A definir</option>{(moldadores.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</SelectField>
+            <SelectField label="Moldador" value={val(form.moldador_id)} onChange={(e) => patch('moldador_id', e.target.value)}><option value="">A definir</option>{moldadores.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</SelectField>
           </div>
           <TextArea label="Observações de acesso / logística" value={val(form.observacoes)} onChange={(e) => patch('observacoes', e.target.value)} />
         </div>

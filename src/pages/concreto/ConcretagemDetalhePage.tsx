@@ -15,7 +15,7 @@ import { TracoOptions } from '../../components/TracoOptions';
 import { TimelineList } from '../../components/TimelineList';
 import { listConcretagemTimeline, listWorkTimeline } from '../../lib/api/timeline';
 import { getConfigLab } from '../../lib/api/preferencias';
-import { listColaboradores } from '../../lib/api/colaboradores';
+import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaboradores';
 import { listPecasObra } from '../../lib/api/estrutura';
 import { CAMPOS_CONCRETAGEM, CAMPOS_RECEBIMENTO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
 import { bumpNumeracao, normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../../lib/concreto';
@@ -85,7 +85,8 @@ export function ConcretagemDetalhePage() {
     return Promise.all(linhas.map(async (r) => ({ ...r, url: await signedEvidencia(r.path).catch(() => '') })));
   } });
   const tracos = useQuery({ queryKey: ['tracos-fck', conc.data?.work_id, conc.data?.client_id], queryFn: () => listTracosComFck(conc.data?.work_id ?? null, conc.data?.client_id ?? null), enabled: !!conc.data });
-  const colaboradores = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradores });
+  const colabRef = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradoresRef });
+  const colaboradores = filtrarPorFuncao(colabRef.data ?? [], 'Moldador');
   const cfg = useQuery({ queryKey: ['config_concretagem_recebimento', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
   const pecas = useQuery({ queryKey: ['pecas-conc-detail', conc.data?.work_id ?? 'none'], queryFn: () => listPecasObra(conc.data?.work_id ?? ''), enabled: !!conc.data?.work_id });
   const [tlScope, setTlScope] = useState<'concretagem' | 'obra'>('concretagem');
@@ -269,7 +270,7 @@ export function ConcretagemDetalhePage() {
               {onC('local_peca') && (pecas.data ?? []).length ? <SelectField label="Peça da estrutura" value="" onChange={(e) => { const pc = (pecas.data ?? []).find((x) => x.id === e.target.value); if (pc) patch('local_texto', pc.label); }}><option value="">Selecionar para preencher local</option>{(pecas.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</SelectField> : null}
               {onC('local_peca') ? <Field label="Local / peça" value={val(form.local_texto)} onChange={(e) => patch('local_texto', e.target.value)} /> : null}
               {onC('volume_programado') ? <><Field label="Volume programado (m³)" type="number" value={val(form.volume_programado_m3)} onChange={(e) => patch('volume_programado_m3', e.target.value)} /><Field label="Volume lançado (m³)" type="number" value={val(form.volume_lancado_m3)} onChange={(e) => patch('volume_lancado_m3', e.target.value)} /></> : null}
-              {onC('moldador') ? <SelectField label="Moldador" value={val(form.moldador_id)} onChange={(e) => patch('moldador_id', e.target.value)}><option value="">-</option>{(colaboradores.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</SelectField> : null}
+              {onC('moldador') ? <SelectField label="Moldador" value={val(form.moldador_id)} onChange={(e) => patch('moldador_id', e.target.value)}><option value="">-</option>{colaboradores.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</SelectField> : null}
               {onC('dimensao_cp') ? <SelectField label="Dimensão CP" value={val(form.dimensao_cp)} onChange={(e) => patch('dimensao_cp', e.target.value)}><option value="100x200">100 x 200 mm</option><option value="150x300">150 x 300 mm</option><option value="100x100x400">100 x 100 x 400 mm</option><option value="150x150x500">150 x 150 x 500 mm</option></SelectField> : null}
               {onC('clima') ? <Field label="Clima" value={val(form.clima)} onChange={(e) => patch('clima', e.target.value)} /> : null}
               {onC('temperatura_ambiente') ? <Field label="Temperatura ambiente (°C)" type="number" value={val(form.temperatura_ambiente_c)} onChange={(e) => patch('temperatura_ambiente_c', e.target.value)} /> : null}
