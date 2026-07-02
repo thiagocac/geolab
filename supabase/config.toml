@@ -64,3 +64,8 @@ verify_jwt = false
 # gates internos (preferência, papel, quiet-hours, allowlist, supressão, dispatch/dry-run).
 [functions.send-notification]
 verify_jwt = false
+
+# generate-etiquetas-cp-pdf: etiquetas de CP com QR (rolo 60x40 / A4 21-up). Numeracao
+# sequencial lab+ano via RPC atribuir_numeracao_cp_lote (128/129). Auth: JWT (RLS decide).
+[functions.generate-etiquetas-cp-pdf]
+verify_jwt = true

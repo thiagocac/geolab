@@ -20,7 +20,8 @@ import { listPecasObra } from '../../lib/api/estrutura';
 import { CAMPOS_CONCRETAGEM, CAMPOS_RECEBIMENTO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
 import { bumpNumeracao, normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../../lib/concreto';
 
-import { saveBlob as dl } from '../../lib/pdf';
+import { openDeferredTab, saveBlob as dl } from '../../lib/pdf';
+import { etiquetasCpPdfUrl, numerarCps } from '../../lib/api/etiquetas';
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown): number | null => toNumber(v as number | string | null | undefined);
 const val = (v: unknown) => v == null ? '' : String(v);
@@ -202,6 +203,16 @@ export function ConcretagemDetalhePage() {
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function ficha() { try { dl(await invokeFicha(id), 'ficha-moldagem-' + (conc.data?.codigo ?? id.slice(0, 6)) + '.pdf'); } catch (e) { toast((e as Error).message, 'error'); } }
+  const [busyEtq, setBusyEtq] = useState(false);
+  async function etiquetas(layout: 'rolo' | 'a4') {
+    setBusyEtq(true);
+    const tab = openDeferredTab('Gerando etiquetas…');
+    try {
+      await numerarCps(id); // idempotente: só preenche CPs sem numeração (NNNN/AA, lab+ano)
+      tab.set(await etiquetasCpPdfUrl(id, layout));
+    } catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
+    finally { setBusyEtq(false); }
+  }
   async function onUploadEvidencia(file: File | null) {
     if (!file || !member) return;
     setUpEvi(true);
@@ -252,7 +263,7 @@ export function ConcretagemDetalhePage() {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setStep(1)} className={'rounded-full px-3 py-1.5 text-sm font-black ' + (step === 1 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200')}>1 · Concretagem</button>
         <button type="button" onClick={() => setStep(2)} className={'rounded-full px-3 py-1.5 text-sm font-black ' + (step === 2 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200')}>2 · Caminhões + CPs</button>
-        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" onClick={() => void ficha()}>Gerar ficha PDF</Button>{step === 2 ? <Button variant="secondary" onClick={() => { setFichaCams([]); setFichaConf(null); setFichaOpen(true); }}>Ler ficha preenchida</Button> : null}<Button onClick={abrirCaminhao}>Adicionar caminhão</Button></div>
+        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" onClick={() => void ficha()}>Gerar ficha PDF</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('rolo')}>Etiquetas 60×40 (rolo)</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('a4')}>Etiquetas A4</Button>{step === 2 ? <Button variant="secondary" onClick={() => { setFichaCams([]); setFichaConf(null); setFichaOpen(true); }}>Ler ficha preenchida</Button> : null}<Button onClick={abrirCaminhao}>Adicionar caminhão</Button></div>
       </div>
 
       {step === 1 ? (
