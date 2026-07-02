@@ -26,9 +26,19 @@ export async function getContractFinanceSnapshot(filters: ContractFinanceFilters
   return { kpis: { ...zeroKpis, ...(r?.kpis ?? {}) }, contratos: (r?.contratos ?? []) as ContractFinanceRow[], recebiveis: (r?.recebiveis ?? []) as ReceivableRow[], series: (r?.series ?? {}) as Record<string, Array<Record<string, unknown>>> };
 }
 
-export type PriceItem = { id?: string; escopo: string; escopo_id: string; item_code: string; descricao: string; unidade: string; preco_unitario: number; ativo: boolean };
+export type PriceItem = { id?: string; escopo: string; escopo_id: string; item_code: string; descricao: string; unidade: string; preco_unitario: number; ativo: boolean; tipo_cobranca: string };
+export const TIPO_COBRANCA_OPCOES: { value: string; label: string; unidade: string }[] = [
+  { value: 'por_cp_ensaiado', label: 'Por CP ensaiado (rompido)', unidade: 'cp' },
+  { value: 'por_cp_moldado', label: 'Por CP moldado', unidade: 'cp' },
+  { value: 'por_laudo', label: 'Por laudo emitido', unidade: 'laudo' },
+  { value: 'por_visita', label: 'Por visita do moldador', unidade: 'visita' },
+  { value: 'por_forma', label: 'Por forma', unidade: 'forma' },
+  { value: 'deslocamento', label: 'Deslocamento', unidade: 'km' },
+  { value: 'fixo_mensal', label: 'Fixo mensal', unidade: 'mes' },
+  { value: 'adicional', label: 'Adicional / avulso', unidade: 'un' },
+];
 export async function listPriceItems(escopo: string, escopoId: string): Promise<PriceItem[]> {
-  const { data, error } = await db.from('lab_contract_price_items').select('id, escopo, escopo_id, item_code, descricao, unidade, preco_unitario, ativo').eq('escopo', escopo).eq('escopo_id', escopoId).is('deleted_at', null).order('item_code');
+  const { data, error } = await db.from('lab_contract_price_items').select('id, escopo, escopo_id, item_code, descricao, unidade, preco_unitario, ativo, tipo_cobranca').eq('escopo', escopo).eq('escopo_id', escopoId).is('deleted_at', null).order('item_code');
   if (error) throw new Error(error.message);
   return (data ?? []) as PriceItem[];
 }

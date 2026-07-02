@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, PieChart, Pie, Cell } from 'recharts';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Stat } from '../../components/ui/Stat';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField } from '../../components/ui/Field';
+import { Modal } from '../../components/ui/Modal';
+import { useToast } from '../../lib/toast';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { exportExcel } from '../../lib/export/xlsx';
-import { getContractFinanceSnapshot, type ContractFinanceRow, type ReceivableRow } from '../../lib/api/contractFinance';
+import { getContractFinanceSnapshot, listPriceItems, upsertPriceItem, TIPO_COBRANCA_OPCOES, type ContractFinanceRow, type ReceivableRow, type PriceItem } from '../../lib/api/contractFinance';
 import { useAuth } from '../../lib/auth';
 
 const tipStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, color: 'var(--ink)', fontSize: 12 } as const;
@@ -34,8 +36,62 @@ function ReceivablesTable({ rows }: { rows: ReceivableRow[] }) {
   return <div className="table-scroll"><table className="table"><thead><tr><th>Fatura</th><th>Cliente</th><th>Competência</th><th>Vencimento</th><th>Status</th><th>Dias atraso</th><th>Valor</th></tr></thead><tbody>{rows.map((r) => <tr key={r.id}><td className="font-semibold">{r.numero}</td><td>{r.cliente}</td><td>{r.competencia ?? '-'}</td><td>{r.vencimento ?? '-'}</td><td>{r.status}</td><td className={r.dias_atraso > 0 ? 'font-bold text-red-600' : ''}>{r.dias_atraso}</td><td>{money(r.valor)}</td></tr>)}</tbody></table></div>;
 }
 
+function PrecosTab({ tenantId, podeEditar }: { tenantId: string; podeEditar: boolean }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const q = useQuery({ queryKey: ['price-items', tenantId], enabled: !!tenantId, queryFn: () => listPriceItems('laboratorio', tenantId) });
+  const novo = (): PriceItem => ({ escopo: 'laboratorio', escopo_id: tenantId, item_code: '', descricao: '', unidade: 'un', preco_unitario: 0, ativo: true, tipo_cobranca: 'por_cp_ensaiado' });
+  const [open, setOpen] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [form, setForm] = useState<PriceItem>(novo);
+  const items = q.data ?? [];
+  function abrirNovo() { setEditando(false); setForm(novo()); setOpen(true); }
+  function abrirEdit(it: PriceItem) { setEditando(true); setForm({ ...it }); setOpen(true); }
+  function setTipo(v: string) { const o = TIPO_COBRANCA_OPCOES.find((x) => x.value === v); setForm((s) => ({ ...s, tipo_cobranca: v, unidade: s.unidade && s.unidade !== 'un' ? s.unidade : (o?.unidade ?? 'un'), item_code: s.item_code || v, descricao: s.descricao || (o?.label ?? '') })); }
+  async function salvar() {
+    if (!form.item_code.trim() || !form.descricao.trim()) { toast('Informe codigo e descricao.', 'info'); return; }
+    try { await upsertPriceItem({ ...form, escopo: 'laboratorio', escopo_id: tenantId, preco_unitario: Number(form.preco_unitario) || 0 }); await qc.invalidateQueries({ queryKey: ['price-items', tenantId] }); setOpen(false); toast('Item salvo.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); }
+  }
+  async function toggleAtivo(it: PriceItem) {
+    try { await upsertPriceItem({ ...it, ativo: !it.ativo }); await qc.invalidateQueries({ queryKey: ['price-items', tenantId] }); toast(it.ativo ? 'Item desativado.' : 'Item ativado.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); }
+  }
+  const labelTipo = (v: string) => TIPO_COBRANCA_OPCOES.find((x) => x.value === v)?.label ?? v;
+  return (
+    <Card>
+      <CardHeader title="Tabela de precos do laboratorio" kicker="Catalogo padrao (escopo laboratorio)">Itens de cobranca e precos-base usados nas medicoes. Sobreposicoes por cliente/obra/contrato sao um proximo passo.</CardHeader>
+      <div className="space-y-3 p-4">
+        {podeEditar ? <div className="flex justify-end"><Button onClick={abrirNovo}>Adicionar item</Button></div> : <p className="text-sm text-slate-500">Apenas o admin do laboratorio edita a tabela de precos.</p>}
+        {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : items.length === 0 ? <EmptyState /> : (
+          <div className="table-scroll"><table className="table"><thead><tr><th>Codigo</th><th>Descricao</th><th>Cobranca</th><th>Unidade</th><th>Preco</th><th>Status</th>{podeEditar ? <th>Acoes</th> : null}</tr></thead><tbody>
+            {items.map((it) => (
+              <tr key={it.id ?? it.item_code} className={it.ativo ? '' : 'opacity-50'}>
+                <td className="font-semibold">{it.item_code}</td><td>{it.descricao}</td><td>{labelTipo(it.tipo_cobranca)}</td><td>{it.unidade}</td><td>{money(Number(it.preco_unitario))}</td><td>{it.ativo ? 'Ativo' : 'Inativo'}</td>
+                {podeEditar ? <td><div className="flex gap-3"><button type="button" className="font-bold text-blue-700" onClick={() => abrirEdit(it)}>Editar</button><button type="button" className="font-bold text-blue-700" onClick={() => void toggleAtivo(it)}>{it.ativo ? 'Desativar' : 'Ativar'}</button></div></td> : null}
+              </tr>
+            ))}
+          </tbody></table></div>
+        )}
+      </div>
+      <Modal open={open} title={editando ? 'Editar item de preco' : 'Novo item de preco'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()}>Salvar</Button></>}>
+        <div className="grid gap-3">
+          <SelectField label="Tipo de cobranca" value={form.tipo_cobranca} onChange={(e) => setTipo(e.target.value)}>{TIPO_COBRANCA_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
+          <Field label="Codigo (unico no catalogo)" value={form.item_code} onChange={(e) => setForm((s) => ({ ...s, item_code: e.target.value }))} disabled={editando} />
+          <Field label="Descricao" value={form.descricao} onChange={(e) => setForm((s) => ({ ...s, descricao: e.target.value }))} />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Unidade" value={form.unidade} onChange={(e) => setForm((s) => ({ ...s, unidade: e.target.value }))} />
+            <Field label="Preco unitario (R$)" type="number" value={String(form.preco_unitario)} onChange={(e) => setForm((s) => ({ ...s, preco_unitario: Number(e.target.value) || 0 }))} />
+          </div>
+          <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={form.ativo} onChange={(e) => setForm((s) => ({ ...s, ativo: e.target.checked }))} /> Ativo</label>
+        </div>
+      </Modal>
+    </Card>
+  );
+}
+
 export function ContratosFinanceiroPage() {
-  const { member } = useAuth();
+  const { member, hasRole } = useAuth();
   const [from, setFrom] = useState(startOfMonth());
   const [to, setTo] = useState(today());
   const [tab, setTab] = useState<Tab>('visao');
@@ -69,7 +125,7 @@ export function ContratosFinanceiroPage() {
         {tab === 'contratos' ? <Card><CardHeader title="Carteira de contratos" kicker="Contratos" /><div className="p-4"><ContractsTable rows={data.contratos} /></div></Card> : null}
         {tab === 'medicoes' ? <Card><CardHeader title="Medições por período" kicker="Receita operacional" /><div className="h-80 p-4"><ResponsiveContainer width="100%" height="100%"><BarChart data={(data.series.medicoes_mensal ?? []) as Array<Record<string, unknown>>}><CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} /><XAxis dataKey="label" /><YAxis /><Tooltip contentStyle={tipStyle} formatter={(v) => money(Number(v))} /><Bar dataKey="valor" fill="#182863" radius={[7, 7, 0, 0]} /></BarChart></ResponsiveContainer></div></Card> : null}
         {tab === 'receber' ? <Card><CardHeader title="Contas a receber" kicker="Financeiro" /><div className="p-4"><ReceivablesTable rows={data.recebiveis} /></div></Card> : null}
-        {tab === 'precos' ? <Card><CardHeader title="Estrutura de preços" kicker="Contratos" >Use a tabela de preços por contrato, cliente ou obra para automatizar medições. Itens típicos: moldagem, rompimento por CP, laudo, visita técnica, coleta adicional, fôrmas e deslocamento.</CardHeader><div className="grid gap-3 p-5 md:grid-cols-3"><Stat label="Preço médio por ensaio" value={money(Number(data.series.precos?.[0]?.valor ?? 0))} /><Stat label="Itens sem preço" value={Number(data.series.precos?.[0]?.pendentes ?? 0)} /><Stat label="Contratos sem reajuste" value={Number(data.series.precos?.[0]?.sem_reajuste ?? 0)} /></div></Card> : null}
+        {tab === 'precos' ? <PrecosTab tenantId={member?.tenant_id ?? ''} podeEditar={hasRole('admin', 'admin_consulte')} /> : null}
         {tab === 'riscos' ? <div className="grid gap-4 lg:grid-cols-2"><Card><CardHeader title="Risco financeiro" kicker="Priorização" /><div className="p-4"><ContractsTable rows={[...data.contratos].sort((a, b) => b.vencido - a.vencido).slice(0, 8)} /></div></Card><Card><CardHeader title="Aging de recebíveis" kicker="Cobrança" /><div className="h-80 p-4"><ResponsiveContainer width="100%" height="100%"><BarChart data={(data.series.aging ?? []) as Array<Record<string, unknown>>}><CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} /><XAxis dataKey="label" /><YAxis /><Tooltip contentStyle={tipStyle} formatter={(v) => money(Number(v))} /><Bar dataKey="valor" fill="#C5117E" radius={[7, 7, 0, 0]} /></BarChart></ResponsiveContainer></div></Card></div> : null}
       </> : null}
     </div>
