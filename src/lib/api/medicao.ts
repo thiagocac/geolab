@@ -46,6 +46,13 @@ export async function computarMedicao(escopo: EscopoTipo, id: string, inicio: st
   return { itens: (r.itens ?? []) as MedicaoItem[], valorItens: Number(r.valor_itens ?? 0), clientId: (r.client_id as string) ?? null };
 }
 
+export async function computarMedicaoAuto(escopo: EscopoTipo, id: string, inicio: string, fim: string): Promise<{ itens: MedicaoItem[]; valorItens: number; clientId: string | null }> {
+  const { data, error } = await db.rpc('gerar_medicao_auto', { p_escopo: escopo, p_escopo_id: id, p_inicio: inicio, p_fim: fim });
+  if (error) throw new Error(error.message);
+  const r = (data ?? {}) as Record<string, unknown>;
+  return { itens: (r.itens ?? []) as MedicaoItem[], valorItens: Number(r.valor_itens ?? 0), clientId: (r.client_id as string) ?? null };
+}
+
 export async function salvarMedicao(tenantId: string, payload: Record<string, unknown>): Promise<string | null> {
   const { data, error } = await db.from('medicoes').insert({ tenant_id: tenantId, ...payload }).select('id').maybeSingle();
   if (error) throw new Error(error.message);

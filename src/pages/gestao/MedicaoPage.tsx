@@ -9,7 +9,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State';
-import { listEscopo, listTestTypes, salvarPrecos, computarMedicao, salvarMedicao, listMedicoes, pdfMedicaoUrl, type EscopoTipo, type MedicaoItem, type Adicional } from '../../lib/api/medicao';
+import { listEscopo, listTestTypes, salvarPrecos, computarMedicao, computarMedicaoAuto, salvarMedicao, listMedicoes, pdfMedicaoUrl, type EscopoTipo, type MedicaoItem, type Adicional } from '../../lib/api/medicao';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const BRL = (n: number) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -64,6 +64,11 @@ export function MedicaoPage() {
   async function calcular() {
     if (!escopoId) { toast('Escolha um ' + escopo + '.', 'warning'); return; } setBusy(true);
     try { const r = await computarMedicao(escopo, escopoId, inicio, fim, buildPrecos()); setItens(r.itens); setValorItens(r.valorItens); setClientId(r.clientId); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
+  }
+  async function calcularAuto() {
+    if (!escopoId) { toast('Escolha um ' + escopo + '.', 'warning'); return; } setBusy(true);
+    try { const r = await computarMedicaoAuto(escopo, escopoId, inicio, fim); setItens(r.itens); setValorItens(r.valorItens); setClientId(r.clientId); toast('Medicao calculada com os precos do catalogo (Tabela de precos).', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function fechar() {
@@ -128,7 +133,7 @@ export function MedicaoPage() {
             <div className="mt-3 grid gap-3 md:grid-cols-4">{FLAT.map(([k, l]) => <Field key={k} label={l} type="number" value={flat[k] ?? ''} onChange={(e) => setFlat((s) => ({ ...s, [k]: e.target.value }))} disabled={!podeEditar} />)}</div>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button variant="secondary" onClick={() => void salvarPrecosFn()} disabled={busy || !podeEditar}>Salvar precos</Button>
-              <Button onClick={() => void calcular()} disabled={busy}>Calcular medicao</Button>
+              <Button onClick={() => void calcularAuto()} disabled={busy}>Calcular com precos do catalogo</Button><Button variant="secondary" onClick={() => void calcular()} disabled={busy}>Calcular com precos manuais (abaixo)</Button>
             </div>
           </>
         ) : null}
