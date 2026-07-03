@@ -1,6 +1,11 @@
 // generate-laudo-ensaio-pdf (GEOLAB) - Laudo NBR 5739 modelo v4 + campos dinamicos + paridade v4.
 // Revisao tipografica: acentuacao PT-BR completa, m3->m³, °C, Nº, barra de aceitacao em 2 linhas (sem sobreposicao),
 // horarios HH:MM, toggle 'aceitacao'. pdf-lib Helvetica usa WinAnsi (Latin-1): acentos/³/°/º/±/× sao seguros.
+// v43: toggles 100% dinamicos - linha de normas independente do bloco 'dados_concreto' (norma_5739/5738/16889/16886
+// funcionam sozinhas), 'Aceitação NBR 12655' gated por 'aceitacao', legenda A-F gated por 'tipo_ruptura',
+// 'temperatura' do laudo manda na temperatura por NF (antes o toggle do recebimento sobrepunha), acreditacao nao
+// colide mais com contato (fluxo p/ 3a linha), rodape de validacao respeita 'qr_validacao', observacoes finais citam
+// normas conforme toggles; clip por largura em interessado/endereco/pares/caminhoes/equipamentos (anti-sobreposicao).
 import { PDFDocument, StandardFonts, rgb, PDFImage } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
@@ -185,15 +190,20 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     let y = PH - 108;
     const need = (h: number, contHeader = true) => { if (y - h < BOTTOM) { page = doc.addPage([PW, PH]); y = PH - 50; if (contHeader) { T('Relatório Nº ' + numero + ' (continuação)', MX, y, 8, FB, NAVY); y -= 16; } } };
     const sec = (label: string) => { need(20, false); T(label, MX, y, 8.5, FB, NAVY); y -= 4; hline(MX, y, RIGHT); y -= 10; };
-    const kv = (lbl: string, val: string, x: number) => { T(lbl, x, y, 6.3, F, FAINT); T(val, x, y - 10, 8.2, FB, INK); };
+    const kv = (lbl: string, val: string, x: number, maxw?: number) => { T(lbl, x, y, 6.3, F, FAINT); T(maxw ? clip(val, 8.2, maxw, FB) : val, x, y - 10, 8.2, FB, INK); };
 
-    kv('INTERESSADO', interessado, MX); kv('OBRA', String(work?.nome || '-'), MX + CW * 0.34); kv('COD. CONCRETAGEM', String(conc.codigo || '-'), MX + CW * 0.62); kv('EMISSÃO', dbr(new Date().toISOString()), MX + CW * 0.84);
+    const W1 = CW * 0.34 - 10, W2 = CW * 0.28 - 10, W3 = CW * 0.22 - 10, W4 = CW * 0.16;
+    kv('INTERESSADO', interessado, MX, W1); kv('OBRA', String(work?.nome || '-'), MX + CW * 0.34, W2); kv('COD. CONCRETAGEM', String(conc.codigo || '-'), MX + CW * 0.62, W3); kv('EMISSÃO', dbr(new Date().toISOString()), MX + CW * 0.84, W4);
     y -= 24;
-    kv('ENDEREÇO', [work?.endereco, work?.cidade, work?.uf].filter(Boolean).join(' - ') || '-', MX);
-    if (ON.responsavel_tecnico) { kv('RESP. TÉCNICO', rt || '-', MX + CW * 0.34); kv('CREA', creaRt || '-', MX + CW * 0.62); }
-    if (ON.contato && contatoEmail) kv('SOLICITANTE', contatoEmail, MX + CW * 0.84);
-    else if (ON.acreditacao) kv('ACREDITAÇÃO', String(cfg?.acreditacao_inmetro || '-'), MX + CW * 0.84);
-    if (ON.moldador && moldador?.nome) { y -= 22; kv('RESP. MOLDAGEM', String(moldador.nome), MX); }
+    kv('ENDEREÇO', [work?.endereco, work?.cidade, work?.uf].filter(Boolean).join(' - ') || '-', MX, W1);
+    if (ON.responsavel_tecnico) { kv('RESP. TÉCNICO', rt || '-', MX + CW * 0.34, W2); kv('CREA', creaRt || '-', MX + CW * 0.62, W3); }
+    const contatoShown = ON.contato && !!contatoEmail;
+    if (contatoShown) kv('SOLICITANTE', contatoEmail, MX + CW * 0.84, W4);
+    else if (ON.acreditacao) kv('ACREDITAÇÃO', String(cfg?.acreditacao_inmetro || '-'), MX + CW * 0.84, W4);
+    const row3: [string, string][] = [];
+    if (ON.moldador && moldador?.nome) row3.push(['RESP. MOLDAGEM', String(moldador.nome)]);
+    if (ON.acreditacao && contatoShown) row3.push(['ACREDITAÇÃO', String(cfg?.acreditacao_inmetro || '-')]);
+    if (row3.length) { y -= 22; row3.forEach(([l, v], i) => kv(l, v, MX + CW * 0.34 * i, W1)); }
     y -= 22; hline(MX, y, RIGHT, LINE); y -= 12;
 
     if (ON.dados_concreto) {
@@ -210,7 +220,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       if (CON.volume_programado) { pares.push(['Volume prog. (m³)', conc.volume_programado_m3 != null ? fmt(Number(conc.volume_programado_m3), 1) : '-']); pares.push(['Volume lançado (m³)', conc.volume_lancado_m3 != null ? fmt(Number(conc.volume_lancado_m3), 1) : '-']); }
       if (CON.dimensao_cp) pares.push(['Dimensão CP', String(conc.dimensao_cp || '100x200')]);
       if (CON.data_hora) { pares.push(['Data moldagem', dbr(conc.data_real || conc.data_programada)]); pares.push(['Horário', conc.hora_inicio || conc.hora_programada ? hhmm(conc.hora_inicio || conc.hora_programada) + (conc.hora_fim ? ' a ' + hhmm(conc.hora_fim) : '') : '-']); }
-      if (CON.local_peca || ON.elemento) pares.push(['Local / peça', String(conc.local_texto || '-')]);
+      if (CON.local_peca) pares.push(['Local / peça', String(conc.local_texto || '-')]);
       if (ON.usina && CON.fornecedor) pares.push(['Central / usina', String(conc.fornecedor_texto || '-')]);
       if (CON.clima) pares.push(['Clima', String(conc.clima || '-')]);
       if (CON.temperatura_ambiente) pares.push(['Temp. ambiente', conc.temperatura_ambiente_c != null ? `${fmt(Number(conc.temperatura_ambiente_c), 1)} °C` : '-']);
@@ -220,15 +230,30 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       if (ON.dmax && om) pares.push(['Dmax agregado (mm)', om.dmax_agregado_mm != null ? fmt(Number(om.dmax_agregado_mm), 0) : '-']);
       if (ON.componentes && om?.componentes && typeof om.componentes === 'object') { for (const [ck, cv] of Object.entries(om.componentes as Record<string, unknown>)) { if (!cv) continue; const o = (typeof cv === 'object' ? cv : {}) as Record<string, unknown>; const txt = (o.marca || o.procedencia) ? [o.marca, o.procedencia].filter(Boolean).join(' / ') : String(cv); pares.push([ck.charAt(0).toUpperCase() + ck.slice(1), String(txt).slice(0, 28)]); } }
       const colW = CW / 4;
-      for (let i = 0; i < pares.length; i += 4) { need(20, false); for (let j = 0; j < 4 && i + j < pares.length; j++) { const [l, v] = pares[i + j]; const x = MX + j * colW; T(l, x, y, 6.2, F, FAINT); T(v, x, y - 9, 7.6, F, INK); } y -= 21; }
-      const normasArr: string[] = [];
-      if (ON.norma_5739) normasArr.push('NBR 5739:2018');
-      if (ON.norma_5738) normasArr.push('NBR 5738:2015');
-      if (ON.norma_16889) normasArr.push('NBR 16889:2020');
-      if (ON.norma_16886) normasArr.push('NBR 16886:2020');
-      const normasLinha = (normasArr.length ? 'Normas: ' + normasArr.join(', ') + ' - ' : '') + 'Aceitação NBR 12655. Tipos de ruptura: A cônica, B cônica/bipartida, C colunar, D cisalhada, E paralela às bases, F pontiaguda.';
-      need(12, false); T(normasLinha, MX, y, 5.6, F, FAINT); y -= 12;
+      for (let i = 0; i < pares.length; i += 4) { need(20, false); for (let j = 0; j < 4 && i + j < pares.length; j++) { const [l, v] = pares[i + j]; const x = MX + j * colW; T(l, x, y, 6.2, F, FAINT); T(clip(v, 7.6, colW - 8), x, y - 9, 7.6, F, INK); } y -= 21; }
       y -= 4;
+    }
+
+    // Normas e referências: linha independente do bloco 'dados_concreto' - cada toggle de norma funciona sozinho.
+    // 'Aceitação NBR 12655' só sai com o bloco de aceitação ligado; legenda A-F só com a coluna de ruptura ligada.
+    {
+      const normasArr: string[] = [];
+      if (ON.norma_5739) normasArr.push('ABNT NBR 5739:2018');
+      if (ON.norma_5738) normasArr.push('ABNT NBR 5738:2015');
+      if (ON.norma_16889) normasArr.push('ABNT NBR 16889:2020');
+      if (ON.norma_16886) normasArr.push('ABNT NBR 16886:2020');
+      const refPartes: string[] = [];
+      if (normasArr.length) refPartes.push('Normas de referência: ' + normasArr.join(', '));
+      if (ON.aceitacao) refPartes.push('Aceitação: ABNT NBR 12655');
+      if (ON.tipo_ruptura) refPartes.push('Tipos de ruptura: A cônica, B cônica/bipartida, C colunar, D cisalhada, E paralela às bases, F pontiaguda');
+      if (refPartes.length) {
+        const refTxt = refPartes.join('.  ') + '.';
+        const words = refTxt.split(' '); let ln = '';
+        const flush = () => { if (ln) { need(9, false); T(ln, MX, y, 5.8, F, FAINT); y -= 8; ln = ''; } };
+        for (const w of words) { const t = ln ? ln + ' ' + w : w; if (F.widthOfTextAtSize(san(t), 5.8) > CW) { flush(); ln = w; } else ln = t; }
+        flush();
+        y -= 6;
+      }
     }
 
     if (ON.recebimento && (receipts ?? []).length) {
@@ -246,15 +271,15 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
         if (RON.horarios_descarga && (rc.hora_inicio_descarga || rc.hora_fim_descarga)) partes.push('Desc. ' + hhmm(rc.hora_inicio_descarga) + ' -> ' + hhmm(rc.hora_fim_descarga));
         if (RON.hora_moldagem && rc.hora_moldagem) partes.push('Mold. ' + hhmm(rc.hora_moldagem));
         if (RON.slump && rc.slump_medido_cm != null) partes.push('Slump ' + fmt(Number(rc.slump_medido_cm), 1) + ' cm');
-        if ((ON.temperatura || RON.temperatura_concreto) && rc.temperatura_concreto_c != null) partes.push('Temp. concreto ' + fmt(Number(rc.temperatura_concreto_c), 0) + ' °C');
+        if (ON.temperatura && rc.temperatura_concreto_c != null) partes.push('Temp. concreto ' + fmt(Number(rc.temperatura_concreto_c), 0) + ' °C');
         if (RON.agua_adicionada && rc.houve_adicao_agua) partes.push('Água adicionada ' + fmt(Number(rc.agua_litros ?? 0), 0) + ' L');
         if (RON.rejeicao && rc.rejeitado) partes.push('Rejeitado: ' + String(rc.motivo_rejeicao || '-'));
         const line = partes.join('  |  ') || 'Sem campos opcionais habilitados';
-        T(line.slice(0, 170), MX + 5, y - 7, 6.2, F, MUTED); y -= 11;
-        if (RON.elementos_concretados && rc.elementos_concretados) { T(('Elementos: ' + String(rc.elementos_concretados)).slice(0, 170), MX + 5, y - 7, 6.2, F, MUTED); y -= 10; }
-        if (RON.observacoes_caminhao && rc.observacoes) { T(('Obs.: ' + String(rc.observacoes)).slice(0, 170), MX + 5, y - 7, 6.2, F, MUTED); y -= 10; }
+        T(clip(line, 6.2, CW - 10), MX + 5, y - 7, 6.2, F, MUTED); y -= 11;
+        if (RON.elementos_concretados && rc.elementos_concretados) { T(clip('Elementos: ' + String(rc.elementos_concretados), 6.2, CW - 10), MX + 5, y - 7, 6.2, F, MUTED); y -= 10; }
+        if (RON.observacoes_caminhao && rc.observacoes) { T(clip('Obs.: ' + String(rc.observacoes), 6.2, CW - 10), MX + 5, y - 7, 6.2, F, MUTED); y -= 10; }
       }
-      y -= 4;
+      y -= 10;
     }
 
     sec('Resultados - por exemplar / nota fiscal');
@@ -275,7 +300,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       need(13, true); rect(MX, y - 11, CW, 12, NAVYL);
       const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m³` : '') + (RON.slump && rc?.slump_medido_cm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_cm), 1)} cm` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '') + (arr.length && arr[0].capeamento ? '  -  Bases ' + String(arr[0].capeamento) : '');
       T(clip(faixa, 6.8, CW - 10, FB), MX + 5, y - 8, 6.8, FB, NAVY); y -= 12;
-      if (ON.elemento && RON.elementos_concretados && rc?.elementos_concretados) { need(10, true); T(('Local: ' + String(rc.elementos_concretados)).slice(0, 150), MX + 5, y - 7, 6.2, F, MUTED); y -= 11; }
+      if (ON.elemento && RON.elementos_concretados && rc?.elementos_concretados) { need(10, true); T(clip('Local: ' + String(rc.elementos_concretados), 6.2, CW - 10), MX + 5, y - 7, 6.2, F, MUTED); y -= 11; }
       let first = true;
       for (let i = 0; i < arr.length; i++) {
         const t = arr[i]; need(12, true);
@@ -309,7 +334,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       const ec = [['Equipamento', 0.24], ['Classe', 0.08], ['Nº série', 0.15], ['Certificado', 0.17], ['Lab. calibrador', 0.20], ['Válido até', 0.16]] as [string, number][];
       let ex2 = MX; for (const [l, w] of ec) { T(l, ex2 + 3, y - 8, 6.1, FB, WHITE); ex2 += w * CW; }
       y -= 12;
-      for (const eq of (equips ?? []) as Record<string, unknown>[]) { need(12, true); const inc = ON.incerteza && eq.incerteza_mpa != null ? ' (u=' + fmt(Number(eq.incerteza_mpa), 1) + ')' : ''; const vals = [String(eq.marca_modelo || '-') + inc, String(eq.classe || '-'), String(eq.numero_serie || '-'), String(eq.numero_certificado || '-'), String(eq.lab_calibrador || '-'), dbr(eq.validade_calibracao)]; let x2 = MX; for (let k = 0; k < ec.length; k++) { T(vals[k], x2 + 3, y - 8, 6.5, F, INK); x2 += ec[k][1] * CW; } y -= 11; hline(MX, y, RIGHT, rgb(0.93, 0.95, 0.98), 0.4); }
+      for (const eq of (equips ?? []) as Record<string, unknown>[]) { need(12, true); const inc = ON.incerteza && eq.incerteza_mpa != null ? ' (u=' + fmt(Number(eq.incerteza_mpa), 1) + ')' : ''; const vals = [String(eq.marca_modelo || '-') + inc, String(eq.classe || '-'), String(eq.numero_serie || '-'), String(eq.numero_certificado || '-'), String(eq.lab_calibrador || '-'), dbr(eq.validade_calibracao)]; let x2 = MX; for (let k = 0; k < ec.length; k++) { T(clip(vals[k], 6.5, ec[k][1] * CW - 6), x2 + 3, y - 8, 6.5, F, INK); x2 += ec[k][1] * CW; } y -= 11; hline(MX, y, RIGHT, rgb(0.93, 0.95, 0.98), 0.4); }
       y -= 6;
     }
 
@@ -327,23 +352,25 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     }
 
     need(40, false); sec('Comentários e observações');
-    const obs = (ON.observacoes && conc.observacoes ? String(conc.observacoes).trim() + ' ' : '') + 'Os resultados têm significado restrito e aplicam-se somente à amostra ensaiada. ' + (usaLote ? ('Aceitação estatística por lote ' + String(lote!.numero ?? '') + ' (ABNT NBR 12655): n=' + String(lote!.n_exemplares) + ', fcm=' + fmt(Number(lote!.fcm), 1) + ', Sd=' + fmt(Number(lote!.sd), 1) + ', fck,est=' + fmt(loteFckEst as number, 1) + ' MPa. ') : 'Aceitação por exemplar na idade de controle (resistência do exemplar = maior do par); lote ainda sem amostragem suficiente para fck,est estatístico (NBR 12655). ') + 'Coleta na obra; moldagem, cura e ruptura conforme NBR 5738/5739.' + (ON.contato && contatoEmail ? ' Solicitante: ' + contatoEmail + '.' : '') + (ON.local_ensaio && localEnsaio ? ' Ensaios realizados em: ' + localEnsaio + '.' : '') + (ON.incerteza ? ' Incerteza de medição declarada no certificado de calibração da prensa.' : '') + (cfg?.nota_rodape ? ' ' + String(cfg.nota_rodape) : '');
+    const normRef = [ON.norma_5738 ? 'NBR 5738' : '', ON.norma_5739 ? 'NBR 5739' : ''].filter(Boolean).join('/');
+    const obs = (ON.observacoes && conc.observacoes ? String(conc.observacoes).trim() + ' ' : '') + 'Os resultados têm significado restrito e aplicam-se somente à amostra ensaiada. ' + (ON.aceitacao ? (usaLote ? ('Aceitação estatística por lote ' + String(lote!.numero ?? '') + ' (ABNT NBR 12655): n=' + String(lote!.n_exemplares) + ', fcm=' + fmt(Number(lote!.fcm), 1) + ', Sd=' + fmt(Number(lote!.sd), 1) + ', fck,est=' + fmt(loteFckEst as number, 1) + ' MPa. ') : 'Aceitação por exemplar na idade de controle (resistência do exemplar = maior do par); lote ainda sem amostragem suficiente para fck,est estatístico (NBR 12655). ') : '') + 'Coleta na obra; moldagem, cura e ruptura ' + (normRef ? 'conforme ' + normRef + '.' : 'conforme procedimento interno do laboratório.') + (ON.contato && contatoEmail ? ' Solicitante: ' + contatoEmail + '.' : '') + (ON.local_ensaio && localEnsaio ? ' Ensaios realizados em: ' + localEnsaio + '.' : '') + (ON.incerteza ? ' Incerteza de medição declarada no certificado de calibração da prensa.' : '') + (cfg?.nota_rodape ? ' ' + String(cfg.nota_rodape) : '');
     const words = obs.split(' '); let lineS = '';
     for (const w of words) { const test = lineS ? lineS + ' ' + w : w; if (F.widthOfTextAtSize(test, 7) > CW) { T(lineS, MX, y, 7, F, MUTED); y -= 9.5; lineS = w; } else lineS = test; }
     if (lineS) { T(lineS, MX, y, 7, F, MUTED); y -= 9.5; }
     y -= 8;
 
-    need(70, false); const sigY = y;
+    need(ON.qr_validacao && gqNome ? 140 : 70, false); const sigY = y;
     if (ON.qr_validacao) { try { const qr = QRCode.create('https://app.concresoft.io/validar/' + codVal, { errorCorrectionLevel: 'M' }); const size = qr.modules.size; const dataq = qr.modules.data; const box = 54; const m = box / size; const ox = MX, oy = y - box; for (let r = 0; r < size; r++) for (let c2 = 0; c2 < size; c2++) if (dataq[r * size + c2]) page.drawRectangle({ x: ox + c2 * m, y: oy + (size - 1 - r) * m, width: m + 0.2, height: m + 0.2, color: INK }); T('Validação pública', MX + 64, y - 10, 6.4, FB, INK); T('app.concresoft.io/validar/', MX + 64, y - 20, 6.2, F, MUTED); T(codVal, MX + 64, y - 29, 6.2, FB, INK); T('Assinatura: QR + validação pública (ICP-Brasil na v2).', MX + 64, y - 38, 6.2, F, MUTED); } catch (_) { /* QR opcional */ } }
     const sx = MX + CW * 0.52;
     hline(sx, sigY - 30, sx + CW * 0.40, MUTED, 0.6);
     T(rt || 'Responsável Técnico', sx, sigY - 40, 8, FB, INK);
     T('Responsável Técnico', sx, sigY - 49, 6.4, F, MUTED);
     if (creaRt || art) T('CREA ' + (creaRt || '-') + (art ? ' - ART ' + art : ''), sx, sigY - 57, 6.4, F, FAINT);
-    if (gqNome) { hline(MX, sigY - 30, MX + CW * 0.40, MUTED, 0.6); T(gqNome, MX, sigY - 40, 8, FB, INK); T('Gerente da Qualidade', MX, sigY - 49, 6.4, F, MUTED); if (gqCrea) T('CREA ' + gqCrea, MX, sigY - 57, 6.4, F, FAINT); }
+    const gqY = ON.qr_validacao ? sigY - 72 : sigY; // GQ desce p/ baixo do bloco de QR (evita sobreposicao)
+    if (gqNome) { hline(MX, gqY - 30, MX + CW * 0.40, MUTED, 0.6); T(gqNome, MX, gqY - 40, 8, FB, INK); T('Gerente da Qualidade', MX, gqY - 49, 6.4, F, MUTED); if (gqCrea) T('CREA ' + gqCrea, MX, gqY - 57, 6.4, F, FAINT); }
 
     const pages = doc.getPages(); const total = pages.length;
-    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: BOTTOM - 9 }, end: { x: RIGHT, y: BOTTOM - 9 }, thickness: 0.6, color: LINE }); p.drawText(san('Validação pública - app.concresoft.io/validar/' + codVal), { x: MX, y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); const pg = san(`Página ${i + 1} de ${total}`); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); });
+    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: BOTTOM - 9 }, end: { x: RIGHT, y: BOTTOM - 9 }, thickness: 0.6, color: LINE }); if (ON.qr_validacao) p.drawText(san('Validação pública - app.concresoft.io/validar/' + codVal), { x: MX, y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); const pg = san(`Página ${i + 1} de ${total}`); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); });
 
     const bytes = await doc.save();
     let labReportId: string | null = null;
