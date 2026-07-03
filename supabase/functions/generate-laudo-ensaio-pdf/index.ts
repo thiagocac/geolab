@@ -6,6 +6,7 @@
 // 'temperatura' do laudo manda na temperatura por NF (antes o toggle do recebimento sobrepunha), acreditacao nao
 // colide mais com contato (fluxo p/ 3a linha), rodape de validacao respeita 'qr_validacao', observacoes finais citam
 // normas conforme toggles; clip por largura em interessado/endereco/pares/caminhoes/equipamentos (anti-sobreposicao).
+// v44: condicao de preparo do traco virou OPCIONAL no CRUD -> sem fallback 'A' falso: 'condição X' so sai quando informada.
 import { PDFDocument, StandardFonts, rgb, PDFImage } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
@@ -161,7 +162,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const gqNome = String(cfg?.gerente_qualidade || '');
     const gqCrea = String(cfg?.crea_gq || '');
     const localEnsaio = String(cfg?.local_ensaio || '');
-    const condicao = String(om?.condicao_preparo || 'A');
+    const condicao = String(om?.condicao_preparo || '');
     const certs = (Array.isArray(cfg?.certificacoes) ? cfg!.certificacoes : []) as Array<Record<string, unknown>>;
 
     const doc = await PDFDocument.create();
@@ -211,7 +212,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       const tracoNome = om?.nome ? String(om.nome) : String(conc.traco_texto || '-');
       const pares: [string, string][] = [['Material', 'Concreto']];
       if (CON.traco_fck) { pares.push(['Traço', tracoNome]); pares.push(['Fck (MPa)', fmt(fck, 1)]); }
-      if (ON.amostragem) pares.push(['Amostragem', 'Total - condição ' + condicao]);
+      if (ON.amostragem) pares.push(['Amostragem', condicao ? 'Total - condição ' + condicao : 'Total']);
       if (om?.condicao_preparo) pares.push(['Condição de preparo', String(om.condicao_preparo || '-')]);
       if (om?.slump_previsto_cm != null) pares.push(['Abatimento prev. (cm)', `${fmt(Number(om.slump_previsto_cm), 1)} ± ${fmt(Number(om.slump_tolerancia_cm ?? 0), 1)}`]);
       if (om?.brita) pares.push(['Brita / agregado', String(om.brita || '-')]);
@@ -318,7 +319,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       rect(MX, y - 26, CW, 28, NAVY);
       const aceLabel = usaLote
         ? 'Aceitação estatística de lote (ABNT NBR 12655)'
-        : (ON.amostragem ? 'Aceitação (ABNT NBR 12655 - amostragem total - condição ' + condicao + ' - controle ' + idadeCtrl + 'd)' : 'Aceitação (ABNT NBR 12655 - controle ' + idadeCtrl + 'd)');
+        : (ON.amostragem ? 'Aceitação (ABNT NBR 12655 - amostragem total' + (condicao ? ' - condição ' + condicao : '') + ' - controle ' + idadeCtrl + 'd)' : 'Aceitação (ABNT NBR 12655 - controle ' + idadeCtrl + 'd)');
       const aceTxt = usaLote
         ? `fck,est = ${fmt(loteFckEst as number, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa  (n=${lote!.n_exemplares}, Sd ${fmt(Number(lote!.sd), 1)})`
         : (menorExemplar != null ? `fck,est = ${fmt(menorExemplar, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa` : `${n} exemplar(es) na idade de controle`);

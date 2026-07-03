@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { assertUploadSize } from '../upload';
 import type { PadraoMoldagem } from '../concreto';
 
 // Traços (operational_materials) como catálogo do laboratório (work_id null).
@@ -31,6 +32,7 @@ export type TracoRow = {
   componentes: Record<string, unknown> | null;
   bombeado: boolean;
   observacoes: string | null;
+  carta_traco_path: string | null;
   padrao_moldagem: PadraoMoldagem[] | PadraoIdade[];
   ativo: boolean;
   work_id: string | null;
@@ -39,7 +41,7 @@ export type TracoRow = {
   client_works?: { nome: string | null } | null;
 };
 
-const SELECT_TRACO = 'id, codigo, nome, aplicacao, fck_mpa, fcj_mpa, desvio_padrao_mpa, condicao_preparo, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, idade_controle_dias, brita, dmax_agregado_mm, fator_ac, cimento_tipo, consumo_cimento_kg_m3, aditivo_tipo, metodo_cura, especificacao, schema_campos, bombeado, observacoes, padrao_moldagem, componentes, ativo, work_id, client_id, lab_clients(razao_social, nome_fantasia), client_works(nome)';
+const SELECT_TRACO = 'id, codigo, nome, aplicacao, fck_mpa, fcj_mpa, desvio_padrao_mpa, condicao_preparo, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, idade_controle_dias, brita, dmax_agregado_mm, fator_ac, cimento_tipo, consumo_cimento_kg_m3, aditivo_tipo, metodo_cura, especificacao, schema_campos, bombeado, observacoes, carta_traco_path, padrao_moldagem, componentes, ativo, work_id, client_id, lab_clients(razao_social, nome_fantasia), client_works(nome)';
 
 export async function listTracos(): Promise<TracoRow[]> {
   const { data, error } = await db.from('operational_materials')
@@ -51,17 +53,35 @@ export async function listTracos(): Promise<TracoRow[]> {
   return (data ?? []) as TracoRow[];
 }
 
-export async function saveTraco(tenantId: string, id: string | null, values: Record<string, unknown>): Promise<void> {
+export async function saveTraco(tenantId: string, id: string | null, values: Record<string, unknown>): Promise<string> {
   if (id) {
     const { error } = await db.from('operational_materials').update(values).eq('id', id);
     if (error) throw new Error(error.message);
-  } else {
-    const { error } = await db.from('operational_materials').insert({ work_id: null, client_id: null, ...values, tenant_id: tenantId, material_kind: 'concreto' });
-    if (error) throw new Error(error.message);
+    return id;
   }
+  const { data, error } = await db.from('operational_materials').insert({ work_id: null, client_id: null, ...values, tenant_id: tenantId, material_kind: 'concreto' }).select('id').single();
+  if (error) throw new Error(error.message);
+  return String((data as { id: string }).id);
 }
 
 export async function softDeleteTraco(id: string): Promise<void> {
   const { error } = await db.from('operational_materials').update({ deleted_at: new Date().toISOString() }).eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+// Carta traço (PDF/scan) no bucket `anexos`, namespaced por traço — mesmo contrato de RLS dos
+// anexos de equipamentos/colaboradores (1º segmento do path = tenant_id). A coluna
+// operational_materials.carta_traco_path já existia no schema (DB-ready); esta é a UI dela.
+export async function uploadCartaTraco(tenantId: string, tracoId: string, file: File): Promise<string> {
+  assertUploadSize(file);
+  const safe = file.name.replace(/[^\w.-]+/g, '_');
+  const path = tenantId + '/tracos/' + tracoId + '/' + Date.now() + '-' + safe;
+  const { error } = await supabase.storage.from('anexos').upload(path, file, { upsert: false, contentType: file.type || undefined });
+  if (error) throw new Error(error.message);
+  return path;
+}
+export async function signedCartaTraco(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('anexos').createSignedUrl(path, 300);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
 }

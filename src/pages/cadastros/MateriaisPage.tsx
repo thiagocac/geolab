@@ -10,7 +10,8 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listTracos, saveTraco, softDeleteTraco, type TracoRow } from '../../lib/api/materiais';
+import { listTracos, saveTraco, signedCartaTraco, softDeleteTraco, uploadCartaTraco, type TracoRow } from '../../lib/api/materiais';
+import { openDeferredTab } from '../../lib/pdf';
 import { listClientesRef } from '../../lib/api/obras';
 import { listReference } from '../../lib/api/client';
 import {
@@ -73,7 +74,7 @@ type FormState = {
 function vazio(): FormState {
   return {
     descricao: 'FCK 30 | BRITA 1 | SLUMP 10±2 CM', aplicacao: 'Sapata, Cortina, Blocos', fck_mpa: '30', fcj_mpa: '', desvio_padrao_mpa: '',
-    slump_previsto_cm: '10', slump_tolerancia_cm: '2', validade_concreto_minutos: '150', idade_controle_dias: '', condicao_preparo: 'A', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false, comp_cimento_marca: '', comp_cimento_proc: '', comp_brita_marca: '', comp_brita_proc: '', comp_areia_marca: '', comp_areia_proc: '', comp_aditivo_marca: '', comp_aditivo_proc: '', comp_agua_proc: '',
+    slump_previsto_cm: '10', slump_tolerancia_cm: '2', validade_concreto_minutos: '150', idade_controle_dias: '28', condicao_preparo: '', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false, comp_cimento_marca: '', comp_cimento_proc: '', comp_brita_marca: '', comp_brita_proc: '', comp_areia_marca: '', comp_areia_proc: '', comp_aditivo_marca: '', comp_aditivo_proc: '', comp_agua_proc: '',
     escopo: 'lab', client_id: '', work_id: '',
   };
 }
@@ -91,7 +92,7 @@ function fromRow(t: TracoRow): FormState {
     slump_tolerancia_cm: t.slump_tolerancia_cm == null ? '' : String(t.slump_tolerancia_cm),
     validade_concreto_minutos: t.validade_concreto_minutos == null ? '' : String(t.validade_concreto_minutos),
     idade_controle_dias: t.idade_controle_dias == null ? '' : String(t.idade_controle_dias),
-    condicao_preparo: t.condicao_preparo ?? 'A',
+    condicao_preparo: t.condicao_preparo ?? '',
     brita: t.brita ?? '',
     dmax_agregado_mm: t.dmax_agregado_mm == null ? '' : String(t.dmax_agregado_mm),
     fator_ac: t.fator_ac == null ? '' : String(t.fator_ac),
@@ -118,8 +119,9 @@ function parseBrita(descricao: string): string {
   return m?.[1] ?? '';
 }
 
-function aplicarPadrao(p: TracoPadrao, setF: (v: FormState) => void, setPadrao: (v: PadraoMoldagem[]) => void) {
+function aplicarPadrao(p: TracoPadrao, atual: FormState, setF: (v: FormState) => void, setPadrao: (v: PadraoMoldagem[]) => void) {
   const base = vazio();
+  base.escopo = atual.escopo; base.client_id = atual.client_id; base.work_id = atual.work_id; // não perde o escopo já escolhido
   base.descricao = p.descricao;
   base.aplicacao = p.aplicacao;
   base.fck_mpa = String(p.fck);
@@ -141,6 +143,8 @@ export function MateriaisPage() {
   const [f, setF] = useState<FormState>(vazio());
   const [padrao, setPadrao] = useState<PadraoMoldagem[]>(padroesMoldagemPadrao(30));
   const [busy, setBusy] = useState(false);
+  const [cartaFile, setCartaFile] = useState<File | null>(null);
+  const [cartaPath, setCartaPath] = useState<string | null>(null);
   const q = useQuery({ queryKey: ['tracos'], queryFn: listTracos });
   const [filtroConstrutora, setFiltroConstrutora] = useState('');
   const [filtroObra, setFiltroObra] = useState('');
@@ -154,11 +158,19 @@ export function MateriaisPage() {
   const obrasDoEscopo = useQuery({ queryKey: ['ref', 'client_works', f.client_id, 'tracos'], queryFn: () => listReference('client_works', 'nome', f.client_id ? { client_id: f.client_id } : undefined), enabled: !!f.client_id });
 
   const fckAtual = useMemo(() => num(f.fck_mpa), [f.fck_mpa]);
+  const normDesc = (v: string) => v.trim().toUpperCase().replace(/\s+/g, ' ');
+  const escopoLabel = (t: TracoRow) => t.work_id ? 'obra ' + (t.client_works?.nome ?? '—') : t.client_id ? 'construtora ' + (t.lab_clients?.nome_fantasia || t.lab_clients?.razao_social || '—') : 'catálogo do laboratório';
+  const duplicados = useMemo(() => {
+    const d = normDesc(f.descricao);
+    if (!d) return [] as TracoRow[];
+    return (q.data ?? []).filter((t) => t.id !== editId && normDesc(t.nome || t.codigo || '') === d);
+  }, [q.data, f.descricao, editId]);
 
   function novo() {
     setEditId(null);
     setF(vazio());
     setPadrao(padroesMoldagemPadrao(30));
+    setCartaFile(null); setCartaPath(null);
     setOpen(true);
   }
 
@@ -166,6 +178,7 @@ export function MateriaisPage() {
     setEditId(t.id);
     setF(fromRow(t));
     setPadrao(normalizePadroes(t.padrao_moldagem, t.fck_mpa));
+    setCartaFile(null); setCartaPath(t.carta_traco_path ?? null);
     setOpen(true);
   }
 
@@ -173,11 +186,13 @@ export function MateriaisPage() {
     setEditId(null);
     setF(fromRow(t));
     setPadrao(normalizePadroes(t.padrao_moldagem, t.fck_mpa));
+    setCartaFile(null); setCartaPath(null); // a carta não acompanha a cópia
     setOpen(true);
   }
 
   function patch<K extends keyof FormState>(key: K, value: FormState[K]) { setF((s) => ({ ...s, [key]: value })); }
-  function addAtalho(sc: (typeof PADRAO_MOLDAGEM_SHORTCUTS)[number]) { setPadrao((s) => [...s, linhaDeAtalho(sc, fckAtual)]); }
+  const ordenado = (arr: PadraoMoldagem[]) => [...arr].sort((a, b) => padraoMoldagemAgeInHours(a) - padraoMoldagemAgeInHours(b));
+  function addAtalho(sc: (typeof PADRAO_MOLDAGEM_SHORTCUTS)[number]) { setPadrao((s) => ordenado([...s, linhaDeAtalho(sc, fckAtual)])); }
   function setPm(i: number, patchRow: Partial<PadraoMoldagem>) { setPadrao((s) => s.map((r, idx) => idx === i ? { ...r, ...patchRow } : r)); }
   function rmPm(i: number) { setPadrao((s) => s.filter((_, idx) => idx !== i)); }
   function ordenar() { setPadrao((s) => [...s].sort((a, b) => padraoMoldagemAgeInHours(a) - padraoMoldagemAgeInHours(b))); }
@@ -187,6 +202,8 @@ export function MateriaisPage() {
     setBusy(true);
     try {
       if (!str(f.descricao)) throw new Error('Descrição é obrigatória.');
+      const fckNum = num(f.fck_mpa);
+      if (fckNum == null || fckNum <= 0) throw new Error('FCK (MPa) é obrigatório.');
       if (f.escopo !== 'lab' && !str(f.client_id)) throw new Error('Selecione a construtora do traço.');
       if (f.escopo === 'obra' && !str(f.work_id)) throw new Error('Selecione a obra do traço.');
       const slump = parseSlumpFromDescricao(f.descricao);
@@ -213,19 +230,38 @@ export function MateriaisPage() {
         especificacao: str(f.especificacao) || null,
         bombeado: f.bombeado,
         observacoes: str(f.observacoes) || null,
-        padrao_moldagem: padroesToDb(padrao),
+        padrao_moldagem: padroesToDb(ordenado(padrao)), // menor idade sempre primeiro (persistido ordenado)
+        carta_traco_path: cartaPath,
         componentes: (() => { const c: Record<string, unknown> = {}; const add = (k: string, m: unknown, pr: unknown) => { const mm = str(m), pp = str(pr); if (mm || pp) c[k] = { marca: mm || null, procedencia: pp || null }; }; add('cimento', f.comp_cimento_marca, f.comp_cimento_proc); add('brita', f.comp_brita_marca, f.comp_brita_proc); add('areia', f.comp_areia_marca, f.comp_areia_proc); add('aditivo', f.comp_aditivo_marca, f.comp_aditivo_proc); { const pp = str(f.comp_agua_proc); if (pp) c['agua'] = { procedencia: pp }; } return c; })(),
         schema_campos: { origem_ui: 'geolab-v23-geomat-tracos' },
         work_id: f.escopo === 'obra' ? (str(f.work_id) || null) : null,
         client_id: f.escopo === 'lab' ? null : (str(f.client_id) || null),
       };
-      await saveTraco(member.tenant_id, editId, payload);
+      const wid = payload.work_id ?? null, cid = payload.client_id ?? null;
+      if (duplicados.some((t) => (t.work_id ?? null) === wid && (t.client_id ?? null) === cid)) {
+        throw new Error('Já existe um traço com esta mesma descrição neste escopo. Altere a descrição (ou edite o traço existente).');
+      }
+      if (duplicados.length) {
+        const ok = await confirm({ title: 'Descrição duplicada', message: 'Já existe um traço com esta mesma descrição em: ' + duplicados.map(escopoLabel).join(' · ') + '. Salvar mesmo assim?', confirmLabel: 'Salvar mesmo assim' });
+        if (!ok) return;
+      }
+      const tracoId = await saveTraco(member.tenant_id, editId, payload);
+      if (cartaFile) {
+        const pth = await uploadCartaTraco(member.tenant_id, tracoId, cartaFile);
+        await saveTraco(member.tenant_id, tracoId, { carta_traco_path: pth });
+        setCartaPath(pth); setCartaFile(null);
+      }
       await qc.invalidateQueries({ queryKey: ['tracos'] });
       await qc.invalidateQueries({ queryKey: ['tracos_ref'] });
       await qc.invalidateQueries({ queryKey: ['tracos-fck'] });
       toast('Traço salvo.', 'success');
       setOpen(false);
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
+  }
+
+  function abrirCarta(path: string) {
+    const tab = openDeferredTab('Abrindo carta traço…');
+    signedCartaTraco(path).then((u) => tab.set(u)).catch((e) => { tab.fail(); toast((e as Error).message, 'error'); });
   }
 
   async function excluir(t: TracoRow) {
@@ -251,6 +287,7 @@ export function MateriaisPage() {
                   <div className="mt-1 text-xs text-slate-500">{t.aplicacao || '-'} · FCK {t.fck_mpa ?? '-'} MPa · slump {t.slump_previsto_cm ?? '-'}±{t.slump_tolerancia_cm ?? '-'} cm · validade {t.validade_concreto_minutos ?? '-'} min{t.idade_controle_dias != null ? ` · controle ${t.idade_controle_dias}d` : ''} · {normalizePadroes(t.padrao_moldagem, t.fck_mpa).length} idade(s)</div>
                 </div>
                 <div className="flex gap-2">
+                  {t.carta_traco_path ? <Button variant="ghost" onClick={() => abrirCarta(t.carta_traco_path as string)}>Carta traço</Button> : null}
                   <Button variant="ghost" onClick={() => editar(t)}>Editar</Button>
                   <Button variant="ghost" onClick={() => duplicar(t)}>Duplicar</Button>
                   <Button variant="ghost" onClick={() => void excluir(t)}>Excluir</Button>
@@ -271,7 +308,7 @@ export function MateriaisPage() {
           <div>
             <div className="text-xs font-bold text-slate-500">Traços-padrão:</div>
             <div className="mt-2 flex flex-wrap gap-2">
-              {TRACOS_PADRAO.map((p) => <button type="button" key={p.descricao} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" onClick={() => aplicarPadrao(p, setF, setPadrao)}>{p.descricao}</button>)}
+              {TRACOS_PADRAO.map((p) => <button type="button" key={p.descricao} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" onClick={() => aplicarPadrao(p, f, setF, setPadrao)}>{p.descricao}</button>)}
             </div>
           </div>
 
@@ -283,6 +320,7 @@ export function MateriaisPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Descrição *" value={f.descricao} onChange={(e) => patch('descricao', e.target.value)} />
               <Field label="Aplicação" value={f.aplicacao} onChange={(e) => patch('aplicacao', e.target.value)} />
+              {duplicados.length ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">Já existe um traço com esta mesma descrição em: {duplicados.map(escopoLabel).join(' · ')}.</div> : null}
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-4">
               <Field label="FCK (MPa) *" type="number" value={f.fck_mpa} onChange={(e) => patch('fck_mpa', e.target.value)} />
@@ -292,7 +330,7 @@ export function MateriaisPage() {
               <Field label="Idade de controle (dias)" type="number" value={f.idade_controle_dias} onChange={(e) => patch('idade_controle_dias', e.target.value)} />
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-4">
-              <SelectField label="Cond. preparo" value={f.condicao_preparo} onChange={(e) => patch('condicao_preparo', e.target.value)}>{['A', 'B', 'C'].map((x) => <option key={x} value={x}>{x}</option>)}</SelectField>
+              <SelectField label="Cond. preparo" value={f.condicao_preparo} onChange={(e) => patch('condicao_preparo', e.target.value)}><option value="">— não informada</option>{['A', 'B', 'C'].map((x) => <option key={x} value={x}>{x}</option>)}</SelectField>
               <Field label="FCJ (MPa)" type="number" value={f.fcj_mpa} onChange={(e) => patch('fcj_mpa', e.target.value)} />
               <Field label="Desvio padrão (MPa)" type="number" value={f.desvio_padrao_mpa} onChange={(e) => patch('desvio_padrao_mpa', e.target.value)} />
               <Field label="Brita" value={f.brita} onChange={(e) => patch('brita', e.target.value)} />
@@ -321,6 +359,15 @@ export function MateriaisPage() {
                 <Field label="Aditivo — procedência" value={f.comp_aditivo_proc} onChange={(e) => patch('comp_aditivo_proc', e.target.value)} />
                 <Field label="Água — procedência/fonte" value={f.comp_agua_proc} onChange={(e) => patch('comp_agua_proc', e.target.value)} />
               </div>
+            </div>
+            <div className="mt-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <div className="text-sm font-bold text-slate-600 dark:text-slate-300">Carta traço (anexo)</div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="text-xs" aria-label="Anexar carta traço" onChange={(e) => setCartaFile(e.target.files?.[0] ?? null)} />
+                {cartaPath && !cartaFile ? <button type="button" className="text-xs font-bold" style={{ color: 'var(--magenta)' }} onClick={() => abrirCarta(cartaPath)}>ver carta atual</button> : null}
+                {cartaPath || cartaFile ? <button type="button" className="text-xs font-bold text-slate-400 hover:text-red-600" onClick={() => { setCartaFile(null); setCartaPath(null); }}>Remover</button> : null}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-500">PDF ou imagem, até 15 MB. Com a carta anexada, o botão “Carta traço” aparece na lista de traços.</p>
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <TextArea label="Especificação / composição" value={f.especificacao} onChange={(e) => patch('especificacao', e.target.value)} />
@@ -354,7 +401,7 @@ export function MateriaisPage() {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-3"><Button variant="ghost" onClick={() => setPadrao((s) => [...s, linhaDeAtalho(PADRAO_MOLDAGEM_SHORTCUTS[0], fckAtual)])}>+ Adicionar traço</Button></div>
+              <div className="mt-3"><Button variant="ghost" onClick={() => setPadrao((s) => ordenado([...s, linhaDeAtalho(PADRAO_MOLDAGEM_SHORTCUTS[0], fckAtual)]))}>+ Adicionar idade</Button></div>
             </div>
           </Card>
         </div>
