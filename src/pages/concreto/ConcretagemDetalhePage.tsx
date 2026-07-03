@@ -27,6 +27,11 @@ const num = (v: unknown): number | null => toNumber(v as number | string | null 
 const val = (v: unknown) => v == null ? '' : String(v);
 const dateBr = (iso?: string | null) => { if (!iso) return '-'; const [y, m, d] = iso.slice(0, 10).split('-'); return d && m && y ? `${d}/${m}/${y}` : iso; };
 
+// Linha editável da conferência do OCR da ficha (valores como texto p/ edição livre).
+type FichaRowEdit = { criar: boolean; serie: string; nota_fiscal: string; volume_m3: string; slump_medido_cm: string; hora_moldagem: string; hora_saida_usina: string; hora_chegada_obra: string; hora_inicio_descarga: string; hora_fim_descarga: string; elementos_concretados: string; qtde_cps: string; conf: number | null };
+// Normaliza horário manuscrito lido por OCR ("8:5", "08h30", "8.30") -> "HH:MM"; inválido -> null.
+const hhmmNorm = (v: unknown): string | null => { const t = String(v ?? '').trim(); if (!t) return null; const m = /^(\d{1,2})\s*[:hH.,]?\s*(\d{2})$/.exec(t); if (!m) return null; const h = Math.min(23, Number(m[1])); return String(h).padStart(2, '0') + ':' + m[2]; };
+
 function payloadConcretagem(f: Record<string, unknown>, padrao: PadraoMoldagem[], c: ConcretagemRow): Record<string, unknown> {
   const md = (c.metadata && typeof c.metadata === 'object') ? c.metadata : {};
   return {
@@ -75,8 +80,10 @@ export function ConcretagemDetalhePage() {
   const [fichaOpen, setFichaOpen] = useState(false);
   const [lendoFicha, setLendoFicha] = useState(false);
   const [gravandoFicha, setGravandoFicha] = useState(false);
-  const [fichaCams, setFichaCams] = useState<FichaCaminhaoOCR[]>([]);
+  const [fichaRows, setFichaRows] = useState<FichaRowEdit[]>([]);
   const [fichaConf, setFichaConf] = useState<number | null>(null);
+  const [fichaFile, setFichaFile] = useState<File | null>(null);
+  const [fichaEvid, setFichaEvid] = useState(true);
 
   const conc = useQuery({ queryKey: ['concretagem', id], queryFn: () => getConcretagem(id), enabled: !!id });
   const cams = useQuery({ queryKey: ['caminhoes', id], queryFn: () => listCaminhoes(id), enabled: !!id });
@@ -113,6 +120,14 @@ export function ConcretagemDetalhePage() {
   const fckAtual = num(form.fck_previsto) ?? selectedTraco?.fck ?? conc.data?.fck_previsto ?? null;
   // Numeração manual de CP (v132): expande os CPs na MESMA ordem em que addCaminhao os cria
   // (padroesToDb -> qtd por linha). slot.idx = índice de criação; ordenamos por idade só na exibição.
+  // Padrão de moldagem vigente (da concretagem > traço): informa e valida a criação em lote do OCR.
+  const padraoConc = useMemo(() => {
+    const c0 = conc.data; if (!c0) return { txt: '', total: 0 };
+    const dbp = padroesToDb(padraoMoldagemDaConcretagem(c0));
+    let total = 0; const parts: string[] = [];
+    for (const it of dbp) { const q = Number(it.quantidade) || 0; total += q; parts.push(q + '\u00d7' + String(it.idade) + (String(it.unidade) === 'hora' ? 'h' : 'd')); }
+    return { txt: parts.join('  '), total };
+  }, [conc.data]);
   const numManual = onR('numeracao_cp_manual');
   const numSlots = useMemo(() => {
     if (!numManual) return [] as { key: string; idx: number; ageHours: number; ageLabel: string }[];
@@ -227,26 +242,60 @@ export function ConcretagemDetalhePage() {
     setLendoFicha(true);
     try {
       const r = await lerFichaImagem(file, id);
-      if (!r.enabled) { toast(r.reason ?? 'Leitura por IA indisponível.', 'error'); setFichaCams([]); return; }
-      setFichaCams(r.caminhoes); setFichaConf(r.confianca);
-      toast(r.caminhoes.length + ' caminhão(ões) detectado(s). Confira antes de criar.', r.caminhoes.length ? 'success' : 'warning');
+      if (!r.enabled) { toast(r.reason ?? 'Leitura por IA indisponível.', 'error'); setFichaRows([]); return; }
+      const existentes = new Set((cams.data ?? []).map((x) => str(x.nota_fiscal)).filter(Boolean));
+      const rows: FichaRowEdit[] = (r.caminhoes as FichaCaminhaoOCR[]).map((cv) => {
+        const nf = str(cv.nota_fiscal);
+        return {
+          criar: !!nf && !existentes.has(nf),
+          serie: cv.serie != null ? String(cv.serie) : '',
+          nota_fiscal: nf,
+          volume_m3: cv.volume_m3 != null ? String(cv.volume_m3) : '',
+          slump_medido_cm: cv.slump_medido_cm != null ? String(cv.slump_medido_cm) : '',
+          hora_moldagem: str(cv.hora_moldagem), hora_saida_usina: str(cv.hora_saida_usina), hora_chegada_obra: str(cv.hora_chegada_obra), hora_inicio_descarga: str(cv.hora_inicio_descarga), hora_fim_descarga: str(cv.hora_fim_descarga),
+          elementos_concretados: str(cv.elementos_concretados), qtde_cps: cv.qtde_cps != null ? String(cv.qtde_cps) : '', conf: cv.conf ?? null,
+        };
+      });
+      setFichaRows(rows); setFichaConf(r.confianca); setFichaFile(file);
+      if (!rows.length) toast(r.reason ? 'Nenhum caminhão detectado (' + r.reason + ').' : 'Nenhum caminhão detectado na imagem. Tente uma foto mais nítida, de frente.', 'warning');
+      else toast(rows.length + ' caminhão(ões) detectado(s). Confira, ajuste e escolha o que criar.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setLendoFicha(false); }
   }
+  function setFichaRow(i: number, patchRow: Partial<FichaRowEdit>) { setFichaRows((s0) => s0.map((r, idx) => (idx === i ? { ...r, ...patchRow } : r))); }
   async function onCriarDetectados() {
     const c = conc.data; if (!member || !c) return;
+    const marcadas = fichaRows.filter((r) => r.criar && str(r.nota_fiscal));
+    if (!marcadas.length) { toast('Marque ao menos uma linha (com NF) para criar.', 'warning'); return; }
     setGravandoFicha(true);
     try {
-      const existentes = new Set((cams.data ?? []).map((x) => str(x.nota_fiscal)).filter(Boolean));
-      let serie = (cams.data?.length ?? 0); let criados = 0;
-      for (const cv of fichaCams) {
-        const nf = str(cv.nota_fiscal);
-        if (!nf || existentes.has(nf)) continue;
-        serie += 1; criados += 1; existentes.add(nf);
-        await addCaminhao(member.tenant_id, c, serie, { nota_fiscal: nf, placa: cv.placa ?? null, motorista: cv.motorista ?? null, volume_m3: cv.volume_m3 ?? null, slump_medido_cm: cv.slump_medido_cm ?? null, temperatura_concreto_c: cv.temperatura_concreto_c ?? null, hora_saida_usina: cv.hora_saida_usina ?? null, hora_chegada_obra: cv.hora_chegada_obra ?? null, hora_inicio_descarga: cv.hora_inicio_descarga ?? null, hora_fim_descarga: cv.hora_fim_descarga ?? null, external_key: 'ficha:' + nf });
+      const existentesNf = new Set((cams.data ?? []).map((x) => str(x.nota_fiscal)).filter(Boolean));
+      const usadas = new Set((cams.data ?? []).map((x) => Number(x.serie) || 0));
+      let criados = 0;
+      for (const r of marcadas) {
+        const nf = str(r.nota_fiscal);
+        if (existentesNf.has(nf)) continue; // idempotência: NF já lançada nesta concretagem
+        let serie = Number(r.serie) || 0;
+        if (!serie || usadas.has(serie)) serie = (usadas.size ? Math.max(...usadas) : 0) + 1;
+        usadas.add(serie); existentesNf.add(nf); criados += 1;
+        await addCaminhao(member.tenant_id, c, serie, {
+          nota_fiscal: nf,
+          volume_m3: num(r.volume_m3),
+          slump_medido_cm: num(r.slump_medido_cm),
+          hora_moldagem: hhmmNorm(r.hora_moldagem),
+          hora_saida_usina: hhmmNorm(r.hora_saida_usina),
+          hora_chegada_obra: hhmmNorm(r.hora_chegada_obra),
+          hora_inicio_descarga: hhmmNorm(r.hora_inicio_descarga),
+          hora_fim_descarga: hhmmNorm(r.hora_fim_descarga),
+          elementos_concretados: str(r.elementos_concretados) || null,
+          external_key: 'ficha:' + nf,
+        });
+      }
+      if (criados && fichaFile && fichaEvid) {
+        try { await uploadEvidencia(member.tenant_id, id, fichaFile, { tipo: 'ficha', descricao: 'Ficha de moldagem lida por OCR (' + criados + ' caminhão(ões) criado(s))' }); await qc.invalidateQueries({ queryKey: ['evidencias', id] }); } catch { /* evidência é best-effort */ }
       }
       await Promise.all([qc.invalidateQueries({ queryKey: ['caminhoes', id] }), qc.invalidateQueries({ queryKey: ['cps', id] }), qc.invalidateQueries({ queryKey: ['concretagem', id] })]);
-      toast(criados ? (criados + ' caminhão(ões) criado(s).') : 'Nada novo a criar.', criados ? 'success' : 'info');
-      if (criados) setFichaOpen(false);
+      toast(criados ? criados + ' caminhão(ões) criado(s), cada um com ' + padraoConc.total + ' CP(s) do padrão de moldagem.' : 'Nada novo a criar (NFs já lançadas).', criados ? 'success' : 'info');
+      if (criados) { setFichaOpen(false); setFichaRows([]); setFichaFile(null); }
     } catch (e) { toast((e as Error).message, 'error'); } finally { setGravandoFicha(false); }
   }
 
@@ -263,7 +312,7 @@ export function ConcretagemDetalhePage() {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setStep(1)} className={'rounded-full px-3 py-1.5 text-sm font-black ' + (step === 1 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200')}>1 · Concretagem</button>
         <button type="button" onClick={() => setStep(2)} className={'rounded-full px-3 py-1.5 text-sm font-black ' + (step === 2 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200')}>2 · Caminhões + CPs</button>
-        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" onClick={() => void ficha()}>Gerar ficha PDF</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('rolo')}>Etiquetas 60×40 (rolo)</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('a4')}>Etiquetas A4</Button>{step === 2 ? <Button variant="secondary" onClick={() => { setFichaCams([]); setFichaConf(null); setFichaOpen(true); }}>Ler ficha preenchida</Button> : null}<Button onClick={abrirCaminhao}>Adicionar caminhão</Button></div>
+        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" onClick={() => void ficha()}>Gerar ficha PDF</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('rolo')}>Etiquetas 60×40 (rolo)</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('a4')}>Etiquetas A4</Button>{step === 2 ? <Button variant="secondary" onClick={() => { setFichaRows([]); setFichaConf(null); setFichaFile(null); setFichaOpen(true); }}>Ler ficha preenchida (OCR)</Button> : null}<Button onClick={abrirCaminhao}>Adicionar caminhão</Button></div>
       </div>
 
       {step === 1 ? (
@@ -389,21 +438,51 @@ export function ConcretagemDetalhePage() {
         </div>
       </Modal>
 
-      <Modal open={fichaOpen} wide title="Conferir ficha preenchida (foto)" onClose={() => setFichaOpen(false)} footer={<><Button variant="ghost" onClick={() => setFichaOpen(false)}>Fechar</Button>{fichaCams.length ? <Button onClick={() => void onCriarDetectados()} disabled={gravandoFicha}>{gravandoFicha ? 'Criando...' : 'Criar caminhões detectados'}</Button> : null}</>}>
+      <Modal open={fichaOpen} wide title="Importar ficha de moldagem (OCR)" onClose={() => setFichaOpen(false)} footer={<><Button variant="ghost" onClick={() => setFichaOpen(false)}>Fechar</Button>{fichaRows.length ? <Button onClick={() => void onCriarDetectados()} disabled={gravandoFicha || !fichaRows.some((r) => r.criar && str(r.nota_fiscal))}>{gravandoFicha ? 'Criando...' : 'Criar ' + fichaRows.filter((r) => r.criar && str(r.nota_fiscal)).length + ' caminhão(ões) + CPs'}</Button> : null}</>}>
         <div className="space-y-4">
           <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
-            <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Foto da ficha:</span><input type="file" accept="image/*" disabled={lendoFicha} onChange={(e) => { const f = e.target.files?.[0]; if (f) void onLerFicha(f); e.currentTarget.value = ''; }} />{lendoFicha ? <span className="text-xs text-slate-500">lendo...</span> : null}</label>
-            <p className="mt-1 text-xs text-slate-500">Fotografe a ficha de moldagem preenchida. O QR identifica a concretagem; a IA extrai os caminhões. Requer VISION_API_KEY. Confira antes de criar.</p>
+            <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Foto ou scan da ficha preenchida:</span><input type="file" accept="image/*" disabled={lendoFicha} onChange={(e) => { const f = e.target.files?.[0]; if (f) void onLerFicha(f); e.currentTarget.value = ''; }} />{lendoFicha ? <span className="text-xs text-slate-500">lendo…</span> : null}</label>
+            <p className="mt-1 text-xs text-slate-500">A IA lê a grade manuscrita (uma linha por caminhão) e monta a conferência abaixo. Nada é gravado antes de você confirmar — edite qualquer campo que o OCR tiver errado.</p>
           </div>
-          {fichaConf != null ? <div className="text-xs text-slate-500">Confiança da leitura: <b>{Math.round((fichaConf ?? 0) * 100)}%</b></div> : null}
-          {fichaCams.length === 0 ? <p className="text-sm text-slate-500">Nenhum caminhão detectado ainda.</p> : (
+          <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">Cada caminhão criado gera <b>{padraoConc.total} CP(s)</b> pelo padrão de moldagem da concretagem/traço{padraoConc.txt ? <> ({padraoConc.txt})</> : null}. Se precisar de outro padrão, ajuste na etapa 1 antes de importar.</div>
+          {fichaConf != null ? <div className="text-xs text-slate-500">Legibilidade geral da ficha: <b>{Math.round((fichaConf ?? 0) * 100)}%</b></div> : null}
+          {fichaRows.length === 0 ? <p className="text-sm text-slate-500">Nenhum caminhão detectado ainda.</p> : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="text-left text-xs uppercase text-slate-500"><th className="py-1 pr-3">NF</th><th className="py-1 pr-3">Placa</th><th className="py-1 pr-3">Vol.</th><th className="py-1 pr-3">Slump</th><th className="py-1 pr-3">Temp.</th><th className="py-1 pr-3">Situação</th></tr></thead>
-                <tbody>{fichaCams.map((cv, i) => { const existe = (cams.data ?? []).some((x) => str(x.nota_fiscal) && str(x.nota_fiscal) === str(cv.nota_fiscal)); return (<tr key={i} className="border-t border-slate-100 dark:border-slate-800"><td className="py-1 pr-3 font-bold">{cv.nota_fiscal ?? '-'}</td><td className="py-1 pr-3">{cv.placa ?? '-'}</td><td className="py-1 pr-3">{cv.volume_m3 ?? '-'}</td><td className="py-1 pr-3">{cv.slump_medido_cm ?? '-'}</td><td className="py-1 pr-3">{cv.temperatura_concreto_c ?? '-'}</td><td className="py-1 pr-3">{existe ? <span className="text-slate-400">já lançado</span> : <span className="font-bold text-green-700">novo</span>}</td></tr>); })}</tbody>
+              <table className="w-full min-w-[920px] text-sm">
+                <thead><tr className="text-left text-[10px] uppercase tracking-wide text-slate-500"><th className="py-1 pr-2">Criar</th><th className="py-1 pr-2">Série</th><th className="py-1 pr-2">NF *</th><th className="py-1 pr-2">Vol. (m³)</th><th className="py-1 pr-2">Slump</th><th className="py-1 pr-2">Mold.</th><th className="py-1 pr-2">Saída usina</th><th className="py-1 pr-2">Chegada</th><th className="py-1 pr-2">Iní. desc.</th><th className="py-1 pr-2">Fim desc.</th><th className="py-1 pr-2">Elementos</th><th className="py-1 pr-2">Situação</th></tr></thead>
+                <tbody>
+                  {fichaRows.map((r, i) => {
+                    const nf = str(r.nota_fiscal);
+                    const jaExiste = !!nf && (cams.data ?? []).some((x) => str(x.nota_fiscal) === nf);
+                    const qtdeFicha = num(r.qtde_cps);
+                    const divergeQtde = qtdeFicha != null && padraoConc.total > 0 && qtdeFicha !== padraoConc.total;
+                    const confBaixa = r.conf != null && r.conf < 0.7;
+                    return (
+                      <tr key={i} className={'border-t border-slate-100 align-top dark:border-slate-800 ' + (jaExiste ? 'opacity-50' : '')}>
+                        <td className="py-1.5 pr-2"><input type="checkbox" checked={r.criar && !jaExiste && !!nf} disabled={jaExiste || !nf} onChange={(e) => setFichaRow(i, { criar: e.target.checked })} aria-label={'Criar caminhão ' + (i + 1)} /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-12 px-1 text-xs" value={r.serie} onChange={(e) => setFichaRow(i, { serie: e.target.value })} aria-label="Série" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-24 px-1 text-xs font-bold" value={r.nota_fiscal} onChange={(e) => setFichaRow(i, { nota_fiscal: e.target.value, criar: r.criar || !!e.target.value.trim() })} aria-label="Nota fiscal" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.volume_m3} onChange={(e) => setFichaRow(i, { volume_m3: e.target.value })} aria-label="Volume" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-14 px-1 text-xs" value={r.slump_medido_cm} onChange={(e) => setFichaRow(i, { slump_medido_cm: e.target.value })} aria-label="Slump" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.hora_moldagem} onChange={(e) => setFichaRow(i, { hora_moldagem: e.target.value })} placeholder="HH:MM" aria-label="Hora da moldagem" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.hora_saida_usina} onChange={(e) => setFichaRow(i, { hora_saida_usina: e.target.value })} placeholder="HH:MM" aria-label="Saída da usina" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.hora_chegada_obra} onChange={(e) => setFichaRow(i, { hora_chegada_obra: e.target.value })} placeholder="HH:MM" aria-label="Chegada à obra" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.hora_inicio_descarga} onChange={(e) => setFichaRow(i, { hora_inicio_descarga: e.target.value })} placeholder="HH:MM" aria-label="Início da descarga" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.hora_fim_descarga} onChange={(e) => setFichaRow(i, { hora_fim_descarga: e.target.value })} placeholder="HH:MM" aria-label="Fim da descarga" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-36 px-1 text-xs" value={r.elementos_concretados} onChange={(e) => setFichaRow(i, { elementos_concretados: e.target.value })} aria-label="Elementos concretados" /></td>
+                        <td className="py-1.5 pr-2 text-[11px] leading-4">
+                          {jaExiste ? <span className="font-bold text-slate-400">já lançado</span> : !nf ? <span className="font-bold text-amber-600">sem NF — informe p/ criar</span> : <span className="font-bold text-green-700">novo</span>}
+                          {divergeQtde ? <div className="font-bold text-amber-600">ficha: {qtdeFicha} CP ≠ padrão {padraoConc.total}</div> : null}
+                          {confBaixa ? <div className="text-amber-600">legibilidade baixa — confira</div> : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </table>
             </div>
           )}
+          {fichaRows.length ? <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" checked={fichaEvid} onChange={(e) => setFichaEvid(e.target.checked)} /> Salvar a foto da ficha como evidência desta concretagem</label> : null}
         </div>
       </Modal>
       <Card>

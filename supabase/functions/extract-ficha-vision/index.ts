@@ -1,5 +1,7 @@
 // extract-ficha-vision (GEOLAB) - OCR por IA da FICHA DE MOLDAGEM (modelo A, paisagem) preenchida -> caminhoes.
 // FAIL-SAFE sem VISION_API_KEY. verify_jwt=true. Self-contained.
+// v27: extrai tambem hora_moldagem, qtde_cps e elementos_concretados (colunas da ficha) + confianca POR LINHA (conf),
+// para a tela de conferencia editavel destacar linhas duvidosas e validar a qtde contra o padrao de moldagem.
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
 const corsHeaders = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'access-control-allow-methods': 'GET,POST,OPTIONS' };
@@ -13,12 +15,12 @@ const s = (v: unknown) => (v == null ? '' : String(v));
 
 const PROMPT = [
   'Voce le uma FICHA DE MOLDAGEM de concreto (modelo Consulte GEO, paisagem) fotografada ou escaneada.',
-  'A grade tem UMA LINHA POR CAMINHAO-BETONEIRA, com colunas: Serie no | Qtde CPs | Abat.(mm) | Nota Fiscal no | Horario moldagem | TRANSPORTE (Inicio da mistura | Chegada a obra) | DESCARGA (Inicio | Termino) | Tempo total | Concreto aplicado (Unit. | Acum.) | C.B. no | Elementos concretados | Idades.',
+  'A grade tem UMA LINHA POR CAMINHAO-BETONEIRA, com colunas: Serie no | Qtde CPs | Abat.(mm) | Nota Fiscal no | Horario moldagem | TRANSPORTE (Inicio da mistura | Chegada a obra) | DESCARGA (Inicio | Termino) | Tempo total | Concreto aplicado (Unit. | Acum.) | C.B. no | Amostragem/Elementos concretados | CP por idade.',
   'Extraia uma entrada por linha PREENCHIDA (ignore linhas totalmente em branco).',
   'Responda APENAS um JSON valido, sem comentarios nem texto fora do JSON, exatamente neste formato:',
-  '{"caminhoes":[{"serie":1,"nota_fiscal":"","slump_medido_cm":0,"volume_m3":0,"hora_saida_usina":"HH:MM","hora_chegada_obra":"HH:MM","hora_inicio_descarga":"HH:MM","hora_fim_descarga":"HH:MM","placa":null,"motorista":null,"temperatura_concreto_c":null}],"confianca":0.0}',
-  'Mapeamento de colunas -> campos JSON: "Abat.(mm)"->slump_medido_cm ; "Nota Fiscal no"->nota_fiscal ; "Inicio da mistura"->hora_saida_usina ; "Chegada a obra"->hora_chegada_obra ; "Descarga Inicio"->hora_inicio_descarga ; "Descarga Termino"->hora_fim_descarga ; "Concreto aplicado Unit."->volume_m3 ; "Serie no"->serie.',
-  'Regras: use null quando o campo estiver ilegivel ou ausente; horarios em 24h "HH:MM"; numeros com ponto decimal; nunca invente valores; placa/motorista/temperatura normalmente nao existem nesta ficha (use null); "confianca" e um numero entre 0 e 1 (legibilidade geral).',
+  '{"caminhoes":[{"serie":1,"nota_fiscal":"","qtde_cps":null,"slump_medido_cm":0,"volume_m3":0,"hora_moldagem":"HH:MM","hora_saida_usina":"HH:MM","hora_chegada_obra":"HH:MM","hora_inicio_descarga":"HH:MM","hora_fim_descarga":"HH:MM","elementos_concretados":null,"placa":null,"motorista":null,"temperatura_concreto_c":null,"conf":0.0}],"confianca":0.0}',
+  'Mapeamento de colunas -> campos JSON: "Abat.(mm)"->slump_medido_cm ; "Nota Fiscal no"->nota_fiscal ; "Qtde CPs"->qtde_cps ; "Horario moldagem"->hora_moldagem ; "Inicio da mistura"->hora_saida_usina ; "Chegada a obra"->hora_chegada_obra ; "Descarga Inicio"->hora_inicio_descarga ; "Descarga Termino"->hora_fim_descarga ; "Concreto aplicado Unit."->volume_m3 ; "Amostragem/Elementos concretados"->elementos_concretados ; "Serie no"->serie.',
+  'Regras: use null quando o campo estiver ilegivel ou ausente; horarios em 24h "HH:MM"; numeros com ponto decimal; nunca invente valores; NAO confunda a coluna "CP por idade" (ex.: 2x7d 2x28d) com "Qtde CPs" (numero inteiro total); placa/motorista/temperatura normalmente nao existem nesta ficha (use null); "conf" e a legibilidade daquela LINHA (0 a 1) e "confianca" a legibilidade geral da ficha (0 a 1).',
 ].join('\n');
 
 Deno.serve(async (req) => {
@@ -46,7 +48,7 @@ Deno.serve(async (req) => {
     const payload = {
       model,
       temperature: 0,
-      max_tokens: 1500,
+      max_tokens: 2500,
       messages: [{ role: 'user', content: [{ type: 'text', text: PROMPT }, { type: 'image_url', image_url: { url: dataUrl } }] }],
     };
 

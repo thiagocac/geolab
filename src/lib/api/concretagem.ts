@@ -277,7 +277,7 @@ export async function excluirEvidencia(id: string): Promise<void> {
 }
 
 // OCR da FICHA DE MOLDAGEM preenchida (EF extract-ficha-vision). Retorna caminhões detectados p/ conferência.
-export type FichaCaminhaoOCR = { serie?: number | null; nota_fiscal?: string | null; placa?: string | null; motorista?: string | null; volume_m3?: number | null; slump_medido_cm?: number | null; temperatura_concreto_c?: number | null; hora_saida_usina?: string | null; hora_chegada_obra?: string | null; hora_inicio_descarga?: string | null; hora_fim_descarga?: string | null };
+export type FichaCaminhaoOCR = { serie?: number | null; nota_fiscal?: string | null; qtde_cps?: number | null; placa?: string | null; motorista?: string | null; volume_m3?: number | null; slump_medido_cm?: number | null; temperatura_concreto_c?: number | null; hora_moldagem?: string | null; hora_saida_usina?: string | null; hora_chegada_obra?: string | null; hora_inicio_descarga?: string | null; hora_fim_descarga?: string | null; elementos_concretados?: string | null; conf?: number | null };
 export async function lerFichaImagem(file: File, concId: string): Promise<{ enabled: boolean; caminhoes: FichaCaminhaoOCR[]; confianca: number | null; reason?: string }> {
   const { base64, mime } = await fileToBase64(file);
   const { data: sess } = await supabase.auth.getSession();
