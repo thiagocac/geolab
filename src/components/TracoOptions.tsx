@@ -1,7 +1,8 @@
-type TracoOpt = { value: string; label: string; fck?: number | null; work_id?: string | null; client_id?: string | null };
+type TracoOpt = { value: string; label: string; fck?: number | null; idade_controle_dias?: number | null; work_id?: string | null; client_id?: string | null };
 
 function fmt(t: TracoOpt): string {
-  return t.fck != null ? `${t.label} · FCK ${t.fck}` : t.label;
+  const base = t.fck != null ? `${t.label} · FCK ${t.fck}` : t.label;
+  return t.idade_controle_dias != null ? `${base} · controle ${t.idade_controle_dias}d` : base;
 }
 
 // Agrupa as opcoes de traco por origem na cadeia de escopo: desta obra > da construtora > catalogo do lab.

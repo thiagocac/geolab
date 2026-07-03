@@ -1,28 +1,43 @@
-# INSTRUÇÕES — consultegeo-geolab v143 (Onda 4: laudo PDF + certificações + normas)
+# GEOLAB — Release v159 (fix de publicação no Netlify)
 
-**Use o COMPLETO v143** (cadeia cumulativa v138→v143). Publicar (GitHub → Netlify `geo-labs` → app.concresoft.io).
+Corrige a falha de build no Netlify que travou o site vivo na **v148** (as publicações de
+v155/v157/v158 nunca subiram). **Não altera código de tela** — é fix de dependências + pin de Node
++ bump de versão. Inclui também arquivos "repo-only" que se perdiam ao espelhar.
 
-## Banco — JÁ aplicado no vivo (head 122)
-- **122_config_lab_certificacoes** — coluna `config_lab.certificacoes jsonb default '[]'` (lista tipo/numero/orgao/validade).
+## Causa
+`npm ci` do Netlify (estrito) falhava em "Install dependencies" (exit 1) porque o
+`package-lock.json` estava **dessincronizado** do `package.json`: o `xlsx@0.18.5` saiu do
+`package.json` na v149 mas o lock manteve a entrada órfã `node_modules/xlsx`. O npm local
+tolera; o `npm ci` do Netlify rejeita.
 
-## Edge Function — JÁ deployada no vivo (não vai pelo Netlify)
-- **generate-laudo-ensaio-pdf v33** (ezbr `7bdd8d57…`, era `be3f63c2…`):
-  - **2a** — removida a logomarca **CONCRESOFT** do topo (fica só a logo do laboratório, à esquerda).
-  - **2b** — linha do exemplar passa a incluir o **Elemento concretado** (quando houver) e **sai a temperatura**.
-  - **2c** — "Dados do concreto" segue configurável (cimento/cura/aditivo/dmax/componentes já são toggles).
-  - **2d** — `clip` anti-overflow nos valores de dados, recebimento, equipamentos e na linha do exemplar (sem corte/sobreposição).
-  - **Bloco 3** — nova seção **"Certificações do laboratório"** (lê `config_lab.certificacoes`; toggle no Config. de Campos).
-  - **Bloco 4** — **normas por toggle com ano vigente**: NBR 5739:2018 · 5738:2015 · 16889:2020 · 16886:2020 (só aparecem as ligadas).
+## Correção (v159)
+- **`package-lock.json` regenerado do zero e canônico** (Node 22.22 / npm 10.9, `rm lock+node_modules; npm install`).
+  Sem `xlsx` órfão; idempotente (re-rodar `npm install --package-lock-only` altera 0 linhas).
+- **`.nvmrc` = `22`** e **`netlify.toml`** (`[build.environment] NODE_VERSION = "22"`) — fixam o Node no Netlify.
+- Restaurados os repo-only usados nos e-mails transacionais:
+  `public/brand/concresoft-lockup-white-2x.png` (referenciado em `send-notification`) e `-color-2x.png`.
+- Bump **v159** (`CACHE_NAME` + `APP_VERSION`).
 
-## Frontend (5 arquivos)
-- public/sw.js · src/lib/telemetry/core.ts → bump **v143**
-- src/lib/concreto/camposEnsaioLaudo.ts → toggles novos no Config. de Campos › Laudo: **Certificações** (off) + **4 normas** (on).
-- src/lib/api/preferencias.ts → `certificacoes` no tipo/SELECT do config_lab.
-- src/pages/gestao/PreferenciasPage.tsx → **cadastro de certificações** (lista: tipo, número, órgão, validade).
+## Validado como o Netlify (checkout limpo, Node 22 / npm 10)
+```
+rm -rf node_modules && npm ci     # exit 0 — 291 pacotes em 19s (era exit 1 no Netlify)
+npm run build                     # exit 0 — check-source · biome · tsc --noEmit · vitest 23/23 · vite build
+```
 
-## Gate (espelho Netlify)
-check-source OK · biome 0 erros · **tsc --skipLibCheck 0** · vitest 23/23 · esbuild OK · EF compilada no deploy + 9 marcadores conferidos.
-Sugestão: após o push, emita um laudo de teste para conferir visualmente (sem logo Concresoft, linha do exemplar com elemento, normas, certificações se ligadas).
+## Arquivos (7) — todos neste patch, sobem no GitHub
+```
+package-lock.json                                   # regenerado (canônico)
+.nvmrc                                              # novo — 22
+netlify.toml                                        # novo — NODE_VERSION 22
+public/sw.js                                        # CACHE_NAME v159
+src/lib/telemetry/core.ts                           # APP_VERSION v159
+public/brand/concresoft-lockup-white-2x.png         # novo (repo-only)
+public/brand/concresoft-lockup-color-2x.png         # novo (repo-only)
+```
+`package.json` NÃO muda (já estava correto desde a v149).
 
-## Decisões do plano (resolvidas)
-Aviso "<80% do esperado" (Onda 1) · hora de referência em vez de schema de hora-prevista (Onda 1) · certificações em `config_lab` (não DocGate).
+## Aplicar
+1. Copie os arquivos deste zip por cima do repo (mesma árvore). Garanta que `package-lock.json`,
+   `.nvmrc`, `netlify.toml` e os 2 PNGs entrem no commit (`.gitignore` não os bloqueia).
+2. `git add -A && git commit -m "v159: fix Netlify (lock canônico + pin Node 22)" && git push`
+3. Netlify: `npm ci` passa → `npm run build` → site sai do v148 para o **v159**.

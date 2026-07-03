@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
@@ -43,6 +44,7 @@ type FormState = {
   slump_previsto_cm: string;
   slump_tolerancia_cm: string;
   validade_concreto_minutos: string;
+  idade_controle_dias: string;
   condicao_preparo: string;
   brita: string;
   dmax_agregado_mm: string;
@@ -71,7 +73,7 @@ type FormState = {
 function vazio(): FormState {
   return {
     descricao: 'FCK 30 | BRITA 1 | SLUMP 10±2 CM', aplicacao: 'Sapata, Cortina, Blocos', fck_mpa: '30', fcj_mpa: '', desvio_padrao_mpa: '',
-    slump_previsto_cm: '10', slump_tolerancia_cm: '2', validade_concreto_minutos: '150', condicao_preparo: 'A', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false, comp_cimento_marca: '', comp_cimento_proc: '', comp_brita_marca: '', comp_brita_proc: '', comp_areia_marca: '', comp_areia_proc: '', comp_aditivo_marca: '', comp_aditivo_proc: '', comp_agua_proc: '',
+    slump_previsto_cm: '10', slump_tolerancia_cm: '2', validade_concreto_minutos: '150', idade_controle_dias: '', condicao_preparo: 'A', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false, comp_cimento_marca: '', comp_cimento_proc: '', comp_brita_marca: '', comp_brita_proc: '', comp_areia_marca: '', comp_areia_proc: '', comp_aditivo_marca: '', comp_aditivo_proc: '', comp_agua_proc: '',
     escopo: 'lab', client_id: '', work_id: '',
   };
 }
@@ -88,6 +90,7 @@ function fromRow(t: TracoRow): FormState {
     slump_previsto_cm: t.slump_previsto_cm == null ? '' : String(t.slump_previsto_cm),
     slump_tolerancia_cm: t.slump_tolerancia_cm == null ? '' : String(t.slump_tolerancia_cm),
     validade_concreto_minutos: t.validade_concreto_minutos == null ? '' : String(t.validade_concreto_minutos),
+    idade_controle_dias: t.idade_controle_dias == null ? '' : String(t.idade_controle_dias),
     condicao_preparo: t.condicao_preparo ?? 'A',
     brita: t.brita ?? '',
     dmax_agregado_mm: t.dmax_agregado_mm == null ? '' : String(t.dmax_agregado_mm),
@@ -140,6 +143,13 @@ export function MateriaisPage() {
   const [busy, setBusy] = useState(false);
   const q = useQuery({ queryKey: ['tracos'], queryFn: listTracos });
   const [filtroConstrutora, setFiltroConstrutora] = useState('');
+  const [filtroObra, setFiltroObra] = useState('');
+  const [spT, setSpT] = useSearchParams();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seed único no mount (deep-link ?work= vindo das telas de concretagem)
+  useEffect(() => {
+    const w = spT.get('work');
+    if (w) { setFiltroObra(w); spT.delete('work'); setSpT(spT, { replace: true }); }
+  }, []);
   const construtoras = useQuery({ queryKey: ['ref', 'lab_clients', 'tracos'], queryFn: () => listClientesRef() });
   const obrasDoEscopo = useQuery({ queryKey: ['ref', 'client_works', f.client_id, 'tracos'], queryFn: () => listReference('client_works', 'nome', f.client_id ? { client_id: f.client_id } : undefined), enabled: !!f.client_id });
 
@@ -192,6 +202,7 @@ export function MateriaisPage() {
         slump_previsto_cm: num(f.slump_previsto_cm) ?? slump?.previsto ?? null,
         slump_tolerancia_cm: num(f.slump_tolerancia_cm) ?? slump?.tolerancia ?? null,
         validade_concreto_minutos: num(f.validade_concreto_minutos),
+        idade_controle_dias: num(f.idade_controle_dias),
         brita: str(f.brita) || parseBrita(descricao) || null,
         dmax_agregado_mm: num(f.dmax_agregado_mm),
         fator_ac: num(f.fator_ac),
@@ -224,11 +235,12 @@ export function MateriaisPage() {
   }
 
   const rows = q.data ?? [];
-  const rowsView = rows.filter((t) => !filtroConstrutora ? true : filtroConstrutora === '__lab__' ? (!t.client_id && !t.work_id) : t.client_id === filtroConstrutora);
+  const obrasFiltroOpts = useMemo(() => { const m = new Map<string, string>(); for (const t of rows) if (t.work_id) m.set(t.work_id, t.client_works?.nome ?? 'Obra'); return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1])); }, [rows]);
+  const rowsView = rows.filter((t) => !filtroConstrutora ? true : filtroConstrutora === '__lab__' ? (!t.client_id && !t.work_id) : t.client_id === filtroConstrutora).filter((t) => !filtroObra ? true : t.work_id === filtroObra);
   return (
     <div className="space-y-4">
       <PageHeader kicker="Cadastros" title="Traços de concreto" description="Cadastro de traços, slump, validade e padrão de moldagem no mesmo modelo da Nova obra." />
-      <div className="flex flex-wrap items-center justify-between gap-2"><select className="input max-w-[280px]" value={filtroConstrutora} onChange={(e) => setFiltroConstrutora(e.target.value)} aria-label="Filtrar por escopo"><option value="">Todos os escopos</option><option value="__lab__">Catálogo do laboratório</option>{(construtoras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><Button onClick={novo}>+ Adicionar traço</Button></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><select className="input max-w-[280px]" value={filtroConstrutora} onChange={(e) => setFiltroConstrutora(e.target.value)} aria-label="Filtrar por escopo"><option value="">Todos os escopos</option><option value="__lab__">Catálogo do laboratório</option>{(construtoras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>{obrasFiltroOpts.length ? <select className="input max-w-[240px]" value={filtroObra} onChange={(e) => setFiltroObra(e.target.value)} aria-label="Filtrar por obra"><option value="">Todas as obras</option>{obrasFiltroOpts.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}</select> : null}<Button onClick={novo}>+ Adicionar traço</Button></div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rowsView.length === 0 ? <EmptyState /> : (
         <Card>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -236,7 +248,7 @@ export function MateriaisPage() {
               <div key={t.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{t.nome}</span>{t.work_id ? <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">Obra: {t.client_works?.nome ?? '—'}</span> : t.client_id ? <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">Construtora: {t.lab_clients?.nome_fantasia || t.lab_clients?.razao_social || '—'}</span> : <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">Catálogo do lab</span>}</div>
-                  <div className="mt-1 text-xs text-slate-500">{t.aplicacao || '-'} · FCK {t.fck_mpa ?? '-'} MPa · slump {t.slump_previsto_cm ?? '-'}±{t.slump_tolerancia_cm ?? '-'} cm · validade {t.validade_concreto_minutos ?? '-'} min · {normalizePadroes(t.padrao_moldagem, t.fck_mpa).length} idade(s)</div>
+                  <div className="mt-1 text-xs text-slate-500">{t.aplicacao || '-'} · FCK {t.fck_mpa ?? '-'} MPa · slump {t.slump_previsto_cm ?? '-'}±{t.slump_tolerancia_cm ?? '-'} cm · validade {t.validade_concreto_minutos ?? '-'} min{t.idade_controle_dias != null ? ` · controle ${t.idade_controle_dias}d` : ''} · {normalizePadroes(t.padrao_moldagem, t.fck_mpa).length} idade(s)</div>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="ghost" onClick={() => editar(t)}>Editar</Button>
@@ -277,6 +289,7 @@ export function MateriaisPage() {
               <Field label="Slump prev. (cm)" type="number" value={f.slump_previsto_cm} onChange={(e) => patch('slump_previsto_cm', e.target.value)} />
               <Field label="Tolerância (±cm)" type="number" value={f.slump_tolerancia_cm} onChange={(e) => patch('slump_tolerancia_cm', e.target.value)} />
               <Field label="Validade (min)" type="number" value={f.validade_concreto_minutos} onChange={(e) => patch('validade_concreto_minutos', e.target.value)} />
+              <Field label="Idade de controle (dias)" type="number" value={f.idade_controle_dias} onChange={(e) => patch('idade_controle_dias', e.target.value)} />
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-4">
               <SelectField label="Cond. preparo" value={f.condicao_preparo} onChange={(e) => patch('condicao_preparo', e.target.value)}>{['A', 'B', 'C'].map((x) => <option key={x} value={x}>{x}</option>)}</SelectField>

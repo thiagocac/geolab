@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { openDeferredTab } from '../../lib/pdf';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -21,6 +22,12 @@ export function NcPage() {
   const qc = useQueryClient();
   const podeTratar = can('nc.gerenciar');
   const [status, setStatus] = useState('');
+  const [sp, setSp] = useSearchParams();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seed único no mount
+  useEffect(() => {
+    const s = sp.get('status');
+    if (s) { setStatus(s); sp.delete('status'); setSp(sp, { replace: true }); }
+  }, []);
   const [obra, setObra] = useState('');
   const [sel, setSel] = useState<NcRow | null>(null);
   const [novo, setNovo] = useState(false);
@@ -78,7 +85,7 @@ export function NcPage() {
           </div>
         )}
         {!ncs.isLoading && !ncs.isError && total > 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 12 }}>
             <span style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{total} NC(s) · página {page + 1} de {pageCount}</span>
             <div style={{ display: 'flex', gap: 8 }}>
               <Button variant="ghost" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Anterior</Button>

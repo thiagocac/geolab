@@ -62,7 +62,7 @@ export function NotificacoesPage() {
               const md = (r.metadata && typeof r.metadata === 'object') ? r.metadata as Record<string, unknown> : {};
               const reason = String(md.reason ?? (md.dry_run ? 'dry-run' : ''));
               return (
-                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
+                <div key={r.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
                   <span style={{ fontSize: 13 }}>{(r.created_at ?? '').slice(0, 16).replace('T', ' ')} - {r.recipient_email} - <span style={{ color: 'var(--ink-faint)' }} title={r.event_type}>{labelEvt(r.event_type)}</span></span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: statusCor(r.status) }}>
                     <span style={{ width: 7, height: 7, borderRadius: 99, background: statusCor(r.status) }} />{r.status}{reason ? ' (' + reason + ')' : ''}

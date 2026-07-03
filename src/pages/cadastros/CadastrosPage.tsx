@@ -4,10 +4,11 @@ import { Button } from '../../components/ui/Button';
 import type { Column, FieldSpec, DomainRow } from '../../lib/api/types';
 import { MateriaisPage } from './MateriaisPage';
 import { ColaboradoresPage } from './ColaboradoresPage';
+import { EquipamentosPage } from './EquipamentosPage';
 
 const ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map((u) => ({ value: u, label: u }));
 
-type Tab = { key: string; label: string; table: string; description: string; sort: string; columns: Column<DomainRow>[]; fields: FieldSpec[] };
+type Tab = { key: string; label: string; table: string; description: string; sort: string; columns: Column<DomainRow>[]; fields: FieldSpec[]; dedicated?: boolean };
 
 const tabs: Tab[] = [
   { key: 'clientes', label: 'Clientes', table: 'lab_clients', description: 'Construtoras atendidas pelo laboratorio.', sort: 'razao_social',
@@ -15,16 +16,14 @@ const tabs: Tab[] = [
     fields: [{ key: 'tipo', label: 'Tipo', type: 'select', required: true, options: [{ value: 'PJ', label: 'PJ' }, { value: 'PF', label: 'PF' }] }, { key: 'razao_social', label: 'Razao social', required: true }, { key: 'nome_fantasia', label: 'Nome fantasia' }, { key: 'cnpj_cpf', label: 'CNPJ/CPF', lookup: { kind: 'cnpj', map: { razao_social: 'razao_social', nome_fantasia: 'nome_fantasia', email: 'email', telefone: 'telefone', cep: 'cep', endereco: 'endereco', bairro: 'bairro', cidade: 'cidade', uf: 'uf' } } }, { key: 'email', label: 'E-mail' }, { key: 'telefone', label: 'Telefone' }, { key: 'celular', label: 'Celular' }, { key: 'cep', label: 'CEP', lookup: { kind: 'cep', map: { endereco: 'endereco', bairro: 'bairro', cidade: 'cidade', uf: 'uf' } } }, { key: 'endereco', label: 'Endereco' }, { key: 'bairro', label: 'Bairro' }, { key: 'cidade', label: 'Cidade' }, { key: 'uf', label: 'UF', type: 'select', options: ufs }, { key: 'observacoes', label: 'Observacoes', type: 'textarea' }] },
   { key: 'obras', label: 'Obras', table: 'client_works', description: 'Obras dos clientes.', sort: 'nome',
     columns: [{ key: 'codigo', header: 'Codigo', sortable: true }, { key: 'sigla', header: 'Sigla' }, { key: 'nome', header: 'Obra', sortable: true }, { key: 'cidade', header: 'Cidade' }, { key: 'uf', header: 'UF' }, { key: 'status', header: 'Status' }],
-    fields: [{ key: 'client_id', label: 'Cliente', type: 'reference', refTable: 'lab_clients', refLabel: 'razao_social', required: true }, { key: 'codigo', label: 'Codigo' }, { key: 'nome', label: 'Nome da obra', required: true }, { key: 'sigla', label: 'Sigla (prefixo do Nº de relatório)', help: 'Gerada das 4 primeiras letras do nome; editável.', derive: { from: 'nome', transform: 'first4letters' } }, { key: 'cep', label: 'CEP', lookup: { kind: 'cep', map: { endereco: 'endereco', bairro: 'bairro', cidade: 'cidade', uf: 'uf' } } }, { key: 'endereco', label: 'Endereco' }, { key: 'bairro', label: 'Bairro' }, { key: 'cidade', label: 'Cidade' }, { key: 'uf', label: 'UF', type: 'select', options: ufs }, { key: 'tipo', label: 'Tipo' }, { key: 'etapa', label: 'Etapa' }, { key: 'responsavel_tecnico', label: 'Responsavel tecnico' }, { key: 'crea', label: 'CREA' }, { key: 'estrutura_habilitada', label: 'Habilitar estrutura (pecas)', type: 'boolean' }, { key: 'traco_habilitado', label: 'Habilitar tracos por obra', type: 'boolean' }] },
+    fields: [{ key: 'client_id', label: 'Cliente', type: 'reference', refTable: 'lab_clients', refLabel: 'razao_social', required: true }, { key: 'codigo', label: 'Codigo' }, { key: 'nome', label: 'Nome da obra', required: true }, { key: 'sigla', label: 'Sigla (prefixo do Nº de relatório)', help: 'Gerada das 4 primeiras letras do nome; editável.', derive: { from: 'nome', transform: 'first4letters' } }, { key: 'cep', label: 'CEP', lookup: { kind: 'cep', map: { endereco: 'endereco', bairro: 'bairro', cidade: 'cidade', uf: 'uf' } } }, { key: 'endereco', label: 'Endereco' }, { key: 'bairro', label: 'Bairro' }, { key: 'cidade', label: 'Cidade' }, { key: 'uf', label: 'UF', type: 'select', options: ufs }, { key: 'tipo', label: 'Tipo' }, { key: 'etapa', label: 'Etapa' }, { key: 'responsavel_tecnico', label: 'Responsavel tecnico' }, { key: 'crea', label: 'CREA' }, { key: 'estrutura_habilitada', label: 'Habilitar estrutura (pecas)', type: 'boolean' }] },
   { key: 'contatos', label: 'Contatos', table: 'client_contacts', description: 'Contatos dos clientes e obras.', sort: 'nome',
     columns: [{ key: 'nome', header: 'Nome', sortable: true }, { key: 'cargo', header: 'Cargo' }, { key: 'email', header: 'E-mail' }, { key: 'telefone', header: 'Telefone' }],
     fields: [{ key: 'client_id', label: 'Cliente', type: 'reference', refTable: 'lab_clients', refLabel: 'razao_social', required: true }, { key: 'work_id', label: 'Obra (opcional)', type: 'reference', refTable: 'client_works' }, { key: 'nome', label: 'Nome', required: true }, { key: 'cargo', label: 'Cargo' }, { key: 'email', label: 'E-mail' }, { key: 'telefone', label: 'Telefone' }] },
   { key: 'contratos', label: 'Contratos', table: 'lab_contracts', description: 'Contratos (referencia: anexo + vinculo).', sort: 'numero',
     columns: [{ key: 'numero', header: 'Numero', sortable: true }, { key: 'descricao', header: 'Descricao' }, { key: 'vigencia_inicio', header: 'Inicio', type: 'date' }, { key: 'vigencia_fim', header: 'Fim', type: 'date' }, { key: 'status', header: 'Status' }],
     fields: [{ key: 'client_id', label: 'Cliente', type: 'reference', refTable: 'lab_clients', refLabel: 'razao_social', required: true }, { key: 'numero', label: 'Numero' }, { key: 'descricao', label: 'Descricao', type: 'textarea' }, { key: 'vigencia_inicio', label: 'Vigencia inicio', type: 'date' }, { key: 'vigencia_fim', label: 'Vigencia fim', type: 'date' }, { key: 'status', label: 'Status' }] },
-  { key: 'equipamentos', label: 'Equipamentos', table: 'equipamentos', description: 'Equipamentos e calibracao.', sort: 'tipo',
-    columns: [{ key: 'tipo', header: 'Tipo', sortable: true }, { key: 'marca_modelo', header: 'Marca/Modelo' }, { key: 'numero_serie', header: 'No serie' }, { key: 'validade_calibracao', header: 'Validade calib.', type: 'date' }],
-    fields: [{ key: 'tipo', label: 'Tipo', type: 'select', required: true, options: [{ value: 'prensa', label: 'Prensa' }, { value: 'balanca', label: 'Balanca' }, { value: 'molde', label: 'Molde' }, { value: 'paquimetro', label: 'Paquimetro' }, { value: 'outro', label: 'Outro' }] }, { key: 'marca_modelo', label: 'Marca/Modelo' }, { key: 'numero_serie', label: 'No serie' }, { key: 'capacidade_kn', label: 'Capacidade (kN)', type: 'number' }, { key: 'classe', label: 'Classe' }, { key: 'numero_certificado', label: 'No certificado' }, { key: 'data_calibracao', label: 'Data calibracao', type: 'date' }, { key: 'validade_calibracao', label: 'Validade calibracao', type: 'date' }, { key: 'lab_calibrador', label: 'Lab. calibrador' }, { key: 'incerteza_mpa', label: 'Incerteza (MPa)', type: 'number' }] },
+  { key: 'equipamentos', label: 'Equipamentos', table: 'equipamentos', description: 'Equipamentos e calibracao.', sort: 'tipo', dedicated: true, columns: [], fields: [] },
 ];
 
 export function CadastrosPage() {
@@ -45,6 +44,8 @@ export function CadastrosPage() {
         ? <ColaboradoresPage />
         : isMateriais
         ? <MateriaisPage />
+        : t.dedicated && t.key === 'equipamentos'
+        ? <EquipamentosPage />
         : <AdminListPage key={t.key} title={t.label} kicker="Cadastros" description={t.description} table={t.table} columns={t.columns} fields={t.fields} initialSort={t.sort} canDelete />}
     </div>
   );

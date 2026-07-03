@@ -276,4 +276,3 @@ async function handler(req: Request): Promise<Response> {
 }
 
 Deno.serve(handler);
-                      

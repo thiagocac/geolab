@@ -216,16 +216,16 @@ export async function listCpsDaConcretagem(concId: string): Promise<CpDetalhe[]>
 }
 
 // Traços com fck para os seletores de concretagem.
-export type TracoFckOpt = { value: string; label: string; fck: number | null; padrao_moldagem?: PadraoItem[]; slump?: number | null; tolerancia?: number | null; validade?: number | null; work_id?: string | null; client_id?: string | null };
+export type TracoFckOpt = { value: string; label: string; fck: number | null; idade_controle_dias?: number | null; padrao_moldagem?: PadraoItem[]; slump?: number | null; tolerancia?: number | null; validade?: number | null; work_id?: string | null; client_id?: string | null };
 // Cadeia de escopo: traco da obra (work_id) > traco da construtora (client_id, work_id null) > catalogo do lab (ambos null).
 export async function listTracosComFck(workId?: string | null, clientId?: string | null): Promise<TracoFckOpt[]> {
-  let qy = db.from('operational_materials').select('id, nome, fck_mpa, padrao_moldagem, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, work_id, client_id').eq('material_kind', 'concreto').is('deleted_at', null);
+  let qy = db.from('operational_materials').select('id, nome, fck_mpa, idade_controle_dias, padrao_moldagem, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, work_id, client_id').eq('material_kind', 'concreto').is('deleted_at', null);
   if (workId && clientId) qy = qy.or(`work_id.eq.${workId},client_id.eq.${clientId},and(work_id.is.null,client_id.is.null)`);
   else if (clientId) qy = qy.or(`client_id.eq.${clientId},and(work_id.is.null,client_id.is.null)`);
   else if (workId) qy = qy.or(`work_id.eq.${workId},and(work_id.is.null,client_id.is.null)`);
   const { data, error } = await qy.order('nome', { ascending: true });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Record<string, any>[]).map((r) => ({ value: String(r.id), label: String(r.nome ?? r.id), fck: r.fck_mpa != null ? Number(r.fck_mpa) : null, padrao_moldagem: Array.isArray(r.padrao_moldagem) ? r.padrao_moldagem : [], slump: r.slump_previsto_cm == null ? null : Number(r.slump_previsto_cm), tolerancia: r.slump_tolerancia_cm == null ? null : Number(r.slump_tolerancia_cm), validade: r.validade_concreto_minutos == null ? null : Number(r.validade_concreto_minutos), work_id: r.work_id ?? null, client_id: r.client_id ?? null }));
+  return ((data ?? []) as Record<string, any>[]).map((r) => ({ value: String(r.id), label: String(r.nome ?? r.id), fck: r.fck_mpa != null ? Number(r.fck_mpa) : null, idade_controle_dias: r.idade_controle_dias != null ? Number(r.idade_controle_dias) : null, padrao_moldagem: Array.isArray(r.padrao_moldagem) ? r.padrao_moldagem : [], slump: r.slump_previsto_cm == null ? null : Number(r.slump_previsto_cm), tolerancia: r.slump_tolerancia_cm == null ? null : Number(r.slump_tolerancia_cm), validade: r.validade_concreto_minutos == null ? null : Number(r.validade_concreto_minutos), work_id: r.work_id ?? null, client_id: r.client_id ?? null }));
 }
 
 // OCR da NF/DANFE do caminhao (EF extract-nf-vision). Retorna campos ja nomeados p/ o recebimento.

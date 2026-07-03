@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
@@ -43,6 +44,12 @@ export function ConcretagensPage() {
   const [obraFiltro, setObraFiltro] = useState('');
   const [page, setPage] = useState(0);
   const [statusFiltro, setStatusFiltro] = useState('');
+  const [spC, setSpC] = useSearchParams();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seed único no mount
+  useEffect(() => {
+    const fl = spC.get('filtro');
+    if (fl === 'sem_caminhao') { setStatusFiltro('programado'); spC.delete('filtro'); setSpC(spC, { replace: true }); }
+  }, []);
   const [dataDe, setDataDe] = useState('');
   const [dataAte, setDataAte] = useState('');
   const PAGE = 25;
@@ -79,14 +86,14 @@ export function ConcretagensPage() {
         <input className="input" placeholder="Buscar por Nº relatório, código ou fornecedor" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 320 }} />
         <select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 200 }}><option value="">Todos os clientes</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
         <select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 200 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
-        <select className="input" value={statusFiltro} onChange={(e) => { setStatusFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 170 }} title="Status técnico"><option value="">Todos os status</option><option value="programado">Programado</option><option value="moldado">Moldado</option><option value="em_andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="rompido">Rompido</option><option value="laudado">Laudado</option></select>
+        <select className="input" value={statusFiltro} onChange={(e) => { setStatusFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 170 }} title="Status técnico"><option value="">Todos os status</option><option value="programado">Programado</option><option value="moldado">Moldado</option><option value="em_andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="rompido">Rompido</option><option value="laudado">Laudado</option><option value="cancelada">Cancelada</option></select>
         <input className="input" type="date" title="Data de" value={dataDe} onChange={(e) => { setDataDe(e.target.value); setPage(0); }} style={{ maxWidth: 150 }} />
         <input className="input" type="date" title="Data até" value={dataAte} onChange={(e) => { setDataAte(e.target.value); setPage(0); }} style={{ maxWidth: 150 }} />
       </div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <div style={{ display: 'grid', gap: 8 }}>
           {rows.map((c) => (
-            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 14, border: '1px solid var(--line)', borderRadius: 10, borderLeft: c.n_cps_atrasados > 0 ? '4px solid var(--magenta)' : '1px solid var(--line)' }}>
+            <div key={c.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 14, border: '1px solid var(--line)', borderRadius: 10, borderLeft: c.n_cps_atrasados > 0 ? '4px solid var(--magenta)' : '1px solid var(--line)' }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>Relatório Nº {c.numero_relatorio ?? '-'} <small style={{ color: 'var(--ink-faint)', fontWeight: 400 }}>· {c.codigo ?? '(sem codigo)'}</small><TecChip s={c.status_tecnico} /><StatusBadge status={c.status} /></div>
                 <div style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{c.cliente ?? '-'} — {c.obra ?? '-'} — {c.data_programada ?? c.data_real ?? '-'} — {c.fornecedor_texto ?? '-'}</div>
@@ -101,7 +108,7 @@ export function ConcretagensPage() {
         </div>
       )}
       {!q.isLoading && !q.isError && total > 0 ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <span style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{total} concretagem(ns) · página {page + 1} de {pageCount}</span>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="ghost" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Anterior</Button>

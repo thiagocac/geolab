@@ -11,7 +11,7 @@
 // API genérica: descreva colunas tipadas (formato BR, alinhamento, total) e passe as linhas; o visual é padrão.
 // Uso: await exportExcel({ title, subtitle, fields }, { name, columns, rows, totals }).
 
-import type { WorkBook, WorkSheet } from 'xlsx';
+import type { WorkBook, WorkSheet } from 'xlsx-js-style';
 
 export type XlsxFormat = 'text' | 'int' | 'dec1' | 'dec2' | 'money' | 'percent' | 'date' | 'datetime';
 export type XlsxAlign = 'left' | 'center' | 'right';
@@ -43,7 +43,7 @@ export interface XlsxMeta {
 }
 
 // xlsx-js-style espelha a API do xlsx.
-type XlsxModule = typeof import('xlsx');
+type XlsxModule = typeof import('xlsx-js-style');
 type Style = Record<string, unknown>;
 type Cell = { v: string | number | boolean | null; t: 's' | 'n' | 'b'; z?: string; s: Style };
 

@@ -69,3 +69,8 @@ verify_jwt = false
 # sequencial lab+ano via RPC atribuir_numeracao_cp_lote (128/129). Auth: JWT (RLS decide).
 [functions.generate-etiquetas-cp-pdf]
 verify_jwt = true
+
+# generate-agenda-rompimento-pdf: agenda de rompimentos em PDF (colunas em branco p/ caneta).
+# v9: agrupar_prensa opcional -> secoes por prensa prevista (alocacao equipamento_obras).
+[functions.generate-agenda-rompimento-pdf]
+verify_jwt = true

@@ -25,7 +25,7 @@ const PW = 595.28, PH = 841.89, MX = 40, RIGHT = PW - MX, CW = RIGHT - MX, BOTTO
 const san = (s: unknown): string => String(s ?? '')
   .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/→/g, '->').replace(/≈/g, '~')
   .replace(/[‘’‛′]/g, "'").replace(/[“”″]/g, '"')
-  .replace(/[–—−]/g, '-').replace(/…/g, '...').replace(/ /g, ' ')
+  .replace(/[–—−]/g, '-').replace(/…/g, '...').replace(/\u00A0/g, ' ')
   .replace(/[^\x00-\xFF]/g, '?');
 const fmt = (n: number | null | undefined, d = 1) => (n == null || !isFinite(n) ? '-' : n.toFixed(d).replace('.', ','));
 const dbr = (s: unknown) => { const t = String(s ?? '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return '-'; const [y, m, dd] = t.split('-'); return `${dd}/${m}/${y}`; };
@@ -79,8 +79,8 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       sb.from('client_works').select('nome, cidade, uf, endereco, responsavel_tecnico, crea').eq('id', conc.work_id).maybeSingle(),
       sb.from('lab_clients').select('razao_social, nome_fantasia, email, telefone').eq('id', conc.client_id).maybeSingle(),
       sb.from('tenants').select('name').eq('id', conc.tenant_id).maybeSingle(),
-      conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_cm, slump_tolerancia_cm, bombeado, componentes').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
-      sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes').eq('tenant_id', conc.tenant_id).maybeSingle(),
+      conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_cm, slump_tolerancia_cm, bombeado, componentes, idade_controle_dias').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
+      sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes, idade_controle_default').eq('tenant_id', conc.tenant_id).maybeSingle(),
       conc.moldador_id ? sb.from('colaboradores').select('nome').eq('id', conc.moldador_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
 
@@ -119,7 +119,9 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     ['traco_fck', 'fornecedor', 'data_hora', 'local_peca', 'volume_programado', 'dimensao_cp', 'moldador', 'clima', 'temperatura_ambiente', 'bombeado', 'observacoes', 'padrao_moldagem'].forEach((k) => (CON[k] = defCon(k, true)));
 
     const idade = (t: Record<string, unknown>) => Number(t.idade_dias ?? 0);
-    const isCtrl = (t: Record<string, unknown>) => idade(t) === 28 && String(t.idade_unidade ?? 'dia') !== 'hora';
+    // Idade de controle: traco (operational_materials.idade_controle_dias, mig 135) > config_lab.idade_controle_default > 28.
+    const idadeCtrl = Number((om as Record<string, unknown> | null)?.idade_controle_dias ?? (cfg as Record<string, unknown> | null)?.idade_controle_default ?? 28) || 28;
+    const isCtrl = (t: Record<string, unknown>) => idade(t) === idadeCtrl && String(t.idade_unidade ?? 'dia') !== 'hora';
     const grupos = new Map<string, Record<string, unknown>[]>();
     for (const t of tlist) { const k = String(t.receipt_id ?? 'sem-nf'); const a = grupos.get(k) ?? []; a.push(t); grupos.set(k, a); }
     const nfKey = (id: string) => { const rc = rcById.get(id) as Record<string, unknown> | undefined; return rc ? String(rc.nota_fiscal ?? rc.serie ?? '-') : '-'; };
@@ -291,7 +293,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       rect(MX, y - 26, CW, 28, NAVY);
       const aceLabel = usaLote
         ? 'Aceitação estatística de lote (ABNT NBR 12655)'
-        : (ON.amostragem ? 'Aceitação (ABNT NBR 12655 - amostragem total - condição ' + condicao + ')' : 'Aceitação (ABNT NBR 12655)');
+        : (ON.amostragem ? 'Aceitação (ABNT NBR 12655 - amostragem total - condição ' + condicao + ' - controle ' + idadeCtrl + 'd)' : 'Aceitação (ABNT NBR 12655 - controle ' + idadeCtrl + 'd)');
       const aceTxt = usaLote
         ? `fck,est = ${fmt(loteFckEst as number, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa  (n=${lote!.n_exemplares}, Sd ${fmt(Number(lote!.sd), 1)})`
         : (menorExemplar != null ? `fck,est = ${fmt(menorExemplar, 1)} MPa  ${conforme ? '>=' : '<'}  fck ${fmt(fck, 1)} MPa` : `${n} exemplar(es) na idade de controle`);

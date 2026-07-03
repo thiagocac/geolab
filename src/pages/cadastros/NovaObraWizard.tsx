@@ -18,7 +18,7 @@ export function NovaObraWizard() {
   const toast = useToast();
   const nav = useNavigate();
   const [step, setStep] = useState(1);
-  const [f, setF] = useState<Record<string, unknown>>({ traco_habilitado: false, estrutura_habilitada: false, criar_traco: false });
+  const [f, setF] = useState<Record<string, unknown>>({ estrutura_habilitada: false, criar_traco: false });
   const [busy, setBusy] = useState(false);
   const clientes = useQuery({ queryKey: ['ref', 'lab_clients', 'nova-obra'], queryFn: listClientesRef });
 
@@ -37,7 +37,7 @@ export function NovaObraWizard() {
         client_id: String(f.client_id), codigo: str(f.codigo) || null, nome: str(f.nome), sigla: str(f.sigla) || null,
         endereco: str(f.endereco) || null, cidade: str(f.cidade) || null, uf: str(f.uf) || null,
         responsavel_tecnico: str(f.responsavel_tecnico) || null, crea: str(f.crea) || null,
-        estrutura_habilitada: !!f.estrutura_habilitada, traco_habilitado: !!f.traco_habilitado,
+        estrutura_habilitada: !!f.estrutura_habilitada,
       });
       if (f.criar_traco && str(f.traco_codigo) && str(f.traco_nome)) {
         await createTracoObra(member.tenant_id, workId, {
@@ -85,9 +85,6 @@ export function NovaObraWizard() {
           <div style={{ display: 'grid', gap: 14 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
               <input type="checkbox" checked={!!f.estrutura_habilitada} onChange={(e) => set('estrutura_habilitada', e.target.checked)} /> Habilitar estrutura (pecas/locais) nesta obra
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-              <input type="checkbox" checked={!!f.traco_habilitado} onChange={(e) => set('traco_habilitado', e.target.checked)} /> Habilitar tracos por obra
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
               <input type="checkbox" checked={!!f.criar_traco} onChange={(e) => set('criar_traco', e.target.checked)} /> Criar um traco inicial para esta obra

@@ -26,6 +26,7 @@ const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({
 const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
 const NcConfigPage = lazy(() => import('./pages/gestao/NcConfigPage').then((m) => ({ default: m.NcConfigPage })));
 const NotificacoesPage = lazy(() => import('./pages/gestao/NotificacoesPage').then((m) => ({ default: m.NotificacoesPage })));
+const PendenciasPage = lazy(() => import('./pages/gestao/PendenciasPage').then((m) => ({ default: m.PendenciasPage })));
 const PreferenciasPage = lazy(() => import('./pages/gestao/PreferenciasPage').then((m) => ({ default: m.PreferenciasPage })));
 const MedicaoPage = lazy(() => import('./pages/gestao/MedicaoPage').then((m) => ({ default: m.MedicaoPage })));
 const ProdutividadePage = lazy(() => import('./pages/gestao/ProdutividadePage').then((m) => ({ default: m.ProdutividadePage })));
@@ -125,6 +126,7 @@ export function App() {
             <Route path="/dashboards" element={podeLab ? <LabDashboardsPage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/contratos-financeiro" element={podeOperacao ? <ContratosFinanceiroPage /> : <Navigate to="/" replace />} />
             <Route path="/notificacoes" element={<NotificacoesPage />} />
+            <Route path="/gestao/pendencias" element={<PendenciasPage />} />
             <Route path="/preferencias" element={<PreferenciasPage />} />
             <Route path="/medicoes" element={<MedicaoPage />} />
             <Route path="/produtividade" element={<ProdutividadePage />} />

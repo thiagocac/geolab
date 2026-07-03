@@ -12,7 +12,7 @@ type Section = { title?: string; items: Item[] };
 const labRoles = ['admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro'];
 const adminRoles = ['admin', 'admin_consulte'];
 const sections: Section[] = [
-  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles }] },
+  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles }, { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles }] },
   { title: 'Concreto', items: [
     { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
     { to: '/concretagens', label: 'Concretagens', icon: MixerTruck, roles: labRoles },

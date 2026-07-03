@@ -278,3 +278,6 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
 
 @media(max-width:640px){.hide-sm{display:none}}
+/* ---- telas muito estreitas: aperta o respiro do conteudo ---- */
+@media (max-width:480px){.page-wrap{padding:14px 12px}.card{border-radius:18px}}
+

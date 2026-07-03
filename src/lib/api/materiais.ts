@@ -18,6 +18,7 @@ export type TracoRow = {
   slump_previsto_cm: number | null;
   slump_tolerancia_cm: number | null;
   validade_concreto_minutos: number | null;
+  idade_controle_dias: number | null;
   brita: string | null;
   dmax_agregado_mm: number | null;
   fator_ac: number | null;
@@ -38,7 +39,7 @@ export type TracoRow = {
   client_works?: { nome: string | null } | null;
 };
 
-const SELECT_TRACO = 'id, codigo, nome, aplicacao, fck_mpa, fcj_mpa, desvio_padrao_mpa, condicao_preparo, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, brita, dmax_agregado_mm, fator_ac, cimento_tipo, consumo_cimento_kg_m3, aditivo_tipo, metodo_cura, especificacao, schema_campos, bombeado, observacoes, padrao_moldagem, componentes, ativo, work_id, client_id, lab_clients(razao_social, nome_fantasia), client_works(nome)';
+const SELECT_TRACO = 'id, codigo, nome, aplicacao, fck_mpa, fcj_mpa, desvio_padrao_mpa, condicao_preparo, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, idade_controle_dias, brita, dmax_agregado_mm, fator_ac, cimento_tipo, consumo_cimento_kg_m3, aditivo_tipo, metodo_cura, especificacao, schema_campos, bombeado, observacoes, padrao_moldagem, componentes, ativo, work_id, client_id, lab_clients(razao_social, nome_fantasia), client_works(nome)';
 
 export async function listTracos(): Promise<TracoRow[]> {
   const { data, error } = await db.from('operational_materials')

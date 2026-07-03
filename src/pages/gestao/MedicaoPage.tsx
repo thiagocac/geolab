@@ -141,6 +141,7 @@ export function MedicaoPage() {
 
       {itens ? (
         <Card>
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-slate-700"><th className="py-2">Item</th><th>Qtd</th><th>Preco unit.</th><th className="text-right">Subtotal</th></tr></thead>
             <tbody>
@@ -149,6 +150,7 @@ export function MedicaoPage() {
             </tbody>
             <tfoot><tr><td colSpan={3} className="pt-3 text-right font-bold">TOTAL</td><td className="pt-3 text-right text-lg font-black" style={{ color: 'var(--magenta)' }}>{BRL(total)}</td></tr></tfoot>
           </table>
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => setAdicionais((s) => [...s, { descricao: '', valor: 0 }])}>+ Adicional</Button>
             <Button variant="secondary" onClick={exportar}>Exportar Excel</Button>
@@ -161,10 +163,12 @@ export function MedicaoPage() {
         <Card>
           <div className="mb-2 text-sm font-bold text-slate-600 dark:text-slate-300">Medicoes fechadas</div>
           {medicoes.isLoading ? <LoadingState /> : medicoes.isError ? <ErrorState message={(medicoes.error as Error).message} /> : (medicoes.data ?? []).length === 0 ? <EmptyState /> : (
+            <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead><tr className="border-b text-xs uppercase text-slate-500"><th className="py-2">Competencia</th><th>Periodo</th><th>Status</th><th className="text-right">Total</th><th></th></tr></thead>
               <tbody>{(medicoes.data ?? []).map((md) => <tr key={md.id} className="border-b border-slate-100 dark:border-slate-800"><td className="py-2">{md.competencia ?? '-'}</td><td>{md.periodo_inicio + ' a ' + md.periodo_fim}</td><td><StatusBadge status={md.status} /></td><td className="text-right font-bold">{BRL(md.valor_total)}</td><td className="text-right"><Button variant="secondary" onClick={() => void gerarPdf(md.id)} disabled={busy}>PDF</Button></td></tr>)}</tbody>
             </table>
+            </div>
           )}
         </Card>
       ) : null}

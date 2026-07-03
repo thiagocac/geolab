@@ -50,7 +50,7 @@ function crossValidate(resource: ImportResource, row: Record<string, unknown>, r
 }
 
 export async function parseImportWorkbook(file: File, resource: ImportResource, cfg?: Record<string, unknown>): Promise<ParsedImport> {
-  const XLSX = await import('xlsx');
+  const XLSX = await import('xlsx-js-style');
   const bytes = await file.arrayBuffer();
   const wb = XLSX.read(bytes, { type: 'array', cellDates: false });
   const ws = wb.Sheets.Dados ?? wb.Sheets[wb.SheetNames[0]];

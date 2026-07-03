@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ClipboardEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
@@ -6,9 +7,9 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listReference } from '../../lib/api/client';
 import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaboradores';
 import { cpPorQr } from '../../lib/api/etiquetas';
+import { listEquipamentosRef, mapAlocacaoObras, rotuloEquip } from '../../lib/api/equipamentos';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { CAMPOS_ENSAIO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
 import { DIMENSOES_CP, cargaParaMpa, relacaoHD, type UnidadeCarga } from '../../lib/concreto/cp';
@@ -27,9 +28,9 @@ import {
 } from '../../lib/api/rompimento';
 import { TimelineList } from '../../components/TimelineList';
 import { listCpTimeline, type TimelineEvent } from '../../lib/api/timeline';
-import { supabase } from '../../lib/supabase';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
+const ontem = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10); // deep-link 'atrasados': ate ontem = so vencidos
 const fmtDate = (v: string | null | undefined) => !v ? '-' : v.split('-').reverse().join('/');
 const nfmt = (n: number | null | undefined, d = 1) => n == null || !Number.isFinite(n) ? '-' : n.toFixed(d).replace('.', ',');
 const sanitizeDecimal = (raw: string, maxDec = 4): string => {
@@ -88,6 +89,19 @@ export function RompimentosPage() {
   const [adotarReferencia, setAdotarReferencia] = useState(false);
   const [mostrarLancados, setMostrarLancados] = useState(false);
   const [mostrarInsatisf, setMostrarInsatisf] = useState(false);
+  // Deep-link da tela de Pendências: ?janela=hoje|atrasados|pendentes|insatisfatorios semeia os filtros uma vez
+  // ('atrasados' usa dataRef=ontem para a lista casar com a contagem do card: prevista < hoje).
+  const [sp, setSp] = useSearchParams();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seed único no mount
+  useEffect(() => {
+    const j = sp.get('janela');
+    if (!j) return;
+    if (j === 'hoje') { setJanela('dia'); setDataRef(hoje()); }
+    else if (j === 'atrasados') { setJanela('ate'); setDataRef(ontem()); }
+    else if (j === 'pendentes') { setJanela('todos'); setMostrarLancados(false); }
+    else if (j === 'insatisfatorios') { setMostrarInsatisf(true); setJanela('todos'); }
+    sp.delete('janela'); setSp(sp, { replace: true });
+  }, []);
   const [entrarCarga, setEntrarCarga] = useState(false);
   const [cargaUnidade, setCargaUnidade] = useState<UnidadeCarga>('kn');
   const [diametro, setDiametro] = useState(100);
@@ -111,6 +125,7 @@ export function RompimentosPage() {
   const [horaRef, setHoraRef] = useState('');
   const [clienteFiltro, setClienteFiltro] = useState('todas');
   const [obraFiltro, setObraFiltro] = useState('todas');
+  const [prensaFiltro, setPrensaFiltro] = useState('todas');
   const [page, setPage] = useState(0);
   const [focoCpId, setFocoCpId] = useState<string | null>(null);
 
@@ -118,12 +133,16 @@ export function RompimentosPage() {
   const cpsQ = useQuery({ queryKey: ['rompimentos', member?.tenant_id, carregarTudo], queryFn: () => listCpsRompimento(member?.tenant_id, carregarTudo ? undefined : { situacao: 'pendente' }) });
   const resumoQ = useQuery({ queryKey: ['rompimentos', 'resumo', member?.tenant_id], enabled: !!member, queryFn: () => resumoRompimentos(member!.tenant_id) });
   const cfgQ = useQuery({ queryKey: ['config_controle_laudo', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
-  const equips = useQuery({ queryKey: ['ref', 'equipamentos_prensa'], queryFn: () => listReference('equipamentos', 'marca_modelo') });
-  const prensasDet = useQuery({ queryKey: ['prensas_det', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: async () => {
-    const { data, error } = await supabase.from('equipamentos').select('id,marca_modelo,incerteza_mpa,validade_calibracao,tipo').eq('tenant_id', member!.tenant_id).is('deleted_at', null);
-    if (error) throw error;
-    return (data ?? []) as Array<{ id: string; marca_modelo: string | null; incerteza_mpa: number | null; validade_calibracao: string | null; tipo: string | null }>;
-  } });
+  const equipRef = useQuery({ queryKey: ['equipamentos-ref'], queryFn: listEquipamentosRef });
+  const prensas = useMemo(() => (equipRef.data ?? []).filter((e) => e.tipo === 'prensa' && e.ativo), [equipRef.data]);
+  // Mapa id -> rótulo para a coluna "Prensa" na fila (inclui prensas inativas/apagadas usadas no passado).
+  const equipById = useMemo(() => { const m = new Map<string, string>(); for (const e of equipRef.data ?? []) m.set(e.id, rotuloEquip(e)); return m; }, [equipRef.data]);
+  const alocQ = useQuery({ queryKey: ['alocacao-obras'], queryFn: mapAlocacaoObras });
+  // Prensa prevista de um CP pendente = prensa(s) alocada(s) à obra dele. workId vem do embed da concretagem.
+  const prensasDaObra = (r: CpRompimento): string[] => {
+    const w = r.concretagens?.work_id ?? null;
+    return w ? (alocQ.data?.get(w) ?? []) : [];
+  };
   const colabRef = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradoresRef });
   const operadores = filtrarPorFuncao(colabRef.data ?? [], 'Laboratorista');
 
@@ -137,8 +156,10 @@ export function RompimentosPage() {
 
   // Lote A — apoio às validações inline (2.1) e à incerteza (2.2)
   const idadeControle = Number(cfgQ.data?.idade_controle_default) || 28;
-  function isIdadeControle(cp: CpRompimento): boolean { return cp.idade_unidade !== 'hora' && Number(cp.idade_dias) === idadeControle; }
-  const prensaSel = (prensasDet.data ?? []).find((pp) => pp.id === prensaId) ?? null;
+  // Idade de controle POR CP: traço (operational_materials.idade_controle_dias, mig 135) > config_lab > 28.
+  function idadeCtrlDe(cp: CpRompimento): number { return Number(cp.concretagens?.operational_materials?.idade_controle_dias ?? idadeControle) || idadeControle; }
+  function isIdadeControle(cp: CpRompimento): boolean { return cp.idade_unidade !== 'hora' && Number(cp.idade_dias) === idadeCtrlDe(cp); }
+  const prensaSel = prensas.find((pp) => pp.id === prensaId) ?? null;
   const calibVencida = !!prensaSel?.validade_calibracao && prensaSel.validade_calibracao < hoje();
   function mpaForaFaixa(v: number): boolean { return Number.isFinite(v) && (v <= 0 || v > 120); }
 
@@ -161,6 +182,7 @@ export function RompimentosPage() {
   const clientesOpts = useMemo(() => [...new Set(rows.map(clienteNome).filter(Boolean))].sort(), [rows]);
   const obrasOpts = useMemo(() => [...new Set(rows.filter((r) => clienteFiltro === 'todas' || clienteNome(r) === clienteFiltro).map(obraNome).filter(Boolean))].sort(), [rows, clienteFiltro]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: prensasDaObra fecha sobre alocQ.data, já nas deps
   const filtradas = useMemo(() => rows.filter((r) => {
     const tipoNome = r.material_test_types?.nome ?? r.material_test_types?.codigo ?? 'compressao';
     const tipoKey = normalize(tipoNome).includes('compress') ? 'compressao' : normalize(tipoNome).replace(/\s+/g, '_') || 'outro';
@@ -168,6 +190,12 @@ export function RompimentosPage() {
     if (idadeFiltro !== 'todas' && idade(r) !== idadeFiltro) return false;
     if (clienteFiltro !== 'todas' && clienteNome(r) !== clienteFiltro) return false;
     if (obraFiltro !== 'todas' && obraNome(r) !== obraFiltro) return false;
+    if (prensaFiltro !== 'todas') {
+      const eq = resultadoAtual(r)?.equipamento_id ?? null;
+      const aloc = eq ? [] : prensasDaObra(r); // pendente usa alocação; lançado usa a prensa gravada
+      if (prensaFiltro === 'sem') { if (eq || aloc.length > 0) return false; }
+      else if (!(eq === prensaFiltro || aloc.includes(prensaFiltro))) return false;
+    }
     const busca = normalize([cpNumero(r), r.codigo, nf(r), r.concretagens?.numero_relatorio, r.concretagens?.codigo, r.concretagens?.client_works?.nome].join(' '));
     if (nfFiltro.trim() && !busca.includes(normalize(nfFiltro))) return false;
     if (janela !== 'todos') {
@@ -179,11 +207,11 @@ export function RompimentosPage() {
     if (!mostrarLancados && res != null) return false;
     if (mostrarInsatisf) {
       const esp = esperado(r);
-      const naIdade = r.idade_unidade !== 'hora' && Number(r.idade_dias) === idadeControle;
+      const naIdade = isIdadeControle(r);
       if (res == null || esp == null || res >= esp || !naIdade) return false;
     }
     return true;
-  }), [rows, tipoFiltro, idadeFiltro, nfFiltro, janela, dataRef, mostrarLancados, mostrarInsatisf, idadeControle, clienteFiltro, obraFiltro]);
+  }), [rows, tipoFiltro, idadeFiltro, nfFiltro, janela, dataRef, mostrarLancados, mostrarInsatisf, idadeControle, clienteFiltro, obraFiltro, prensaFiltro, alocQ.data]);
 
   // Contadores globais vindos da RPC (corretos independentemente do recorte carregado na grade).
   const countPend = resumoQ.data?.pendente ?? 0;
@@ -196,6 +224,31 @@ export function RompimentosPage() {
   const pageStart = pageSafe * PAGE_SIZE;
   const pageRows = filtradas.slice(pageStart, pageStart + PAGE_SIZE);
 
+  // Agenda por prensa: contagem no recorte filtrado. Lançado conta pela prensa gravada;
+  // pendente conta pela prensa alocada à obra (prevista). "Sem prensa" = pendente sem alocação.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: prensasDaObra fecha sobre alocQ.data, já nas deps
+  const contagemPrensa = useMemo(() => {
+    const m = new Map<string, number>(); let sem = 0;
+    for (const r of filtradas) {
+      const eq = resultadoAtual(r)?.equipamento_id ?? null;
+      const ids = eq ? [eq] : prensasDaObra(r);
+      if (ids.length === 0) { sem++; continue; }
+      for (const id of ids) m.set(id, (m.get(id) ?? 0) + 1);
+    }
+    return { porPrensa: [...m.entries()].sort((a, b) => b[1] - a[1]), sem };
+  }, [filtradas, alocQ.data]);
+
+  // Pré-seleção da prensa pela alocação: quando uma obra específica está filtrada e tem exatamente
+  // 1 prensa ativa alocada, sugere-a (sem sobrescrever escolha manual). N alocadas → não presume.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filtradas/obraNome derivam de deps já listadas
+  useEffect(() => {
+    if (!campoPrensa || prensaId || obraFiltro === 'todas') return;
+    const alvo = filtradas.find((r) => obraNome(r) === obraFiltro);
+    const w = alvo?.concretagens?.work_id ?? null;
+    const ids = (w ? (alocQ.data?.get(w) ?? []) : []).filter((id) => prensas.some((p) => p.id === id));
+    if (ids.length === 1) setPrensaId(ids[0]);
+  }, [obraFiltro, alocQ.data, campoPrensa, prensas]);
+
   // Fase 2 das etiquetas: leitor USB de QR age como teclado e digita "CP:<uuid>" na busca.
   // Localiza o CP no vivo (RLS), zera filtros que poderiam escondê-lo, isola pelo código
   // (único por CP) e agenda o foco no campo de carga.
@@ -204,7 +257,7 @@ export function RompimentosPage() {
       const cp = await cpPorQr(cpId);
       if (!cp) { toast('CP da etiqueta não encontrado neste laboratório.', 'error'); return; }
       setTipoFiltro('todas'); setIdadeFiltro('todas'); setClienteFiltro('todas'); setObraFiltro('todas');
-      setJanela('todos'); setMostrarInsatisf(false); setPage(0);
+      setJanela('todos'); setMostrarInsatisf(false); setPrensaFiltro('todas'); setPage(0);
       if (cp.lancado || (cp.situacao && cp.situacao !== 'pendente')) setMostrarLancados(true);
       setNfFiltro(cp.codigo ?? cp.numeracao_lab ?? '');
       setFocoCpId(cp.id);
@@ -375,10 +428,10 @@ export function RompimentosPage() {
     );
   }
 
-  async function exportarAgenda() {
+  async function exportarAgenda(agruparPrensa = false) {
     try {
-      const blob = await gerarAgendaPdf({ tipo_ensaio: tipoFiltro, idade: idadeFiltro, janela, data_ref: dataRef, nota_fiscal: nfFiltro, cliente: clienteFiltro, obra: obraFiltro, entrar_carga: entrarCarga, carga_unidade: cargaUnidade });
-      downloadBlob(blob, `agenda-rompimentos-${dataRef}.pdf`);
+      const blob = await gerarAgendaPdf({ tipo_ensaio: tipoFiltro, idade: idadeFiltro, janela, data_ref: dataRef, nota_fiscal: nfFiltro, cliente: clienteFiltro, obra: obraFiltro, entrar_carga: entrarCarga, carga_unidade: cargaUnidade, agrupar_prensa: agruparPrensa });
+      downloadBlob(blob, `agenda-rompimentos-${dataRef}${agruparPrensa ? '-por-prensa' : ''}.pdf`);
     } catch (e) { toast((e as Error).message, 'error'); }
   }
 
@@ -436,6 +489,7 @@ export function RompimentosPage() {
           tipo_ruptura: l.tipo || null,
           data_rompimento: l.data || dataRef,
           hora_rompimento: l.hora || null,
+          equipamento_id: campoPrensa ? (prensaId || (l.cp as CpRompimento) && resultadoAtual(l.cp as CpRompimento)?.equipamento_id || null) : null,
           origem_log: 'importacao_planilha_rompimento',
         });
         ok++;
@@ -495,7 +549,8 @@ export function RompimentosPage() {
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">Lançamento do rompimento de CPs no padrão do laboratório: filtre a agenda pela data de referência, digite o resultado (Enter pula para o próximo), marque descartes e Salvar grava tudo em lote. Em massa: Exportar modelo → preencher → Importar resultados.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => void exportarAgenda()}>Agenda (PDF)</Button>
+          <Button variant="secondary" onClick={() => void exportarAgenda(false)}>Agenda (PDF)</Button>
+          {campoPrensa && (alocQ.data?.size ?? 0) > 0 ? <Button variant="secondary" onClick={() => void exportarAgenda(true)} title="Agenda agrupada por prensa prevista (alocação da obra)">Agenda por prensa</Button> : null}
           <Button variant="secondary" onClick={() => void exportarFila()}>Exportar fila</Button>
           <Button variant="secondary" onClick={exportarModelo} title="Baixe o modelo, preencha os resultados e use Importar resultados">Exportar modelo (p/ importar)</Button>
           <Button variant="secondary" onClick={() => setImportOpen(true)}>Importar resultados</Button>
@@ -506,7 +561,7 @@ export function RompimentosPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Tipo de ensaio</span><select className="input" value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)}><option value="todas">Todos</option>{tipos.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Idade</span><select className="input" value={idadeFiltro} onChange={(e) => setIdadeFiltro(e.target.value)}><option value="todas">Todas</option>{idades.map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
-          <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Buscar</span><input className="input" placeholder="Nº relatório, NF, código, numeração ou bipe o QR da etiqueta" value={nfFiltro} onChange={(e) => { const v = e.target.value; const m = /^CP:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/.exec(v.trim()); if (m) { setNfFiltro(''); void bipEtiqueta(m[1]); } else setNfFiltro(v); }} /></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Cliente / construtora</span><select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setObraFiltro('todas'); setPage(0); }}><option value="todas">Todos</option>{clientesOpts.map((c) => <option key={c} value={c}>{c}</option>)}</select></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Obra</span><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{obrasOpts.map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
+          <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Buscar</span><input className="input" placeholder="Nº relatório, NF, código, numeração ou bipe o QR da etiqueta" value={nfFiltro} onChange={(e) => { const v = e.target.value; const m = /^CP:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/.exec(v.trim()); if (m) { setNfFiltro(''); void bipEtiqueta(m[1]); } else setNfFiltro(v); }} /></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Cliente / construtora</span><select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setObraFiltro('todas'); setPage(0); }}><option value="todas">Todos</option>{clientesOpts.map((c) => <option key={c} value={c}>{c}</option>)}</select></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Obra</span><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{obrasOpts.map((o) => <option key={o} value={o}>{o}</option>)}</select></label>{prensas.length > 0 ? <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Prensa</span><select className="input" value={prensaFiltro} onChange={(e) => { setPrensaFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{prensas.map((p) => <option key={p.id} value={p.id}>{rotuloEquip(p)}</option>)}<option value="sem">Sem prensa</option></select></label> : null}
         </div>
         <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-4">
@@ -523,7 +578,7 @@ export function RompimentosPage() {
             <label className="flex items-center gap-2"><input type="checkbox" checked={entrarCarga} onChange={(e) => setEntrarCarga(e.target.checked)} /> Entrar carga (converte p/ MPa)</label>
           </div>
           {entrarCarga ? <div className="mt-3 grid gap-3 md:grid-cols-4"><label className="block space-y-1"><span className="text-sm font-bold">Unidade da carga</span><select className="input" value={cargaUnidade} onChange={(e) => setCargaUnidade(e.target.value as UnidadeCarga)}><option value="kn">kN</option><option value="tf">tf</option><option value="kgf">kgf</option></select></label><label className="block space-y-1"><span className="text-sm font-bold">Diâmetro (mm)</span><input className="input" type="number" value={diametro} onChange={(e) => setDiametro(Number(e.target.value) || 100)} /></label><label className="block space-y-1"><span className="text-sm font-bold">Altura (mm)</span><input className="input" type="number" value={altura} onChange={(e) => setAltura(Number(e.target.value) || 200)} /></label><div className="flex flex-wrap items-end gap-2">{DIMENSOES_CP.map((d) => <button type="button" key={d.label} className="rounded-md border border-slate-200 px-2 py-2 text-xs font-bold" onClick={() => { setDiametro(d.diametroMm); setAltura(d.alturaMm); }}>{d.label}</button>)}</div></div> : null}
-          {(campoPrensa || campoCapeamento) ? <div className="mt-3 grid gap-3 md:grid-cols-2">{campoPrensa ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa utilizada</span><select className="input" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">-</option>{(equips.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>{prensaSel ? <span className="mt-1 block text-xs font-bold text-slate-500">{prensaSel.incerteza_mpa != null ? `Incerteza: ± ${nfmt(prensaSel.incerteza_mpa, 2)} MPa` : 'Incerteza não cadastrada'}{prensaSel.validade_calibracao ? ` · calibração até ${fmtDate(prensaSel.validade_calibracao)}` : ''}</span> : null}{calibVencida ? <span className="mt-1 block text-xs font-bold text-amber-600">⚠ Calibração vencida — o resultado gerará NC (T-14). Não bloqueia o lançamento.</span> : null}</label> : null}{campoCapeamento ? <label className="block space-y-1"><span className="text-sm font-bold">Capeamento / bases</span><select className="input" value={capeamento} onChange={(e) => setCapeamento(e.target.value)}><option value="">-</option>{['Retífica', 'Neoprene', 'Enxofre', 'Sem capeamento'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label> : null}</div> : null}
+          {(campoPrensa || campoCapeamento) ? <div className="mt-3 grid gap-3 md:grid-cols-2">{campoPrensa ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa utilizada</span><select className="input" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">-</option>{prensas.map((o) => <option key={o.id} value={o.id}>{rotuloEquip(o)}</option>)}</select>{prensaSel ? <span className="mt-1 block text-xs font-bold text-slate-500">{prensaSel.incerteza_mpa != null ? `Incerteza: ± ${nfmt(prensaSel.incerteza_mpa, 2)} MPa` : 'Incerteza não cadastrada'}{prensaSel.validade_calibracao ? ` · calibração até ${fmtDate(prensaSel.validade_calibracao)}` : ''}</span> : prensas.length > 1 ? <span className="mt-1 block text-xs text-slate-500">Selecione a prensa desta sessão — fica gravada em cada CP lançado.</span> : null}{calibVencida ? <span className="mt-1 block text-xs font-bold text-amber-600">⚠ Calibração vencida — o resultado gerará NC (T-14). Não bloqueia o lançamento.</span> : null}</label> : null}{campoCapeamento ? <label className="block space-y-1"><span className="text-sm font-bold">Capeamento / bases</span><select className="input" value={capeamento} onChange={(e) => setCapeamento(e.target.value)}><option value="">-</option>{['Retífica', 'Neoprene', 'Enxofre', 'Sem capeamento'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label> : null}</div> : null}
           {campoOperador ? <div className="mt-3 grid gap-3 md:grid-cols-2"><label className="block space-y-1"><span className="text-sm font-bold">Operador (quem rompeu)</span><select className="input" value={operadorId} onChange={(e) => setOperadorId(e.target.value)} aria-label="Operador do rompimento"><option value="">-</option>{operadores.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}</select><span className="mt-1 block text-xs text-slate-500">Gravado em cada CP lançado nesta sessão.</span></label></div> : null}
         </div>
       </Card>
@@ -538,6 +593,15 @@ export function RompimentosPage() {
         <div className="ml-auto"><Button onClick={() => void salvarRecorte()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar resultados'}</Button></div>
       </div>
 
+      {campoPrensa && (contagemPrensa.porPrensa.length > 0 || contagemPrensa.sem > 0) ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-bold uppercase tracking-wide text-slate-400">Por prensa (recorte)</span>
+          {contagemPrensa.porPrensa.map(([id, n]) => <button type="button" key={id} onClick={() => { setPrensaFiltro(id); setPage(0); }} className={'rounded-full border px-2.5 py-1 font-bold ' + (prensaFiltro === id ? 'border-transparent bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900' : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300')}>{equipById.get(id) ?? '—'}: {n}</button>)}
+          {contagemPrensa.sem > 0 ? <button type="button" onClick={() => { setPrensaFiltro('sem'); setPage(0); }} className={'rounded-full border px-2.5 py-1 font-bold ' + (prensaFiltro === 'sem' ? 'border-transparent bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900' : 'border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400')}>sem prensa: {contagemPrensa.sem}</button> : null}
+          {prensaFiltro !== 'todas' ? <button type="button" onClick={() => { setPrensaFiltro('todas'); setPage(0); }} className="font-bold text-blue-600">limpar</button> : null}
+        </div>
+      ) : null}
+
       {selecionados.size ? <div className="flex flex-wrap items-end gap-2 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/20"><span className="font-bold text-blue-800 dark:text-blue-300">Aplicar a {selecionados.size} selecionado(s):</span><input className="input max-w-[150px]" type="date" value={bulkData} onChange={(e) => setBulkData(e.target.value)} /><input className="input max-w-[110px]" type="time" value={bulkHora} onChange={(e) => setBulkHora(e.target.value)} />{campoTipo ? <select className="input max-w-[100px]" value={bulkTipo} onChange={(e) => setBulkTipo(e.target.value)}><option value="">ruptura</option>{['A', 'B', 'C', 'D', 'E', 'F'].map((x) => <option key={x} value={x}>{x}</option>)}</select> : null}<Button variant="secondary" onClick={aplicarAosSelecionados}>Aplicar</Button></div> : null}
       {campoTipo ? <details className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900"><summary className="cursor-pointer font-bold text-slate-600 dark:text-slate-300">Tipos de ruptura (A–F · NBR 5739)</summary><ul className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">{RUPTURA_AF.map(([k, v]) => <li key={k}><span className="font-black">{k}</span> — {v}</li>)}</ul></details> : null}
       {cpsQ.isLoading ? <LoadingState /> : cpsQ.isError ? <ErrorState message={(cpsQ.error as Error).message} /> : filtradas.length === 0 ? <EmptyState /> : (
@@ -548,7 +612,7 @@ export function RompimentosPage() {
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                 <tr>
                   <th className="px-3 py-2"><input type="checkbox" aria-label="Selecionar todos" checked={filtradas.length > 0 && selecionados.size === filtradas.length} onChange={toggleTodos} /></th>
-                  <th className="px-3 py-2">Numeração</th><th className="px-3 py-2">Data prevista</th><th className="px-3 py-2">Data realizado</th><th className="px-3 py-2">{entrarCarga ? `Carga (${cargaUnidade})` : 'Resultado (MPa)'}</th><th className="px-3 py-2">Esperado (MPa)</th><th className="px-3 py-2">Nota fiscal</th><th className="px-3 py-2">Idade controle</th>{campoTipo ? <th className="px-3 py-2">Ruptura</th> : null}{campoMassa ? <th className="px-3 py-2">Massa (g)</th> : null}<th className="px-3 py-2">Descartar</th><th className="px-3 py-2">Ações</th>
+                  <th className="px-3 py-2">Numeração</th><th className="px-3 py-2">Data prevista</th><th className="px-3 py-2">Data realizado</th><th className="px-3 py-2">{entrarCarga ? `Carga (${cargaUnidade})` : 'Resultado (MPa)'}</th><th className="px-3 py-2">Esperado (MPa)</th><th className="px-3 py-2">Nota fiscal</th><th className="px-3 py-2">Idade controle</th>{campoPrensa ? <th className="px-3 py-2">Prensa</th> : null}{campoTipo ? <th className="px-3 py-2">Ruptura</th> : null}{campoMassa ? <th className="px-3 py-2">Massa (g)</th> : null}<th className="px-3 py-2">Descartar</th><th className="px-3 py-2">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -568,6 +632,7 @@ export function RompimentosPage() {
                       <td className="px-3 py-2"><input id={`romp-val-${rowIdx}`} className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: sanitizeDecimal(e.target.value) } : { valor: sanitizeDecimal(e.target.value) })} onPaste={(e) => handlePaste(e, rowIdx)} title="Cole uma coluna do Excel para preencher vários CPs · Enter pula para o próximo" onKeyDown={(e) => { if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) { e.preventDefault(); const n = document.getElementById(`romp-val-${rowIdx + 1}`) as HTMLInputElement | null; n?.focus(); n?.select(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = document.getElementById(`romp-val-${rowIdx - 1}`) as HTMLInputElement | null; pv?.focus(); pv?.select(); } }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); return (effectiveValor(r) || effectiveCarga(r)) && mpaForaFaixa(mpa) ? <div className="mt-1 text-xs font-bold text-amber-600">⚠ MPa fora de faixa plausível (verifique a digitação)</div> : null; })()}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); const esp2 = esperado(r); return (effectiveValor(r) || effectiveCarga(r)) && Number.isFinite(mpa) && mpa > 0 && esp2 != null && esp2 > 0 && mpa < 0.8 * esp2 ? <div className="mt-1 text-xs font-bold text-red-600">⚠ Resultado 80% menor que o esperado</div> : null; })()}</td>
                       <td className="px-3 py-2"><span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-800">{esp == null ? 'sem critério' : nfmt(esp, 1)}</span>{ins ? <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold text-red-700">abaixo do fck</span> : abaixoFck ? <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">acompanhamento</span> : null}</td>
                       <td className="px-3 py-2 font-semibold">{nf(r)}{r.concretagens?.numero_relatorio ? <div className="text-[11px] font-normal text-slate-400">Rel. {r.concretagens.numero_relatorio}</div> : null}</td><td className="px-3 py-2 font-semibold">{idade(r)}</td>
+                      {campoPrensa ? <td className="px-3 py-2 text-xs">{(() => { const eq = res?.equipamento_id ?? null; if (eq) return equipById.get(eq) ?? '—'; const al = prensasDaObra(r); if (al.length === 1) return <span className="text-slate-500" title="Prensa prevista pela alocação da obra">{equipById.get(al[0]) ?? '—'} <span className="text-slate-400">(prev.)</span></span>; if (al.length > 1) return <span className="text-slate-500" title="Várias prensas alocadas à obra">{al.length} prensas</span>; return <span className="text-slate-400">—</span>; })()}</td> : null}
                       {campoTipo ? <td className="px-3 py-2"><select className="input min-w-[82px]" value={effectiveTipo(r)} onChange={(e) => patch(r.id, { tipo_ruptura: e.target.value })}><option value="">-</option>{['A', 'B', 'C', 'D', 'E', 'F'].map((x) => <option key={x} value={x}>{x}</option>)}</select></td> : null}
                       {campoMassa ? <td className="px-3 py-2"><input className="input max-w-[110px]" type="number" value={effectiveMassa(r)} onChange={(e) => patch(r.id, { massa_cp_g: e.target.value })} /></td> : null}
                       <td className="px-3 py-2"><input type="checkbox" aria-label={`Descartar CP ${cpNumero(r)}`} checked={r.situacao === 'descartado'} onChange={(e) => void alterarSituacao(r, e.target.checked ? 'descartado' : 'pendente')} /></td>
@@ -590,7 +655,7 @@ export function RompimentosPage() {
       ) : null}
 
       <Modal open={!!curvaCp} wide title={'Curva / exemplar - ' + (curvaCp ? cpNumero(curvaCp) : '')} onClose={() => setCurvaCp(null)}>
-        <div className="space-y-3 text-sm"><p className="text-slate-600 dark:text-slate-300">CPs do mesmo exemplar/amostra, para conferir evolução por idade.</p><table className="w-full text-left"><thead><tr className="text-xs uppercase text-slate-500"><th>CP</th><th>Idade</th><th>Data</th><th>Resultado</th><th>Esperado</th></tr></thead><tbody>{curvaRows.map((r) => <tr key={r.id} className="border-t border-slate-100"><td className="py-2 font-bold">{cpNumero(r)}</td><td>{idade(r)}</td><td>{fmtDate(resultadoAtual(r)?.data_rompimento ?? r.data_prevista_rompimento)}</td><td>{nfmt(resultadoAtual(r)?.resultado_valor ?? null, 1)}</td><td>{nfmt(esperado(r), 1)}</td></tr>)}</tbody></table></div>
+        <div className="space-y-3 text-sm"><p className="text-slate-600 dark:text-slate-300">CPs do mesmo exemplar/amostra, para conferir evolução por idade.</p><div className="overflow-x-auto"><table className="w-full text-left"><thead><tr className="text-xs uppercase text-slate-500"><th>CP</th><th>Idade</th><th>Data</th><th>Resultado</th><th>Esperado</th></tr></thead><tbody>{curvaRows.map((r) => <tr key={r.id} className="border-t border-slate-100"><td className="py-2 font-bold">{cpNumero(r)}</td><td>{idade(r)}</td><td>{fmtDate(resultadoAtual(r)?.data_rompimento ?? r.data_prevista_rompimento)}</td><td>{nfmt(resultadoAtual(r)?.resultado_valor ?? null, 1)}</td><td>{nfmt(esperado(r), 1)}</td></tr>)}</tbody></table></div></div>
       </Modal>
 
       <Modal open={!!auditCp} wide title={'Trilha de alterações - ' + (auditCp ? cpNumero(auditCp) : '')} onClose={() => setAuditCp(null)}>
@@ -602,7 +667,7 @@ export function RompimentosPage() {
       </Modal>
 
       <Modal open={importOpen} wide title="Importar resultados" onClose={() => setImportOpen(false)} footer={<><Button variant="ghost" onClick={() => setImportOpen(false)}>Cancelar</Button><Button onClick={() => void aplicarImportacao()} disabled={busy || !importLines.some((l) => l.ok)}>{busy ? 'Importando...' : 'Importar resultados'}</Button></>}>
-        <div className="space-y-4"><input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => importarArquivo(e.target.files?.[0] ?? null)} />{importLines.length ? <div className="max-h-80 overflow-auto rounded-xl border border-slate-200"><table className="w-full text-left text-xs"><thead><tr className="bg-slate-50"><th className="p-2">Linha</th><th>CP</th><th>Resultado</th><th>Data</th><th>Status</th></tr></thead><tbody>{importLines.map((l) => <tr key={l.key} className="border-t"><td className="p-2">{l.key}</td><td>{l.numero || l.cp?.codigo}</td><td>{l.resultado}</td><td>{l.data}</td><td className={l.ok ? 'text-green-700' : 'text-red-700'}>{l.msg}</td></tr>)}</tbody></table></div> : <p className="text-sm text-slate-500">Use o modelo exportado pela tela. Colunas aceitas: corpo_prova_id, numeração/código, resultado_mpa <span className="italic">ou</span> carga + unidade_carga, massa_cp_g, data_rompimento, hora_rompimento, tipo_ruptura.</p>}</div>
+        <div className="space-y-4"><input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => importarArquivo(e.target.files?.[0] ?? null)} />{campoPrensa && prensas.length > 0 ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa destas leituras</span><select className="input max-w-xs" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">Manter a já registrada (se houver)</option>{prensas.map((p) => <option key={p.id} value={p.id}>{rotuloEquip(p)}</option>)}</select></label> : null}{importLines.length ? <div className="max-h-80 overflow-auto rounded-xl border border-slate-200"><table className="w-full text-left text-xs"><thead><tr className="bg-slate-50"><th className="p-2">Linha</th><th>CP</th><th>Resultado</th><th>Data</th><th>Status</th></tr></thead><tbody>{importLines.map((l) => <tr key={l.key} className="border-t"><td className="p-2">{l.key}</td><td>{l.numero || l.cp?.codigo}</td><td>{l.resultado}</td><td>{l.data}</td><td className={l.ok ? 'text-green-700' : 'text-red-700'}>{l.msg}</td></tr>)}</tbody></table></div> : <p className="text-sm text-slate-500">Use o modelo exportado pela tela. Colunas aceitas: corpo_prova_id, numeração/código, resultado_mpa <span className="italic">ou</span> carga + unidade_carga, massa_cp_g, data_rompimento, hora_rompimento, tipo_ruptura.</p>}</div>
       </Modal>
     </section>
   );

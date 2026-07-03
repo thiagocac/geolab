@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { openDeferredTab } from '../../lib/pdf';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
@@ -31,6 +32,13 @@ export function LaudosPage() {
   const [busca, setBusca] = useState('');
   const [buscaQ, setBuscaQ] = useState('');
   const [obraFiltro, setObraFiltro] = useState('');
+  const [statusFiltro, setStatusFiltro] = useState('');
+  const [spL, setSpL] = useSearchParams();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: seed único no mount
+  useEffect(() => {
+    const s = spL.get('status');
+    if (s) { setStatusFiltro(s); spL.delete('status'); setSpL(spL, { replace: true }); }
+  }, []);
   const [page, setPage] = useState(0);
   const PAGE = 25;
   useEffect(() => { const t = setTimeout(() => { setBuscaQ(busca.trim()); setPage(0); }, 300); return () => clearTimeout(t); }, [busca]);
@@ -105,21 +113,21 @@ export function LaudosPage() {
     } catch (e) { toast((e as Error).message, 'error'); }
   }
 
-  const rows = q.data?.rows ?? [];
+  const rows = (q.data?.rows ?? []).filter((r) => statusFiltro === 'pendente' ? r.status !== 'emitido' : statusFiltro ? r.status === statusFiltro : true);
   const total = q.data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PAGE));
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <PageHeader kicker="Concreto" title="Laudos" description="Emissao de relatorios de ensaio (NBR 5739)." />
       {!podeAprovar && (delegQ.data ?? false) ? <Card className="border-blue-200 bg-blue-50/60 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-200">Você pode <strong>emitir laudos</strong> por uma delegação ativa de aprovação. As demais ações (reabrir, enviar, link) seguem com o gestor/RT.</Card> : null}
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><input className="input" placeholder="Buscar por Nº do relatório" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 280 }} /><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 240 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><input className="input" placeholder="Buscar por Nº do relatório" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 280 }} /><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 240 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><select className="input" value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value)} style={{ maxWidth: 180 }} title="Status do laudo"><option value="">Todos os status</option><option value="pendente">A aprovar/emitir</option><option value="emitido">Emitidos</option></select></div><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <Card>
           <div style={{ display: 'grid', gap: 6 }}>
             {rows.map((r) => (
-              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
-                <span style={{ fontSize: 13 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissao'}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div key={r.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
+                <span style={{ fontSize: 13, minWidth: 0 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissao'}</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
                   <Button variant="ghost" onClick={() => void baixar(r.storage_path)}>Baixar</Button>
@@ -134,7 +142,7 @@ export function LaudosPage() {
         </Card>
       )}
       {!q.isLoading && !q.isError && total > 0 ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <span style={{ fontSize: 13, color: 'var(--ink-faint)' }}>{total} laudo(s) · página {page + 1} de {pageCount}</span>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="ghost" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Anterior</Button>

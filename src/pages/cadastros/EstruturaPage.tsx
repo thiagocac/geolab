@@ -63,7 +63,7 @@ export function EstruturaPage() {
             <CardHeader kicker="Nivel 1" title="Grupos (ex.: Torre A, Bloco 1)" />
             <div style={{ display: 'grid', gap: 8, padding: 16 }}>
               {grupos.isLoading ? <LoadingState /> : (grupos.data ?? []).length === 0 ? <EmptyState /> : (grupos.data ?? []).map((x) => (
-                <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)' }}>
+                <div key={x.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)' }}>
                   <span><strong>{x.codigo}</strong> - {x.nome}{x.tipo_edificacao ? ' · ' + x.tipo_edificacao : ''}</span>
                   <Button variant="ghost" onClick={() => void rm('unit_groups', x.id, 'grupos')}>remover</Button>
                 </div>
@@ -81,7 +81,7 @@ export function EstruturaPage() {
             <CardHeader kicker="Nivel 2" title="Tipos (ex.: Pilar P1, Laje L2) - fck do traco" />
             <div style={{ display: 'grid', gap: 8, padding: 16 }}>
               {tipos.isLoading ? <LoadingState /> : (tipos.data ?? []).length === 0 ? <EmptyState /> : (tipos.data ?? []).map((x) => (
-                <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)' }}>
+                <div key={x.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)' }}>
                   <span><strong>{x.codigo}</strong> - {x.nome}{x.etapa ? ' · ' + x.etapa : ''}{x.volume_projeto_m3 != null ? ' · ' + x.volume_projeto_m3 + ' m3' : ''}</span>
                   <Button variant="ghost" onClick={() => void rm('unit_types', x.id, 'tipos')}>remover</Button>
                 </div>
@@ -101,7 +101,7 @@ export function EstruturaPage() {
             <CardHeader kicker="Nivel 3" title="Pecas (ex.: P1 - Torre A - Pav 3)" />
             <div style={{ display: 'grid', gap: 8, padding: 16 }}>
               {pecas.isLoading ? <LoadingState /> : (pecas.data ?? []).length === 0 ? <EmptyState /> : (pecas.data ?? []).map((x) => (
-                <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)' }}>
+                <div key={x.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink)' }}>
                   <span><strong>{x.codigo}</strong> - {x.nome}{x.unit_group_id ? ' · ' + (gMap.get(x.unit_group_id) ?? '') : ''}{x.unit_type_id ? ' · ' + (tMap.get(x.unit_type_id) ?? '') : ''}</span>
                   <Button variant="ghost" onClick={() => void rm('units', x.id, 'pecas')}>remover</Button>
                 </div>
