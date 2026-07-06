@@ -17,6 +17,7 @@ const NovaProgramacaoPage = lazy(() => import('./pages/concreto/NovaProgramacaoP
 const ConcretagensPage = lazy(() => import('./pages/concreto/ConcretagensPage').then((m) => ({ default: m.ConcretagensPage })));
 const ConcretagemDetalhePage = lazy(() => import('./pages/concreto/ConcretagemDetalhePage').then((m) => ({ default: m.ConcretagemDetalhePage })));
 const RompimentosPage = lazy(() => import('./pages/concreto/RompimentosPage').then((m) => ({ default: m.RompimentosPage })));
+const EtiquetasPage = lazy(() => import('./pages/concreto/EtiquetasPage').then((m) => ({ default: m.EtiquetasPage })));
 const LaudosPage = lazy(() => import('./pages/concreto/LaudosPage').then((m) => ({ default: m.LaudosPage })));
 const LabDashboardsPage = lazy(() => import('./pages/dashboards/LabDashboardsPage').then((m) => ({ default: m.LabDashboardsPage })));
 const ImportacaoExcelPage = lazy(() => import('./pages/concreto/ImportacaoExcelPage').then((m) => ({ default: m.ImportacaoExcelPage })));
@@ -117,6 +118,7 @@ export function App() {
             <Route path="/concretagens" element={<ConcretagensPage />} />
             <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
             <Route path="/rompimentos" element={<RompimentosPage />} />
+            <Route path="/etiquetas" element={<EtiquetasPage />} />
             <Route path="/laudos" element={<LaudosPage />} />
             <Route path="/lotes" element={<LotesPage />} />
             <Route path="/nao-conformidades" element={<NcPage />} />

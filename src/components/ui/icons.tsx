@@ -46,3 +46,4 @@ export const Ruler = (p:IconProps)=><Icon {...p}><path d="M21.3 8.7 8.7 21.3a1 1
 export const Mold = (p:IconProps)=><Icon {...p}><ellipse cx="12" cy="5" rx="6" ry="2"/><path d="M6 5v12"/><path d="M18 5v12"/><path d="M6 17a6 2 0 0 0 12 0"/></Icon>;
 export const Users = (p:IconProps)=><Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon>;
 export const Sliders = (p:IconProps)=><Icon {...p}><path d="M21 4H14"/><path d="M10 4H3"/><path d="M21 12H12"/><path d="M8 12H3"/><path d="M21 20H16"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></Icon>;
+export const Tag = (p:IconProps)=><Icon {...p}><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><path d="M7 7h.01"/></Icon>;
