@@ -1,0 +1,8 @@
+-- 143_coleta_roteiros (fiel ao vivo)
+-- forma_movimentacoes.roteiro_item_id (link da coleta ao item do roteiro).
+-- coleta_roteiros(id, tenant_id, data, motorista_id->colaboradores, status aberto|em_rota|concluido|cancelado, observacao, ...)
+-- coleta_roteiro_itens(id, tenant_id, roteiro_id, work_id, ordem, qtd_prevista, qtd_coletada, status pendente|parcial|coletado|pulado, detalhe jsonb, ...)
+-- RLS is_tenant_member/writer; EXECUTE só authenticated. RPCs:
+--   criar_roteiro_coleta(payload jsonb) -> {ok,id}
+--   baixar_item_coleta(item, qtd, obs) -> gera coletas por concretagem (alocação gulosa, parcial), re-baixa idempotente
+--   concluir_roteiro(id) / cancelar_roteiro(id) (cancelar reverte as coletas geradas)

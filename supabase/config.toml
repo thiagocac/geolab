@@ -73,6 +73,12 @@ verify_jwt = true
 [functions.generate-etiquetas-lote-pdf]
 verify_jwt = true
 
+[functions.generate-coleta-formas-pdf]
+verify_jwt = true
+
+[functions.geocode-obras]
+verify_jwt = true
+
 # generate-agenda-rompimento-pdf: agenda de rompimentos em PDF (colunas em branco p/ caneta).
 # v9: agrupar_prensa opcional -> secoes por prensa prevista (alocacao equipamento_obras).
 [functions.generate-agenda-rompimento-pdf]

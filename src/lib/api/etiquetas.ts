@@ -50,3 +50,21 @@ export async function cpPorQr(cpId: string): Promise<CpQr | null> {
     situacao: data.situacao ?? null, lancado: arr.some((t) => t.resultado_valor != null),
   };
 }
+
+// Fase 1 do loop da etiqueta pre-numerada (v163/v164): localizar um CP pela numeracao_lab escrita/colada
+// no molde (o QR da etiqueta avulsa codifica o codigo NNNNNN/AA em texto puro; o leitor USB digita-o).
+// numeracao_lab e UNIQUE por tenant (mig 128) e a RLS escopa por tenant -> no maximo 1 CP visivel.
+export async function cpPorNumeracao(num: string): Promise<CpQr | null> {
+  const alvo = String(num ?? '').trim();
+  if (!alvo) return null;
+  const { data, error } = await db.from('corpos_prova')
+    .select('id, codigo, numeracao_lab, situacao, material_tests(resultado_valor)')
+    .eq('numeracao_lab', alvo).is('deleted_at', null).limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const arr = Array.isArray(data.material_tests) ? (data.material_tests as Record<string, unknown>[]) : [];
+  return {
+    id: String(data.id), codigo: data.codigo ?? null, numeracao_lab: data.numeracao_lab ?? null,
+    situacao: data.situacao ?? null, lancado: arr.some((t) => t.resultado_valor != null),
+  };
+}

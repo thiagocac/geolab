@@ -22,11 +22,19 @@ const SECOES: Secao[] = [
     { chave: 'cp_atrasado', titulo: 'CPs atrasados', descricao: 'Pendentes com data prevista já vencida.', rota: '/rompimentos?janela=atrasados', roles: labRoles },
     { chave: 'cp_pendente', titulo: 'CPs pendentes (total)', descricao: 'Todos os CPs aguardando rompimento.', rota: '/rompimentos?janela=pendentes', roles: labRoles },
     { chave: 'prog_sem_caminhao', titulo: 'Programações sem caminhão', descricao: 'Concretagens programadas sem nenhum caminhão/NF lançado.', rota: '/concretagens?filtro=sem_caminhao', roles: labRoles },
+    { chave: 'importacao_pendente', titulo: 'Importações pendentes', descricao: 'Lotes de importação extraídos aguardando confirmação.', rota: '/importacoes', roles: labRoles },
   ] },
   { area: 'Qualidade', itens: [
     { chave: 'insatisfatorio', titulo: 'Resultados insatisfatórios', descricao: 'Exemplares abaixo do fck na idade de controle.', rota: '/rompimentos?janela=insatisfatorios', roles: qualidade },
     { chave: 'laudo_aprovar', titulo: 'Laudos a aprovar/emitir', descricao: 'Laudos em rascunho aguardando aprovação.', rota: '/laudos?status=pendente', roles: qualidade },
     { chave: 'nc_aberta', titulo: 'Não conformidades abertas', descricao: 'NCs com status aberto, aguardando tratativa.', rota: '/nao-conformidades?status=aberta', roles: qualidade },
+    { chave: 'conc_sem_laudo', titulo: 'Concretagens sem laudo', descricao: 'Ensaios concluídos (sem CP pendente) e ainda sem laudo emitido.', rota: '/laudos', roles: qualidade },
+  ] },
+  { area: 'Conformidade', itens: [
+    { chave: 'cal_vencida', titulo: 'Calibrações vencidas', descricao: 'Equipamentos ativos com calibração vencida.', rota: '/cadastros?tab=equipamentos&cal=vencida', roles: labRoles },
+    { chave: 'cal_vencendo', titulo: 'Calibrações a vencer (30d)', descricao: 'Equipamentos ativos com calibração vencendo em até 30 dias.', rota: '/cadastros?tab=equipamentos&cal=vence30', roles: labRoles },
+    { chave: 'cert_vencida', titulo: 'Certificações vencidas', descricao: 'Colaboradores ativos com certificação vencida.', rota: '/cadastros?tab=colaboradores&cert=vencida', roles: qualidade },
+    { chave: 'cert_vencendo', titulo: 'Certificações a vencer (30d)', descricao: 'Colaboradores ativos com certificação vencendo em até 30 dias.', rota: '/cadastros?tab=colaboradores', roles: qualidade },
   ] },
 ];
 

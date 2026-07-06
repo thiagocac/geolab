@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
@@ -44,6 +45,8 @@ export function ColaboradoresPage() {
   const [busca, setBusca] = useState('');
   const [fFuncao, setFFuncao] = useState('');
   const [fCert, setFCert] = useState('');
+  const [sp] = useSearchParams();
+  useEffect(() => { const c = sp.get('cert'); if (c === 'vencida') setFCert(c); }, [sp]);
   const [soAtivos, setSoAtivos] = useState(true);
   const [sort, setSort] = useState<SortState>({ column: 'nome', direction: 'asc' });
 

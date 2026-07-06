@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminListPage } from '../../components/patterns/AdminListPage';
 import { Button } from '../../components/ui/Button';
 import type { Column, FieldSpec, DomainRow } from '../../lib/api/types';
@@ -27,7 +28,12 @@ const tabs: Tab[] = [
 ];
 
 export function CadastrosPage() {
-  const [active, setActive] = useState(0);
+  const [sp] = useSearchParams();
+  const [active, setActive] = useState(() => {
+    const k = sp.get('tab');
+    if (k) { const i = tabs.findIndex((t) => t.key === k); if (i >= 0) return i; if (k === 'colaboradores') return tabs.length; if (k === 'materiais') return tabs.length + 1; }
+    return 0;
+  });
   const COLAB = tabs.length;
   const MATERIAIS = tabs.length + 1;
   const isColab = active === COLAB;

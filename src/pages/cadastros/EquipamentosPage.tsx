@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
@@ -43,6 +44,8 @@ export function EquipamentosPage() {
   const [busca, setBusca] = useState('');
   const [fTipo, setFTipo] = useState('');
   const [fCalib, setFCalib] = useState('');
+  const [sp] = useSearchParams();
+  useEffect(() => { const c = sp.get('cal'); if (c === 'vencida' || c === 'vence30') setFCalib(c); }, [sp]);
   const [soAtivos, setSoAtivos] = useState(true);
   const [sort, setSort] = useState<SortState>({ column: 'nome', direction: 'asc' });
 

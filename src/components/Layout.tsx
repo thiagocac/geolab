@@ -5,7 +5,7 @@ import { useTheme } from '../lib/theme';
 import { APP_VERSION } from '../lib/telemetry/core';
 import { Tooltip } from './ui/Tooltip';
 import { CommandPalette, type Command } from './ui/CommandPalette';
-import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Ruler, Mold, Users, Sliders, Download, Tag } from './ui/icons';
+import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Ruler, Mold, Users, Sliders, Download, Tag, Truck } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
@@ -41,6 +41,7 @@ const sections: Section[] = [
     { to: '/faturas', label: 'Faturas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
     { to: '/gestao/contratos-financeiro', label: 'Contratos e financeiro', icon: Receipt, roles: adminRoles },
     { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles },
+    { to: '/coleta-formas', label: 'Coleta de fôrmas', icon: Truck, roles: labRoles },
     { to: '/gestao/config-campos', label: 'Config. de Campos', icon: ClipboardCheck, roles: adminRoles },
     { to: '/gestao/nc-config', label: 'Config de NC', icon: Sliders, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
   ] },

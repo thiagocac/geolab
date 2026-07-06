@@ -1,0 +1,3 @@
+-- 144_baixar_item_detalhe_concretagens (fiel ao vivo)
+-- coleta_roteiro_itens.detalhe passa a guardar o snapshot COMPLETO da parada (obra, endereço, contato,
+-- telefone, concretagens[...]) vindo da worklist. baixar_item_coleta aloca sobre detalhe->'concretagens'.

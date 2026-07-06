@@ -1,0 +1,9 @@
+-- 141_pendencias_resumo_fase2 (fiel ao vivo, aplicada em xbdvyvvxvzmcosnekmfv)
+-- Re-deriva pendencias_resumo: mantém as chaves da Fase 1 e adiciona conformidade
+-- (cal_vencida/cal_vencendo, cert_vencida/cert_vencendo), importacao_pendente e conc_sem_laudo.
+-- CREATE OR REPLACE preserva os grants (EXECUTE só authenticated). Corpo completo na migration.
+-- Novas contagens:
+--   cal_*  = equipamentos ativo, validade_calibracao (< hoje | <= hoje+30)
+--   cert_* = colaborador_certificacoes de colaborador ativo, validade (< hoje | <= hoje+30)
+--   importacao_pendente = lotes_importacao deleted_at is null and confirmed_at is null
+--   conc_sem_laudo = concretagem viva/não-cancelada, tem CP, nenhum CP pendente, sem lab_report vivo

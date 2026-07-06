@@ -8,7 +8,7 @@ import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaboradores';
-import { cpPorQr } from '../../lib/api/etiquetas';
+import { cpPorQr, cpPorNumeracao, type CpQr } from '../../lib/api/etiquetas';
 import { listEquipamentosRef, mapAlocacaoObras, rotuloEquip } from '../../lib/api/equipamentos';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { CAMPOS_ENSAIO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
@@ -252,19 +252,29 @@ export function RompimentosPage() {
   // Fase 2 das etiquetas: leitor USB de QR age como teclado e digita "CP:<uuid>" na busca.
   // Localiza o CP no vivo (RLS), zera filtros que poderiam escondê-lo, isola pelo código
   // (único por CP) e agenda o foco no campo de carga.
+  function focarCp(cp: CpQr) {
+    setTipoFiltro('todas'); setIdadeFiltro('todas'); setClienteFiltro('todas'); setObraFiltro('todas');
+    setJanela('todos'); setMostrarInsatisf(false); setPrensaFiltro('todas'); setPage(0);
+    if (cp.lancado || (cp.situacao && cp.situacao !== 'pendente')) setMostrarLancados(true);
+    setNfFiltro(cp.codigo ?? cp.numeracao_lab ?? '');
+    setFocoCpId(cp.id);
+    const rotulo = cp.numeracao_lab || cp.codigo || '';
+    if (cp.lancado) toast('CP ' + rotulo + ' já lançado — exibindo para conferência.', 'info');
+    else if (cp.situacao === 'descartado') toast('CP ' + rotulo + ' está descartado.', 'info');
+    else toast('CP ' + rotulo + ' localizado.', 'success');
+  }
   async function bipEtiqueta(cpId: string) {
     try {
       const cp = await cpPorQr(cpId);
       if (!cp) { toast('CP da etiqueta não encontrado neste laboratório.', 'error'); return; }
-      setTipoFiltro('todas'); setIdadeFiltro('todas'); setClienteFiltro('todas'); setObraFiltro('todas');
-      setJanela('todos'); setMostrarInsatisf(false); setPrensaFiltro('todas'); setPage(0);
-      if (cp.lancado || (cp.situacao && cp.situacao !== 'pendente')) setMostrarLancados(true);
-      setNfFiltro(cp.codigo ?? cp.numeracao_lab ?? '');
-      setFocoCpId(cp.id);
-      const rotulo = cp.numeracao_lab || cp.codigo || '';
-      if (cp.lancado) toast('CP ' + rotulo + ' já lançado — exibindo para conferência.', 'info');
-      else if (cp.situacao === 'descartado') toast('CP ' + rotulo + ' está descartado.', 'info');
-      else toast('CP ' + rotulo + ' localizado.', 'success');
+      focarCp(cp);
+    } catch (e) { toast((e as Error).message, 'error'); }
+  }
+  async function bipNumeracao(num: string) {
+    try {
+      const cp = await cpPorNumeracao(num);
+      if (!cp) { toast('Etiqueta ' + num + ' ainda não vinculada a um CP.', 'info'); return; }
+      focarCp(cp);
     } catch (e) { toast((e as Error).message, 'error'); }
   }
   useEffect(() => {
@@ -561,7 +571,7 @@ export function RompimentosPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Tipo de ensaio</span><select className="input" value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)}><option value="todas">Todos</option>{tipos.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Idade</span><select className="input" value={idadeFiltro} onChange={(e) => setIdadeFiltro(e.target.value)}><option value="todas">Todas</option>{idades.map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
-          <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Buscar</span><input className="input" placeholder="Nº relatório, NF, código, numeração ou bipe o QR da etiqueta" value={nfFiltro} onChange={(e) => { const v = e.target.value; const m = /^CP:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/.exec(v.trim()); if (m) { setNfFiltro(''); void bipEtiqueta(m[1]); } else setNfFiltro(v); }} /></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Cliente / construtora</span><select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setObraFiltro('todas'); setPage(0); }}><option value="todas">Todos</option>{clientesOpts.map((c) => <option key={c} value={c}>{c}</option>)}</select></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Obra</span><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{obrasOpts.map((o) => <option key={o} value={o}>{o}</option>)}</select></label>{prensas.length > 0 ? <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Prensa</span><select className="input" value={prensaFiltro} onChange={(e) => { setPrensaFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{prensas.map((p) => <option key={p.id} value={p.id}>{rotuloEquip(p)}</option>)}<option value="sem">Sem prensa</option></select></label> : null}
+          <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Buscar</span><input className="input" placeholder="Nº relatório, NF, código, numeração ou bipe o QR da etiqueta" value={nfFiltro} onChange={(e) => { const v = e.target.value; const m = /^CP:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/.exec(v.trim()); if (m) { setNfFiltro(''); void bipEtiqueta(m[1]); } else if (/^\d{4,6}\/\d{2}$/.test(v.trim())) { const t = v.trim(); setNfFiltro(t); void bipNumeracao(t); } else setNfFiltro(v); }} /></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Cliente / construtora</span><select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setObraFiltro('todas'); setPage(0); }}><option value="todas">Todos</option>{clientesOpts.map((c) => <option key={c} value={c}>{c}</option>)}</select></label><label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Obra</span><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{obrasOpts.map((o) => <option key={o} value={o}>{o}</option>)}</select></label>{prensas.length > 0 ? <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Prensa</span><select className="input" value={prensaFiltro} onChange={(e) => { setPrensaFiltro(e.target.value); setPage(0); }}><option value="todas">Todas</option>{prensas.map((p) => <option key={p.id} value={p.id}>{rotuloEquip(p)}</option>)}<option value="sem">Sem prensa</option></select></label> : null}
         </div>
         <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-4">

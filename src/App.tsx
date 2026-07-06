@@ -17,6 +17,7 @@ const NovaProgramacaoPage = lazy(() => import('./pages/concreto/NovaProgramacaoP
 const ConcretagensPage = lazy(() => import('./pages/concreto/ConcretagensPage').then((m) => ({ default: m.ConcretagensPage })));
 const ConcretagemDetalhePage = lazy(() => import('./pages/concreto/ConcretagemDetalhePage').then((m) => ({ default: m.ConcretagemDetalhePage })));
 const RompimentosPage = lazy(() => import('./pages/concreto/RompimentosPage').then((m) => ({ default: m.RompimentosPage })));
+const ColetaFormasPage = lazy(() => import('./pages/concreto/ColetaFormasPage').then((m) => ({ default: m.ColetaFormasPage })));
 const EtiquetasPage = lazy(() => import('./pages/concreto/EtiquetasPage').then((m) => ({ default: m.EtiquetasPage })));
 const LaudosPage = lazy(() => import('./pages/concreto/LaudosPage').then((m) => ({ default: m.LaudosPage })));
 const LabDashboardsPage = lazy(() => import('./pages/dashboards/LabDashboardsPage').then((m) => ({ default: m.LabDashboardsPage })));
@@ -134,6 +135,7 @@ export function App() {
             <Route path="/produtividade" element={<ProdutividadePage />} />
             <Route path="/faturas" element={<FaturasPage />} />
             <Route path="/formas" element={<FormasPage />} />
+            <Route path="/coleta-formas" element={<ColetaFormasPage />} />
             <Route path="/gestao/config-campos" element={<ConfigCamposPage />} />
             <Route path="/gestao/controle-laudo" element={<Navigate to="/gestao/config-campos?aba=laudo" replace />} />
             <Route path="/gestao/campos-recebimento" element={<Navigate to="/gestao/config-campos?aba=recebimento" replace />} />

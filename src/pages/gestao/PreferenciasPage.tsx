@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { getConfigLab, saveConfigLab, uploadLogo, logoSignedUrl } from '../../lib/api/preferencias';
+import { consultaFiscal } from '../../lib/api/fiscal';
 
 const num = (v: unknown, d: number): number => { const s = String(v ?? '').trim(); const n = Number(s); return s === '' || !Number.isFinite(n) ? d : n; };
 const str = (v: unknown) => String(v ?? '').trim();
@@ -18,6 +19,7 @@ export function PreferenciasPage() {
   const podeEditar = hasRole('admin', 'admin_consulte');
   const [f, setF] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
+  const [cepBusy, setCepBusy] = useState(false);
 
   const q = useQuery({ queryKey: ['config-lab', member?.tenant_id], queryFn: () => getConfigLab(member!.tenant_id), enabled: !!member?.tenant_id });
   const qc = useQueryClient();
@@ -37,7 +39,7 @@ export function PreferenciasPage() {
   useEffect(() => {
     const c = q.data;
     if (c === undefined) return;
-    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '', certificacoes: Array.isArray(c?.certificacoes) ? c?.certificacoes : [] });
+    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '', endereco: c?.endereco ?? '', numero: c?.numero ?? '', bairro: c?.bairro ?? '', cidade: c?.cidade ?? '', uf: c?.uf ?? '', cep: c?.cep ?? '', certificacoes: Array.isArray(c?.certificacoes) ? c?.certificacoes : [] });
   }, [q.data]);
 
   function set(k: string, v: unknown) { setF((s) => ({ ...s, [k]: v })); }
@@ -45,18 +47,34 @@ export function PreferenciasPage() {
   function setCert(i: number, k: string, v: unknown) { const arr = certs.slice(); arr[i] = { ...arr[i], [k]: v }; set('certificacoes', arr); }
   function addCert() { set('certificacoes', [...certs, { tipo: '', numero: '', orgao: '', validade: '' }]); }
   function removeCert(i: number) { set('certificacoes', certs.filter((_, j) => j !== i)); }
+  async function buscarCep() {
+    const cep = str(f.cep); if (!cep) { toast('Informe o CEP.', 'error'); return; }
+    setCepBusy(true);
+    try {
+      const d = await consultaFiscal('cep', cep);
+      setF((s) => ({ ...s, endereco: str(d.endereco) || s.endereco, bairro: str(d.bairro) || s.bairro, cidade: str(d.cidade) || s.cidade, uf: str(d.uf) || s.uf }));
+      toast('Endereco preenchido pelo CEP.', 'success');
+    } catch (e) { toast((e as Error).message, 'error'); } finally { setCepBusy(false); }
+  }
+  const enderecoComposto = () => [str(f.endereco), str(f.numero), str(f.bairro), str(f.cidade), str(f.uf), str(f.cep)].filter((x) => x).join(', ');
+  function verMaps() { const q2 = enderecoComposto(); if (!q2) { toast('Preencha o endereco primeiro.', 'info'); return; } window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q2 + ', Brasil'), '_blank', 'noopener'); }
 
   async function salvar() {
     if (!member) return;
     setBusy(true);
     try {
-      await saveConfigLab(member.tenant_id, {
+      const composto = enderecoComposto();
+      const payload: Record<string, unknown> = {
         responsavel_tecnico: str(f.responsavel_tecnico) || null, crea_rt: str(f.crea_rt) || null,
         acreditacao_inmetro: str(f.acreditacao_inmetro) || null, validade_acreditacao: str(f.validade_acreditacao) || null,
         idade_controle_default: num(f.idade_controle_default, 28), cp_overdue_days: num(f.cp_overdue_days, 2),
         nota_rodape: str(f.nota_rodape) || null, local_ensaio: str(f.local_ensaio) || null, art_numero: str(f.art_numero) || null, gerente_qualidade: str(f.gerente_qualidade) || null, crea_gq: str(f.crea_gq) || null,
+        endereco: str(f.endereco) || null, numero: str(f.numero) || null, bairro: str(f.bairro) || null, cidade: str(f.cidade) || null, uf: str(f.uf) || null, cep: str(f.cep) || null,
         certificacoes: certs,
-      });
+      };
+      if (composto !== str(q.data?.endereco_origem)) { payload.endereco_origem = composto || null; payload.origem_lat = null; payload.origem_lng = null; }
+      await saveConfigLab(member.tenant_id, payload);
+      await qc.invalidateQueries({ queryKey: ['config-lab', member.tenant_id] });
       toast('Preferencias salvas.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
@@ -93,6 +111,26 @@ export function PreferenciasPage() {
         </div>
       </Card>
       <Card>
+        <CardHeader kicker="Coleta de fôrmas / rota" title="Endereço do laboratório" />
+        <div style={{ display: 'grid', gap: 12, padding: 16 }}>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Endereço deste laboratório. Usado como ponto de partida da rota de coleta de fôrmas.</p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ maxWidth: 160 }}><Field label="CEP" value={String(f.cep ?? '')} onChange={(e) => set('cep', e.target.value)} disabled={!podeEditar} /></div>
+            <Button variant="secondary" disabled={!podeEditar || cepBusy} onClick={() => void buscarCep()}>{cepBusy ? '...' : 'Buscar CEP'}</Button>
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: 2, minWidth: 220 }}><Field label="Endereço (logradouro)" value={String(f.endereco ?? '')} onChange={(e) => set('endereco', e.target.value)} disabled={!podeEditar} /></div>
+            <div style={{ maxWidth: 120 }}><Field label="Número" value={String(f.numero ?? '')} onChange={(e) => set('numero', e.target.value)} disabled={!podeEditar} /></div>
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Field label="Bairro" value={String(f.bairro ?? '')} onChange={(e) => set('bairro', e.target.value)} disabled={!podeEditar} />
+            <Field label="Cidade" value={String(f.cidade ?? '')} onChange={(e) => set('cidade', e.target.value)} disabled={!podeEditar} />
+            <div style={{ maxWidth: 90 }}><Field label="UF" value={String(f.uf ?? '')} onChange={(e) => set('uf', e.target.value)} disabled={!podeEditar} /></div>
+          </div>
+          <div><Button variant="ghost" onClick={verMaps}>Ver no Google Maps</Button></div>
+        </div>
+      </Card>
+      <Card>
         <CardHeader kicker="Laudo" title="Certificações do laboratório" />
         <div style={{ display: 'grid', gap: 12, padding: 16 }}>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Cadastre as certificações/acreditações do laboratório. Saem no laudo quando o bloco “Certificações do laboratório” estiver ligado em <b>Config. de Campos › Laudo</b>.</p>
@@ -114,10 +152,6 @@ export function PreferenciasPage() {
           <Field label="Idade de controle padrao (dias)" type="number" value={String(f.idade_controle_default ?? 28)} onChange={(e) => set('idade_controle_default', e.target.value)} disabled={!podeEditar} />
           <Field label="Tolerancia de atraso do CP (dias)" type="number" value={String(f.cp_overdue_days ?? 2)} onChange={(e) => set('cp_overdue_days', e.target.value)} disabled={!podeEditar} />
         </div>
-      </Card>
-      <Card>
-        <CardHeader kicker="Laudo" title="Campos exibidos no laudo" />
-        <p style={{ margin: 0, padding: 16, fontSize: 13, color: 'var(--ink-faint)' }}>Os campos exibidos no laudo (e os blocos/colunas do PDF) agora ficam em <b>Config. de Campos › aba Laudo</b> — junto com os campos de ensaio, recebimento e concretagem.</p>
       </Card>
       {podeEditar ? <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar preferencias'}</Button></div> : null}
     </div>
