@@ -18,23 +18,17 @@ const ConcretagensPage = lazy(() => import('./pages/concreto/ConcretagensPage').
 const ConcretagemDetalhePage = lazy(() => import('./pages/concreto/ConcretagemDetalhePage').then((m) => ({ default: m.ConcretagemDetalhePage })));
 const RompimentosPage = lazy(() => import('./pages/concreto/RompimentosPage').then((m) => ({ default: m.RompimentosPage })));
 const ColetaFormasPage = lazy(() => import('./pages/concreto/ColetaFormasPage').then((m) => ({ default: m.ColetaFormasPage })));
+const ImportacoesShell = lazy(() => import('./pages/concreto/ImportacoesShell').then((m) => ({ default: m.ImportacoesShell })));
+const FinanceiroPage = lazy(() => import('./pages/gestao/FinanceiroPage').then((m) => ({ default: m.FinanceiroPage })));
+const ConfiguracoesPage = lazy(() => import('./pages/gestao/ConfiguracoesPage').then((m) => ({ default: m.ConfiguracoesPage })));
 const EtiquetasPage = lazy(() => import('./pages/concreto/EtiquetasPage').then((m) => ({ default: m.EtiquetasPage })));
 const LaudosPage = lazy(() => import('./pages/concreto/LaudosPage').then((m) => ({ default: m.LaudosPage })));
 const LabDashboardsPage = lazy(() => import('./pages/dashboards/LabDashboardsPage').then((m) => ({ default: m.LabDashboardsPage })));
-const ImportacaoExcelPage = lazy(() => import('./pages/concreto/ImportacaoExcelPage').then((m) => ({ default: m.ImportacaoExcelPage })));
-const ContratosFinanceiroPage = lazy(() => import('./pages/gestao/ContratosFinanceiroPage').then((m) => ({ default: m.ContratosFinanceiroPage })));
-const ImportacoesPage = lazy(() => import('./pages/concreto/ImportacoesPage').then((m) => ({ default: m.ImportacoesPage })));
 const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
 const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
-const NcConfigPage = lazy(() => import('./pages/gestao/NcConfigPage').then((m) => ({ default: m.NcConfigPage })));
-const NotificacoesPage = lazy(() => import('./pages/gestao/NotificacoesPage').then((m) => ({ default: m.NotificacoesPage })));
 const PendenciasPage = lazy(() => import('./pages/gestao/PendenciasPage').then((m) => ({ default: m.PendenciasPage })));
-const PreferenciasPage = lazy(() => import('./pages/gestao/PreferenciasPage').then((m) => ({ default: m.PreferenciasPage })));
-const MedicaoPage = lazy(() => import('./pages/gestao/MedicaoPage').then((m) => ({ default: m.MedicaoPage })));
 const ProdutividadePage = lazy(() => import('./pages/gestao/ProdutividadePage').then((m) => ({ default: m.ProdutividadePage })));
-const FaturasPage = lazy(() => import('./pages/gestao/FaturasPage').then((m) => ({ default: m.FaturasPage })));
 const FormasPage = lazy(() => import('./pages/gestao/FormasPage').then((m) => ({ default: m.FormasPage })));
-const ConfigCamposPage = lazy(() => import('./pages/gestao/ConfigCamposPage').then((m) => ({ default: m.ConfigCamposPage })));
 const ClientePortalPage = lazy(() => import('./pages/portal/ClientePortalPage').then((m) => ({ default: m.ClientePortalPage })));
 const ClienteUsuariosPage = lazy(() => import('./pages/portal/ClienteUsuariosPage').then((m) => ({ default: m.ClienteUsuariosPage })));
 const OperacaoPage = lazy(() => import('./pages/operacao/OperacaoPage').then((m) => ({ default: m.OperacaoPage })));
@@ -123,20 +117,22 @@ export function App() {
             <Route path="/laudos" element={<LaudosPage />} />
             <Route path="/lotes" element={<LotesPage />} />
             <Route path="/nao-conformidades" element={<NcPage />} />
-            <Route path="/gestao/nc-config" element={<NcConfigPage />} />
-            <Route path="/importacoes" element={<ImportacoesPage />} />
-            <Route path="/importacoes/excel" element={podeLab ? <ImportacaoExcelPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/nc-config" element={<ConfiguracoesPage inicial="nc" />} />
+            <Route path="/importacoes" element={<ImportacoesShell />} />
+            <Route path="/importacoes/excel" element={podeLab ? <ImportacoesShell inicial="excel" /> : <Navigate to="/" replace />} />
             <Route path="/dashboards" element={podeLab ? <LabDashboardsPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/contratos-financeiro" element={podeOperacao ? <ContratosFinanceiroPage /> : <Navigate to="/" replace />} />
-            <Route path="/notificacoes" element={<NotificacoesPage />} />
+            <Route path="/gestao/contratos-financeiro" element={<FinanceiroPage inicial="contratos" />} />
+            <Route path="/notificacoes" element={<ConfiguracoesPage inicial="notificacoes" />} />
             <Route path="/gestao/pendencias" element={<PendenciasPage />} />
-            <Route path="/preferencias" element={<PreferenciasPage />} />
-            <Route path="/medicoes" element={<MedicaoPage />} />
+            <Route path="/preferencias" element={<ConfiguracoesPage inicial="preferencias" />} />
+            <Route path="/medicoes" element={<FinanceiroPage inicial="medicao" />} />
             <Route path="/produtividade" element={<ProdutividadePage />} />
-            <Route path="/faturas" element={<FaturasPage />} />
+            <Route path="/faturas" element={<FinanceiroPage inicial="faturas" />} />
             <Route path="/formas" element={<FormasPage />} />
             <Route path="/coleta-formas" element={<ColetaFormasPage />} />
-            <Route path="/gestao/config-campos" element={<ConfigCamposPage />} />
+            <Route path="/gestao/config-campos" element={<ConfiguracoesPage inicial="campos" />} />
+            <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+            <Route path="/financeiro" element={<FinanceiroPage />} />
             <Route path="/gestao/controle-laudo" element={<Navigate to="/gestao/config-campos?aba=laudo" replace />} />
             <Route path="/gestao/campos-recebimento" element={<Navigate to="/gestao/config-campos?aba=recebimento" replace />} />
             <Route path="/gestao/campos-concretagem" element={<Navigate to="/gestao/config-campos?aba=concretagem" replace />} />

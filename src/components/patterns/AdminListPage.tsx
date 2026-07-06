@@ -19,7 +19,7 @@ import type { Column, FieldSpec, RowAction, DomainRow, SortState } from '../../l
 type Props<T extends DomainRow> = {
   title: string; kicker?: string; description?: string; table: string;
   columns: Column<T>[]; fields: FieldSpec[]; rowActions?: RowAction<T>[];
-  initialSort?: string; filter?: Record<string, string>; canDelete?: boolean;
+  initialSort?: string; filter?: Record<string, string>; canDelete?: boolean; canCreate?: boolean;
 };
 
 type FormVals = Record<string, unknown>;
@@ -31,7 +31,7 @@ function deriveValue(transform: string, v: unknown): string {
   return s;
 }
 
-export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, description, table, columns, fields, rowActions, initialSort, filter, canDelete }: Props<T>) {
+export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, description, table, columns, fields, rowActions, initialSort, filter, canDelete, canCreate }: Props<T>) {
   const { member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
@@ -133,7 +133,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
       <PageHeader kicker={kicker} title={title} description={description} />
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <input className="input" placeholder="Buscar..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} style={{ maxWidth: 280 }} />
-        <Button onClick={openNew}>Novo</Button>
+        {canCreate === false ? null : <Button onClick={openNew}>Novo</Button>}
       </div>
       {query.isLoading ? <LoadingState /> : query.isError ? <ErrorState message={(query.error as Error).message} /> : <DataTable rows={rows} columns={cols} rowKey={(r) => r.id} sort={sort} onSort={setSort} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: 'var(--ink-faint)' }}>

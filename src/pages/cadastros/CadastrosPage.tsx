@@ -3,19 +3,18 @@ import { useSearchParams } from 'react-router-dom';
 import { AdminListPage } from '../../components/patterns/AdminListPage';
 import { Button } from '../../components/ui/Button';
 import type { Column, FieldSpec, DomainRow } from '../../lib/api/types';
-import { MateriaisPage } from './MateriaisPage';
 import { ColaboradoresPage } from './ColaboradoresPage';
 import { EquipamentosPage } from './EquipamentosPage';
 
 const ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map((u) => ({ value: u, label: u }));
 
-type Tab = { key: string; label: string; table: string; description: string; sort: string; columns: Column<DomainRow>[]; fields: FieldSpec[]; dedicated?: boolean };
+type Tab = { key: string; label: string; table: string; description: string; sort: string; columns: Column<DomainRow>[]; fields: FieldSpec[]; dedicated?: boolean; canCreate?: boolean };
 
 const tabs: Tab[] = [
   { key: 'clientes', label: 'Clientes', table: 'lab_clients', description: 'Construtoras atendidas pelo laboratorio.', sort: 'razao_social',
     columns: [{ key: 'razao_social', header: 'Razao social', sortable: true }, { key: 'nome_fantasia', header: 'Fantasia' }, { key: 'cnpj_cpf', header: 'CNPJ/CPF' }, { key: 'cidade', header: 'Cidade' }, { key: 'uf', header: 'UF' }],
     fields: [{ key: 'tipo', label: 'Tipo', type: 'select', required: true, options: [{ value: 'PJ', label: 'PJ' }, { value: 'PF', label: 'PF' }] }, { key: 'razao_social', label: 'Razao social', required: true }, { key: 'nome_fantasia', label: 'Nome fantasia' }, { key: 'cnpj_cpf', label: 'CNPJ/CPF', lookup: { kind: 'cnpj', map: { razao_social: 'razao_social', nome_fantasia: 'nome_fantasia', email: 'email', telefone: 'telefone', cep: 'cep', endereco: 'endereco', bairro: 'bairro', cidade: 'cidade', uf: 'uf' } } }, { key: 'email', label: 'E-mail' }, { key: 'telefone', label: 'Telefone' }, { key: 'celular', label: 'Celular' }, { key: 'cep', label: 'CEP', lookup: { kind: 'cep', map: { endereco: 'endereco', bairro: 'bairro', cidade: 'cidade', uf: 'uf' } } }, { key: 'endereco', label: 'Endereco' }, { key: 'bairro', label: 'Bairro' }, { key: 'cidade', label: 'Cidade' }, { key: 'uf', label: 'UF', type: 'select', options: ufs }, { key: 'observacoes', label: 'Observacoes', type: 'textarea' }] },
-  { key: 'obras', label: 'Obras', table: 'client_works', description: 'Obras dos clientes.', sort: 'nome',
+  { key: 'obras', label: 'Obras', table: 'client_works', description: 'Obras dos clientes. Para criar uma obra nova, use "Nova obra" (wizard).', sort: 'nome', canCreate: false,
     columns: [{ key: 'codigo', header: 'Codigo', sortable: true }, { key: 'sigla', header: 'Sigla' }, { key: 'nome', header: 'Obra', sortable: true }, { key: 'cidade', header: 'Cidade' }, { key: 'uf', header: 'UF' }, { key: 'status', header: 'Status' }],
     fields: [{ key: 'client_id', label: 'Cliente', type: 'reference', refTable: 'lab_clients', refLabel: 'razao_social', required: true }, { key: 'codigo', label: 'Codigo' }, { key: 'nome', label: 'Nome da obra', required: true }, { key: 'sigla', label: 'Sigla (prefixo do Nº de relatório)', help: 'Gerada das 4 primeiras letras do nome; editável.', derive: { from: 'nome', transform: 'first4letters' } }, { key: 'cep', label: 'CEP', lookup: { kind: 'cep', map: { endereco: 'endereco', bairro: 'bairro', cidade: 'cidade', uf: 'uf' } } }, { key: 'endereco', label: 'Endereco' }, { key: 'bairro', label: 'Bairro' }, { key: 'cidade', label: 'Cidade' }, { key: 'uf', label: 'UF', type: 'select', options: ufs }, { key: 'tipo', label: 'Tipo' }, { key: 'etapa', label: 'Etapa' }, { key: 'responsavel_tecnico', label: 'Responsavel tecnico' }, { key: 'crea', label: 'CREA' }, { key: 'estrutura_habilitada', label: 'Habilitar estrutura (pecas)', type: 'boolean' }] },
   { key: 'contatos', label: 'Contatos', table: 'client_contacts', description: 'Contatos dos clientes e obras.', sort: 'nome',
@@ -31,28 +30,23 @@ export function CadastrosPage() {
   const [sp] = useSearchParams();
   const [active, setActive] = useState(() => {
     const k = sp.get('tab');
-    if (k) { const i = tabs.findIndex((t) => t.key === k); if (i >= 0) return i; if (k === 'colaboradores') return tabs.length; if (k === 'materiais') return tabs.length + 1; }
+    if (k) { const i = tabs.findIndex((t) => t.key === k); if (i >= 0) return i; if (k === 'colaboradores') return tabs.length; }
     return 0;
   });
   const COLAB = tabs.length;
-  const MATERIAIS = tabs.length + 1;
   const isColab = active === COLAB;
-  const isMateriais = active === MATERIAIS;
   const t = tabs[Math.min(active, tabs.length - 1)];
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {tabs.map((tab, i) => <Button key={tab.key} variant={i === active ? 'primary' : 'ghost'} onClick={() => setActive(i)}>{tab.label}</Button>)}
         <Button variant={isColab ? 'primary' : 'ghost'} onClick={() => setActive(COLAB)}>Colaboradores</Button>
-        <Button variant={isMateriais ? 'primary' : 'ghost'} onClick={() => setActive(MATERIAIS)}>Materiais e ensaios</Button>
       </div>
       {isColab
         ? <ColaboradoresPage />
-        : isMateriais
-        ? <MateriaisPage />
         : t.dedicated && t.key === 'equipamentos'
         ? <EquipamentosPage />
-        : <AdminListPage key={t.key} title={t.label} kicker="Cadastros" description={t.description} table={t.table} columns={t.columns} fields={t.fields} initialSort={t.sort} canDelete />}
+        : <AdminListPage key={t.key} title={t.label} kicker="Cadastros" description={t.description} table={t.table} columns={t.columns} fields={t.fields} initialSort={t.sort} canDelete canCreate={t.canCreate} />}
     </div>
   );
 }

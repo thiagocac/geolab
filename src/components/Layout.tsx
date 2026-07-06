@@ -5,7 +5,7 @@ import { useTheme } from '../lib/theme';
 import { APP_VERSION } from '../lib/telemetry/core';
 import { Tooltip } from './ui/Tooltip';
 import { CommandPalette, type Command } from './ui/CommandPalette';
-import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Ruler, Mold, Users, Sliders, Download, Tag, Truck } from './ui/icons';
+import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Download, Tag, Truck } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
@@ -22,7 +22,6 @@ const sections: Section[] = [
     { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
     { to: '/nao-conformidades', label: 'Não-conformidades', icon: AlertTriangle, roles: labRoles },
     { to: '/importacoes', label: 'Importações', icon: Import, roles: labRoles },
-    { to: '/importacoes/excel', label: 'Importação Excel', icon: Download, roles: labRoles },
     { to: '/tracos', label: 'Traços', icon: Beaker, roles: labRoles },
   ] },
   { title: 'Cadastros', items: [
@@ -34,16 +33,11 @@ const sections: Section[] = [
     { to: '/portal-cliente', label: 'Portal do cliente', icon: Building2, roles: ['cliente', 'admin', 'admin_consulte'] },
   ] },
   { title: 'Gestão', items: [
-    { to: '/notificacoes', label: 'Notificações', icon: Bell, roles: labRoles },
-    { to: '/preferencias', label: 'Preferências', icon: Settings, roles: adminRoles },
-    { to: '/medicoes', label: 'Medição', icon: Ruler, roles: adminRoles },
+    { to: '/financeiro', label: 'Financeiro', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
     { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
-    { to: '/faturas', label: 'Faturas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
-    { to: '/gestao/contratos-financeiro', label: 'Contratos e financeiro', icon: Receipt, roles: adminRoles },
     { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles },
     { to: '/coleta-formas', label: 'Coleta de fôrmas', icon: Truck, roles: labRoles },
-    { to: '/gestao/config-campos', label: 'Config. de Campos', icon: ClipboardCheck, roles: adminRoles },
-    { to: '/gestao/nc-config', label: 'Config de NC', icon: Sliders, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
+    { to: '/configuracoes', label: 'Configurações', icon: Settings, roles: labRoles },
   ] },
   { title: 'Operação interna', items: [
     { to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles },
