@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaboradores';
 import { cpPorQr, cpPorNumeracao, type CpQr } from '../../lib/api/etiquetas';
 import { listEquipamentosRef, mapAlocacaoObras, rotuloEquip } from '../../lib/api/equipamentos';
@@ -117,6 +118,7 @@ export function RompimentosPage() {
   const [auditItems, setAuditItems] = useState<TimelineEvent[]>([]);
   const [numCp, setNumCp] = useState<CpRompimento | null>(null);
   const [numValor, setNumValor] = useState('');
+  const confirm = useConfirm();
   const [importOpen, setImportOpen] = useState(false);
   const [importLines, setImportLines] = useState<ImportLine[]>([]);
   const [bulkData, setBulkData] = useState('');
@@ -289,6 +291,17 @@ export function RompimentosPage() {
   }, [focoCpId, pageRows]);
 
   function patch(id: string, values: Partial<EditState>) { setEdits((s) => ({ ...s, [id]: { ...(s[id] ?? {}), ...values } })); }
+  async function salvarNumeracao() {
+    if (!numCp) return;
+    const novo = numValor.trim();
+    const atual = (numCp.numeracao_lab ?? '').trim();
+    if (atual && novo !== atual) {
+      const msg = novo ? 'Este CP já tem a numeração ' + atual + ' (definida na moldagem/etiqueta). Substituir por ' + novo + '?' : 'Remover a numeração ' + atual + ' deste CP?';
+      if (!(await confirm({ title: 'Alterar numeração do CP', message: msg, danger: true, confirmLabel: novo ? 'Substituir' : 'Remover' }))) return;
+    }
+    try { await setNumeracaoCp(numCp, novo); setNumCp(null); await qc.invalidateQueries({ queryKey: ['rompimentos'] }); }
+    catch (e) { toast((e as Error).message, 'error'); }
+  }
   function effectiveData(cp: CpRompimento): string {
     const e = edits[cp.id];
     const saved = resultadoAtual(cp);
@@ -636,7 +649,7 @@ export function RompimentosPage() {
                   return (
                     <tr key={r.id} className={ins ? 'bg-red-50/70 dark:bg-red-950/20' : ''}>
                       <td className="px-3 py-2"><input type="checkbox" aria-label={`Selecionar CP ${cpNumero(r)}`} checked={selecionados.has(r.id)} onChange={() => toggleSelecionado(r.id)} /></td>
-                      <td className="px-3 py-2 align-top"><div className="font-black text-slate-950 dark:text-slate-50">{cpNumero(r)}</div>{campoNumeracao ? <button type="button" className="text-xs font-bold text-blue-600" onClick={() => { setNumCp(r); setNumValor(cpNumero(r)); }}>+ numeração lab</button> : null}<div className="mt-1 text-[11px] text-slate-400">{statusBadge(r)}</div></td>
+                      <td className="px-3 py-2 align-top"><div className="font-black text-slate-950 dark:text-slate-50">{cpNumero(r)}</div>{campoNumeracao ? <button type="button" className="text-xs font-bold text-blue-600" onClick={() => { setNumCp(r); setNumValor(r.numeracao_lab ?? ''); }}>+ numeração lab</button> : null}<div className="mt-1 text-[11px] text-slate-400">{statusBadge(r)}</div></td>
                       <td className="px-3 py-2 align-top"><span className={isAtrasado(r, dataRef) ? 'font-black text-red-600' : 'font-black'}>{fmtDate(r.data_prevista_rompimento)}{isAtrasado(r, dataRef) ? ' !' : ''}</span></td>
                       <td className="px-3 py-2"><div className="flex gap-2"><input className="input" type="date" value={effectiveData(r)} onChange={(e) => patch(r.id, { data: e.target.value })} /><input className="input max-w-[90px]" type="time" value={effectiveHora(r)} onChange={(e) => patch(r.id, { hora: e.target.value })} /></div></td>
                       <td className="px-3 py-2"><input id={`romp-val-${rowIdx}`} className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: sanitizeDecimal(e.target.value) } : { valor: sanitizeDecimal(e.target.value) })} onPaste={(e) => handlePaste(e, rowIdx)} title="Cole uma coluna do Excel para preencher vários CPs · Enter pula para o próximo" onKeyDown={(e) => { if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) { e.preventDefault(); const n = document.getElementById(`romp-val-${rowIdx + 1}`) as HTMLInputElement | null; n?.focus(); n?.select(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = document.getElementById(`romp-val-${rowIdx - 1}`) as HTMLInputElement | null; pv?.focus(); pv?.select(); } }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); return (effectiveValor(r) || effectiveCarga(r)) && mpaForaFaixa(mpa) ? <div className="mt-1 text-xs font-bold text-amber-600">⚠ MPa fora de faixa plausível (verifique a digitação)</div> : null; })()}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); const esp2 = esperado(r); return (effectiveValor(r) || effectiveCarga(r)) && Number.isFinite(mpa) && mpa > 0 && esp2 != null && esp2 > 0 && mpa < 0.8 * esp2 ? <div className="mt-1 text-xs font-bold text-red-600">⚠ Resultado 80% menor que o esperado</div> : null; })()}</td>
@@ -672,7 +685,7 @@ export function RompimentosPage() {
         {auditItems.length === 0 ? <p className="text-sm text-slate-500">Nenhuma alteração registrada para este CP.</p> : <TimelineList events={auditItems} hideOrigin />}
       </Modal>
 
-      <Modal open={!!numCp} title="Numeração do laboratório" onClose={() => setNumCp(null)} footer={<><Button variant="ghost" onClick={() => setNumCp(null)}>Cancelar</Button><Button onClick={() => { if (!numCp) return; void setNumeracaoCp(numCp, numValor).then(() => { setNumCp(null); return qc.invalidateQueries({ queryKey: ['rompimentos'] }); }).catch((e: Error) => toast(e.message, 'error')); }}>Salvar</Button></>}>
+      <Modal open={!!numCp} title="Numeração do laboratório" onClose={() => setNumCp(null)} footer={<><Button variant="ghost" onClick={() => setNumCp(null)}>Cancelar</Button><Button onClick={() => void salvarNumeracao()}>Salvar</Button></>}>
         <label className="block space-y-1"><span className="text-sm font-bold">Numeração lab</span><input className="input" value={numValor} onChange={(e) => setNumValor(e.target.value)} maxLength={25} /></label>
       </Modal>
 
