@@ -34,7 +34,7 @@ export async function listSaldo(obras: ObraRef[]): Promise<SaldoRow[]> {
 export async function listMovimentos(workId?: string): Promise<MovRow[]> {
   let q = db.from('forma_movimentacoes')
     .select('id, data, work_id, tipo, quantidade, observacoes, client_works(nome), colaboradores(nome)')
-    .is('deleted_at', null).order('data', { ascending: false }).order('created_at', { ascending: false }).limit(100);
+    .is('deleted_at', null).eq('automatica', false).order('data', { ascending: false }).order('created_at', { ascending: false }).limit(100);
   if (workId) q = q.eq('work_id', workId);
   const { data, error } = await q;
   if (error) throw new Error(error.message);

@@ -1,0 +1,8 @@
+-- 147_formas_ledger_auto_entrega (fiel ao vivo) — A1 caminho 1.
+-- forma_movimentacoes.automatica + unique(concretagem_id) where automatica.
+-- sincronizar_entrega_formas(concretagem): upsert de 1 entrega automática por concretagem,
+--   qtd = coalesce(nullif(formas_previstas,0), nº CPs vivos); qtd 0 -> soft-delete.
+-- Triggers trg_sync_entrega_formas em corpos_prova (insert/update de deleted_at,concretagem_id)
+--   e concretagens (insert/update de formas_previstas,deleted_at,status).
+-- Backfill das concretagens vivas.
+-- coleta_worklist re-derivada: em_campo por concretagem = sum(entrega) - sum(coleta) do ledger.

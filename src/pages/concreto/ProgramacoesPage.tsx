@@ -20,12 +20,10 @@ import {
   atribuirEquipe, provisionarFormas, listEquipeColaboradores, padraoMoldagemDaConcretagem,
   type ConcretagemRow,
 } from '../../lib/api/concretagem';
-import { addMovimento } from '../../lib/api/formas';
 import { toNumber } from '../../lib/concreto';
 import { saveBlob as dl } from '../../lib/pdf';
 
 type Row = ConcretagemRow;
-const hoje = () => new Date().toISOString().slice(0, 10);
 const podeConfirmar = (r: Row) => r.status !== 'registrado' && r.status !== 'cancelada';
 const teamLabel = (r: Row) => [r.moldador?.nome, r.laboratorista?.nome].filter(Boolean).join(' • ');
 // CPs por amostra (1 NF) = soma das quantidades do padrão de moldagem (todas as idades são moldadas no mesmo dia).
@@ -103,11 +101,10 @@ export function ProgramacoesPage() {
 
   async function lancarEstoque() {
     if (!formasRow || !member) return;
-    if (!(await confirm({ title: 'Lançar no estoque da obra', message: 'Lançar ' + formasNecessarias + ' forma(s) como entrega no estoque da obra? Isso reduz o saldo de formas em campo (entra na medição v1.1).', confirmLabel: 'Lançar entrega' }))) return;
+    if (!(await confirm({ title: 'Provisionar fôrmas', message: 'Provisionar ' + formasNecessarias + ' fôrma(s) desta concretagem? Elas entram automaticamente no estoque em campo e na coleta.', confirmLabel: 'Provisionar' }))) return;
     setBusy(true);
     try {
       await provisionarFormas(formasRow.id, formasNecessarias, { n_amostras: nAmostras, cps_por_amostra: cpsAmostra, capacidade_m3: capNum, volume_m3: volume }, formasRow.metadata ?? null);
-      await addMovimento(member.tenant_id, { work_id: formasRow.work_id, tipo: 'entrega', quantidade: formasNecessarias, data: hoje(), colaborador_id: formasRow.moldador_id ?? null, observacoes: 'Provisão da programação ' + (formasRow.numero_relatorio ?? formasRow.codigo ?? '') });
       await qc.invalidateQueries({ queryKey: ['programacoes'] });
       await qc.invalidateQueries({ queryKey: ['formas-saldo'] });
       await qc.invalidateQueries({ queryKey: ['formas-movs'] });

@@ -62,7 +62,7 @@ export function FormasPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Gestao" title="Formas" description="Controle logistico dos moldes de corpo de prova por obra: entregas, coletas e saldo em campo. A cobranca (forma faturada/nao devolvida) reduz o saldo e entra automaticamente na medicao. Desvinculado da concretagem." />
+      <PageHeader kicker="Gestao" title="Formas" description="Saldo de moldes em campo por obra. A entrega entra automaticamente pela concretagem e a coleta é feita na tela Coleta de fôrmas (roteiro). Aqui você registra entregas avulsas e cobrança (fôrma não devolvida)." />
 
       <Card className="p-5">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
@@ -124,9 +124,8 @@ export function FormasPage() {
             <option value="">-</option>
             {(obras.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}{o.cliente ? ' — ' + o.cliente : ''}</option>)}
           </SelectField>
-          <SelectField label="Tipo" value={form.tipo} onChange={(e) => setForm((s) => ({ ...s, tipo: e.target.value }))}>
+          <SelectField label="Tipo" hint="A coleta é registrada na tela Coleta de fôrmas (roteiro)." value={form.tipo} onChange={(e) => setForm((s) => ({ ...s, tipo: e.target.value }))}>
             <option value="entrega">Entrega (formas para a obra)</option>
-            <option value="coleta">Coleta (devolucao ao laboratorio)</option>
             <option value="cobranca">Cobranca (forma faturada / nao devolvida)</option>
           </SelectField>
           <Field label="Quantidade" type="number" min={1} step={1} value={form.quantidade} onChange={(e) => setForm((s) => ({ ...s, quantidade: e.target.value }))} />
