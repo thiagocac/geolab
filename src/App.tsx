@@ -133,9 +133,6 @@ export function App() {
             <Route path="/gestao/config-campos" element={<ConfiguracoesPage inicial="campos" />} />
             <Route path="/configuracoes" element={<ConfiguracoesPage />} />
             <Route path="/financeiro" element={<FinanceiroPage />} />
-            <Route path="/gestao/controle-laudo" element={<Navigate to="/gestao/config-campos?aba=laudo" replace />} />
-            <Route path="/gestao/campos-recebimento" element={<Navigate to="/gestao/config-campos?aba=recebimento" replace />} />
-            <Route path="/gestao/campos-concretagem" element={<Navigate to="/gestao/config-campos?aba=concretagem" replace />} />
             <Route path="/portal-cliente" element={<ClientePortalPage />} />
             <Route path="/portal/usuarios-clientes" element={podeGerirClientes ? <ClienteUsuariosPage /> : <Navigate to="/portal-cliente" replace />} />
             <Route path="/operacao" element={podeOperacao ? <OperacaoPage /> : <Navigate to="/" replace />} />
