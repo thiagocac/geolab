@@ -107,7 +107,7 @@ export async function getRequirementInfo(requirementId: string): Promise<DocReqI
 
 export async function anexarDocumento(input: { tenantId: string; memberId: string; requirementId: string; titulo: string; dataValidade: string | null; file: File }): Promise<void> {
   const info = await getRequirementInfo(input.requirementId);
-  if (!info) throw new Error('Requisito nao encontrado.');
+  if (!info) throw new Error('Requisito não encontrado.');
   const safe = input.file.name.replace(/[^A-Za-z0-9._-]+/g, '_');
   const path = input.tenantId + '/docgate/' + input.requirementId + '/' + Date.now() + '-' + safe;
   const up = await dbx.storage.from('anexos').upload(path, input.file, { upsert: false, contentType: input.file.type || 'application/octet-stream' });

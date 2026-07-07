@@ -46,7 +46,7 @@ export const BACKUP_JOB_NAMES = [
   'cron-backup', 'backup-storage-real', 'backup-health-check', 'backup-prune', 'backup-restore-drill', 'prune-storage-retention',
 ] as const;
 
-// Historico recente do backup_log (opcionalmente filtrado por tipo).
+// Histórico recente do backup_log (opcionalmente filtrado por tipo).
 export async function listBackupLog(opts: { type?: string; limit?: number } = {}): Promise<BackupLogRow[]> {
   let q = db.from('backup_log').select(SELECT);
   if (opts.type) q = q.eq('backup_type', opts.type);
@@ -55,7 +55,7 @@ export async function listBackupLog(opts: { type?: string; limit?: number } = {}
   return (data ?? []) as BackupLogRow[];
 }
 
-// Ultimo registro por tipo de backup (cartoes de cobertura no topo do painel).
+// Último registro por tipo de backup (cartoes de cobertura no topo do painel).
 export async function latestBackupByType(): Promise<Record<string, BackupLogRow>> {
   const { data, error } = await db.from('backup_log').select(SELECT).order('started_at', { ascending: false }).limit(200);
   if (error) throw new Error(error.message);

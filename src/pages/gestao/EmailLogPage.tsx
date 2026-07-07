@@ -288,7 +288,7 @@ export function EmailLogPage() {
               <>
                 {f.enviados === 0 ? <EmptyState /> : <div className="space-y-2">{etapas.map(([label, val, cor]) => <div key={label} className="flex items-center gap-3"><span className="w-24 text-sm font-bold text-slate-600 dark:text-slate-300">{label}</span><div className="h-5 flex-1 rounded bg-slate-100 dark:bg-slate-800"><div className={'h-5 rounded ' + cor} style={{ width: bar(val) + '%' }} /></div><span className="w-12 text-right text-sm font-black tabular-nums">{val}</span></div>)}</div>}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{taxas.map(([label, v]) => <div key={label} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="text-xs font-bold text-slate-500">{label}</div><div className="text-xl font-black tabular-nums">{v}%</div></div>)}</div>
-                <p className="text-xs text-slate-500">{f.total} registro(s) no periodo{f.suprimidos > 0 ? ' - ' + f.suprimidos + ' suprimido(s)/pulado(s)' : ''}{f.falhas > 0 ? ' - ' + f.falhas + ' falha(s)' : ''}.</p>
+                <p className="text-xs text-slate-500">{f.total} registro(s) no período{f.suprimidos > 0 ? ' - ' + f.suprimidos + ' suprimido(s)/pulado(s)' : ''}{f.falhas > 0 ? ' - ' + f.falhas + ' falha(s)' : ''}.</p>
               </>
             );
           })()}
@@ -297,7 +297,7 @@ export function EmailLogPage() {
 
       {/* A4 - Saude por tipo de evento */}
       <Card>
-        <CardHeader kicker="Entregabilidade" title="Saude por tipo de evento">Volume e desfecho de cada evento no periodo do funil - para achar o que mais falha ou gera reclamacao.</CardHeader>
+        <CardHeader kicker="Entregabilidade" title="Saude por tipo de evento">Volume e desfecho de cada evento no período do funil - para achar o que mais falha ou gera reclamacao.</CardHeader>
         <div className="p-5">
           {saude.isLoading ? <LoadingState /> : saude.error ? <ErrorState message={(saude.error as Error).message} /> : (saude.data?.length ?? 0) === 0 ? <EmptyState /> : (
             <div className="table-scroll"><table className="table">
@@ -410,7 +410,7 @@ export function EmailLogPage() {
             <span>{log.data?.total ?? 0} registro(s)</span>
             <span className="flex gap-2">
               <Button variant="ghost" disabled={logPage <= 0} onClick={() => setLogPage((p) => Math.max(0, p - 1))}>Anterior</Button>
-              <Button variant="ghost" disabled={((logPage + 1) * 25) >= (log.data?.total ?? 0)} onClick={() => setLogPage((p) => p + 1)}>Proxima</Button>
+              <Button variant="ghost" disabled={((logPage + 1) * 25) >= (log.data?.total ?? 0)} onClick={() => setLogPage((p) => p + 1)}>Próxima</Button>
             </span>
           </div>
         </div>
@@ -418,7 +418,7 @@ export function EmailLogPage() {
 
       {/* A10 - Matriz papel x evento (default global do sistema, read-only) */}
       <Card>
-        <CardHeader kicker="Roteamento" title="Matriz papel x evento">Quais papeis recebem cada evento por e-mail. Padrao global do sistema (nao por laboratorio) - referencia.</CardHeader>
+        <CardHeader kicker="Roteamento" title="Matriz papel x evento">Quais papeis recebem cada evento por e-mail. Padrão global do sistema (nao por laboratorio) - referencia.</CardHeader>
         <div className="p-5">
           {matriz.isLoading ? <LoadingState /> : matriz.error ? <ErrorState message={(matriz.error as Error).message} /> : matrizEvents.length === 0 ? <EmptyState /> : (
             <div className="table-scroll"><table className="table">

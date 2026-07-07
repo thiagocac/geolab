@@ -37,7 +37,7 @@ export function SegurancaContaPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader kicker="Onda 3 · Segurança" title="Segurança da conta" description="Trilha de acessos autenticados, base para suporte, auditoria operacional e detecção de brute-force via Password Verification Hook." />
+      <PageHeader kicker="Segurança" title="Segurança da conta" description="Trilha de acessos autenticados, base para suporte, auditoria operacional e detecção de brute-force via Password Verification Hook." />
       <div className="grid gap-3 md:grid-cols-3">
         <Card className="p-4"><p className="kicker">Meus acessos</p><p className="mt-1 text-2xl font-bold">{myRows.length}</p></Card>
         <Card className="p-4"><p className="kicker">Usuários no tenant</p><p className="mt-1 text-2xl font-bold">{isAdmin ? uniqueUsers : '-'}</p></Card>
@@ -69,7 +69,7 @@ export function SegurancaContaPage() {
                 <Card className="p-4"><p className="kicker">IPs</p><p className="mt-1 text-xl font-bold">{summary.distinct_ips}</p></Card>
               </div>
             )}
-            {summary?.suspicious ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">Sinal suspeito: volume de falhas/IPs acima do limiar da Onda 3. Integrar ao ops-alarm após validação do hook.</div> : null}
+            {summary?.suspicious ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">Sinal suspeito: volume de falhas/IPs acima do limiar configurado. Integrar ao ops-alarm após validação do hook.</div> : null}
           </div>
         </Card>
       ) : null}

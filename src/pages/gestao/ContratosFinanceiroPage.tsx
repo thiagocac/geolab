@@ -67,19 +67,19 @@ function PrecosTab({ tenantId, podeEditar }: { tenantId: string; podeEditar: boo
   const labelTipo = (v: string) => TIPO_COBRANCA_OPCOES.find((x) => x.value === v)?.label ?? v;
   return (
     <Card>
-      <CardHeader title="Tabela de precos" kicker="Catalogo por laboratorio / cliente / obra">A medicao automatica resolve o preco por precedencia: obra &gt; cliente &gt; laboratorio.</CardHeader>
+      <CardHeader title="Tabela de preços" kicker="Catalogo por laboratorio / cliente / obra">A medicao automatica resolve o preco por precedencia: obra &gt; cliente &gt; laboratorio.</CardHeader>
       <div className="space-y-3 p-4">
         <div className="grid gap-3 md:grid-cols-3">
           <SelectField label="Escopo" value={escopoSel} onChange={(e) => { setEscopoSel(e.target.value as 'laboratorio' | 'cliente' | 'obra'); setEntId(''); }}>
-            <option value="laboratorio">Laboratorio (padrao)</option><option value="cliente">Por cliente</option><option value="obra">Por obra</option>
+            <option value="laboratorio">Laboratório (padrao)</option><option value="cliente">Por cliente</option><option value="obra">Por obra</option>
           </SelectField>
           {escopoSel !== 'laboratorio' ? <label className="block space-y-1"><span className="text-sm font-bold">{escopoSel === 'cliente' ? 'Cliente' : 'Obra'}</span><select className="input" value={entId} onChange={(e) => setEntId(e.target.value)}><option value="">Selecione...</option>{(opcoes.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label> : null}
         </div>
-        {precisaEnt ? <p className="text-sm text-slate-500">Selecione um {escopoSel} para ver/editar a tabela de precos especifica.</p> : (
+        {precisaEnt ? <p className="text-sm text-slate-500">Selecione um {escopoSel} para ver/editar a tabela de preços especifica.</p> : (
           <>
-            {podeEditar ? <div className="flex justify-end"><Button onClick={abrirNovo}>Adicionar item</Button></div> : <p className="text-sm text-slate-500">Apenas o admin do laboratorio edita a tabela de precos.</p>}
+            {podeEditar ? <div className="flex justify-end"><Button onClick={abrirNovo}>Adicionar item</Button></div> : <p className="text-sm text-slate-500">Apenas o admin do laboratório edita a tabela de preços.</p>}
             {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : items.length === 0 ? <EmptyState /> : (
-              <div className="table-scroll"><table className="table"><thead><tr><th>Codigo</th><th>Descricao</th><th>Cobranca</th><th>Unidade</th><th>Preco</th><th>Status</th>{podeEditar ? <th>Acoes</th> : null}</tr></thead><tbody>
+              <div className="table-scroll"><table className="table"><thead><tr><th>Código</th><th>Descrição</th><th>Cobrança</th><th>Unidade</th><th>Preço</th><th>Status</th>{podeEditar ? <th>Ações</th> : null}</tr></thead><tbody>
                 {items.map((it) => (
                   <tr key={it.id ?? it.item_code} className={it.ativo ? '' : 'opacity-50'}>
                     <td className="font-semibold">{it.item_code}</td><td>{it.descricao}</td><td>{labelTipo(it.tipo_cobranca)}</td><td>{it.unidade}</td><td>{money(Number(it.preco_unitario))}</td><td>{it.ativo ? 'Ativo' : 'Inativo'}</td>
@@ -94,11 +94,11 @@ function PrecosTab({ tenantId, podeEditar }: { tenantId: string; podeEditar: boo
       <Modal open={open} title={editando ? 'Editar item de preco' : 'Novo item de preco'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()}>Salvar</Button></>}>
         <div className="grid gap-3">
           <SelectField label="Tipo de cobranca" value={form.tipo_cobranca} onChange={(e) => setTipo(e.target.value)}>{TIPO_COBRANCA_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
-          <Field label="Codigo (unico no escopo)" value={form.item_code} onChange={(e) => setForm((s) => ({ ...s, item_code: e.target.value }))} disabled={editando} />
-          <Field label="Descricao" value={form.descricao} onChange={(e) => setForm((s) => ({ ...s, descricao: e.target.value }))} />
+          <Field label="Código (unico no escopo)" value={form.item_code} onChange={(e) => setForm((s) => ({ ...s, item_code: e.target.value }))} disabled={editando} />
+          <Field label="Descrição" value={form.descricao} onChange={(e) => setForm((s) => ({ ...s, descricao: e.target.value }))} />
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Unidade" value={form.unidade} onChange={(e) => setForm((s) => ({ ...s, unidade: e.target.value }))} />
-            <Field label="Preco unitario (R$)" type="number" value={String(form.preco_unitario)} onChange={(e) => setForm((s) => ({ ...s, preco_unitario: Number(e.target.value) || 0 }))} />
+            <Field label="Preço unitario (R$)" type="number" value={String(form.preco_unitario)} onChange={(e) => setForm((s) => ({ ...s, preco_unitario: Number(e.target.value) || 0 }))} />
           </div>
           <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={form.ativo} onChange={(e) => setForm((s) => ({ ...s, ativo: e.target.checked }))} /> Ativo</label>
         </div>

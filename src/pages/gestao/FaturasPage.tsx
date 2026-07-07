@@ -39,7 +39,7 @@ export function FaturasPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Financeiro" title="Faturas" description="Faturamento das medicoes fechadas: emissao, baixa (pagamento) e cancelamento." />
+      <PageHeader kicker="Financeiro" title="Faturas" description="Faturamento das medições fechadas: emissão, baixa (pagamento) e cancelamento." />
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <Card className="p-4" ><div className="text-sm" style={{ color: 'var(--ink-faint)' }}>A receber (emitidas)</div><div style={{ fontSize: 20, fontWeight: 800, color: '#d97706' }}>{BRL(aReceber)}</div></Card>
@@ -58,7 +58,7 @@ export function FaturasPage() {
         {faturas.isLoading ? <LoadingState /> : faturas.isError ? <ErrorState message={(faturas.error as Error).message} /> : linhas.length === 0 ? <EmptyState /> : (
           <div className="table-scroll">
             <table className="table">
-              <thead><tr><th>Numero</th><th>Cliente</th><th>Compet.</th><th style={{ textAlign: 'right' }}>Valor</th><th>Emissao</th><th>Vencim.</th><th>Status</th><th>Pagto</th><th></th></tr></thead>
+              <thead><tr><th>Número</th><th>Cliente</th><th>Compet.</th><th style={{ textAlign: 'right' }}>Valor</th><th>Emissão</th><th>Vencim.</th><th>Status</th><th>Pagto</th><th></th></tr></thead>
               <tbody>{linhas.map((f) => {
                 return (
                   <tr key={f.id}>
@@ -104,7 +104,7 @@ function EmitirModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
           <option value="">{meds.isLoading ? 'Carregando...' : 'Selecione...'}</option>
           {(meds.data ?? []).map((m) => <option key={m.id} value={m.id}>{(m.competencia ?? '-') + ' · ' + m.cliente + ' · ' + BRL(m.valor_total)}</option>)}
         </SelectField>
-        {(meds.data ?? []).length === 0 && !meds.isLoading ? <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>Nenhuma medicao fechada sem fatura. Feche uma medicao em Gestao - Medicao.</p> : null}
+        {(meds.data ?? []).length === 0 && !meds.isLoading ? <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>Nenhuma medicao fechada sem fatura. Feche uma medicao em Gestão - Medicao.</p> : null}
         <Field label="Vencimento (opcional)" type="date" value={venc} onChange={(e) => setVenc(e.target.value)} />
       </div>
     </Modal>

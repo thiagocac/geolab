@@ -62,7 +62,7 @@ export function FormasPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Gestao" title="Formas" description="Saldo de moldes em campo por obra. A entrega entra automaticamente pela concretagem e a coleta é feita na tela Coleta de fôrmas (roteiro). Aqui você registra entregas avulsas e cobrança (fôrma não devolvida)." />
+      <PageHeader kicker="Gestão" title="Fôrmas" description="Saldo de moldes em campo por obra. A entrega entra automaticamente pela concretagem e a coleta é feita na tela Coleta de fôrmas (roteiro). Aqui você registra entregas avulsas e cobrança (fôrma não devolvida)." />
 
       <Card className="p-5">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
@@ -98,9 +98,9 @@ export function FormasPage() {
         {movs.isLoading ? <LoadingState /> : movs.isError ? <ErrorState message={(movs.error as Error).message} /> : (movs.data ?? []).length === 0 ? <EmptyState /> : (
           <div className="table-scroll">
             <table className="table">
-              <thead><tr><th>Data</th><th>Obra</th><th>Tipo</th><th style={{ textAlign: 'right' }}>Qtd</th><th>Colaborador</th><th>Observacoes</th><th></th></tr></thead>
+              <thead><tr><th>Data</th><th>Obra</th><th>Tipo</th><th style={{ textAlign: 'right' }}>Qtd</th><th>Colaborador</th><th>Observações</th><th></th></tr></thead>
               <tbody>{(movs.data ?? []).map((m) => {
-                const meta = m.tipo === 'entrega' ? { lbl: 'Entrega', cor: VERDE, sinal: '+' } : m.tipo === 'cobranca' ? { lbl: 'Cobranca', cor: 'var(--magenta)', sinal: '−' } : { lbl: 'Coleta', cor: 'var(--ink-faint)', sinal: '−' };
+                const meta = m.tipo === 'entrega' ? { lbl: 'Entrega', cor: VERDE, sinal: '+' } : m.tipo === 'cobranca' ? { lbl: 'Cobrança', cor: 'var(--magenta)', sinal: '−' } : { lbl: 'Coleta', cor: 'var(--ink-faint)', sinal: '−' };
                 return (
                   <tr key={m.id}>
                     <td>{dataBR(m.data)}</td>
@@ -118,7 +118,7 @@ export function FormasPage() {
         )}
       </Card>
 
-      <Modal open={open} title="Novo movimento de formas" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Lancar'}</Button></>}>
+      <Modal open={open} title="Novo movimento de fôrmas" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Lançar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           <SelectField label="Obra" value={form.work_id} onChange={(e) => setForm((s) => ({ ...s, work_id: e.target.value }))}>
             <option value="">-</option>
@@ -126,7 +126,7 @@ export function FormasPage() {
           </SelectField>
           <SelectField label="Tipo" hint="A coleta é registrada na tela Coleta de fôrmas (roteiro)." value={form.tipo} onChange={(e) => setForm((s) => ({ ...s, tipo: e.target.value }))}>
             <option value="entrega">Entrega (formas para a obra)</option>
-            <option value="cobranca">Cobranca (forma faturada / nao devolvida)</option>
+            <option value="cobranca">Cobrança (forma faturada / nao devolvida)</option>
           </SelectField>
           <Field label="Quantidade" type="number" min={1} step={1} value={form.quantidade} onChange={(e) => setForm((s) => ({ ...s, quantidade: e.target.value }))} />
           <Field label="Data" type="date" value={form.data} onChange={(e) => setForm((s) => ({ ...s, data: e.target.value }))} />
@@ -134,7 +134,7 @@ export function FormasPage() {
             <option value="">-</option>
             {(colabs.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </SelectField>
-          <TextArea label="Observacoes" value={form.observacoes} onChange={(e) => setForm((s) => ({ ...s, observacoes: e.target.value }))} />
+          <TextArea label="Observações" value={form.observacoes} onChange={(e) => setForm((s) => ({ ...s, observacoes: e.target.value }))} />
         </div>
       </Modal>
     </div>

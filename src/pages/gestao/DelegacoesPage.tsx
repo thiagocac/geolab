@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
+import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { Button } from '../../components/ui/Button';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
@@ -34,6 +35,8 @@ export function DelegacoesPage() {
   const [startsAt, setStartsAt] = useState(() => toLocalInput(new Date()));
   const [endsAt, setEndsAt] = useState(() => toLocalInput(new Date(Date.now() + 7 * 86400000)));
   const [reason, setReason] = useState('');
+  const [revokeId, setRevokeId] = useState<string | null>(null);
+  const [revokeNote, setRevokeNote] = useState('Revogado manualmente');
   const [activeOnly, setActiveOnly] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -56,19 +59,22 @@ export function DelegacoesPage() {
     } finally { setBusy(false); }
   }
 
-  async function revoke(id: string) {
-    const note = typeof window === 'undefined' ? '' : window.prompt('Motivo da revogação', 'Revogado manualmente') || '';
+  function revoke(id: string) { setRevokeNote('Revogado manualmente'); setRevokeId(id); }
+
+  async function confirmarRevogacao() {
+    if (!revokeId) return;
     setBusy(true); setMsg(null);
     try {
-      await revokeApprovalDelegation(id, note);
+      await revokeApprovalDelegation(revokeId, revokeNote.trim());
       await qc.invalidateQueries({ queryKey: ['approval-delegations'] });
       setMsg('Delegação revogada.');
+      setRevokeId(null);
     } finally { setBusy(false); }
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader kicker="Onda 3 · Delegações" title="Delegações de aprovação" description="RT/gestor pode delegar temporariamente a aprovação de laudo ou resultado, mantendo rastreabilidade do delegante e do delegado." />
+      <PageHeader kicker="Governança" title="Delegações de aprovação" description="RT/gestor pode delegar temporariamente a aprovação de laudo ou resultado, mantendo rastreabilidade do delegante e do delegado." />
       <div className="grid gap-3 md:grid-cols-3">
         <Card className="p-4"><p className="kicker">Ativas</p><p className="mt-1 text-2xl font-bold">{activeCount}</p></Card>
         <Card className="p-4"><p className="kicker">Permissão padrão</p><p className="mt-1 text-lg font-bold">laudo.aprovar</p></Card>
@@ -97,10 +103,14 @@ export function DelegacoesPage() {
         <div className="flex items-center gap-2 p-5 pt-0 text-sm font-semibold"><input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} /> Mostrar apenas ativas</div>
         <div className="p-5 pt-0">
           {delegations.isLoading ? <LoadingState /> : delegations.error ? <ErrorState message={(delegations.error as Error).message} /> : (delegations.data ?? []).length === 0 ? <EmptyState /> : (
-            <div className="table-scroll"><table className="table"><thead><tr><th>Delegante</th><th>Delegado</th><th>Permissão</th><th>Obra</th><th>Janela</th><th>Status</th><th></th></tr></thead><tbody>{(delegations.data ?? []).map((d) => <tr key={d.id}><td>{d.delegator_name}</td><td>{d.delegatee_name}</td><td><span className="badge bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200">{d.permission_key}</span></td><td>{d.work_nome ?? 'Todas'}</td><td>{fmtTs(d.starts_at)} → {fmtTs(d.ends_at)}</td><td>{d.active ? <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">ativa</span> : <span className="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">inativa</span>}</td><td>{d.active ? <Button variant="secondary" onClick={() => void revoke(d.id)} disabled={busy}>Revogar</Button> : null}</td></tr>)}</tbody></table></div>
+            <div className="table-scroll"><table className="table"><thead><tr><th>Delegante</th><th>Delegado</th><th>Permissão</th><th>Obra</th><th>Janela</th><th>Status</th><th></th></tr></thead><tbody>{(delegations.data ?? []).map((d) => <tr key={d.id}><td>{d.delegator_name}</td><td>{d.delegatee_name}</td><td><span className="badge bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200">{d.permission_key}</span></td><td>{d.work_nome ?? 'Todas'}</td><td>{fmtTs(d.starts_at)} → {fmtTs(d.ends_at)}</td><td>{d.active ? <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">ativa</span> : <span className="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">inativa</span>}</td><td>{d.active ? <Button variant="secondary" onClick={() => revoke(d.id)} disabled={busy}>Revogar</Button> : null}</td></tr>)}</tbody></table></div>
           )}
         </div>
       </Card>
+
+      <Modal open={revokeId !== null} title="Revogar delegação" onClose={() => setRevokeId(null)} footer={<><Button variant="ghost" onClick={() => setRevokeId(null)}>Cancelar</Button><Button variant="danger" disabled={busy} onClick={() => void confirmarRevogacao()}>{busy ? 'Revogando…' : 'Revogar'}</Button></>}>
+        <TextArea label="Motivo da revogação" value={revokeNote} onChange={(e) => setRevokeNote(e.target.value)} />
+      </Modal>
     </div>
   );
 }

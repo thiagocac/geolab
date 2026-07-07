@@ -43,7 +43,7 @@ export function LaudosPage() {
   const PAGE = 25;
   useEffect(() => { const t = setTimeout(() => { setBuscaQ(busca.trim()); setPage(0); }, 300); return () => clearTimeout(t); }, [busca]);
 
-  const q = useQuery({ queryKey: ['laudos', member?.tenant_id, obraFiltro, buscaQ, page], queryFn: () => listLaudosPaged({ tenantId: member?.tenant_id, workId: obraFiltro || undefined, search: buscaQ || undefined, page, pageSize: PAGE }), placeholderData: keepPreviousData });
+  const q = useQuery({ queryKey: ['laudos', member?.tenant_id, obraFiltro, buscaQ, statusFiltro, page], queryFn: () => listLaudosPaged({ status: statusFiltro as '' | 'pendente' | 'emitido', tenantId: member?.tenant_id, workId: obraFiltro || undefined, search: buscaQ || undefined, page, pageSize: PAGE }), placeholderData: keepPreviousData });
   const worksFiltro = useQuery({ queryKey: ['ref', 'client_works', 'all'], queryFn: () => listReference('client_works', 'nome') });
   const cls = useQuery({ queryKey: ['laudos-cls'], queryFn: listLaudosClassificacao });
   const elegiveis = useQuery({ queryKey: ['conc-result', member?.tenant_id], queryFn: () => listConcretagensComResultado(member?.tenant_id), enabled: novo });
@@ -89,7 +89,7 @@ export function LaudosPage() {
       await aprovarLaudo(id);
       await Promise.all([qc.invalidateQueries({ queryKey: ['laudos'] }), qc.invalidateQueries({ queryKey: ['laudos-cls'] })]);
       if (cls.data?.[id] === 'final') {
-        try { const r = await enviarLaudoCliente(id); toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configuracoes de e-mail.')), r.sent ? 'success' : 'info'); }
+        try { const r = await enviarLaudoCliente(id); toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configurações de e-mail.')), r.sent ? 'success' : 'info'); }
         catch { toast('Laudo Final emitido. Falha ao enviar ao cliente.', 'warning'); }
       } else { toast('Laudo emitido.', 'success'); }
     } catch (e) { toast((e as Error).message, 'error'); }
@@ -101,7 +101,7 @@ export function LaudosPage() {
   async function gerarLink(id: string) {
     try {
       const url = await criarLinkAprovacao(id);
-      try { await navigator.clipboard.writeText(url); toast('Link de aprovacao copiado para a area de transferencia.', 'success'); }
+      try { await navigator.clipboard.writeText(url); toast('Link de aprovação copiado para a área de transferência.', 'success'); }
       catch { toast('Link de aprovacao: ' + url, 'info'); }
     } catch (e) { toast((e as Error).message, 'error'); }
   }
@@ -109,24 +109,24 @@ export function LaudosPage() {
     try {
       const r = await enviarLaudoCliente(id);
       if (r.sent) toast('Laudo enviado ao cliente (' + (r.to ?? '') + ').', 'success');
-      else toast('Nao enviado: ' + (r.reason ?? 'verifique as configuracoes de e-mail.'), 'info');
+      else toast('Nao enviado: ' + (r.reason ?? 'verifique as configurações de e-mail.'), 'info');
     } catch (e) { toast((e as Error).message, 'error'); }
   }
 
-  const rows = (q.data?.rows ?? []).filter((r) => statusFiltro === 'pendente' ? r.status !== 'emitido' : statusFiltro ? r.status === statusFiltro : true);
+  const rows = q.data?.rows ?? [];
   const total = q.data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PAGE));
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Concreto" title="Laudos" description="Emissao de relatorios de ensaio (NBR 5739)." />
+      <PageHeader kicker="Concreto" title="Laudos" description="Emissão de relatorios de ensaio (NBR 5739)." />
       {!podeAprovar && (delegQ.data ?? false) ? <Card className="border-blue-200 bg-blue-50/60 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-200">Você pode <strong>emitir laudos</strong> por uma delegação ativa de aprovação. As demais ações (reabrir, enviar, link) seguem com o gestor/RT.</Card> : null}
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><input className="input" placeholder="Buscar por Nº do relatório" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 280 }} /><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 240 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><select className="input" value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value)} style={{ maxWidth: 180 }} title="Status do laudo"><option value="">Todos os status</option><option value="pendente">A aprovar/emitir</option><option value="emitido">Emitidos</option></select></div><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><input className="input" placeholder="Buscar por Nº do relatório" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 280 }} /><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 240 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><select className="input" value={statusFiltro} onChange={(e) => { setStatusFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 180 }} title="Status do laudo"><option value="">Todos os status</option><option value="pendente">A aprovar/emitir</option><option value="emitido">Emitidos</option></select></div><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <Card>
           <div style={{ display: 'grid', gap: 6 }}>
             {rows.map((r) => (
               <div key={r.id} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 8 }}>
-                <span style={{ fontSize: 13, minWidth: 0 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissao'}</span>
+                <span style={{ fontSize: 13, minWidth: 0 }}><strong>{r.numero}</strong>{r.revisao > 0 ? ' R' + r.revisao : ''} - {r.client_works?.nome ?? '-'} - {r.data_emissao ?? 's/ emissão'}</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
@@ -152,7 +152,7 @@ export function LaudosPage() {
       ) : null}
       <Modal open={novo} wide title="Novo laudo (individual ou em lote)" onClose={fecharNovo} footer={<><Button variant="ghost" onClick={fecharNovo}>Cancelar</Button><Button variant="secondary" onClick={() => void previewOne()} disabled={busy || sel.size !== 1}>Pré-visualizar</Button><Button onClick={() => void gerar()} disabled={busy || sel.size === 0}>{busy ? (prog ? ('Gerando ' + prog.done + '/' + prog.total + '...') : 'Gerando...') : ('Gerar ' + (sel.size || '') + ' laudo' + (sel.size === 1 ? '' : 's')).replace('  ', ' ').trim()}</Button></>}>
         <div style={{ display: 'grid', gap: 10 }}>
-          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Selecione uma ou mais concretagens com resultados lancados. <strong>Pre-visualizar</strong> gera o PDF sem persistir (apenas com 1 selecionada). <strong>Gerar</strong> persiste como rascunho e dispara a notificacao interna. Aceitacao por exemplar (NF) na idade de controle.</p>
+          <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Selecione uma ou mais concretagens com resultados lançados. <strong>Pré-visualizar</strong> gera o PDF sem persistir (apenas com 1 selecionada). <strong>Gerar</strong> persiste como rascunho e dispara a notificacao interna. Aceitação por exemplar (NF) na idade de controle.</p>
           {elegiveis.isLoading ? <LoadingState /> : (elegiveis.data ?? []).length === 0 ? <EmptyState /> : (
             <>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>

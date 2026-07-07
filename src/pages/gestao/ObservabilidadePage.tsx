@@ -211,14 +211,21 @@ type ErrGroup = {
 function ErrorGroupsCard() {
   const [busyFp, setBusyFp] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // Nota da triage (v180): editor inline por grupo. p_status null preserva o status e p_muted_until
+  // recebe o valor ATUAL do grupo (a RPC sobrescreve muted_until sempre — sem isso, salvar nota
+  // limparia um silenciamento ativo). p_note null preserva a nota (coalesce na RPC) — por isso
+  // não há "limpar nota" aqui: salvar exige texto.
+  const [noteFp, setNoteFp] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
   const grupos = useQuery({ queryKey: ['obs', 'errgroups'], refetchInterval: REFRESH_MS,
     queryFn: () => rows<ErrGroup>(supabase.rpc('telemetry_error_groups', { p_days: 30 })) });
 
-  async function triage(fp: string, status: 'muted' | 'resolved' | 'novo', mutedUntil: string | null) {
+  async function triage(fp: string, status: 'muted' | 'resolved' | 'novo' | null, mutedUntil: string | null, note: string | null = null) {
     setBusyFp(fp); setMsg(null);
     try {
-      const { error } = await supabase.rpc('telemetry_error_group_triage', { p_fingerprint: fp, p_status: status, p_muted_until: mutedUntil, p_note: null });
+      const { error } = await supabase.rpc('telemetry_error_group_triage', { p_fingerprint: fp, p_status: status, p_muted_until: mutedUntil, p_note: note });
       if (error) throw new Error(error.message);
+      setNoteFp(null); setNoteDraft('');
       await grupos.refetch();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
@@ -251,6 +258,7 @@ function ErrorGroupsCard() {
                       <div className="truncate text-xs text-slate-500" title={g.sample_url ?? ''}>
                         {g.sample_url ?? ''}{g.versoes?.length ? ` · ${g.versoes.join(', ')}` : ''}
                       </div>
+                      {g.note ? <div className="truncate text-xs italic text-slate-400" title={g.note}>Nota: {g.note}</div> : null}
                     </td>
                     <td className="tabular-nums">{g.eventos}</td>
                     <td className="tabular-nums">{g.sessoes}</td>
@@ -261,16 +269,28 @@ function ErrorGroupsCard() {
                         : <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">ativo</span>}
                     </td>
                     <td>
-                      <div className="flex flex-wrap gap-1.5">
-                        {g.grupo_status === 'resolved' || mutedNow(g) ? (
-                          <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => triage(g.fingerprint, 'novo', null)}>Reabrir</button>
-                        ) : (
-                          <>
-                            <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => triage(g.fingerprint, 'muted', new Date(Date.now() + 7 * 24 * 3600_000).toISOString())}>Silenciar 7d</button>
-                            <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => triage(g.fingerprint, 'resolved', null)}>Resolver</button>
-                          </>
-                        )}
-                      </div>
+                      {noteFp === g.fingerprint ? (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <input type="text" value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} maxLength={300}
+                            placeholder="Nota da triage (causa, dono, follow-up)…" aria-label="Nota do grupo de erro"
+                            className="w-56 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200" />
+                          <button type="button" className={btnCls} disabled={busyFp === g.fingerprint || !noteDraft.trim()}
+                            onClick={() => triage(g.fingerprint, null, g.muted_until, noteDraft.trim())}>Salvar</button>
+                          <button type="button" className={btnCls} onClick={() => { setNoteFp(null); setNoteDraft(''); }}>Cancelar</button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {g.grupo_status === 'resolved' || mutedNow(g) ? (
+                            <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => triage(g.fingerprint, 'novo', null)}>Reabrir</button>
+                          ) : (
+                            <>
+                              <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => triage(g.fingerprint, 'muted', new Date(Date.now() + 7 * 24 * 3600_000).toISOString())}>Silenciar 7d</button>
+                              <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => triage(g.fingerprint, 'resolved', null)}>Resolver</button>
+                            </>
+                          )}
+                          <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => { setNoteFp(g.fingerprint); setNoteDraft(g.note ?? ''); }}>Nota</button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

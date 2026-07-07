@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { env } from '../env';
 
-// Validacao publica do laudo (sem login). Chama a EF validar-laudo so com a anon key.
-// Padrao Zod (v57): o schema e a fonte unica -> tipo via z.infer + validacao em runtime (safeParse)
+// Validação publica do laudo (sem login). Chama a EF validar-laudo so com a anon key.
+// Padrão Zod (v57): o schema e a fonte unica -> tipo via z.infer + validacao em runtime (safeParse)
 // da resposta de rede nao confiavel deste endpoint publico (alvo do QR do laudo).
 export const validacaoLaudoSchema = z.object({
   found: z.boolean(),

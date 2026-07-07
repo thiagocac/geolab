@@ -56,7 +56,7 @@ export function LotesPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Controle tecnologico" title="Aceitacao de lotes" description="Aceitacao estatistica do concreto por lote (ABNT NBR 12655): fcm, desvio-padrao e fck,est na idade de controle. Exemplar = amostra (1 NF), resistencia = maior do par." />
+      <PageHeader kicker="Controle tecnologico" title="Aceitação de lotes" description="Aceitação estatistica do concreto por lote (ABNT NBR 12655): fcm, desvio-padrao e fck,est na idade de controle. Exemplar = amostra (1 NF), resistencia = maior do par." />
 
       <Card className="p-5">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
@@ -71,7 +71,7 @@ export function LotesPage() {
         {lotes.isLoading ? <LoadingState /> : lotes.isError ? <ErrorState message={(lotes.error as Error).message} /> : (lotes.data ?? []).length === 0 ? <EmptyState /> : (
           <div className="table-scroll">
             <table className="table">
-              <thead><tr><th>Numero</th><th>Obra</th><th style={{ textAlign: 'right' }}>fck</th><th style={{ textAlign: 'right' }}>Idade</th><th style={{ textAlign: 'right' }}>n</th><th style={{ textAlign: 'right' }}>fcm</th><th style={{ textAlign: 'right' }}>Sd</th><th style={{ textAlign: 'right' }}>fck,est</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>Número</th><th>Obra</th><th style={{ textAlign: 'right' }}>fck</th><th style={{ textAlign: 'right' }}>Idade</th><th style={{ textAlign: 'right' }}>n</th><th style={{ textAlign: 'right' }}>fcm</th><th style={{ textAlign: 'right' }}>Sd</th><th style={{ textAlign: 'right' }}>fck,est</th><th>Status</th><th></th></tr></thead>
               <tbody>{(lotes.data ?? []).map((l) => {
                 return (
                   <tr key={l.id}>
@@ -106,8 +106,8 @@ export function LotesPage() {
           </SelectField>
           <Field label="Idade de controle (dias)" type="number" step="1" value={form.idade_controle_dias} onChange={(e) => setForm((s) => ({ ...s, idade_controle_dias: e.target.value }))} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field label="Periodo inicio (opcional)" type="date" value={form.periodo_inicio} onChange={(e) => setForm((s) => ({ ...s, periodo_inicio: e.target.value }))} />
-            <Field label="Periodo fim (opcional)" type="date" value={form.periodo_fim} onChange={(e) => setForm((s) => ({ ...s, periodo_fim: e.target.value }))} />
+            <Field label="Período início (opcional)" type="date" value={form.periodo_inicio} onChange={(e) => setForm((s) => ({ ...s, periodo_inicio: e.target.value }))} />
+            <Field label="Período fim (opcional)" type="date" value={form.periodo_fim} onChange={(e) => setForm((s) => ({ ...s, periodo_fim: e.target.value }))} />
           </div>
         </div>
       </Modal>

@@ -61,11 +61,11 @@ export function NovaObraWizard() {
               {(clientes.data ?? []).map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </SelectField>
             <div style={{ display: 'flex', gap: 12 }}>
-              <Field label="Codigo da obra" value={String(f.codigo ?? '')} onChange={(e) => set('codigo', e.target.value)} />
+              <Field label="Código da obra" value={String(f.codigo ?? '')} onChange={(e) => set('codigo', e.target.value)} />
               <Field label="Nome da obra*" value={String(f.nome ?? '')} onChange={(e) => { const v = e.target.value; set('nome', v); if (!str(f.sigla)) set('sigla', sigla4(v)); }} />
             </div>
             <Field label="Sigla (prefixo do Nº de relatório)" hint="Gerada das 4 primeiras letras do nome; editável." value={String(f.sigla ?? '')} onChange={(e) => set('sigla', e.target.value)} />
-            <Field label="Endereco" value={String(f.endereco ?? '')} onChange={(e) => set('endereco', e.target.value)} />
+            <Field label="Endereço" value={String(f.endereco ?? '')} onChange={(e) => set('endereco', e.target.value)} />
             <div style={{ display: 'flex', gap: 12 }}>
               <Field label="Cidade" value={String(f.cidade ?? '')} onChange={(e) => set('cidade', e.target.value)} />
               <SelectField label="UF" value={String(f.uf ?? '')} onChange={(e) => set('uf', e.target.value)}><option value="">-</option>{ufs.map((u) => <option key={u} value={u}>{u}</option>)}</SelectField>
@@ -91,7 +91,7 @@ export function NovaObraWizard() {
             </label>
             {f.criar_traco ? (
               <div style={{ display: 'flex', gap: 12 }}>
-                <Field label="Codigo do traco" value={String(f.traco_codigo ?? '')} onChange={(e) => set('traco_codigo', e.target.value)} />
+                <Field label="Código do traco" value={String(f.traco_codigo ?? '')} onChange={(e) => set('traco_codigo', e.target.value)} />
                 <Field label="Nome" value={String(f.traco_nome ?? '')} onChange={(e) => set('traco_nome', e.target.value)} />
                 <Field label="Fck (MPa)" type="number" value={String(f.traco_fck ?? '')} onChange={(e) => set('traco_fck', e.target.value)} />
               </div>

@@ -59,7 +59,7 @@ export function EtiquetasPage() {
         r = await gerarEtiquetas({ quantidade: totalAvulsa, observacao: obs || null });
       } else {
         if (!concId) { toast('Selecione a concretagem.', 'error'); setBusy(false); return; }
-        if (baseConc < 1) { toast('Verifique caminhoes previstos e CPs por caminhao.', 'error'); setBusy(false); return; }
+        if (baseConc < 1) { toast('Verifique caminhões previstos e CPs por caminhão.', 'error'); setBusy(false); return; }
         r = await gerarEtiquetas({ quantidade: baseConc, extra: folgaConc, concretagemId: concId, observacao: obs || null, caminhoesPrevistos: nPrev, caminhoesExtra: nExtra, cpsPorCaminhao: nCpc });
       }
       setUltimo(r);
@@ -75,14 +75,14 @@ export function EtiquetasPage() {
   }
 
   async function cancelar(id: string) {
-    if (!(await confirm({ title: 'Cancelar lote', message: 'Cancelar este lote de etiquetas? A faixa de numeros permanece reservada (nao sera reutilizada).', danger: true, confirmLabel: 'Cancelar lote' }))) return;
+    if (!(await confirm({ title: 'Cancelar lote', message: 'Cancelar este lote de etiquetas? A faixa de números permanece reservada (não será reutilizada).', danger: true, confirmLabel: 'Cancelar lote' }))) return;
     try { await cancelarEtiquetaLote(id); await qc.invalidateQueries({ queryKey: ['etiqueta-lotes'] }); toast('Lote cancelado.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); }
   }
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Concreto" title="Etiquetas" description="Gere etiquetas adesivas pre-numeradas (NNNNNN/AA por ano) com QR para colar nos corpos de prova. Normalmente em uma grande sequencia avulsa; opcionalmente por concretagem, ja com folga para caminhoes alem do previsto." />
+      <PageHeader kicker="Concreto" title="Etiquetas" description="Gere etiquetas adesivas pré-numeradas (NNNNNN/AA por ano) com QR para colar nos corpos de prova. Normalmente em uma grande sequência avulsa; opcionalmente por concretagem, já com folga para caminhões além do previsto." />
 
       {podeGerar ? (
         <Card className="p-5">
@@ -93,8 +93,8 @@ export function EtiquetasPage() {
 
           {modo === 'avulsa' ? (
             <div style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
-              <Field label="Quantidade de etiquetas" type="number" min={1} step={1} value={qtd} onChange={(e) => setQtd(e.target.value)} hint="Uma grande sequencia sem vinculo a obra/concretagem." />
-              <TextArea label="Observacao (opcional)" value={obs} onChange={(e) => setObs(e.target.value)} />
+              <Field label="Quantidade de etiquetas" type="number" min={1} step={1} value={qtd} onChange={(e) => setQtd(e.target.value)} hint="Uma grande sequência sem vinculo a obra/concretagem." />
+              <TextArea label="Observação (opcional)" value={obs} onChange={(e) => setObs(e.target.value)} />
               <div><Button onClick={() => void gerar()} disabled={busy}>{busy ? 'Gerando...' : 'Gerar ' + totalAvulsa + ' etiqueta(s)'}</Button></div>
             </div>
           ) : (
@@ -105,13 +105,13 @@ export function EtiquetasPage() {
               </SelectField>
               {conc ? (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+                  <div className="grid gap-3 sm:grid-cols-3">
                     <Field label="Caminhoes previstos" type="number" min={0} step={1} value={previstos} onChange={(e) => setPrevistos(e.target.value)} />
-                    <Field label="CPs por caminhao" type="number" min={0} step={1} value={cpc} onChange={(e) => setCpc(e.target.value)} />
+                    <Field label="CPs por caminhão" type="number" min={0} step={1} value={cpc} onChange={(e) => setCpc(e.target.value)} />
                     <Field label="Caminhoes extra (folga)" type="number" min={0} step={1} value={extraCam} onChange={(e) => setExtraCam(e.target.value)} />
                   </div>
                   <div className="text-sm" style={{ color: 'var(--ink-faint)' }}>
-                    Previsto {baseConc} + folga {folgaConc} = <strong style={{ color: 'var(--ink)' }}>{totalConc} etiqueta(s)</strong> ({nPrev + nExtra} caminhoes x {nCpc} CP)
+                    Previsto {baseConc} + folga {folgaConc} = <strong style={{ color: 'var(--ink)' }}>{totalConc} etiqueta(s)</strong> ({nPrev + nExtra} caminhões x {nCpc} CP)
                   </div>
                   <div><Button onClick={() => void gerar()} disabled={busy}>{busy ? 'Gerando...' : 'Gerar ' + totalConc + ' etiqueta(s)'}</Button></div>
                 </>

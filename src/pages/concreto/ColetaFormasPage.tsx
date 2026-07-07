@@ -17,6 +17,7 @@ import { coletaWorklist, criarRoteiro, listRoteiros, getRoteiro, baixarItem, con
 const hoje = () => new Date().toISOString().slice(0, 10);
 const dataBR = (s: string | null) => (s && s.length >= 10 ? s.slice(0, 10).split('-').reverse().join('/') : '—');
 const STATUS_COR: Record<string, string> = { pendente: 'var(--ink-faint)', parcial: '#d97706', coletado: '#16a34a', pulado: 'var(--magenta)', aberto: 'var(--ink-faint)', em_rota: '#d97706', concluido: '#16a34a', cancelado: 'var(--magenta)' };
+const STATUS_ROTULO: Record<string, string> = { pendente: 'pendente', parcial: 'parcial', coletado: 'coletado', pulado: 'pulado', aberto: 'aberto', em_rota: 'em rota', concluido: 'concluído', cancelado: 'cancelado' };
 
 export function ColetaFormasPage() {
   const { member, hasRole } = useAuth();
@@ -157,7 +158,7 @@ export function ColetaFormasPage() {
             <Card className="p-5">
               <div style={{ display: 'grid', gap: 12, maxWidth: 520 }}>
                 <div style={{ fontWeight: 800 }}>Montar roteiro — {selecionadas.length} parada(s), {totalSel} fôrma(s)</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Data" type="date" value={dataRot} onChange={(e) => setDataRot(e.target.value)} />
                   <SelectField label="Motorista" value={motorista} onChange={(e) => setMotorista(e.target.value)}>
                     <option value="">—</option>
@@ -176,7 +177,7 @@ export function ColetaFormasPage() {
             <div>
               <button type="button" className="text-sm" style={{ color: 'var(--ink-faint)' }} onClick={() => setAberto(null)}>← Roteiros</button>
               <div style={{ fontWeight: 800, fontSize: 18 }}>Roteiro {dataBR(detalhe.data)}</div>
-              <div className="text-sm" style={{ color: 'var(--ink-faint)' }}>{detalhe.motorista ? 'Motorista: ' + detalhe.motorista + ' · ' : ''}<span style={{ color: STATUS_COR[detalhe.status], fontWeight: 700 }}>{detalhe.status}</span></div>
+              <div className="text-sm" style={{ color: 'var(--ink-faint)' }}>{detalhe.motorista ? 'Motorista: ' + detalhe.motorista + ' · ' : ''}<span style={{ color: STATUS_COR[detalhe.status], fontWeight: 700 }}>{STATUS_ROTULO[detalhe.status] ?? detalhe.status}</span></div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {podeGerar && detalhe.status !== 'cancelado' ? <Button variant="secondary" disabled={otimizando} onClick={() => void otimizar()}>{otimizando ? 'Otimizando...' : 'Otimizar rota'}</Button> : null}
@@ -201,7 +202,7 @@ export function ColetaFormasPage() {
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ fontWeight: 700 }}>{it.detalhe?.obra ?? '—'}</div>
                   <div className="text-sm" style={{ color: 'var(--ink-faint)' }}>{[it.detalhe?.endereco, it.detalhe?.cidade, it.detalhe?.uf].filter(Boolean).join(' · ') || 'sem endereço'}</div>
-                  <div className="text-xs" style={{ color: 'var(--ink-faint)' }}>Previsto {it.qtd_prevista} · <span style={{ color: STATUS_COR[it.status], fontWeight: 700 }}>{it.status}</span>{it.status !== 'pendente' ? ' · coletado ' + it.qtd_coletada : ''}</div>
+                  <div className="text-xs" style={{ color: 'var(--ink-faint)' }}>Previsto {it.qtd_prevista} · <span style={{ color: STATUS_COR[it.status], fontWeight: 700 }}>{STATUS_ROTULO[it.status] ?? it.status}</span>{it.status !== 'pendente' ? ' · coletado ' + it.qtd_coletada : ''}</div>
                 </div>
                 {podeGerar && detalhe.status !== 'cancelado' && detalhe.status !== 'concluido' ? (
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -225,7 +226,7 @@ export function ColetaFormasPage() {
                     <td>{r.motorista ?? '—'}</td>
                     <td style={{ textAlign: 'right' }}>{r.n_paradas}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700 }}>{r.total}</td>
-                    <td><span style={{ color: STATUS_COR[r.status], fontWeight: 700 }}>{r.status}</span></td>
+                    <td><span style={{ color: STATUS_COR[r.status], fontWeight: 700 }}>{STATUS_ROTULO[r.status] ?? r.status}</span></td>
                     <td style={{ textAlign: 'right' }}><Button variant="ghost" onClick={() => setAberto(r.id)}>Abrir</Button></td>
                   </tr>
                 ))}</tbody>

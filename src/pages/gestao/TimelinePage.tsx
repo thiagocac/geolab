@@ -53,7 +53,7 @@ export function TimelinePage() {
   const counts = useMemo(() => rows.reduce<Record<string, number>>((acc, ev) => { acc[ev.event_kind] = (acc[ev.event_kind] ?? 0) + 1; return acc; }, {}), [rows]);
   return (
     <div className="space-y-6">
-      <PageHeader kicker="Governança" title="Linha do tempo" description="Trilha auditável de ações e marcos técnicos por laboratório, obra ou concretagem. A Onda 1 depende das migrations 093/094 aplicadas no backend." />
+      <PageHeader kicker="Governança" title="Linha do tempo" description="Trilha auditável de ações e marcos técnicos por laboratório, obra ou concretagem." />
       <Card>
         <CardHeader kicker="Filtros" title="Recorte da trilha">Use UUID de obra ou concretagem quando quiser auditar um alvo específico.</CardHeader>
         <div className="grid gap-4 p-5 md:grid-cols-3">

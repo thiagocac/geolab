@@ -2,8 +2,8 @@ import { supabase } from '../supabase';
 import { trackDomainEvent } from '../telemetry';
 import { env } from '../env';
 
-// Camada de laudos. Emissao/persistencia ficam na EF generate-laudo-ensaio-pdf
-// (grava lab_reports status 'rascunho' + laudo_resultados). Aprovacao 1-etapa via
+// Camada de laudos. Emissão/persistencia ficam na EF generate-laudo-ensaio-pdf
+// (grava lab_reports status 'rascunho' + laudo_resultados). Aprovação 1-etapa via
 // RPCs gated (aprovar_laudo/reabrir_laudo, migration 020). Bucket lab-reports e privado.
 const db = supabase as unknown as { from: (t: string) => any };
 const rpc = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
@@ -24,7 +24,7 @@ export async function listLaudos(tenantId?: string): Promise<LaudoRow[]> {
   return (data ?? []) as LaudoRow[];
 }
 // Listagem paginada + busca server-side (tela Laudos): busca livre no Nº do laudo; obra via filtro .eq.
-export async function listLaudosPaged(opts: { tenantId?: string; workId?: string; search?: string; page?: number; pageSize?: number }): Promise<{ rows: LaudoRow[]; total: number }> {
+export async function listLaudosPaged(opts: { tenantId?: string; workId?: string; search?: string; status?: '' | 'pendente' | 'emitido'; page?: number; pageSize?: number }): Promise<{ rows: LaudoRow[]; total: number }> {
   const pageSize = opts.pageSize ?? 25;
   const page = Math.max(0, opts.page ?? 0);
   let q = db.from('lab_reports')
@@ -32,6 +32,8 @@ export async function listLaudosPaged(opts: { tenantId?: string; workId?: string
     .is('deleted_at', null);
   if (opts.tenantId) q = q.eq('tenant_id', opts.tenantId);
   if (opts.workId) q = q.eq('work_id', opts.workId);
+  if (opts.status === 'emitido') q = q.eq('status', 'emitido');
+  else if (opts.status === 'pendente') q = q.neq('status', 'emitido');
   const term = (opts.search ?? '').replace(/[%]/g, ' ').trim();
   if (term) q = q.ilike('numero', `%${term}%`);
   const { data, error, count } = await q.order('created_at', { ascending: false }).range(page * pageSize, page * pageSize + pageSize - 1);

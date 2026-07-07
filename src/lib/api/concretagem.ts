@@ -230,7 +230,7 @@ export async function listTracosComFck(workId?: string | null, clientId?: string
   return ((data ?? []) as Record<string, any>[]).map((r) => ({ value: String(r.id), label: String(r.nome ?? r.id), fck: r.fck_mpa != null ? Number(r.fck_mpa) : null, idade_controle_dias: r.idade_controle_dias != null ? Number(r.idade_controle_dias) : null, padrao_moldagem: Array.isArray(r.padrao_moldagem) ? r.padrao_moldagem : [], slump: r.slump_previsto_cm == null ? null : Number(r.slump_previsto_cm), tolerancia: r.slump_tolerancia_cm == null ? null : Number(r.slump_tolerancia_cm), validade: r.validade_concreto_minutos == null ? null : Number(r.validade_concreto_minutos), work_id: r.work_id ?? null, client_id: r.client_id ?? null }));
 }
 
-// OCR da NF/DANFE do caminhao (EF extract-nf-vision). Retorna campos ja nomeados p/ o recebimento.
+// OCR da NF/DANFE do caminhão (EF extract-nf-vision). Retorna campos ja nomeados p/ o recebimento.
 async function fileToBase64(file: File): Promise<{ base64: string; mime: string }> {
   assertUploadSize(file);
   assertImagem(file);

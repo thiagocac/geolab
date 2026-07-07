@@ -66,7 +66,7 @@ export function ConcretagensPage() {
     if (!member) return;
     setBusy(true);
     try {
-      if (!form.client_id || !form.work_id) throw new Error('Cliente e obra sao obrigatorios.');
+      if (!form.client_id || !form.work_id) throw new Error('Cliente e obra são obrigatórios.');
       await createConcretagem(member.tenant_id, form);
       await qc.invalidateQueries({ queryKey: ['concretagens'] });
       toast('Concretagem criada.', 'success'); setOpen(false); setForm({});
@@ -80,15 +80,15 @@ export function ConcretagensPage() {
   const pageCount = Math.max(1, Math.ceil(total / PAGE));
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Concreto" title="Concretagens" description="Programacoes e concretagens do laboratorio." />
+      <PageHeader kicker="Concreto" title="Concretagens" description="Programacoes e concretagens do laboratório." />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}><Button variant="ghost" onClick={() => void fichaBranco()}>Ficha em branco (PDF)</Button><Button variant="ghost" onClick={() => nav('/nova-obra')}>Nova obra</Button><Button onClick={() => { setForm({ origem: 'programada' }); setOpen(true); }}>Nova concretagem</Button></div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <input className="input" placeholder="Buscar por Nº relatório, código ou fornecedor" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 320 }} />
         <select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 200 }}><option value="">Todos os clientes</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
         <select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 200 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
         <select className="input" value={statusFiltro} onChange={(e) => { setStatusFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 170 }} title="Status técnico"><option value="">Todos os status</option><option value="programado">Programado</option><option value="moldado">Moldado</option><option value="em_andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="rompido">Rompido</option><option value="laudado">Laudado</option><option value="cancelada">Cancelada</option></select>
-        <input className="input" type="date" title="Data de" value={dataDe} onChange={(e) => { setDataDe(e.target.value); setPage(0); }} style={{ maxWidth: 150 }} />
-        <input className="input" type="date" title="Data até" value={dataAte} onChange={(e) => { setDataAte(e.target.value); setPage(0); }} style={{ maxWidth: 150 }} />
+        <label className="block space-y-1"><span className="text-xs font-bold" style={{ color: 'var(--ink-faint)' }}>De</span><input className="input" type="date" value={dataDe} onChange={(e) => { setDataDe(e.target.value); setPage(0); }} style={{ maxWidth: 150 }} /></label>
+        <label className="block space-y-1"><span className="text-xs font-bold" style={{ color: 'var(--ink-faint)' }}>Até</span><input className="input" type="date" value={dataAte} onChange={(e) => { setDataAte(e.target.value); setPage(0); }} style={{ maxWidth: 150 }} /></label>
       </div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
         <div style={{ display: 'grid', gap: 8 }}>
@@ -121,12 +121,12 @@ export function ConcretagensPage() {
           <SelectField label="Tipo" value={String(form.origem ?? 'programada')} onChange={(e) => setForm((s) => ({ ...s, origem: e.target.value }))}><option value="programada">Programada</option><option value="retroativa">Retroativa (registro de evento passado)</option></SelectField>
           <SelectField label="Cliente" value={String(form.client_id ?? '')} onChange={(e) => setForm((s) => ({ ...s, client_id: e.target.value || null, work_id: null }))}><option value="">-</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
           <SelectField label="Obra" value={String(form.work_id ?? '')} onChange={(e) => setForm((s) => ({ ...s, work_id: e.target.value || null, unit_id: null }))}><option value="">-</option>{(obras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
-          <SelectField label="Traco (opcional)" value={String(form.operational_material_id ?? '')} onChange={(e) => { const id = e.target.value || null; const t = (tracos.data ?? []).find((x) => x.value === id); setForm((s) => ({ ...s, operational_material_id: id, fck_previsto: (s.fck_previsto == null || s.fck_previsto === '') && t?.fck != null ? t.fck : s.fck_previsto })); }}><option value="">-</option><TracoOptions tracos={tracos.data ?? []} workId={form.work_id ? String(form.work_id) : null} clientId={form.client_id ? String(form.client_id) : null} /></SelectField>
-          {(pecas.data ?? []).length ? <SelectField label="Peca (estrutura)" value={String(form.unit_id ?? '')} onChange={(e) => { const id = e.target.value || null; const pc = (pecas.data ?? []).find((x) => x.id === id); setForm((s) => ({ ...s, unit_id: id, local_texto: pc ? pc.label : s.local_texto })); }}><option value="">- (ou digite o local abaixo)</option>{(pecas.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</SelectField> : null}
+          <SelectField label="Traço (opcional)" value={String(form.operational_material_id ?? '')} onChange={(e) => { const id = e.target.value || null; const t = (tracos.data ?? []).find((x) => x.value === id); setForm((s) => ({ ...s, operational_material_id: id, fck_previsto: (s.fck_previsto == null || s.fck_previsto === '') && t?.fck != null ? t.fck : s.fck_previsto })); }}><option value="">-</option><TracoOptions tracos={tracos.data ?? []} workId={form.work_id ? String(form.work_id) : null} clientId={form.client_id ? String(form.client_id) : null} /></SelectField>
+          {(pecas.data ?? []).length ? <SelectField label="Peça (estrutura)" value={String(form.unit_id ?? '')} onChange={(e) => { const id = e.target.value || null; const pc = (pecas.data ?? []).find((x) => x.id === id); setForm((s) => ({ ...s, unit_id: id, local_texto: pc ? pc.label : s.local_texto })); }}><option value="">- (ou digite o local abaixo)</option>{(pecas.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</SelectField> : null}
           <Field label="Fornecedor (concreteira)" value={String(form.fornecedor_texto ?? '')} onChange={(e) => setForm((s) => ({ ...s, fornecedor_texto: e.target.value }))} />
           <Field label="Data programada" type="date" value={String(form.data_programada ?? '')} onChange={(e) => setForm((s) => ({ ...s, data_programada: e.target.value || null }))} />
           <Field label="fck previsto (MPa)" type="number" value={String(form.fck_previsto ?? '')} onChange={(e) => setForm((s) => ({ ...s, fck_previsto: e.target.value === '' ? null : Number(e.target.value) }))} />
-          <Field label="Local/peca" value={String(form.local_texto ?? '')} onChange={(e) => setForm((s) => ({ ...s, local_texto: e.target.value }))} />
+          <Field label="Local/peça" value={String(form.local_texto ?? '')} onChange={(e) => setForm((s) => ({ ...s, local_texto: e.target.value }))} />
           {form.origem === 'retroativa' ? <Field label="Justificativa (retroativa)" value={String(form.retroativa_justificativa ?? '')} onChange={(e) => setForm((s) => ({ ...s, retroativa_justificativa: e.target.value }))} /> : null}
         </div>
       </Modal>

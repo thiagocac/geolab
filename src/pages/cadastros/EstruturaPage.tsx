@@ -36,7 +36,7 @@ export function EstruturaPage() {
   async function add(table: string, values: Record<string, unknown>, key: string, reset: () => void) {
     if (!member || !work) return;
     try {
-      if (!str(values.codigo) || !str(values.nome)) throw new Error('Codigo e nome sao obrigatorios.');
+      if (!str(values.codigo) || !str(values.nome)) throw new Error('Código e nome são obrigatórios.');
       await addEstrutura(table, member.tenant_id, work, values);
       await qc.invalidateQueries({ queryKey: [key, work] }); reset(); toast('Adicionado.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); }
@@ -69,9 +69,9 @@ export function EstruturaPage() {
                 </div>
               ))}
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                <Field label="Codigo*" value={String(g.codigo ?? '')} onChange={(e) => setG((s) => ({ ...s, codigo: e.target.value }))} />
+                <Field label="Código*" value={String(g.codigo ?? '')} onChange={(e) => setG((s) => ({ ...s, codigo: e.target.value }))} />
                 <Field label="Nome*" value={String(g.nome ?? '')} onChange={(e) => setG((s) => ({ ...s, nome: e.target.value }))} />
-                <Field label="Tipo edificacao" value={String(g.tipo_edificacao ?? '')} onChange={(e) => setG((s) => ({ ...s, tipo_edificacao: e.target.value }))} />
+                <Field label="Tipo edificação" value={String(g.tipo_edificacao ?? '')} onChange={(e) => setG((s) => ({ ...s, tipo_edificacao: e.target.value }))} />
                 <Button variant="secondary" onClick={() => void add('unit_groups', { codigo: str(g.codigo), nome: str(g.nome), tipo_edificacao: str(g.tipo_edificacao) || null }, 'grupos', () => setG({}))}>Adicionar grupo</Button>
               </div>
             </div>
@@ -87,11 +87,11 @@ export function EstruturaPage() {
                 </div>
               ))}
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                <Field label="Codigo*" value={String(t.codigo ?? '')} onChange={(e) => setT((s) => ({ ...s, codigo: e.target.value }))} />
+                <Field label="Código*" value={String(t.codigo ?? '')} onChange={(e) => setT((s) => ({ ...s, codigo: e.target.value }))} />
                 <Field label="Nome*" value={String(t.nome ?? '')} onChange={(e) => setT((s) => ({ ...s, nome: e.target.value }))} />
                 <Field label="Etapa" value={String(t.etapa ?? '')} onChange={(e) => setT((s) => ({ ...s, etapa: e.target.value }))} />
-                <Field label="Volume (m3)" type="number" value={String(t.volume ?? '')} onChange={(e) => setT((s) => ({ ...s, volume: e.target.value }))} />
-                <SelectField label="Traco" value={String(t.traco ?? '')} onChange={(e) => setT((s) => ({ ...s, traco: e.target.value }))}><option value="">-</option>{(tracos.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
+                <Field label="Volume (m³)" type="number" value={String(t.volume ?? '')} onChange={(e) => setT((s) => ({ ...s, volume: e.target.value }))} />
+                <SelectField label="Traço" value={String(t.traco ?? '')} onChange={(e) => setT((s) => ({ ...s, traco: e.target.value }))}><option value="">-</option>{(tracos.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
                 <Button variant="secondary" onClick={() => void add('unit_types', { codigo: str(t.codigo), nome: str(t.nome), etapa: str(t.etapa) || null, volume_projeto_m3: num(t.volume), operational_material_id: str(t.traco) || null }, 'tipos', () => setT({}))}>Adicionar tipo</Button>
               </div>
             </div>
@@ -107,11 +107,11 @@ export function EstruturaPage() {
                 </div>
               ))}
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                <Field label="Codigo*" value={String(p.codigo ?? '')} onChange={(e) => setP((s) => ({ ...s, codigo: e.target.value }))} />
+                <Field label="Código*" value={String(p.codigo ?? '')} onChange={(e) => setP((s) => ({ ...s, codigo: e.target.value }))} />
                 <Field label="Nome*" value={String(p.nome ?? '')} onChange={(e) => setP((s) => ({ ...s, nome: e.target.value }))} />
                 <SelectField label="Grupo" value={String(p.grupo ?? '')} onChange={(e) => setP((s) => ({ ...s, grupo: e.target.value }))}><option value="">-</option>{(grupos.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}</SelectField>
                 <SelectField label="Tipo" value={String(p.tipo ?? '')} onChange={(e) => setP((s) => ({ ...s, tipo: e.target.value }))}><option value="">-</option>{(tipos.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}</SelectField>
-                <Field label="Volume (m3)" type="number" value={String(p.volume ?? '')} onChange={(e) => setP((s) => ({ ...s, volume: e.target.value }))} />
+                <Field label="Volume (m³)" type="number" value={String(p.volume ?? '')} onChange={(e) => setP((s) => ({ ...s, volume: e.target.value }))} />
                 <Button variant="secondary" onClick={() => void add('units', { codigo: str(p.codigo), nome: str(p.nome), unit_group_id: str(p.grupo) || null, unit_type_id: str(p.tipo) || null, volume_m3: num(p.volume) }, 'pecas', () => setP({}))}>Adicionar peca</Button>
               </div>
             </div>

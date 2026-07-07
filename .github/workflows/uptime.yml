@@ -1,0 +1,41 @@
+# uptime-watchdog (M6 da auditoria de observabilidade, v180 — 07/07/2026)
+#
+# GUARDIÃO EXTERNO de última instância: toda a malha de alarmes do GEOLAB vive DENTRO do
+# Supabase (pg_cron + EFs). Se o pg_cron travar, o projeto pausar ou o Postgres cair, nenhum
+# alarme interno dispara. Este workflow roda na infra do GITHUB (fora de Supabase E Netlify):
+#   - status-ping 200  -> Postgres de pé E telemetry-alarm com heartbeat fresco (malha viva);
+#   - status-ping 503  -> watchdog interno parado (cron/secret/EF) — investigar;
+#   - sem resposta     -> Supabase/projeto fora do ar;
+#   - /sw.js           -> frontend (Netlify) no ar.
+# FALHA do workflow => e-mail automático do GitHub ao dono do repo (default de notificação de
+# Actions; conferir em github.com/settings/notifications → Actions → "Only notify for failed").
+#
+# Frequência: HORÁRIA (minuto 23) de propósito — cada run consome ≥1 min de Actions; horário
+# ≈ 720 min/mês (repo privado, free tier = 2.000). Detecção de queda TOTAL em ≤1h é adequada
+# para última instância (o watchdog interno cobre o resto em minutos). Se quiser 5 min de
+# granularidade sem custo, cadastrar também um UptimeRobot/healthchecks.io nas mesmas URLs.
+# NB: o GitHub desativa schedules após 60 dias sem commits no repo — o GEOLAB tem atividade
+# constante; se o repo hibernar, reative em Actions.
+name: uptime-watchdog
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch: {}
+permissions: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: status-ping (Supabase + malha de alarmes)
+        run: |
+          code=$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 25 \
+            'https://xbdvyvvxvzmcosnekmfv.supabase.co/functions/v1/status-ping')
+          echo "http=$code body=$(cat /tmp/body)"
+          test "$code" = "200"
+      - name: frontend (Netlify /sw.js)
+        if: always()
+        run: |
+          code=$(curl -sS -o /tmp/sw -w '%{http_code}' --max-time 25 'https://app.concresoft.io/sw.js')
+          echo "http=$code cache=$(grep -o "consultegeo-geolab-v[0-9]*" /tmp/sw | head -1)"
+          test "$code" = "200"

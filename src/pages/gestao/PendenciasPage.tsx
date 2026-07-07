@@ -34,7 +34,7 @@ const SECOES: Secao[] = [
     { chave: 'cal_vencida', titulo: 'Calibrações vencidas', descricao: 'Equipamentos ativos com calibração vencida.', rota: '/cadastros?tab=equipamentos&cal=vencida', roles: labRoles },
     { chave: 'cal_vencendo', titulo: 'Calibrações a vencer (30d)', descricao: 'Equipamentos ativos com calibração vencendo em até 30 dias.', rota: '/cadastros?tab=equipamentos&cal=vence30', roles: labRoles },
     { chave: 'cert_vencida', titulo: 'Certificações vencidas', descricao: 'Colaboradores ativos com certificação vencida.', rota: '/cadastros?tab=colaboradores&cert=vencida', roles: qualidade },
-    { chave: 'cert_vencendo', titulo: 'Certificações a vencer (30d)', descricao: 'Colaboradores ativos com certificação vencendo em até 30 dias.', rota: '/cadastros?tab=colaboradores', roles: qualidade },
+    { chave: 'cert_vencendo', titulo: 'Certificações a vencer (30d)', descricao: 'Colaboradores ativos com certificação vencendo em até 30 dias.', rota: '/cadastros?tab=colaboradores&cert=vence30', roles: qualidade },
   ] },
 ];
 

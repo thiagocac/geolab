@@ -61,6 +61,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const can = (it: Item) => !it.roles || hasRole(...it.roles);
   const nav = useNavigate();
   const [cmdkOpen, setCmdkOpen] = useState(false);
+  const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|ad|od)/.test(navigator.userAgent);
   const commands: Command[] = [
     { id: 'a-prog', label: 'Nova programação', group: 'Ações', run: () => nav('/programacoes/nova', { viewTransition: true }) },
     { id: 'a-obra', label: 'Nova obra', group: 'Ações', run: () => nav('/nova-obra', { viewTransition: true }) },
@@ -106,7 +107,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <Tooltip label="Menu"><button type="button" className="icon-btn menu-btn" aria-label="Menu" onClick={() => setOpen((o) => !o)}><Menu size={20} /></button></Tooltip>
           <span style={{ fontWeight: 700, color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member?.tenant_name}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
-            <button type="button" className="topbar-search" onClick={() => setCmdkOpen(true)} aria-label="Buscar (Ctrl+K)"><span className="hide-sm">Buscar</span><kbd>⌘K</kbd></button>
+            <button type="button" className="topbar-search" onClick={() => setCmdkOpen(true)} aria-label="Buscar (Ctrl+K)"><span className="hide-sm">Buscar</span><kbd>{isMac ? '⌘K' : 'Ctrl+K'}</kbd></button>
             <div className="theme-toggle">
               <Tooltip label="Tema claro"><button type="button" className={theme === 'light' ? 'on' : ''} aria-label="Tema claro" onClick={() => setTheme('light')}><Sun size={16} /></button></Tooltip>
               <Tooltip label="Tema escuro"><button type="button" className={theme === 'dark' ? 'on' : ''} aria-label="Tema escuro" onClick={() => setTheme('dark')}><Moon size={16} /></button></Tooltip>

@@ -43,10 +43,10 @@ export function ProdutividadePage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Gestao" title="Produtividade" description="Producao por colaborador no periodo: concretagens e CPs moldados (como moldador) e rompimentos realizados (como operador)." />
+      <PageHeader kicker="Gestão" title="Produtividade" description="Produção por colaborador no periodo: concretagens e CPs moldados (como moldador) e rompimentos realizados (como operador)." />
       <Card className="p-5">
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 160 }}><Field label="Inicio" type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} /></div>
+          <div style={{ minWidth: 160 }}><Field label="Início" type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} /></div>
           <div style={{ minWidth: 160 }}><Field label="Fim" type="date" value={fim} onChange={(e) => setFim(e.target.value)} /></div>
           <Button onClick={() => setParams({ inicio, fim })}>Calcular</Button>
           {linhas.length ? <Button variant="secondary" onClick={exportar}>Exportar Excel</Button> : null}

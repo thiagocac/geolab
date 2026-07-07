@@ -27,7 +27,7 @@ export function NcConfigPage() {
   async function salvar() {
     if (!member || !cur) return;
     setBusy(true);
-    try { await salvarParametros(member.tenant_id, cur); await qc.invalidateQueries({ queryKey: ['nc-params'] }); setP(null); toast('Parametros salvos.', 'success'); }
+    try { await salvarParametros(member.tenant_id, cur); await qc.invalidateQueries({ queryKey: ['nc-params'] }); setP(null); toast('Parâmetros salvos.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
 
@@ -37,7 +37,7 @@ export function NcConfigPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Gestao" title="Configuracao de NC" description="Parametros de tolerancia lidos pelos gatilhos automaticos e o fluxo de tratativa (acoes e transicoes) do motor de nao-conformidades." />
+      <PageHeader kicker="Gestão" title="Configuração de NC" description="Parâmetros de tolerancia lidos pelos gatilhos automáticos e o fluxo de tratativa (ações e transições) do motor de não-conformidades." />
 
       <Card className="p-5">
         <h2 className="text-lg font-black text-slate-950 dark:text-slate-50" style={{ marginBottom: 4 }}>Tolerancias</h2>
@@ -45,11 +45,11 @@ export function NcConfigPage() {
         {params.isLoading ? <LoadingState /> : params.isError ? <ErrorState message={(params.error as Error).message} /> : cur ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Field label="Validade do concreto (h)" type="number" step="0.5" value={cur.validade_concreto_h} onChange={(e) => set('validade_concreto_h', e.target.value)} disabled={!podeTol} hint="T-01: tempo de transporte acima disso gera NC." />
-            <Field label="Tolerancia de slump (mm)" type="number" value={cur.slump_tol_mm} onChange={(e) => set('slump_tol_mm', e.target.value)} disabled={!podeTol} />
-            <Field label="Tolerancia de flow (mm)" type="number" value={cur.flow_tol_mm} onChange={(e) => set('flow_tol_mm', e.target.value)} disabled={!podeTol} />
+            <Field label="Tolerância de slump (mm)" type="number" value={cur.slump_tol_mm} onChange={(e) => set('slump_tol_mm', e.target.value)} disabled={!podeTol} />
+            <Field label="Tolerância de flow (mm)" type="number" value={cur.flow_tol_mm} onChange={(e) => set('flow_tol_mm', e.target.value)} disabled={!podeTol} />
             <Field label="Conclusao automatica (% do fck)" type="number" step="0.1" value={cur.conclusao_auto_pct} onChange={(e) => set('conclusao_auto_pct', e.target.value)} disabled={!podeTol} hint="Para autoconclusao por tolerancia (futuro)." />
-            <Field label="Acao imediata (% do fck)" type="number" step="0.1" value={cur.acao_imediata_pct} onChange={(e) => set('acao_imediata_pct', e.target.value)} disabled={!podeTol} />
-            <Field label="Tolerancia de lancamento (min)" type="number" value={cur.tolerancia_lancamento_min} onChange={(e) => set('tolerancia_lancamento_min', e.target.value)} disabled={!podeTol} />
+            <Field label="Ação imediata (% do fck)" type="number" step="0.1" value={cur.acao_imediata_pct} onChange={(e) => set('acao_imediata_pct', e.target.value)} disabled={!podeTol} />
+            <Field label="Tolerância de lancamento (min)" type="number" value={cur.tolerancia_lancamento_min} onChange={(e) => set('tolerancia_lancamento_min', e.target.value)} disabled={!podeTol} />
           </div>
         ) : null}
         {podeTol ? <div style={{ marginTop: 14 }}><Button onClick={() => void salvar()} disabled={busy || !p}>{busy ? 'Salvando...' : 'Salvar tolerancias'}</Button></div> : null}
@@ -104,7 +104,7 @@ function FluxoClassificacao({ cls, tenantId, podeEditar }: { cls: string; tenant
     <div style={{ display: 'grid', gap: 14 }}>
       <div className="table-scroll">
         <table className="table">
-          <thead><tr><th>Acao</th><th>Situacao destino</th><th>Conclui</th><th>Multipla</th><th>Ativo</th><th></th></tr></thead>
+          <thead><tr><th>Ação</th><th>Situação destino</th><th>Conclui</th><th>Multipla</th><th>Ativo</th><th></th></tr></thead>
           <tbody>{lista.map((t) => (
             <tr key={t.id} style={{ opacity: t.ativo ? 1 : 0.5 }}>
               <td style={{ fontWeight: 700 }}>{t.nome}{t.mensagem ? <div className="text-sm" style={{ fontWeight: 400, color: 'var(--ink-faint)' }}>{t.mensagem}</div> : null}</td>
@@ -163,7 +163,7 @@ function EditTemplate({ t, onClose, onSaved }: { t: TemplateFull; onClose: () =>
         <TextArea label="Mensagem (orientacao ao tratar)" value={msg} onChange={(e) => setMsg(e.target.value)} />
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, fontSize: 14 }}><input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} /> Ativo</label>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, fontSize: 14 }}><input type="checkbox" checked={multi} onChange={(e) => setMulti(e.target.checked)} /> Permite multipla aplicacao</label>
-        <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>Situacao destino e editavel em fase futura.</p>
+        <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>Situação destino e editavel em fase futura.</p>
       </div>
     </Modal>
   );

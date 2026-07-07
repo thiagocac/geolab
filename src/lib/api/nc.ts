@@ -2,7 +2,7 @@ import { supabase } from '../supabase';
 import { assertUploadSize } from '../upload';
 import { env } from '../env';
 
-// Motor de NC (engine configuravel re-derivado do GEOMAT). non_conformities = cabeca;
+// Motor de NC (engine configurável re-derivado do GEOMAT). non_conformities = cabeca;
 // nc_actions = tratativa dirigida por nc_action_templates + nc_action_transitions.
 const db = supabase as unknown as { from: (t: string) => any; rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }> };
 
@@ -113,7 +113,7 @@ export async function signedAnexo(path: string): Promise<string> {
   return data.signedUrl;
 }
 
-// RAC (Relatorio de Acao Corretiva) em PDF via EF generate-nc-report-pdf. Espelha pdfMedicaoUrl:
+// RAC (Relatório de Ação Corretiva) em PDF via EF generate-nc-report-pdf. Espelha pdfMedicaoUrl:
 // fetch autenticado -> blob URL (aberto com openDeferredTab no chamador).
 export async function racPdfUrl(ncId: string): Promise<string> {
   const { data: sess } = await supabase.auth.getSession();

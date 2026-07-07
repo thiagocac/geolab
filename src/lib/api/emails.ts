@@ -81,7 +81,7 @@ export async function dispatchCountsByStatus(tenantId: string, days = 7): Promis
   return out;
 }
 
-// Configuracao de despacho (singleton). NUNCA seleciona dispatch_secret.
+// Configuração de despacho (singleton). NUNCA seleciona dispatch_secret.
 export async function getDispatchSettings(): Promise<DispatchSettings | null> {
   const { data, error } = await db.from('notification_dispatch_settings')
     .select('dispatch_enabled, dry_run, email_allowlist, notify_event_url, updated_at').eq('id', true).maybeSingle();

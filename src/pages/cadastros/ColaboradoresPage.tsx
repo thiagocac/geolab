@@ -24,9 +24,10 @@ function certStatus(validade: string | null): { label: string; cor: string } {
   const hoje = ymd(Date.now()), in30 = ymd(Date.now() + 30 * 86400000);
   if (validade < hoje) return { label: 'vencida', cor: 'var(--magenta)' };
   if (validade <= in30) return { label: 'vence em breve', cor: '#d97706' };
-  return { label: 'valida', cor: '#16a34a' };
+  return { label: 'válida', cor: '#16a34a' };
 }
 const temVencida = (c: ColaboradorRow) => c.certs.some((ct) => ct.validade !== null && ct.validade < ymd(Date.now()));
+const temVence30 = (c: ColaboradorRow) => c.certs.some((ct) => ct.validade !== null && ct.validade >= ymd(Date.now()) && ct.validade <= ymd(Date.now() + 30 * 86400000));
 
 export function ColaboradoresPage() {
   const { member } = useAuth();
@@ -46,7 +47,7 @@ export function ColaboradoresPage() {
   const [fFuncao, setFFuncao] = useState('');
   const [fCert, setFCert] = useState('');
   const [sp] = useSearchParams();
-  useEffect(() => { const c = sp.get('cert'); if (c === 'vencida') setFCert(c); }, [sp]);
+  useEffect(() => { const c = sp.get('cert'); if (c === 'vencida' || c === 'vence30') setFCert(c); }, [sp]);
   const [soAtivos, setSoAtivos] = useState(true);
   const [sort, setSort] = useState<SortState>({ column: 'nome', direction: 'asc' });
 
@@ -60,6 +61,7 @@ export function ColaboradoresPage() {
       if (soAtivos && !c.ativo) return false;
       if (fFuncao && !c.funcoes.some((fn) => norm(fn) === norm(fFuncao))) return false;
       if (fCert === 'vencida' && !temVencida(c)) return false;
+      if (fCert === 'vence30' && !temVence30(c)) return false;
       if (fCert === 'sem' && c.certs.length > 0) return false;
       if (b && !(norm(c.nome).includes(b) || norm(c.documento ?? '').includes(b) || norm(c.registro_profissional ?? '').includes(b))) return false;
       return true;
@@ -101,7 +103,7 @@ export function ColaboradoresPage() {
       if (certFile) anexoPath = await uploadCertAnexo(member.tenant_id, editId, certFile);
       await addCert(member.tenant_id, editId, { tipo: str(cf.tipo), numero: str(cf.numero) || undefined, validade: str(cf.validade) || undefined, anexoPath });
       await qc.invalidateQueries({ queryKey: ['colaboradores'] });
-      setCf({}); setCertFile(null); setFileKey((k) => k + 1); toast('Certificacao adicionada.', 'success');
+      setCf({}); setCertFile(null); setFileKey((k) => k + 1); toast('Certificação adicionada.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusyCert(false); }
   }
   async function removerCert(id: string) {
@@ -136,7 +138,7 @@ export function ColaboradoresPage() {
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 220px', minWidth: 200 }}><Field label="Buscar" placeholder="Nome, CPF ou registro" value={busca} onChange={(e) => setBusca(e.target.value)} /></div>
         <div style={{ flex: '0 1 180px' }}><SelectField label="Função" value={fFuncao} onChange={(e) => setFFuncao(e.target.value)}><option value="">Todas</option>{FUNCOES.map((fn) => <option key={fn} value={fn}>{fn}</option>)}</SelectField></div>
-        <div style={{ flex: '0 1 200px' }}><SelectField label="Certificação" value={fCert} onChange={(e) => setFCert(e.target.value)}><option value="">Todas</option><option value="vencida">Com vencida</option><option value="sem">Sem certificação</option></SelectField></div>
+        <div style={{ flex: '0 1 200px' }}><SelectField label="Certificação" value={fCert} onChange={(e) => setFCert(e.target.value)}><option value="">Todas</option><option value="vencida">Com vencida</option><option value="vence30">Vence em 30 dias</option><option value="sem">Sem certificação</option></SelectField></div>
         <label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input type="checkbox" checked={soAtivos} onChange={(e) => setSoAtivos(e.target.checked)} /> Só ativos</label>
         <div style={{ marginLeft: 'auto' }}><Button onClick={novo}>Novo colaborador</Button></div>
       </div>
@@ -162,7 +164,7 @@ export function ColaboradoresPage() {
           </div>
           <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={f.ativo !== false} onChange={(e) => setF((s) => ({ ...s, ativo: e.target.checked }))} /> Ativo</label>
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-            <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Certificacoes</strong>
+            <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Certificações</strong>
             {!editId ? <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '6px 0 0' }}>Salve os dados primeiro para adicionar certificacoes.</p> : (
               <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
                 {(atual?.certs ?? []).map((ct) => { const s = certStatus(ct.validade); return (
@@ -176,7 +178,7 @@ export function ColaboradoresPage() {
                 ); })}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <SelectField label="Tipo" value={String(cf.tipo ?? '')} onChange={(e) => setCf((s) => ({ ...s, tipo: e.target.value }))}><option value="">-</option>{TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}</SelectField>
-                  <Field label="Numero" value={String(cf.numero ?? '')} onChange={(e) => setCf((s) => ({ ...s, numero: e.target.value }))} />
+                  <Field label="Número" value={String(cf.numero ?? '')} onChange={(e) => setCf((s) => ({ ...s, numero: e.target.value }))} />
                   <Field label="Validade" type="date" value={String(cf.validade ?? '')} onChange={(e) => setCf((s) => ({ ...s, validade: e.target.value }))} />
                   <label className="block min-w-0 space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (PDF/scan)</span><input key={fileKey} type="file" className="input" accept="application/pdf,image/*" onChange={(e) => setCertFile(e.target.files?.[0] ?? null)} /></label>
                   <Button variant="secondary" onClick={() => void adicionarCert()} disabled={busyCert}>{busyCert ? 'Enviando...' : 'Adicionar'}</Button>

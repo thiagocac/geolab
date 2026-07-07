@@ -10,10 +10,10 @@ const EVENTS: [string, string][] = [
   ['laudo_pronto', 'Laudo pronto/emitido'],
   ['resultado_abaixo_fck', 'Resultado < fck na idade de controle'],
   ['cp_atrasado', 'CP atrasado (rompimento vencido)'],
-  ['calibracao_vencendo', 'Calibracao de equipamento vencendo (30d)'],
-  ['certificacao_vencendo', 'Certificacao de colaborador vencendo (30d)'],
+  ['calibracao_vencendo', 'Calibração de equipamento vencendo (30d)'],
+  ['certificacao_vencendo', 'Certificação de colaborador vencendo (30d)'],
 ];
-const EVENT_LABELS: Record<string, string> = { laudo_pronto: 'Laudo pronto', resultado_abaixo_fck: 'Resultado < fck (idade de controle)', cp_atrasado: 'CP atrasado', calibracao_vencendo: 'Calibracao vencendo', certificacao_vencendo: 'Certificacao vencendo', digest_agenda: 'Resumo da agenda', digest_nc: 'Resumo de NC', system: 'Sistema' };
+const EVENT_LABELS: Record<string, string> = { laudo_pronto: 'Laudo pronto', resultado_abaixo_fck: 'Resultado < fck (idade de controle)', cp_atrasado: 'CP atrasado', calibracao_vencendo: 'Calibração vencendo', certificacao_vencendo: 'Certificação vencendo', digest_agenda: 'Resumo da agenda', digest_nc: 'Resumo de NC', system: 'Sistema' };
 const labelEvt = (k: string): string => EVENT_LABELS[k] ?? k;
 const OFF = ['off', 'none', 'disabled'];
 const statusCor = (s: string): string => s === 'sent' ? '#16a34a' : s === 'queued' ? 'var(--ink-faint)' : s === 'failed' || s === 'suppressed' ? 'var(--magenta)' : '#d97706';
@@ -39,10 +39,10 @@ export function NotificacoesPage() {
   const rows = logQ.data ?? [];
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Gestao" title="Notificacoes" description="Disparos de e-mail e suas preferencias." />
+      <PageHeader kicker="Gestão" title="Notificações" description="Disparos de e-mail e suas preferencias." />
 
       <Card>
-        <CardHeader kicker="Preferencias" title="Quero receber por e-mail" />
+        <CardHeader kicker="Preferências" title="Quero receber por e-mail" />
         <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
           {EVENTS.map(([evt, label]) => (
             <label key={evt} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
@@ -55,7 +55,7 @@ export function NotificacoesPage() {
       </Card>
 
       <Card>
-        <CardHeader kicker="Historico" title="Notificacoes recentes" />
+        <CardHeader kicker="Histórico" title="Notificações recentes" />
         {logQ.isLoading ? <LoadingState /> : logQ.isError ? <ErrorState message={(logQ.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (
           <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
             {rows.map((r) => {

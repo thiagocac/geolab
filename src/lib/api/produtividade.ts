@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 
-// Relatorio de produtividade por colaborador (RPC relatorio_produtividade): moldagem + rompimento no periodo.
+// Relatório de produtividade por colaborador (RPC relatorio_produtividade): moldagem + rompimento no período.
 const db = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }> };
 
 export type ProdRow = { colaborador_id: string; nome: string; funcoes: string[]; concretagens: number; cps_moldados: number; rompimentos: number };

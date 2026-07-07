@@ -3,7 +3,7 @@ import { trackDomainEvent } from '../telemetry';
 import { env } from '../env';
 import { calcMPa, maybeNotifyAbaixoFck } from './rompimento';
 
-// Importacao em lote (manual) de resultados de rompimento. Grava material_tests +
+// Importação em lote (manual) de resultados de rompimento. Grava material_tests +
 // fecha o CP, com rastreabilidade em lotes_importacao(+linhas) e external_key idempotente.
 const db = supabase as unknown as { from: (t: string) => any };
 

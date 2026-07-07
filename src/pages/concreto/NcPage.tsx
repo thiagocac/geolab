@@ -43,7 +43,7 @@ export function NcPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Controle tecnologico" title="Nao-conformidades" description="Registro e tratativa de NCs (engine configuravel). Geradas automaticamente (resultado abaixo do fck na idade de controle, slump, calibracao, CP atrasado) ou abertas manualmente; tratadas por acoes com transicoes." />
+      <PageHeader kicker="Controle tecnologico" title="Nao-conformidades" description="Registro e tratativa de NCs (engine configurável). Geradas automaticamente (resultado abaixo do fck na idade de controle, slump, calibracao, CP atrasado) ou abertas manualmente; tratadas por ações com transições." />
 
       <Card className="p-5">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
@@ -65,7 +65,7 @@ export function NcPage() {
         {ncs.isLoading ? <LoadingState /> : ncs.isError ? <ErrorState message={(ncs.error as Error).message} /> : ncRows.length === 0 ? <EmptyState /> : (
           <div className="table-scroll">
             <table className="table">
-              <thead><tr><th>Numero</th><th>Tipo</th><th>Classificacao</th><th>Obra</th><th>Origem</th><th>Sev.</th><th>Status</th><th>Abertura</th><th></th></tr></thead>
+              <thead><tr><th>Número</th><th>Tipo</th><th>Classificacao</th><th>Obra</th><th>Origem</th><th>Sev.</th><th>Status</th><th>Abertura</th><th></th></tr></thead>
               <tbody>{ncRows.map((n) => {
                 return (
                   <tr key={n.id}>
@@ -73,7 +73,7 @@ export function NcPage() {
                     <td>{n.tipo_nome ?? n.tipo_code ?? '—'}</td>
                     <td style={{ color: 'var(--ink-faint)' }}>{n.classification_nome ?? n.classification_code ?? '—'}</td>
                     <td>{n.obra}</td>
-                    <td style={{ color: 'var(--ink-faint)' }}>{n.origem === 'automatica' ? 'Automatica' : 'Manual'}</td>
+                    <td style={{ color: 'var(--ink-faint)' }}>{n.origem === 'automatica' ? 'Automática' : 'Manual'}</td>
                     <td style={{ fontWeight: 700, color: SEV[n.severidade] ?? 'var(--ink-faint)' }}>{n.severidade}</td>
                     <td><StatusBadge status={n.status} /></td>
                     <td>{dataBR(n.data_abertura)}</td>
@@ -137,7 +137,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
       await qc.invalidateQueries({ queryKey: ['nc-acoes', nc.id] });
       onChange();
       setTmpl(''); setDescricao(''); setAnotacao(''); setFile(null);
-      toast(r?.concluida ? 'Acao registrada — NC concluida.' : 'Acao registrada.', 'success');
+      toast(r?.concluida ? 'Ação registrada — NC concluida.' : 'Ação registrada.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function baixar(path: string) {
@@ -165,7 +165,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
           <KV k="Tipo" v={nc.tipo_nome ?? nc.tipo_code ?? '—'} />
           <KV k="Classificacao" v={nc.classification_nome ?? '—'} />
           <KV k="Obra" v={nc.obra || '—'} />
-          <KV k="Origem" v={nc.origem === 'automatica' ? 'Automatica' : 'Manual'} />
+          <KV k="Origem" v={nc.origem === 'automatica' ? 'Automática' : 'Manual'} />
           <KV k="Severidade" v={nc.severidade} />
           <KV k="Status" v={concluida ? 'Concluida' : 'Aberta'} />
         </div>
@@ -194,7 +194,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
               {allowed.map((t) => <option key={t.id} value={t.id}>{t.nome}{t.conclui_nc ? ' (conclui)' : ''}</option>)}
             </SelectField>
             {tmplObj?.mensagem ? <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>{tmplObj.mensagem}</p> : null}
-            <Field label="Descricao (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+            <Field label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
             <TextArea label="Anotacao" value={anotacao} onChange={(e) => setAnotacao(e.target.value)} />
             <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (opcional)</span><input className="input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
             <div><Button onClick={() => void registrar()} disabled={busy || !tmpl}>{busy ? 'Registrando...' : 'Registrar acao'}</Button></div>
@@ -220,8 +220,8 @@ function NovaNcModal({ tenantId, onClose, onSaved }: { tenantId: string; onClose
   const [busy, setBusy] = useState(false);
 
   async function salvar() {
-    if (!tenantId || !work || !tipo) { toast('Obra e tipo sao obrigatorios.', 'error'); return; }
-    if (!desc.trim()) { toast('Descricao obrigatoria.', 'error'); return; }
+    if (!tenantId || !work || !tipo) { toast('Obra e tipo são obrigatórios.', 'error'); return; }
+    if (!desc.trim()) { toast('Descrição obrigatoria.', 'error'); return; }
     setBusy(true);
     try { await abrirNcManual(tenantId, { work_id: work, tipo_code: tipo, descricao: desc.trim(), severidade: sev }); toast('NC aberta.', 'success'); onSaved(); }
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
@@ -239,7 +239,7 @@ function NovaNcModal({ tenantId, onClose, onSaved }: { tenantId: string; onClose
         <SelectField label="Severidade" value={sev} onChange={(e) => setSev(e.target.value)}>
           <option value="baixa">Baixa</option><option value="media">Media</option><option value="alta">Alta</option>
         </SelectField>
-        <TextArea label="Descricao" value={desc} onChange={(e) => setDesc(e.target.value)} />
+        <TextArea label="Descrição" value={desc} onChange={(e) => setDesc(e.target.value)} />
       </div>
     </Modal>
   );

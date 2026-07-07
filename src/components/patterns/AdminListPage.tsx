@@ -115,7 +115,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
 
   async function remove(row: T) {
     if (!(await confirm({ title: 'Excluir registro', message: 'Esta ação não pode ser desfeita.', danger: true, confirmLabel: 'Excluir' }))) return;
-    try { await softDelete(table, row.id); await qc.invalidateQueries({ queryKey: [table] }); toast('Registro excluido.', 'success'); }
+    try { await softDelete(table, row.id); await qc.invalidateQueries({ queryKey: [table] }); toast('Registro excluído.', 'success'); }
     catch (e) { toast((e as Error).message, 'error'); }
   }
 
@@ -140,7 +140,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
         <span>{total} registro(s)</span>
         <span style={{ display: 'flex', gap: 8 }}>
           <Button variant="ghost" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Anterior</Button>
-          <Button variant="ghost" disabled={page * PAGE >= total} onClick={() => setPage((p) => p + 1)}>Proxima</Button>
+          <Button variant="ghost" disabled={page * PAGE >= total} onClick={() => setPage((p) => p + 1)}>Próxima</Button>
         </span>
       </div>
       <Drawer open={editing !== undefined} title={editing ? 'Editar - ' + title : 'Novo - ' + title} onClose={close} footer={<><Button variant="ghost" onClick={close}>Cancelar</Button><Button onClick={() => void handleSubmit(onValid)()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>

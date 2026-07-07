@@ -53,7 +53,7 @@ export function PreferenciasPage() {
     try {
       const d = await consultaFiscal('cep', cep);
       setF((s) => ({ ...s, endereco: str(d.endereco) || s.endereco, bairro: str(d.bairro) || s.bairro, cidade: str(d.cidade) || s.cidade, uf: str(d.uf) || s.uf }));
-      toast('Endereco preenchido pelo CEP.', 'success');
+      toast('Endereço preenchido pelo CEP.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setCepBusy(false); }
   }
   const enderecoComposto = () => [str(f.endereco), str(f.numero), str(f.bairro), str(f.cidade), str(f.uf), str(f.cep)].filter((x) => x).join(', ');
@@ -75,7 +75,7 @@ export function PreferenciasPage() {
       if (composto !== str(q.data?.endereco_origem)) { payload.endereco_origem = composto || null; payload.origem_lat = null; payload.origem_lng = null; }
       await saveConfigLab(member.tenant_id, payload);
       await qc.invalidateQueries({ queryKey: ['config-lab', member.tenant_id] });
-      toast('Preferencias salvas.', 'success');
+      toast('Preferências salvas.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
 
@@ -83,8 +83,8 @@ export function PreferenciasPage() {
   if (q.isError) return <ErrorState message={(q.error as Error).message} />;
   return (
     <div style={{ display: 'grid', gap: 16, maxWidth: 760 }}>
-      <PageHeader kicker="Gestao" title="Preferencias do laboratorio" description="Dados do laudo, responsavel tecnico e regras de controle." />
-      {!podeEditar ? <Card><p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Apenas o admin do laboratorio edita estas preferencias.</p></Card> : null}
+      <PageHeader kicker="Gestão" title="Preferências do laboratório" description="Dados do laudo, responsavel tecnico e regras de controle." />
+      {!podeEditar ? <Card><p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Apenas o admin do laboratório edita estas preferencias.</p></Card> : null}
       <Card>
         <CardHeader kicker="Responsavel tecnico / acreditacao" title="Identificacao no laudo" />
         <div style={{ display: 'grid', gap: 12, padding: 16 }}>
@@ -102,7 +102,7 @@ export function PreferenciasPage() {
           <Field label="CREA do gerente da qualidade" value={String(f.crea_gq ?? '')} onChange={(e) => set('crea_gq', e.target.value)} disabled={!podeEditar} />
           <Field label="Local de realizacao dos ensaios" value={String(f.local_ensaio ?? '')} onChange={(e) => set('local_ensaio', e.target.value)} disabled={!podeEditar} />
           <div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)' }}>Logo do laboratorio</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)' }}>Logo do laboratório</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 6 }}>
               {q.data?.logo_path && logoUrl.data ? <img src={logoUrl.data} alt="Logo" style={{ height: 48, maxWidth: 180, objectFit: 'contain', border: '1px solid var(--line)', borderRadius: 8, padding: 4, background: 'var(--surface)' }} /> : <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Sem logo (o laudo usa o nome do lab).</span>}
               {podeEditar ? <><input type="file" accept="image/png,image/jpeg" disabled={logoBusy} onChange={(e) => void handleLogo(e.target.files?.[0] ?? undefined)} />{q.data?.logo_path ? <Button variant="ghost" onClick={() => void removeLogo()}>Remover</Button> : null}</> : null}
@@ -150,7 +150,7 @@ export function PreferenciasPage() {
         <CardHeader kicker="Regras de controle" title="Idades e atrasos" />
         <div style={{ display: 'flex', gap: 12, padding: 16 }}>
           <Field label="Idade de controle padrao (dias)" type="number" value={String(f.idade_controle_default ?? 28)} onChange={(e) => set('idade_controle_default', e.target.value)} disabled={!podeEditar} />
-          <Field label="Tolerancia de atraso do CP (dias)" type="number" value={String(f.cp_overdue_days ?? 2)} onChange={(e) => set('cp_overdue_days', e.target.value)} disabled={!podeEditar} />
+          <Field label="Tolerância de atraso do CP (dias)" type="number" value={String(f.cp_overdue_days ?? 2)} onChange={(e) => set('cp_overdue_days', e.target.value)} disabled={!podeEditar} />
         </div>
       </Card>
       {podeEditar ? <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar preferencias'}</Button></div> : null}

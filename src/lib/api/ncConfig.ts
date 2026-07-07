@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 
-// Configuracao do motor de NC: parametros de tolerancia (nc_parameters, lidos pelos gatilhos)
+// Configuração do motor de NC: parametros de tolerancia (nc_parameters, lidos pelos gatilhos)
 // e fluxo de tratativa (nc_action_templates + nc_action_transitions). RLS: parametros=writer; templates=admin.
 const db = supabase as unknown as { from: (t: string) => any };
 
@@ -18,11 +18,11 @@ export async function getParametros(): Promise<NcParams> {
   if (error) throw new Error(error.message);
   const r = ((data ?? []) as any[])[0];
   return r ? { id: String(r.id), nome: String(r.nome), validade_concreto_h: s(r.validade_concreto_h), slump_tol_mm: s(r.slump_tol_mm), flow_tol_mm: s(r.flow_tol_mm), conclusao_auto_pct: s(r.conclusao_auto_pct), acao_imediata_pct: s(r.acao_imediata_pct), tolerancia_lancamento_min: s(r.tolerancia_lancamento_min) }
-    : { id: null, nome: 'Parametros gerais', validade_concreto_h: '', slump_tol_mm: '', flow_tol_mm: '', conclusao_auto_pct: '', acao_imediata_pct: '', tolerancia_lancamento_min: '' };
+    : { id: null, nome: 'Parâmetros gerais', validade_concreto_h: '', slump_tol_mm: '', flow_tol_mm: '', conclusao_auto_pct: '', acao_imediata_pct: '', tolerancia_lancamento_min: '' };
 }
 
 export async function salvarParametros(tenantId: string, p: NcParams): Promise<void> {
-  const vals = { nome: p.nome || 'Parametros gerais', validade_concreto_h: num(p.validade_concreto_h), slump_tol_mm: num(p.slump_tol_mm), flow_tol_mm: num(p.flow_tol_mm), conclusao_auto_pct: num(p.conclusao_auto_pct), acao_imediata_pct: num(p.acao_imediata_pct), tolerancia_lancamento_min: num(p.tolerancia_lancamento_min) };
+  const vals = { nome: p.nome || 'Parâmetros gerais', validade_concreto_h: num(p.validade_concreto_h), slump_tol_mm: num(p.slump_tol_mm), flow_tol_mm: num(p.flow_tol_mm), conclusao_auto_pct: num(p.conclusao_auto_pct), acao_imediata_pct: num(p.acao_imediata_pct), tolerancia_lancamento_min: num(p.tolerancia_lancamento_min) };
   if (p.id) { const { error } = await db.from('nc_parameters').update(vals).eq('id', p.id); if (error) throw new Error(error.message); }
   else { const { error } = await db.from('nc_parameters').insert({ ...vals, tenant_id: tenantId, material_kind: 'concreto' }); if (error) throw new Error(error.message); }
 }

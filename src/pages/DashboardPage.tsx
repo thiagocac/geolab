@@ -27,15 +27,15 @@ export function DashboardPage() {
             <Stat label="Rompimentos atrasados" value={k.agenda.atrasados} detail="CPs vencidos sem resultado" />
             <Stat label="CPs a romper" value={k.agenda.total} detail="aguardando resultado" />
             <Stat label="Rompimentos hoje" value={k.agenda.hoje} />
-            <Stat label="Laudos a emitir" value={k.laudos.rascunho} detail="rascunho/revisao" />
-            <Stat label="Volume do mes (m3)" value={fmtVol(k.volumeMes)} detail="concretado no mes" />
-            <Stat label="Calibracoes vencendo" value={k.calibracoesVencendo} detail="proximos 30 dias" />
+            <Stat label="Laudos a emitir" value={k.laudos.rascunho} detail="rascunho/revisão" />
+            <Stat label="Volume do mes (m³)" value={fmtVol(k.volumeMes)} detail="concretado no mês" />
+            <Stat label="Calibracoes vencendo" value={k.calibracoesVencendo} detail="próximos 30 dias" />
           </div>
           <Suspense fallback={<Card><div className="p-6"><div className="skeleton h-5 w-2/5" style={{ marginBottom: 14 }} /><div className="skeleton" style={{ height: 220 }} /></div></Card>}>
             <DashboardCharts agenda={k.agenda} laudos={k.laudos} />
           </Suspense>
           <Card>
-            <CardHeader kicker="Atalhos" title="Acoes rapidas" />
+            <CardHeader kicker="Atalhos" title="Ações rápidas" />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: 16 }}>
               <Button onClick={() => nav('/rompimentos')}>Agenda de rompimentos</Button>
               <Button variant="secondary" onClick={() => nav('/dashboards')}>Dashboards</Button>

@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 
-// Aceitacao de lote (NBR 12655). RPCs re-derivadas do GEOMAT (criar/calcular),
+// Aceitação de lote (NBR 12655). RPCs re-derivadas do GEOMAT (criar/calcular),
 // coleta por amostra (exemplar = 1 NF, resistencia = maior do par). RLS por tenant.
 const db = supabase as unknown as { from: (t: string) => any; rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }> };
 

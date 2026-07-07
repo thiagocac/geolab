@@ -41,12 +41,12 @@ export function ClienteUsuariosPage() {
   async function criar() {
     setBusy(true);
     try {
-      if (!f.nome || !f.email) throw new Error('Nome e e-mail sao obrigatorios.');
+      if (!f.nome || !f.email) throw new Error('Nome e e-mail são obrigatórios.');
       if (!workIds.length) throw new Error('Selecione ao menos uma obra para o usuario do cliente.');
       const r = await createClienteUsuario({ nome: String(f.nome), email: String(f.email), telefone: f.telefone ? String(f.telefone) : undefined, password: f.password ? String(f.password) : undefined, work_ids: arr(workIds) });
       await qc.invalidateQueries({ queryKey: ['cliente-usuarios'] });
       setOpen(false); setF({ password: genPass() }); setWorkIds([]); setSenha({ username: r.username, password: r.temp_password });
-      toast('Usuario do cliente criado.', 'success');
+      toast('Usuário do cliente criado.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function salvarAcesso() {
@@ -82,7 +82,7 @@ export function ClienteUsuariosPage() {
   const list = users.data ?? [];
   return (
     <section className="space-y-5">
-      <PageHeader kicker="Portal do cliente" title="Usuarios de clientes" description="Crie acessos para construtoras, vincule as obras permitidas e gere usuario/senha para entrada no portal." />
+      <PageHeader kicker="Portal do cliente" title="Usuários de clientes" description="Crie acessos para construtoras, vincule as obras permitidas e gere usuario/senha para entrada no portal." />
       <div className="flex justify-end"><Button onClick={abrirNovo}>Novo usuario de cliente</Button></div>
       <Card>
         <CardHeader title="Acesso por link (sem senha)">Gere um link de leitura do portal para um cliente. Libera todas as obras do cliente por 30 dias, sem login.</CardHeader>
@@ -116,7 +116,7 @@ export function ClienteUsuariosPage() {
         </div>
       </Modal>
       <Modal open={!!access} title="Obras liberadas" onClose={() => setAccess(null)} footer={<><Button variant="ghost" onClick={() => setAccess(null)}>Cancelar</Button><Button onClick={() => void salvarAcesso()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar obras'}</Button></>}>
-        <CardHeader title={access?.full_name ?? access?.email ?? 'Usuario'}>Marque as obras que este login do cliente pode acessar no portal.</CardHeader>
+        <CardHeader title={access?.full_name ?? access?.email ?? 'Usuário'}>Marque as obras que este login do cliente pode acessar no portal.</CardHeader>
         <Card className="max-h-80 overflow-auto p-3">{obrasAcesso.map((o) => <label key={o.id} className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={workIds.includes(o.id)} onChange={() => toggleWork(o.id)} /> {o.nome} <span className="text-xs text-slate-400">{o.cliente}</span></label>)}</Card>
       </Modal>
       <Modal open={!!senha} title="Acesso criado" onClose={() => setSenha(null)} footer={<Button onClick={() => setSenha(null)}>Fechar</Button>}>

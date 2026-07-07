@@ -399,7 +399,7 @@ export function ConcretagemDetalhePage() {
         <div className="space-y-4">
           <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
             <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Ler NF (foto):</span><input type="file" accept="image/*" disabled={lendoNf} onChange={(e) => { const f = e.target.files?.[0]; if (f) void lerNf(f); e.currentTarget.value = ''; }} />{lendoNf ? <span className="text-xs text-slate-500">lendo...</span> : null}</label>
-            <p className="mt-1 text-xs text-slate-500">Fotografe a DANFE/nota do caminhao para preencher os campos. Requer VISION_API_KEY; confira antes de salvar.</p>
+            <p className="mt-1 text-xs text-slate-500">Fotografe a DANFE/nota do caminhão para preencher os campos. Requer VISION_API_KEY; confira antes de salvar.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="Nota fiscal*" value={val(camForm.nota_fiscal)} onChange={(e) => patchCam('nota_fiscal', e.target.value)} />
@@ -486,7 +486,7 @@ export function ConcretagemDetalhePage() {
         </div>
       </Modal>
       <Card>
-        <CardHeader kicker="Onda 1" title="Linha do tempo">Eventos e marcos auditáveis desta concretagem e da obra.</CardHeader>
+        <CardHeader kicker="Auditoria" title="Linha do tempo">Eventos e marcos auditáveis desta concretagem e da obra.</CardHeader>
         <div className="p-5 pt-0">
           <div className="mb-3 flex gap-1">
             <Button variant={tlScope === 'concretagem' ? 'primary' : 'ghost'} onClick={() => setTlScope('concretagem')}>Desta concretagem</Button>

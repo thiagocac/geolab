@@ -89,6 +89,7 @@
 }
 html.dark{
   color-scheme:dark;
+  --navy:oklch(76% 0.08 266); /* navy de leitura p/ dark (o navy da marca some no fundo escuro) */
   --paper:oklch(18.3% 0.031 263);--surface:oklch(20.8% 0.040 266);--surface-2:oklch(27.9% 0.037 260);
   --ink:oklch(96.8% 0.007 248);--ink-soft:oklch(86.9% 0.020 253);--ink-faint:oklch(71.1% 0.035 257);
   --line:oklch(37.2% 0.039 257);--line-strong:oklch(44.6% 0.037 257);--line-soft:oklch(27.9% 0.037 260);

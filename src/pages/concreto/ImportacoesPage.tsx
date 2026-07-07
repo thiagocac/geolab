@@ -82,7 +82,7 @@ export function ImportacoesPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Gestao" title="Importacoes" description="Lancamento de resultados em lote: manual ou por OCR (foto/scan)." />
+      <PageHeader kicker="Gestão" title="Importações" description="Lançamento de resultados em lote: manual ou por OCR (foto/scan)." />
       <div style={{ display: 'flex', gap: 8 }}>
         <Button variant={mode === 'manual' ? 'primary' : 'ghost'} onClick={() => setMode('manual')}>Manual</Button>
         <Button variant={mode === 'ocr' ? 'primary' : 'ghost'} onClick={() => setMode('ocr')}>OCR (foto/scan)</Button>
@@ -101,15 +101,15 @@ export function ImportacoesPage() {
 
       {!concId ? null : pend.isLoading ? <LoadingState /> : pend.isError ? <ErrorState message={(pend.error as Error).message} /> : cps.length === 0 ? <EmptyState /> : mode === 'manual' ? (
         <Card>
-          <div style={{ display: 'grid', gap: 6 }}>
-            <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--ink-faint)', fontWeight: 700, padding: '0 4px' }}>
+          <div style={{ display: 'grid', gap: 6, overflowX: 'auto' }}>
+            <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--ink-faint)', fontWeight: 700, padding: '0 4px', minWidth: 620 }}>
               <span style={{ width: 150 }}>CP</span><span style={{ width: 70 }}>Idade</span><span style={{ width: 90 }}>Carga kN</span><span style={{ width: 70 }}>d mm</span><span style={{ width: 70 }}>h mm</span><span style={{ width: 70 }}>Ruptura</span><span style={{ width: 80 }}>MPa</span>
             </div>
             {cps.map((cp) => {
               const r = row(cp.id);
               const prev = Number(r.carga) > 0 ? calcMPa(Number(r.carga), Number(r.d) || 100, Number(r.h) || 200) : null;
               return (
-                <div key={cp.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div key={cp.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 620 }}>
                   <span style={{ width: 150, fontSize: 13 }}>{cp.codigo ?? cp.id.slice(0, 8)}</span>
                   <span style={{ width: 70, fontSize: 12, color: 'var(--ink-faint)' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
                   <input type="number" className="input" style={{ width: 90 }} value={r.carga} onChange={(e) => setRow(cp.id, { carga: e.target.value })} />
@@ -120,7 +120,7 @@ export function ImportacoesPage() {
                 </div>
               );
             })}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}><Button onClick={() => void lancarManual()} disabled={busy}>{busy ? 'Lancando...' : 'Lancar lote'}</Button></div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}><Button onClick={() => void lancarManual()} disabled={busy}>{busy ? 'Lançando...' : 'Lançar lote'}</Button></div>
           </div>
         </Card>
       ) : (
@@ -131,15 +131,15 @@ export function ImportacoesPage() {
               <Button onClick={() => void lerOcr()} disabled={ocrBusy}>{ocrBusy ? 'Lendo...' : 'Ler com IA'}</Button>
               {ocrMsg ? <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{ocrMsg}</span> : null}
             </div>
-            <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '8px 0 0' }}>Foto/scan da folha de resultados (ate 4 imagens). A IA le os MPa e casa por idade; voce revisa antes de importar.</p>
+            <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '8px 0 0' }}>Foto/scan da folha de resultados (até 4 imagens). A IA lê os MPa e casa por idade; você revisa antes de importar.</p>
           </Card>
           <Card>
-            <div style={{ display: 'grid', gap: 6 }}>
-              <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--ink-faint)', fontWeight: 700, padding: '0 4px' }}>
+            <div style={{ display: 'grid', gap: 6, overflowX: 'auto' }}>
+              <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--ink-faint)', fontWeight: 700, padding: '0 4px', minWidth: 400 }}>
                 <span style={{ width: 180 }}>CP</span><span style={{ width: 80 }}>Idade</span><span style={{ width: 110 }}>MPa (lido/edit)</span>
               </div>
               {cps.map((cp) => (
-                <div key={cp.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div key={cp.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 400 }}>
                   <span style={{ width: 180, fontSize: 13 }}>{cp.codigo ?? cp.id.slice(0, 8)}</span>
                   <span style={{ width: 80, fontSize: 12, color: 'var(--ink-faint)' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
                   <input type="number" className="input" style={{ width: 110 }} value={ocrVals[cp.id] ?? ''} onChange={(e) => setOcrVals((s) => ({ ...s, [cp.id]: e.target.value }))} />

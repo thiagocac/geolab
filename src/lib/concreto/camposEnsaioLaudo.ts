@@ -10,7 +10,7 @@ export const CAMPOS_ENSAIO: CampoCatalogo[] = [
   { key: 'capeamento', label: 'Capeamento / bases', hint: 'Retífica, enxofre ou neoprene; aplicado à leva.', on: false },
   { key: 'massa_cp_g', label: 'Massa do CP (g)', hint: 'Para densidade; coluna por CP. Em geral desligado.', on: false },
   { key: 'operador', label: 'Operador (quem rompeu)', hint: 'Quem realizou o rompimento; gravado por CP e alimenta o gate de certificacao. Desligado por padrao.', on: false },
-  { key: 'numeracao_lab', label: 'Numeracao do laboratorio (por CP)', hint: 'Botao "+ numeracao lab" em cada CP na tela de rompimento, para registrar a numeracao interna do laboratorio. Ligado por padrao.', on: true },
+  { key: 'numeracao_lab', label: 'Numeração do laboratório (por CP)', hint: 'Botão "+ numeração lab" em cada CP na tela de rompimento, para registrar a numeração interna do laboratório. Ligado por padrao.', on: true },
 ];
 
 export const CAMPOS_RECEBIMENTO: CampoCatalogo[] = [

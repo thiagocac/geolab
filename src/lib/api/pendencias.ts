@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 
-// Tela de Pendencias — console consolidado do lab. RPC pendencias_resumo (mig 133; Fase 2 mig 141)
+// Tela de Pendências — console consolidado do lab. RPC pendencias_resumo (mig 133; Fase 2 mig 141)
 // devolve so as contagens (barato); o clique faz deep-link para a tela dona com filtro inicial.
 const db = supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
 

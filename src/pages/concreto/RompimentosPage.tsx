@@ -367,6 +367,18 @@ export function RompimentosPage() {
     } catch (e) { toast((e as Error).message, 'error'); }
   }
 
+  async function alterarSituacaoConfirm(cp: CpRompimento, situacao: 'falhou' | 'ausente') {
+    const rotulo = situacao === 'falhou' ? 'falha' : 'ausente';
+    if (!(await confirm({ title: 'Marcar CP como ' + rotulo, message: 'Marcar o CP ' + cpNumero(cp) + ' como ' + rotulo + '? D\u00e1 para reverter depois pela a\u00e7\u00e3o Reativar, na mesma linha.', danger: true, confirmLabel: 'Marcar ' + rotulo }))) return;
+    await alterarSituacao(cp, situacao);
+  }
+
+  async function contraprovaConfirm(cp: CpRompimento) {
+    if (!(await confirm({ title: 'Gerar contraprova', message: 'Gerar contraprova de ' + cpNumero(cp) + '? Um novo CP pendente ser\u00e1 criado.', confirmLabel: 'Gerar contraprova' }))) return;
+    try { await gerarContraprova(cp); await qc.invalidateQueries({ queryKey: ['rompimentos'] }); toast('Contraprova criada.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); }
+  }
+
   async function abrirAudit(cp: CpRompimento) {
     setAuditCp(cp); setAuditItems([]);
     try { setAuditItems(await listCpTimeline(cp.id)); } catch (e) { toast((e as Error).message, 'error'); }
@@ -569,7 +581,7 @@ export function RompimentosPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="kicker">Concreto · Controle Tecnológico</p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 dark:text-slate-50">Resultados de Ensaios</h1>
+          <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl text-slate-950 dark:text-slate-50">Resultados de Ensaios</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">Lançamento do rompimento de CPs no padrão do laboratório: filtre a agenda pela data de referência, digite o resultado (Enter pula para o próximo), marque descartes e Salvar grava tudo em lote. Em massa: Exportar modelo → preencher → Importar resultados.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -651,7 +663,7 @@ export function RompimentosPage() {
                   return (
                     <tr key={r.id} className={ins ? 'bg-red-50/70 dark:bg-red-950/20' : ''}>
                       <td className="px-3 py-2"><input type="checkbox" aria-label={`Selecionar CP ${cpNumero(r)}`} checked={selecionados.has(r.id)} onChange={() => toggleSelecionado(r.id)} /></td>
-                      <td className="px-3 py-2 align-top"><div className="font-black text-slate-950 dark:text-slate-50">{cpNumero(r)}</div>{campoNumeracao ? <button type="button" className="text-xs font-bold text-blue-600" onClick={() => { setNumCp(r); setNumValor(r.numeracao_lab ?? ''); }}>+ numeração lab</button> : null}<div className="mt-1 text-[11px] text-slate-400">{statusBadge(r)}</div></td>
+                      <td className="px-3 py-2 align-top"><div className="font-black text-slate-950 dark:text-slate-50">{cpNumero(r)}</div>{campoNumeracao ? <button type="button" className="text-xs font-bold text-blue-600" onClick={() => { setNumCp(r); setNumValor(r.numeracao_lab ?? ''); }}>{r.numeracao_lab ? 'editar numeração' : '+ numeração lab'}</button> : null}<div className="mt-1 text-[11px] text-slate-400">{statusBadge(r)}</div></td>
                       <td className="px-3 py-2 align-top"><span className={isAtrasado(r, dataRef) ? 'font-black text-red-600' : 'font-black'}>{fmtDate(r.data_prevista_rompimento)}{isAtrasado(r, dataRef) ? ' !' : ''}</span></td>
                       <td className="px-3 py-2"><div className="flex gap-2"><input className="input" type="date" value={effectiveData(r)} onChange={(e) => patch(r.id, { data: e.target.value })} /><input className="input max-w-[90px]" type="time" value={effectiveHora(r)} onChange={(e) => patch(r.id, { hora: e.target.value })} /></div></td>
                       <td className="px-3 py-2"><input id={`romp-val-${rowIdx}`} className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: sanitizeDecimal(e.target.value) } : { valor: sanitizeDecimal(e.target.value) })} onPaste={(e) => handlePaste(e, rowIdx)} title="Cole uma coluna do Excel para preencher vários CPs · Enter pula para o próximo" onKeyDown={(e) => { if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) { e.preventDefault(); const n = document.getElementById(`romp-val-${rowIdx + 1}`) as HTMLInputElement | null; n?.focus(); n?.select(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = document.getElementById(`romp-val-${rowIdx - 1}`) as HTMLInputElement | null; pv?.focus(); pv?.select(); } }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); return (effectiveValor(r) || effectiveCarga(r)) && mpaForaFaixa(mpa) ? <div className="mt-1 text-xs font-bold text-amber-600">⚠ MPa fora de faixa plausível (verifique a digitação)</div> : null; })()}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); const esp2 = esperado(r); return (effectiveValor(r) || effectiveCarga(r)) && Number.isFinite(mpa) && mpa > 0 && esp2 != null && esp2 > 0 && mpa < 0.8 * esp2 ? <div className="mt-1 text-xs font-bold text-red-600">⚠ Resultado 80% menor que o esperado</div> : null; })()}</td>
@@ -661,7 +673,7 @@ export function RompimentosPage() {
                       {campoTipo ? <td className="px-3 py-2"><select className="input min-w-[82px]" value={effectiveTipo(r)} onChange={(e) => patch(r.id, { tipo_ruptura: e.target.value })}><option value="">-</option>{['A', 'B', 'C', 'D', 'E', 'F'].map((x) => <option key={x} value={x}>{x}</option>)}</select></td> : null}
                       {campoMassa ? <td className="px-3 py-2"><input className="input max-w-[110px]" type="number" value={effectiveMassa(r)} onChange={(e) => patch(r.id, { massa_cp_g: e.target.value })} /></td> : null}
                       <td className="px-3 py-2"><input type="checkbox" aria-label={`Descartar CP ${cpNumero(r)}`} checked={r.situacao === 'descartado'} onChange={(e) => void alterarSituacao(r, e.target.checked ? 'descartado' : 'pendente')} /></td>
-                      <td className="px-3 py-2"><div className="flex flex-wrap gap-2"><button type="button" className="font-bold text-blue-700" onClick={() => setCurvaCp(r)}>Curva</button><button type="button" className="font-bold text-blue-700" onClick={() => void alterarSituacao(r, 'falhou')}>Falha</button><button type="button" className="font-bold text-blue-700" onClick={() => void alterarSituacao(r, 'ausente')}>Ausente</button><button type="button" className="font-bold text-blue-700" onClick={() => void abrirAudit(r)}>Trilha</button><button type="button" className="font-bold text-blue-700" onClick={() => { if (!window.confirm(`Gerar contraprova de ${cpNumero(r)}? Um novo CP pendente será criado.`)) return; void gerarContraprova(r).then(() => qc.invalidateQueries({ queryKey: ['rompimentos'] })).catch((e: Error) => toast(e.message, 'error')); }}>Contraprova</button></div></td>
+                      <td className="px-3 py-2"><div className="flex flex-wrap gap-2"><button type="button" className="font-bold text-blue-700" onClick={() => setCurvaCp(r)}>Curva</button>{(r.situacao === 'falhou' || r.situacao === 'ausente') ? <button type="button" className="font-bold text-emerald-700" onClick={() => void alterarSituacao(r, 'pendente')}>Reativar</button> : <><button type="button" className="font-bold text-blue-700" onClick={() => void alterarSituacaoConfirm(r, 'falhou')}>Falha</button><button type="button" className="font-bold text-blue-700" onClick={() => void alterarSituacaoConfirm(r, 'ausente')}>Ausente</button></>}<button type="button" className="font-bold text-blue-700" onClick={() => void abrirAudit(r)}>Trilha</button><button type="button" className="font-bold text-blue-700" onClick={() => void contraprovaConfirm(r)}>Contraprova</button></div></td>
                     </tr>
                   );
                 })}
