@@ -15,6 +15,7 @@ import { listReference } from '../../lib/api/client';
 import { temDelegacaoAprovacao } from '../../lib/api/delegacoes';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
+import { CorrecoesStaffPanel } from '../../components/portal/CorrecoesStaffPanel';
 import type { ParcialFinal } from '../../lib/portal/types';
 
 export function LaudosPage() {
@@ -127,6 +128,7 @@ export function LaudosPage() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <PageHeader kicker="Concreto" title="Laudos" description="Emissão de relatorios de ensaio (NBR 5739)." />
+      {podeAprovar ? <CorrecoesStaffPanel /> : null}
       {!podeAprovar && (delegQ.data ?? false) ? <Card className="border-blue-200 bg-blue-50/60 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-200">Você pode <strong>emitir laudos</strong> por uma delegação ativa de aprovação. As demais ações (reabrir, enviar, link) seguem com o gestor/RT.</Card> : null}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}><input className="input" placeholder="Buscar por Nº do relatório" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 280 }} /><select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 240 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><select className="input" value={statusFiltro} onChange={(e) => { setStatusFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 180 }} title="Status do laudo"><option value="">Todos os status</option><option value="pendente">A aprovar/emitir</option><option value="emitido">Emitidos</option></select></div><Button onClick={() => setNovo(true)}>Novo laudo</Button></div>
       {q.isLoading ? <LoadingState /> : q.isError ? <ErrorState message={(q.error as Error).message} /> : rows.length === 0 ? <EmptyState /> : (

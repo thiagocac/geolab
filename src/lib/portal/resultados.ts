@@ -76,8 +76,34 @@ export function consolidarExemplares(rows: PortalResultadoRow[]): ExemplarResumo
 
 const conformeTxt = (v: boolean | null) => (v == null ? '' : v ? 'Conforme' : 'Não conforme');
 
+export const situacaoTxt = (s: string | null) => { const m: Record<string, string> = { pendente: 'Pendente', rompido: 'Rompido', descartado: 'Descartado', recebido: 'Recebido' }; return s ? (m[s] ?? s) : ''; };
+export const idadeTxt = (r: PortalResultadoRow) => String(r.idade_dias ?? '') + (r.idade_unidade === 'hora' ? 'h' : 'd');
+
+// Detalhe por CP = TODOS os corpos de prova, sem consolidar (inclui pendentes). Resumo por exemplar vai como aba secundaria.
 export async function exportResultadosXlsx(rows: PortalResultadoRow[], filename: string): Promise<void> {
-  const resumo = consolidarExemplares(rows);
+  const resumo = consolidarExemplares(rows.filter((r) => r.resultado_valor != null));
+  const colsDetalhe: XlsxColumn<PortalResultadoRow>[] = [
+    { key: 'work_nome', header: 'Obra', width: 24 },
+    { key: 'concretagem_codigo', header: 'Concretagem', width: 18 },
+    { key: 'data_concretagem', header: 'Data', format: 'date' },
+    { key: 'fornecedor_texto', header: 'Fornecedor', width: 16 },
+    { key: 'local_texto', header: 'Local / pe\u00e7a', width: 18 },
+    { key: 'elementos_concretados', header: 'Elementos concretados', width: 22 },
+    { key: 'nota_fiscal', header: 'NF', align: 'center' },
+    { key: 'serie', header: 'S\u00e9rie', align: 'center' },
+    { key: 'amostra_codigo', header: 'Exemplar', align: 'center' },
+    { header: 'CP', align: 'center', map: (r) => r.cp_codigo ?? r.numeracao_lab ?? '' },
+    { key: 'data_moldagem', header: 'Moldagem', format: 'date' },
+    { header: 'Idade', align: 'center', map: (r) => idadeTxt(r) },
+    { key: 'data_rompimento', header: 'Rompimento', format: 'date' },
+    { key: 'carga_ruptura_kn', header: 'Carga (kN)', format: 'dec1' },
+    { key: 'resultado_valor', header: 'Resultado (MPa)', format: 'dec1' },
+    { key: 'fck_ref', header: 'FCK (MPa)', format: 'dec1' },
+    { key: 'idade_controle', header: 'Idade controle (dias)', format: 'int' },
+    { header: 'Idade de controle?', align: 'center', map: (r) => (r.is_controle ? 'Sim' : 'N\u00e3o') },
+    { header: 'Situa\u00e7\u00e3o', align: 'center', map: (r) => situacaoTxt(r.situacao) },
+    { header: 'Conforme', align: 'center', map: (r) => (r.is_controle ? conformeTxt(r.conforme) : 'acompanhamento') },
+  ];
   const colsResumo: XlsxColumn<ExemplarResumo>[] = [
     { key: 'work_nome', header: 'Obra', width: 24 },
     { key: 'concretagem_codigo', header: 'Concretagem', width: 18 },
@@ -85,35 +111,16 @@ export async function exportResultadosXlsx(rows: PortalResultadoRow[], filename:
     { key: 'exemplar', header: 'Exemplar', align: 'center' },
     { key: 'nf', header: 'NF', align: 'center' },
     { key: 'idade_controle', header: 'Idade controle (dias)', format: 'int' },
-    { key: 'resistencia', header: 'Resistência (MPa)', format: 'dec1' },
+    { key: 'resistencia', header: 'Resist\u00eancia (MPa)', format: 'dec1' },
     { key: 'fck', header: 'FCK (MPa)', format: 'dec1' },
     { header: 'Conforme', align: 'center', map: (e) => conformeTxt(e.conforme) },
-    { key: 'n_cps', header: 'Nº CPs', format: 'int' },
-  ];
-  const colsDetalhe: XlsxColumn<PortalResultadoRow>[] = [
-    { key: 'work_nome', header: 'Obra', width: 24 },
-    { key: 'concretagem_codigo', header: 'Concretagem', width: 18 },
-    { key: 'data_concretagem', header: 'Data', format: 'date' },
-    { key: 'fornecedor_texto', header: 'Fornecedor', width: 18 },
-    { key: 'local_texto', header: 'Local / peça', width: 16 },
-    { key: 'nota_fiscal', header: 'NF', align: 'center' },
-    { key: 'amostra_codigo', header: 'Exemplar', align: 'center' },
-    { header: 'CP', align: 'center', map: (r) => r.cp_codigo ?? r.numeracao_lab ?? '' },
-    { key: 'idade_dias', header: 'Idade (dias)', format: 'int' },
-    { key: 'data_rompimento', header: 'Data rompimento', format: 'date' },
-    { key: 'carga_ruptura_kn', header: 'Carga (kN)', format: 'dec1' },
-    { key: 'resultado_valor', header: 'Resultado (MPa)', format: 'dec1' },
-    { key: 'fck_ref', header: 'FCK (MPa)', format: 'dec1' },
-    { key: 'idade_controle', header: 'Idade controle (dias)', format: 'int' },
-    { header: 'Idade de controle?', align: 'center', map: (r) => (r.is_controle ? 'Sim' : 'Não') },
-    { header: 'Conforme', align: 'center', map: (r) => conformeTxt(r.conforme) },
-    { key: 'situacao', header: 'Situação', align: 'center' },
+    { key: 'n_cps', header: 'N\u00ba CPs', format: 'int' },
   ];
   await exportExcel(
-    { title: 'Resultados de ensaios', filename, fields: [{ label: 'Exemplares', value: String(resumo.length) }, { label: 'Corpos de prova', value: String(rows.length) }] },
+    { title: 'Resultados de ensaios \u2014 detalhado por CP', filename, fields: [{ label: 'Corpos de prova', value: String(rows.length) }, { label: 'Exemplares', value: String(resumo.length) }] },
     [
-      { name: 'Resumo por exemplar', columns: colsResumo, rows: resumo },
       { name: 'Detalhe por CP', columns: colsDetalhe, rows },
+      { name: 'Resumo por exemplar', columns: colsResumo, rows: resumo },
     ],
   );
 }
@@ -121,19 +128,19 @@ export async function exportResultadosXlsx(rows: PortalResultadoRow[], filename:
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>]/g, (c) => (c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;'));
 const cell = (v: unknown) => '<td>' + esc(v) + '</td>';
 
-// Exporta PDF via impressao do navegador (sem dependencia nova). Abre aba e dispara print.
+// PDF (impressao do navegador): detalhe de TODOS os CPs primeiro; resumo por exemplar ao final.
 export function exportResultadosPdf(rows: PortalResultadoRow[], titulo: string): boolean {
   const win = window.open('', '_blank');
   if (!win) return false;
-  const resumo = consolidarExemplares(rows);
-  const resumoHtml = resumo.map((e) => '<tr>' + [e.work_nome, e.concretagem_codigo, e.data, e.exemplar, e.nf, e.idade_controle, e.resistencia ?? '—', e.fck ?? '—', conformeTxt(e.conforme)].map(cell).join('') + '</tr>').join('');
-  const detalheHtml = rows.map((r) => '<tr>' + [r.concretagem_codigo, r.nota_fiscal, r.amostra_codigo, r.cp_codigo ?? r.numeracao_lab, (r.idade_dias ?? '') + (r.idade_unidade === 'hora' ? 'h' : 'd'), r.data_rompimento, r.resultado_valor ?? '—', r.fck_ref ?? '—', conformeTxt(r.conforme)].map(cell).join('') + '</tr>').join('');
+  const resumo = consolidarExemplares(rows.filter((r) => r.resultado_valor != null));
+  const detalheHtml = rows.map((r) => '<tr>' + [r.work_nome, r.concretagem_codigo, r.local_texto, r.elementos_concretados, r.nota_fiscal, r.amostra_codigo, r.cp_codigo ?? r.numeracao_lab, idadeTxt(r), r.data_rompimento, r.resultado_valor ?? '\u2014', r.fck_ref ?? '\u2014', situacaoTxt(r.situacao), r.is_controle ? conformeTxt(r.conforme) : 'acomp.'].map(cell).join('') + '</tr>').join('');
+  const resumoHtml = resumo.map((e) => '<tr>' + [e.work_nome, e.concretagem_codigo, e.data, e.exemplar, e.nf, e.idade_controle, e.resistencia ?? '\u2014', e.fck ?? '\u2014', conformeTxt(e.conforme)].map(cell).join('') + '</tr>').join('');
   const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(titulo) + '</title>'
     + '<style>body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:24px}h1{font-size:18px;margin:0 0 4px}h2{font-size:13px;margin:18px 0 6px}p{color:#64748b;font-size:11px;margin:0 0 8px}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #cbd5e1;padding:4px 6px;text-align:left}th{background:#f1f5f9}@media print{button{display:none}}</style></head><body>'
-    + '<h1>' + esc(titulo) + '</h1><p>Gerado em ' + esc(new Date().toLocaleString('pt-BR')) + ' — ' + rows.length + ' corpos de prova · ' + resumo.length + ' exemplares</p>'
+    + '<h1>' + esc(titulo) + '</h1><p>Gerado em ' + esc(new Date().toLocaleString('pt-BR')) + ' \u2014 ' + rows.length + ' corpos de prova \u00b7 ' + resumo.length + ' exemplares</p>'
     + '<button onclick="window.print()">Imprimir / Salvar PDF</button>'
+    + '<h2>Detalhe por corpo de prova (todos)</h2><table><thead><tr><th>Obra</th><th>Concretagem</th><th>Local / pe\u00e7a</th><th>Elementos</th><th>NF</th><th>Exemplar</th><th>CP</th><th>Idade</th><th>Rompimento</th><th>Resultado</th><th>FCK</th><th>Situa\u00e7\u00e3o</th><th>Conforme</th></tr></thead><tbody>' + detalheHtml + '</tbody></table>'
     + '<h2>Resumo por exemplar</h2><table><thead><tr><th>Obra</th><th>Concretagem</th><th>Data</th><th>Exemplar</th><th>NF</th><th>Idade ctrl</th><th>Resist. (MPa)</th><th>FCK</th><th>Conforme</th></tr></thead><tbody>' + resumoHtml + '</tbody></table>'
-    + '<h2>Detalhe por CP</h2><table><thead><tr><th>Concretagem</th><th>NF</th><th>Exemplar</th><th>CP</th><th>Idade</th><th>Rompimento</th><th>Resultado</th><th>FCK</th><th>Conforme</th></tr></thead><tbody>' + detalheHtml + '</tbody></table>'
     + '<script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>';
   win.document.open();
   win.document.write(html);

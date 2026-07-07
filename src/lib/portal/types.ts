@@ -31,6 +31,7 @@ export type PortalResultadoRow = {
   receipt_id: string | null;
   nota_fiscal: string | null;
   serie: string | null;
+  elementos_concretados: string | null;
   cp_id: string;
   cp_codigo: string | null;
   numeracao_lab: string | null;
@@ -75,4 +76,19 @@ export type ExemplarResumo = {
   fck: number | null;
   conforme: boolean | null;
   n_cps: number;
+};
+
+// --- Correcao de laudo (portal) ---
+export type PortalCorrecaoTipo = 'local_peca' | 'elementos_caminhao' | 'resultado' | 'outro';
+export type PortalCorrecaoConfig = { correcao_habilitada: boolean; correcao_auto_edicao_peca: boolean; correcao_resultado: boolean };
+export type PortalCorrecaoInput = {
+  work_id: string; tipo: PortalCorrecaoTipo; lab_report_id?: string | null; concretagem_id?: string | null;
+  receipt_id?: string | null; corpo_prova_id?: string | null; valor_proposto?: string | null; comentario?: string | null;
+};
+export type PortalCorrecao = {
+  id: string; tipo: PortalCorrecaoTipo | string; status: string; campo_alvo: string | null;
+  valor_atual: string | null; valor_proposto: string | null; comentario_cliente: string | null;
+  decisao_comentario: string | null; created_at: string | null; decided_at: string | null;
+  nova_revisao: number | null; work_id: string | null; work_nome?: string | null;
+  lab_report_numero?: string | null; lab_report_id?: string | null; concretagem_id?: string | null; concretagem_codigo?: string | null;
 };

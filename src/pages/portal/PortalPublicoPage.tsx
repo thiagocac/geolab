@@ -6,7 +6,7 @@ import { Card, CardHeader } from '../../components/ui/Card';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosPanel';
-import type { PortalLaudoView, PortalResultadoRow } from '../../lib/portal/types';
+import type { PortalCorrecao, PortalCorrecaoConfig, PortalCorrecaoInput, PortalLaudoView, PortalResultadoRow } from '../../lib/portal/types';
 import { env } from '../../lib/env';
 import { useToast } from '../../lib/toast';
 
@@ -17,6 +17,8 @@ type PortalData = {
   concretagens: { id: string; codigo: string | null; status: string; data_real: string | null; data_programada: string | null; local_texto: string | null; volume_lancado_m3: number | null; fck_previsto: number | null }[];
   laudos: PortalLaudoView[];
   resultados: PortalResultadoRow[];
+  correcoes: PortalCorrecao[];
+  portal_config: PortalCorrecaoConfig | null;
 };
 
 async function callPortal(token: string, extra?: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -48,6 +50,8 @@ export function PortalPublicoPage() {
         concretagens: (p.concretagens as PortalData['concretagens']) ?? [],
         laudos: (p.laudos as PortalLaudoView[]) ?? [],
         resultados: (p.resultados as PortalResultadoRow[]) ?? [],
+        correcoes: (p.correcoes as PortalCorrecao[]) ?? [],
+        portal_config: ((): PortalCorrecaoConfig => { const c = (p.portal_config as Record<string, unknown>) ?? {}; return { correcao_habilitada: c.correcao_habilitada !== false, correcao_auto_edicao_peca: c.correcao_auto_edicao_peca === true, correcao_resultado: c.correcao_resultado !== false }; })(),
       };
     },
     enabled: token.length >= 16,
@@ -60,6 +64,12 @@ export function PortalPublicoPage() {
       const r = await callPortal(token, { lab_report_id: reportId });
       if (r.url) tab.set(String(r.url)); else tab.fail();
     } catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
+  }
+
+  async function solicitar(input: PortalCorrecaoInput) {
+    await callPortal(token, { action: 'solicitar_correcao', work_id: input.work_id, tipo: input.tipo, lab_report_id: input.lab_report_id ?? null, concretagem_id: input.concretagem_id ?? null, receipt_id: input.receipt_id ?? null, corpo_prova_id: input.corpo_prova_id ?? null, valor_proposto: input.valor_proposto ?? null, comentario: input.comentario ?? null });
+    await q.refetch();
+    toast('Pedido de correção enviado ao laboratório.', 'success');
   }
 
   const d = q.data;
@@ -95,6 +105,9 @@ export function PortalPublicoPage() {
                 resultados={d.resultados}
                 onDownload={(id) => abrir(id)}
                 fileLabel="resultados"
+                onSolicitarCorrecao={solicitar}
+                correcaoConfig={d.portal_config}
+                meusPedidos={d.correcoes}
               />
             )}
           </>

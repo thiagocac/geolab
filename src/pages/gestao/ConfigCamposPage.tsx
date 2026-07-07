@@ -6,10 +6,10 @@ import { LoadingState, ErrorState } from '../../components/ui/State';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { getConfigLab, saveConfigLab } from '../../lib/api/preferencias';
-import { CAMPOS_ENSAIO, CAMPOS_LAUDO, CAMPOS_RECEBIMENTO, CAMPOS_CONCRETAGEM, initCampoState, type CampoCatalogo } from '../../lib/concreto/camposEnsaioLaudo';
+import { CAMPOS_ENSAIO, CAMPOS_LAUDO, CAMPOS_RECEBIMENTO, CAMPOS_CONCRETAGEM, CAMPOS_PORTAL, initCampoState, type CampoCatalogo } from '../../lib/concreto/camposEnsaioLaudo';
 
-type AbaKey = 'ensaio' | 'laudo' | 'recebimento' | 'concretagem';
-type ColunaKey = 'ensaio_campos' | 'laudo_campos' | 'recebimento_campos' | 'concretagem_campos';
+type AbaKey = 'ensaio' | 'laudo' | 'recebimento' | 'concretagem' | 'portal';
+type ColunaKey = 'ensaio_campos' | 'laudo_campos' | 'recebimento_campos' | 'concretagem_campos' | 'portal_campos';
 
 const ABAS: { key: AbaKey; label: string; coluna: ColunaKey; cat: CampoCatalogo[]; titulo: string; desc: string; invalidate: string[] }[] = [
   { key: 'ensaio', label: 'Ensaio', coluna: 'ensaio_campos', cat: CAMPOS_ENSAIO,
@@ -28,6 +28,10 @@ const ABAS: { key: AbaKey; label: string; coluna: ColunaKey; cat: CampoCatalogo[
     titulo: 'Campos da concretagem (etapa 1)',
     desc: 'Campos da etapa 1 do atendimento. Aparecem na tela de concretagem e alimentam a ficha e o laudo. Cliente, obra e fck/traço são o núcleo e sempre aparecem.',
     invalidate: ['concretagem', 'laudos'] },
+  { key: 'portal', label: 'Portal do cliente', coluna: 'portal_campos', cat: CAMPOS_PORTAL,
+    titulo: 'Portal do cliente \u2014 corre\u00e7\u00f5es',
+    desc: 'Controla o que o cliente faz no portal: solicitar corre\u00e7\u00e3o de laudo (pe\u00e7a/resultado) e, opcionalmente, ajustar o texto da pe\u00e7a/elementos. O laborat\u00f3rio sempre aprova antes de reemitir o laudo.',
+    invalidate: ['portal-correcao-config'] },
 ];
 
 const ABA_KEYS = ABAS.map((a) => a.key);
@@ -42,7 +46,7 @@ export function ConfigCamposPage() {
     const a = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('aba') : null;
     return ABA_KEYS.includes(a as AbaKey) ? (a as AbaKey) : 'ensaio';
   });
-  const [state, setState] = useState<Record<AbaKey, Record<string, boolean>>>({ ensaio: {}, laudo: {}, recebimento: {}, concretagem: {} });
+  const [state, setState] = useState<Record<AbaKey, Record<string, boolean>>>({ ensaio: {}, laudo: {}, recebimento: {}, concretagem: {}, portal: {} });
   const [busy, setBusy] = useState(false);
 
   const cfg = useQuery({
@@ -59,6 +63,7 @@ export function ConfigCamposPage() {
       laudo: initCampoState(CAMPOS_LAUDO, (c?.laudo_campos ?? {}) as Record<string, unknown>),
       recebimento: initCampoState(CAMPOS_RECEBIMENTO, (c?.recebimento_campos ?? {}) as Record<string, unknown>),
       concretagem: initCampoState(CAMPOS_CONCRETAGEM, (c?.concretagem_campos ?? {}) as Record<string, unknown>),
+      portal: initCampoState(CAMPOS_PORTAL, (c?.portal_campos ?? {}) as Record<string, unknown>),
     });
   }, [cfg.data]);
 

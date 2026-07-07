@@ -79,6 +79,12 @@ export const CAMPOS_LAUDO: CampoCatalogo[] = [
   { key: 'norma_16886', label: 'Norma NBR 16886:2020 — amostragem do concreto fresco', hint: 'Referência citada no laudo.', on: true },
 ];
 
+export const CAMPOS_PORTAL: CampoCatalogo[] = [
+  { key: 'correcao_habilitada', label: 'Permitir solicitacao de correcao de laudo', hint: 'Mostra o botao "Solicitar correcao" no portal do cliente (peca/resultado). O laboratorio sempre aprova antes de reemitir.', on: true },
+  { key: 'correcao_auto_edicao_peca', label: 'Cliente ajusta o texto da peca/elementos', hint: 'Quando ligado, o cliente digita o novo texto de Local/peca e Elementos concretados; ainda depende de aprovacao do lab. Desligado: o cliente apenas descreve o pedido.', on: false },
+  { key: 'correcao_resultado', label: 'Permitir contestar um resultado', hint: 'Cliente pode sinalizar um resultado que julga incorreto. O RT reavalia e re-lanca o valor pelo fluxo do laboratorio.', on: true },
+];
+
 export function initCampoState(cat: CampoCatalogo[], cfg: Record<string, unknown> | null | undefined): Record<string, boolean> {
   const next: Record<string, boolean> = {};
   const source = cfg ?? {};

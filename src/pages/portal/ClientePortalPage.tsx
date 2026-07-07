@@ -11,6 +11,8 @@ import { useToast } from '../../lib/toast';
 import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosPanel';
 import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, openPortalLaudo, uploadPortalAnexo, downloadPortalAnexo, type PortalProgramacaoInput, type PortalAnexo } from '../../lib/api/portalCliente';
 import { listPortalResultados, listPortalLaudosView } from '../../lib/api/portalResultados';
+import { submitPortalCorrecao, getPortalCorrecaoConfig, listMeusPedidosCorrecao } from '../../lib/api/portalCorrecao';
+import type { PortalCorrecaoInput } from '../../lib/portal/types';
 
 const blank = (): PortalProgramacaoInput & { key: string } => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
 const str = (v: unknown) => String(v ?? '').trim();
@@ -31,6 +33,9 @@ export function ClientePortalPage() {
   const concretagens = useQuery({ queryKey: ['portal-concretagens-status'], queryFn: () => listPortalConcretagens('') });
   const laudos = useQuery({ queryKey: ['portal-laudos-view'], queryFn: () => listPortalLaudosView(), enabled: tab === 'resultados' });
   const resultados = useQuery({ queryKey: ['portal-resultados'], queryFn: () => listPortalResultados(), enabled: tab === 'resultados' });
+  const correcaoCfg = useQuery({ queryKey: ['portal-correcao-config'], queryFn: getPortalCorrecaoConfig, enabled: tab === 'resultados' });
+  const meusPedidos = useQuery({ queryKey: ['portal-meus-pedidos'], queryFn: () => listMeusPedidosCorrecao(), enabled: tab === 'resultados' });
+  async function solicitarCorrecao(input: PortalCorrecaoInput) { await submitPortalCorrecao(input); await qc.invalidateQueries({ queryKey: ['portal-meus-pedidos'] }); toast('Pedido de correção enviado ao laboratório.', 'success'); }
 
   function patch(key: string, field: keyof PortalProgramacaoInput, value: unknown) { setRows((list) => list.map((r) => r.key === key ? { ...r, [field]: value } : r)); }
   async function enviar() {
@@ -117,6 +122,9 @@ export function ClientePortalPage() {
           error={laudos.isError ? (laudos.error as Error).message : resultados.isError ? (resultados.error as Error).message : null}
           onDownload={(id) => abrir(id)}
           fileLabel="meus-resultados"
+          onSolicitarCorrecao={solicitarCorrecao}
+          correcaoConfig={correcaoCfg.data ?? null}
+          meusPedidos={meusPedidos.data ?? []}
         />
       )}
     </section>
