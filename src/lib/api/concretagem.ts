@@ -93,9 +93,12 @@ export async function atribuirEquipe(id: string, moldadorId: string | null, labo
 
 // Provisionamento de formas: grava a quantidade prevista (formas_previstas) + o detalhe do cálculo em metadata.formas.
 export type FormasDetalhe = { n_amostras: number; cps_por_amostra: number; capacidade_m3: number; volume_m3: number | null };
-export async function provisionarFormas(id: string, formasPrevistas: number, detalhe: FormasDetalhe, metadataBase?: Rec | null): Promise<void> {
+export async function provisionarFormas(id: string, formasPrevistas: number, detalhe: FormasDetalhe, metadataBase?: Rec | null, padraoMoldagem?: Rec[] | null): Promise<void> {
   const md = (metadataBase && typeof metadataBase === 'object') ? metadataBase : {};
-  await updateConcretagem(id, { formas_previstas: formasPrevistas, metadata: { ...md, formas: detalhe } });
+  const meta: Rec = { ...md, formas: detalhe };
+  // Traço não cadastrado: grava o padrão editado na concretagem (fonte da geração de CPs e da ficha).
+  if (Array.isArray(padraoMoldagem) && padraoMoldagem.length) meta.padrao_moldagem = padraoMoldagem;
+  await updateConcretagem(id, { formas_previstas: formasPrevistas, metadata: meta });
 }
 
 // Colaboradores p/ os seletores de equipe (id, nome, funções). Função alimenta os agrupamentos do modal.

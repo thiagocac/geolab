@@ -14,22 +14,19 @@ import { Tooltip } from '../../components/ui/Tooltip';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { VirtualTable } from '../../components/ui/VirtualTable';
 import { ChevronRight, CheckCircle, Users, Mold, FileText, XCircle } from '../../components/ui/icons';
+import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import {
   listProgramacoes, confirmarProgramacao, cancelarProgramacao, invokeFicha,
   atribuirEquipe, provisionarFormas, listEquipeColaboradores, padraoMoldagemDaConcretagem,
   type ConcretagemRow,
 } from '../../lib/api/concretagem';
-import { toNumber } from '../../lib/concreto';
+import { toNumber, padroesToDb, type PadraoMoldagem } from '../../lib/concreto';
 import { saveBlob as dl } from '../../lib/pdf';
 
 type Row = ConcretagemRow;
 const podeConfirmar = (r: Row) => r.status !== 'registrado' && r.status !== 'cancelada';
 const teamLabel = (r: Row) => [r.moldador?.nome, r.laboratorista?.nome].filter(Boolean).join(' • ');
-// CPs por amostra (1 NF) = soma das quantidades do padrão de moldagem (todas as idades são moldadas no mesmo dia).
-function cpsPorAmostra(r: Row): number {
-  return padraoMoldagemDaConcretagem(r).reduce((s, p) => s + (toNumber(p.quantidadeCp) ?? 0), 0);
-}
 
 export function ProgramacoesPage() {
   const toast = useToast();
@@ -50,6 +47,8 @@ export function ProgramacoesPage() {
   const [formasRow, setFormasRow] = useState<Row | null>(null);
   const [cap, setCap] = useState('8');
   const [nAmostrasManual, setNAmostrasManual] = useState('');
+  // Padrão de moldagem editável quando o traço NÃO é cadastrado (sem operational_material_id).
+  const [padraoEdit, setPadraoEdit] = useState<PadraoMoldagem[]>([]);
 
   const todas: Row[] = q.data ?? [];
   const termo = busca.trim().toLowerCase();
@@ -80,19 +79,22 @@ export function ProgramacoesPage() {
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
 
-  function abrirFormas(r: Row) { setCap('8'); setNAmostrasManual(''); setFormasRow(r); }
+  function abrirFormas(r: Row) { setCap('8'); setNAmostrasManual(''); setPadraoEdit(padraoMoldagemDaConcretagem(r)); setFormasRow(r); }
   const capNum = Math.max(1, toNumber(cap) ?? 8);
   const volume = formasRow?.volume_programado_m3 ?? null;
   const estAmostras = volume && volume > 0 ? Math.max(1, Math.ceil(volume / capNum)) : 1;
   const nAmostras = nAmostrasManual.trim() !== '' ? Math.max(1, Math.floor(toNumber(nAmostrasManual) ?? 1)) : estAmostras;
-  const cpsAmostra = formasRow ? cpsPorAmostra(formasRow) : 0;
+  // Traço cadastrado: padrão vem do traço (read-only). Não cadastrado: padrão editável (padraoEdit).
+  const tracoRegistrado = !!formasRow?.operational_material_id;
+  const padraoAtivo = tracoRegistrado ? (formasRow ? padraoMoldagemDaConcretagem(formasRow) : []) : padraoEdit;
+  const cpsAmostra = padraoAtivo.reduce((s, p) => s + (toNumber(p.quantidadeCp) ?? 0), 0);
   const formasNecessarias = cpsAmostra * nAmostras;
 
   async function salvarFormas() {
     if (!formasRow) return;
     setBusy(true);
     try {
-      await provisionarFormas(formasRow.id, formasNecessarias, { n_amostras: nAmostras, cps_por_amostra: cpsAmostra, capacidade_m3: capNum, volume_m3: volume }, formasRow.metadata ?? null);
+      await provisionarFormas(formasRow.id, formasNecessarias, { n_amostras: nAmostras, cps_por_amostra: cpsAmostra, capacidade_m3: capNum, volume_m3: volume }, formasRow.metadata ?? null, tracoRegistrado ? null : padroesToDb(padraoEdit));
       await qc.invalidateQueries({ queryKey: ['programacoes'] });
       toast('Formas provisionadas: ' + formasNecessarias + '.', 'success');
       setFormasRow(null);
@@ -175,12 +177,20 @@ export function ProgramacoesPage() {
         {formasRow ? (
           <div className="space-y-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">As fôrmas (moldes de CP) são calculadas a partir do padrão de moldagem do traço: <b>CPs por amostra × nº de amostras (caminhões) = formas necessárias</b>.</p>
-            <div className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
-              <div className="flex justify-between"><span className="text-slate-500">Padrão de moldagem</span><span className="font-bold">{cpsAmostra} CP por amostra</span></div>
-              <ul className="mt-2 space-y-0.5 text-xs text-slate-500">
-                {padraoMoldagemDaConcretagem(formasRow).map((p) => <li key={p.id} className="flex justify-between"><span>{p.idadeControle} {p.unidadeIdade}</span><span>{toNumber(p.quantidadeCp) ?? 0} CP</span></li>)}
-              </ul>
-            </div>
+            {tracoRegistrado ? (
+              <div className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
+                <div className="flex justify-between"><span className="text-slate-500">Padrão de moldagem</span><span className="font-bold">{cpsAmostra} CP por amostra</span></div>
+                <ul className="mt-2 space-y-0.5 text-xs text-slate-500">
+                  {padraoAtivo.map((p) => <li key={p.id} className="flex justify-between"><span>{p.idadeControle} {p.unidadeIdade}</span><span>{toNumber(p.quantidadeCp) ?? 0} CP</span></li>)}
+                </ul>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
+                <div className="mb-2 flex items-center justify-between gap-2"><span className="text-slate-500">Padrão de moldagem <span className="font-bold text-slate-700 dark:text-slate-200">— traço não cadastrado, edite abaixo</span></span><span className="font-bold">{cpsAmostra} CP por amostra</span></div>
+                <MoldingStandardEditor value={padraoEdit} onChange={setPadraoEdit} fck={formasRow.fck_previsto ?? null} />
+                <p className="mt-2 text-xs text-slate-500">Sem traço cadastrado, o padrão vem do default (NBR 5739: 28d e 63d, 2 CP cada). Ajuste as idades e a quantidade de CP — o valor é salvo nesta concretagem e usado para gerar os CPs.</p>
+              </div>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Volume programado (m³)" value={volume ?? '—'} readOnly />
               <Field label="Capacidade/caminhão (m³)" type="number" min={1} value={cap} onChange={(e) => setCap(e.target.value)} hint="Base da estimativa de caminhões." />
