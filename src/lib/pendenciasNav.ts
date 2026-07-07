@@ -28,4 +28,9 @@ export const PEND_SECOES: PendSecao[] = [
     { chave: 'cert_vencida', titulo: 'Certifica\u00e7\u00f5es vencidas', descricao: 'Colaboradores ativos com certifica\u00e7\u00e3o vencida.', rota: '/cadastros?tab=colaboradores&cert=vencida', roles: PEND_QUALIDADE_ROLES },
     { chave: 'cert_vencendo', titulo: 'Certifica\u00e7\u00f5es a vencer (30d)', descricao: 'Colaboradores ativos com certifica\u00e7\u00e3o vencendo em at\u00e9 30 dias.', rota: '/cadastros?tab=colaboradores&cert=vence30', roles: PEND_QUALIDADE_ROLES },
   ] },
+  { area: 'Qualidade do ensaio', itens: [
+    { chave: 'verif_vencida', titulo: 'Verificações da prensa vencidas', descricao: 'Prensas com verificação intermediária vencida (ou nunca feita).', rota: '/cadastros?tab=equipamentos', roles: PEND_QUALIDADE_ROLES },
+    { chave: 'verif_vencendo', titulo: 'Verificações a vencer (30d)', descricao: 'Prensas com verificação intermediária vencendo em até 30 dias.', rota: '/cadastros?tab=equipamentos', roles: PEND_QUALIDADE_ROLES },
+    { chave: 'camara_fora_faixa', titulo: 'Câmara úmida fora de faixa', descricao: 'Registros de cura fora da faixa (NBR 9479) nos últimos 7 dias.', rota: '/diario-cura', roles: PEND_QUALIDADE_ROLES },
+  ] },
 ];

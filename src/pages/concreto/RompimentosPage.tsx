@@ -13,6 +13,7 @@ import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaborado
 import { cpPorQr, cpPorNumeracao, type CpQr } from '../../lib/api/etiquetas';
 import { listEquipamentosRef, mapAlocacaoObras, rotuloEquip } from '../../lib/api/equipamentos';
 import { getConfigLab } from '../../lib/api/preferencias';
+import { dispersaoPct } from '../../lib/api/dispersao';
 import { CAMPOS_ENSAIO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
 import { DIMENSOES_CP, cargaParaMpa, relacaoHD, type UnidadeCarga } from '../../lib/concreto/cp';
 import {
@@ -168,6 +169,23 @@ export function RompimentosPage() {
   function mpaForaFaixa(v: number): boolean { return Number.isFinite(v) && (v <= 0 || v > 120); }
 
   const rows = cpsQ.data ?? [];
+  // B1 — dispersão do par (gêmeos): mapa amostra+idade -> resultados, para marcar aviso quando Δ% > limite.
+  const dispLimite = Number((cfgQ.data as { dispersao_par_limite_pct?: number } | undefined)?.dispersao_par_limite_pct) || 6;
+  const dispPares = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const r of rows) {
+      if (!r.amostra_id || r.idade_unidade === 'hora') continue;
+      const v = resultadoAtual(r)?.resultado_valor;
+      if (v == null || !Number.isFinite(Number(v))) continue;
+      const k = r.amostra_id + '|' + String(r.idade_dias ?? '');
+      const arr = m.get(k) ?? []; arr.push(Number(v)); m.set(k, arr);
+    }
+    return m;
+  }, [rows]);
+  function dispDe(cp: CpRompimento): number | null {
+    if (!cp.amostra_id || cp.idade_unidade === 'hora') return null;
+    return dispersaoPct(dispPares.get(cp.amostra_id + '|' + String(cp.idade_dias ?? '')) ?? []);
+  }
   const tipos = useMemo(() => {
     const values = new Map<string, string>();
     for (const r of rows) {
@@ -668,7 +686,7 @@ export function RompimentosPage() {
                       <td className="px-3 py-2 align-top"><span className={isAtrasado(r, dataRef) ? 'font-black text-red-600' : 'font-black'}>{fmtDate(r.data_prevista_rompimento)}{isAtrasado(r, dataRef) ? ' !' : ''}</span></td>
                       <td className="px-3 py-2"><div className="flex gap-2"><input className="input" type="date" value={effectiveData(r)} onChange={(e) => patch(r.id, { data: e.target.value })} /><input className="input max-w-[90px]" type="time" value={effectiveHora(r)} onChange={(e) => patch(r.id, { hora: e.target.value })} /></div></td>
                       <td className="px-3 py-2"><input id={`romp-val-${rowIdx}`} className="input max-w-[150px]" placeholder={entrarCarga ? 'carga' : 'MPa'} value={entrarCarga ? effectiveCarga(r) : effectiveValor(r)} onChange={(e) => patch(r.id, entrarCarga ? { carga: sanitizeDecimal(e.target.value) } : { valor: sanitizeDecimal(e.target.value) })} onPaste={(e) => handlePaste(e, rowIdx)} title="Cole uma coluna do Excel para preencher vários CPs · Enter pula para o próximo" onKeyDown={(e) => { if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) { e.preventDefault(); const n = document.getElementById(`romp-val-${rowIdx + 1}`) as HTMLInputElement | null; n?.focus(); n?.select(); } else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const pv = document.getElementById(`romp-val-${rowIdx - 1}`) as HTMLInputElement | null; pv?.focus(); pv?.select(); } }} />{entrarCarga && effectiveCarga(r) ? <div className="mt-1 text-xs font-bold text-slate-500">≈ {nfmt(cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura), 1)} MPa · h/d {nfmt(relacaoHD(diametro, altura), 2)}</div> : null}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); return (effectiveValor(r) || effectiveCarga(r)) && mpaForaFaixa(mpa) ? <div className="mt-1 text-xs font-bold text-amber-600">⚠ MPa fora de faixa plausível (verifique a digitação)</div> : null; })()}{(() => { const mpa = entrarCarga ? cargaParaMpa(Number(effectiveCarga(r)), cargaUnidade, diametro, altura) : Number(effectiveValor(r)); const esp2 = esperado(r); return (effectiveValor(r) || effectiveCarga(r)) && Number.isFinite(mpa) && mpa > 0 && esp2 != null && esp2 > 0 && mpa < 0.8 * esp2 ? <div className="mt-1 text-xs font-bold text-red-600">⚠ Resultado 80% menor que o esperado</div> : null; })()}</td>
-                      <td className="px-3 py-2"><span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-800">{esp == null ? 'sem critério' : nfmt(esp, 1)}</span>{ins ? <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold text-red-700">abaixo do fck</span> : abaixoFck ? <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">acompanhamento</span> : null}</td>
+                      <td className="px-3 py-2"><span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-800">{esp == null ? 'sem critério' : nfmt(esp, 1)}</span>{ins ? <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold text-red-700">abaixo do fck</span> : abaixoFck ? <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">acompanhamento</span> : null}{(() => { const dp = dispDe(r); return dp != null && dp > dispLimite ? <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800" title={`Dispersão do par ${nfmt(dp, 1)}% acima do limite ${dispLimite}% — verifique moldagem, capeamento ou prensa (NBR 5739)`}>Δ {nfmt(dp, 1)}%</span> : null; })()}</td>
                       <td className="px-3 py-2 font-semibold">{nf(r)}{r.concretagens?.numero_relatorio ? <div className="text-[11px] font-normal text-slate-400">Rel. {r.concretagens.numero_relatorio}</div> : null}</td><td className="px-3 py-2 font-semibold">{idade(r)}</td>
                       {campoPrensa ? <td className="px-3 py-2 text-xs">{(() => { const eq = res?.equipamento_id ?? null; if (eq) return equipById.get(eq) ?? '—'; const al = prensasDaObra(r); if (al.length === 1) return <span className="text-slate-500" title="Prensa prevista pela alocação da obra">{equipById.get(al[0]) ?? '—'} <span className="text-slate-400">(prev.)</span></span>; if (al.length > 1) return <span className="text-slate-500" title="Várias prensas alocadas à obra">{al.length} prensas</span>; return <span className="text-slate-400">—</span>; })()}</td> : null}
                       {campoTipo ? <td className="px-3 py-2"><select className="input min-w-[82px]" value={effectiveTipo(r)} onChange={(e) => patch(r.id, { tipo_ruptura: e.target.value })}><option value="">-</option>{['A', 'B', 'C', 'D', 'E', 'F'].map((x) => <option key={x} value={x}>{x}</option>)}</select></td> : null}

@@ -10,7 +10,7 @@ import { Modal } from './ui/Modal';
 import { useToast } from '../lib/toast';
 import { getPendenciasResumo } from '../lib/api/pendencias';
 import { PEND_SECOES } from '../lib/pendenciasNav';
-import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Download, Tag, Truck } from './ui/icons';
+import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Download, Tag, Truck, Thermometer } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
@@ -42,6 +42,7 @@ const sections: Section[] = [
     { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
     { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles },
     { to: '/coleta-formas', label: 'Coleta de fôrmas', icon: Truck, roles: labRoles },
+    { to: '/diario-cura', label: 'Diário de cura', icon: Thermometer, roles: labRoles },
     { to: '/configuracoes', label: 'Configurações', icon: Settings, roles: labRoles },
   ] },
   { title: 'Operação interna', items: [

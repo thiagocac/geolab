@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, AreaChart, Area, PieChart, Pie, Legend, ScatterChart, Scatter, ZAxis, ComposedChart } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, AreaChart, Area, PieChart, Pie, Legend, ScatterChart, Scatter, ZAxis, ComposedChart, ReferenceLine } from 'recharts';
 import { useAuth } from '../../lib/auth';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
@@ -9,13 +9,13 @@ import { Button } from '../../components/ui/Button';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { exportExcel } from '../../lib/export/xlsx';
-import { getLabDashboardSnapshot, emptySnapshot, type LabDashboardSnapshot, type SeriePoint, type RankingRow } from '../../lib/api/dashboards';
+import { getLabDashboardSnapshot, emptySnapshot, cartaControleOpcoes, getCartaControle, type LabDashboardSnapshot, type SeriePoint, type RankingRow, type CartaScope } from '../../lib/api/dashboards';
 
 const tipStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, color: 'var(--ink)', fontSize: 12 } as const;
 const palette = ['#182863', '#C5117E', '#3E2D71', '#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#64748b'];
 
 type DashId =
-  | 'exec' | 'qualidade' | 'rompimentos' | 'resistencia' | 'insatisfatorios' | 'altas' | 'variacao' | 'slump' | 'fornecedores' | 'obras'
+  | 'exec' | 'qualidade' | 'rompimentos' | 'resistencia' | 'insatisfatorios' | 'altas' | 'variacao' | 'carta_controle' | 'slump' | 'fornecedores' | 'obras'
   | 'logistica' | 'sla' | 'pendencias' | 'nc' | 'docgate' | 'equipamentos' | 'produtividade' | 'financeiro' | 'contratos' | 'risco';
 
 type Dash = { id: DashId; titulo: string; grupo: string; desc: string; exportavel?: boolean };
@@ -27,6 +27,7 @@ const dashboards: Dash[] = [
   { id: 'insatisfatorios', titulo: 'Resultados insatisfatórios', grupo: 'Qualidade', desc: 'CPs/exemplares abaixo do fck apenas na idade de controle.', exportavel: true },
   { id: 'altas', titulo: 'Altas resistências', grupo: 'Qualidade', desc: 'Resultados muito acima do fck para identificar excesso de consumo ou traço conservador.', exportavel: true },
   { id: 'variacao', titulo: 'Variação e dispersão', grupo: 'Qualidade', desc: 'Amplitude, desvio, coeficiente de variação e estabilidade por traço.', exportavel: true },
+  { id: 'carta_controle', titulo: 'Carta de controle (X̄-R)', grupo: 'Qualidade', desc: 'Média e amplitude do par na idade de controle, com limites 3σ (Shewhart n=2) por traço, obra ou fornecedor.' },
   { id: 'slump', titulo: 'Slump e recebimento', grupo: 'Campo', desc: 'Abatimento medido, temperatura do concreto e rejeições.', exportavel: true },
   { id: 'fornecedores', titulo: 'Fornecedores / concreteiras', grupo: 'Fornecedor', desc: 'Ranking por volume, conformidade, atraso e ocorrência.', exportavel: true },
   { id: 'obras', titulo: 'Scorecard por obra', grupo: 'Cliente', desc: 'Ranking de obras com volume, pendências, conformidade e receita.', exportavel: true },
@@ -82,6 +83,77 @@ function Panel({ id, snapshot }: { id: DashId; snapshot: LabDashboardSnapshot })
   return <div className="grid gap-4 lg:grid-cols-2"><ChartBox title="Score de risco integrado"><Bars data={rank(snapshot, 'risco_integrado').map((r) => ({ label: r.nome, valor: r.valor })) as never} /></ChartBox><Card><CardHeader title="Alertas priorizados" kicker="Risco" /><div className="grid gap-2 p-4">{snapshot.alerts.slice(0, 10).map((a, i) => <div key={a.id ?? i} className="rounded-xl border border-slate-100 p-3 dark:border-slate-800"><strong>{a.titulo}</strong><p className="text-sm text-slate-500">{a.detalhe}</p></div>)}</div></Card></div>;
 }
 
+function CartaControlePanel({ from, to }: { from: string; to: string }) {
+  const [scope, setScope] = useState<CartaScope>('traco');
+  const [tracoId, setTracoId] = useState('');
+  const [obraId, setObraId] = useState('');
+  const [fornecedor, setFornecedor] = useState('');
+  const opcoesQ = useQuery({ queryKey: ['carta-opcoes'], queryFn: cartaControleOpcoes });
+  const alvoId = scope === 'traco' ? tracoId : scope === 'obra' ? obraId : null;
+  const alvoForn = scope === 'fornecedor' ? fornecedor : null;
+  const pronto = scope === 'fornecedor' ? !!alvoForn : !!alvoId;
+  const cartaQ = useQuery({ queryKey: ['carta-controle', scope, alvoId, alvoForn, from, to], queryFn: () => getCartaControle(scope, alvoId, alvoForn, from, to), enabled: pronto });
+  const c = cartaQ.data;
+  const dados = (c?.pontos ?? []).map((p) => ({ ...p }));
+  return (
+    <div className="space-y-4">
+      <Card>
+        <div className="grid gap-3 p-5 md:grid-cols-[180px_1fr]">
+          <SelectField label="Agrupar por" value={scope} onChange={(e) => setScope(e.target.value as CartaScope)}>
+            <option value="traco">Traço</option><option value="obra">Obra</option><option value="fornecedor">Fornecedor</option>
+          </SelectField>
+          {scope === 'traco' ? <SelectField label="Traço" value={tracoId} onChange={(e) => setTracoId(e.target.value)}><option value="">Selecione…</option>{(opcoesQ.data?.tracos ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}</SelectField>
+           : scope === 'obra' ? <SelectField label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}><option value="">Selecione…</option>{(opcoesQ.data?.obras ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}</SelectField>
+           : <SelectField label="Fornecedor" value={fornecedor} onChange={(e) => setFornecedor(e.target.value)}><option value="">Selecione…</option>{(opcoesQ.data?.fornecedores ?? []).map((o) => <option key={o} value={o}>{o}</option>)}</SelectField>}
+        </div>
+      </Card>
+      {!pronto ? <Card><div className="p-6 text-sm text-slate-500">Selecione {scope === 'fornecedor' ? 'um fornecedor' : scope === 'obra' ? 'uma obra' : 'um traço'} para montar a carta de controle.</div></Card>
+       : cartaQ.isLoading ? <LoadingState />
+       : cartaQ.error ? <ErrorState message={(cartaQ.error as Error).message} />
+       : !c || c.n === 0 ? <Card><div className="p-6 text-sm text-slate-500">Sem pares suficientes na idade de controle ({c?.idade ?? 28} dias) para este recorte no período.</div></Card>
+       : (
+        <>
+          <div className="grid gap-3 md:grid-cols-4">
+            <Stat label="Subgrupos (pares)" value={c.n} detail={`idade ${c.idade} dias`} />
+            <Stat label="Média X̄̄" value={`${c.xbb} MPa`} detail={`LSC ${c.ucl_x} · LIC ${c.lcl_x}`} />
+            <Stat label="Amplitude média R̄" value={`${c.rbar} MPa`} detail={`LSC_R ${c.ucl_r}`} />
+            <Stat label="Fora de controle" value={c.fora_controle ?? 0} detail={c.fck != null ? `${c.abaixo_fck ?? 0} exemplar(es) < fck ${c.fck}` : undefined} />
+          </div>
+          <ChartBox title="Carta X̄ — média do par por exemplar (MPa)">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={dados} margin={{ top: 8, right: 24, bottom: 0, left: -12 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'var(--line)' }} />
+                <YAxis domain={['auto', 'auto']} tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={tipStyle} />
+                <ReferenceLine y={c.ucl_x} stroke="#dc2626" strokeDasharray="5 4" label={{ value: 'LSC', position: 'right', fontSize: 10, fill: '#dc2626' }} />
+                <ReferenceLine y={c.cl_x} stroke="#16a34a" label={{ value: 'LC', position: 'right', fontSize: 10, fill: '#16a34a' }} />
+                <ReferenceLine y={c.lcl_x} stroke="#dc2626" strokeDasharray="5 4" label={{ value: 'LIC', position: 'right', fontSize: 10, fill: '#dc2626' }} />
+                {c.fck != null ? <ReferenceLine y={c.fck} stroke="#182863" strokeDasharray="2 3" label={{ value: 'fck', position: 'right', fontSize: 10, fill: '#182863' }} /> : null}
+                <Line type="monotone" dataKey="x" stroke="#C5117E" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartBox>
+          <ChartBox title="Carta R — amplitude do par (MPa)">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={dados} margin={{ top: 8, right: 24, bottom: 0, left: -12 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'var(--line)' }} />
+                <YAxis tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={tipStyle} />
+                <ReferenceLine y={c.ucl_r} stroke="#dc2626" strokeDasharray="5 4" label={{ value: 'LSC_R', position: 'right', fontSize: 10, fill: '#dc2626' }} />
+                <ReferenceLine y={c.rbar} stroke="#16a34a" label={{ value: 'R̄', position: 'right', fontSize: 10, fill: '#16a34a' }} />
+                <Line type="monotone" dataKey="r" stroke="#182863" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartBox>
+          <p className="text-xs text-slate-500">Limites 3σ estimados de R̄ com fatores de Shewhart para subgrupo n=2 (A2={c.a2}, D4={c.d4}). Pontos fora dos limites ou tendências indicam causa especial — investigue moldagem, cura, capeamento ou prensa. Não é o critério de aceitação (fck), é controle de processo.</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function LabDashboardsPage() {
   const { member } = useAuth();
   const [from, setFrom] = useState(startOfMonth());
@@ -115,7 +187,7 @@ export function LabDashboardsPage() {
         </Card>
         <div className="space-y-4">
           <Card><CardHeader kicker={current.grupo} title={current.titulo}>{current.desc}</CardHeader></Card>
-          {q.isLoading ? <LoadingState /> : q.error ? <ErrorState message={(q.error as Error).message} /> : <Panel id={active} snapshot={snapshot} />}
+          {active === 'carta_controle' ? <CartaControlePanel from={from} to={to} /> : q.isLoading ? <LoadingState /> : q.error ? <ErrorState message={(q.error as Error).message} /> : <Panel id={active} snapshot={snapshot} />}
         </div>
       </div>
     </div>

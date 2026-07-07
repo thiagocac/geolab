@@ -15,7 +15,7 @@ import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State'
 import { openDeferredTab } from '../../lib/pdf';
 import { listObrasRef } from '../../lib/api/operacao';
 import type { Column, SortState } from '../../lib/api/types';
-import { TIPOS_EQUIP, contarUsoEquipamento, getEquipamentoObras, listEquipamentos, rotuloEquip, saveEquipamento, setEquipamentoObras, signedCertEquipAnexo, softDeleteEquipamento, uploadCertEquipAnexo, type EquipamentoRow } from '../../lib/api/equipamentos';
+import { TIPOS_EQUIP, addVerificacao, contarUsoEquipamento, getEquipamentoObras, listEquipamentos, listVerificacoes, rotuloEquip, saveEquipamento, setEquipamentoObras, signedCertEquipAnexo, softDeleteEquipamento, softDeleteVerificacao, uploadCertEquipAnexo, verifStatus, type EquipamentoRow, type VerificacaoRow } from '../../lib/api/equipamentos';
 
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown) => { const s = str(v); if (!s) return null; const n = Number(s.replace(',', '.')); return Number.isFinite(n) ? n : null; };
@@ -56,6 +56,10 @@ export function EquipamentosPage() {
   const isPrensa = String(f.tipo ?? '') === 'prensa';
   const alocQ = useQuery({ queryKey: ['equip-obras', editId], queryFn: () => getEquipamentoObras(editId as string), enabled: !!editId && isPrensa });
   useEffect(() => { if (alocQ.data) setObrasAloc(new Set(alocQ.data)); }, [alocQ.data]);
+  // B2 — verificação intermediária da prensa (só prensa).
+  const verifQ = useQuery({ queryKey: ['equip-verif', editId], queryFn: () => listVerificacoes(editId as string), enabled: !!editId && isPrensa });
+  const [vf, setVf] = useState<Record<string, unknown>>({});
+  const [vBusy, setVBusy] = useState(false);
   const rows = q.data ?? [];
 
   const vistos = useMemo(() => {
@@ -77,11 +81,11 @@ export function EquipamentosPage() {
     return out;
   }, [rows, busca, fTipo, fCalib, soAtivos, sort]);
 
-  function novo() { setEditId(null); setF({ tipo: 'prensa', ativo: true }); setCertFile(null); setObrasAloc(new Set()); setOpen(true); }
+  function novo() { setEditId(null); setF({ tipo: 'prensa', ativo: true }); setCertFile(null); setObrasAloc(new Set()); setVf({}); setOpen(true); }
   function editar(e: EquipamentoRow) {
     setEditId(e.id);
-    setF({ tipo: e.tipo, apelido: e.apelido ?? '', marca_modelo: e.marca_modelo ?? '', numero_serie: e.numero_serie ?? '', capacidade_kn: e.capacidade_kn ?? '', classe: e.classe ?? '', numero_certificado: e.numero_certificado ?? '', data_calibracao: e.data_calibracao ?? '', validade_calibracao: e.validade_calibracao ?? '', lab_calibrador: e.lab_calibrador ?? '', incerteza_mpa: e.incerteza_mpa ?? '', observacao: e.observacao ?? '', ativo: e.ativo });
-    setCertFile(null); setObrasAloc(new Set()); setOpen(true);
+    setF({ tipo: e.tipo, apelido: e.apelido ?? '', marca_modelo: e.marca_modelo ?? '', numero_serie: e.numero_serie ?? '', capacidade_kn: e.capacidade_kn ?? '', classe: e.classe ?? '', numero_certificado: e.numero_certificado ?? '', data_calibracao: e.data_calibracao ?? '', validade_calibracao: e.validade_calibracao ?? '', lab_calibrador: e.lab_calibrador ?? '', incerteza_mpa: e.incerteza_mpa ?? '', verif_periodicidade_dias: e.verif_periodicidade_dias ?? '', observacao: e.observacao ?? '', ativo: e.ativo });
+    setCertFile(null); setObrasAloc(new Set()); setVf({}); setOpen(true);
   }
 
   async function salvar() {
@@ -93,7 +97,7 @@ export function EquipamentosPage() {
         tipo: str(f.tipo), apelido: str(f.apelido) || null, marca_modelo: str(f.marca_modelo) || null, numero_serie: str(f.numero_serie) || null,
         capacidade_kn: num(f.capacidade_kn), classe: str(f.classe) || null, numero_certificado: str(f.numero_certificado) || null,
         data_calibracao: str(f.data_calibracao) || null, validade_calibracao: str(f.validade_calibracao) || null, lab_calibrador: str(f.lab_calibrador) || null,
-        incerteza_mpa: num(f.incerteza_mpa), observacao: str(f.observacao) || null, ativo: f.ativo !== false,
+        incerteza_mpa: num(f.incerteza_mpa), verif_periodicidade_dias: num(f.verif_periodicidade_dias), observacao: str(f.observacao) || null, ativo: f.ativo !== false,
       };
       // 1) grava o equipamento (id resolvido). Anexo novo: no cadastro novo re-sobe com o id real.
       let id: string;
@@ -127,6 +131,20 @@ export function EquipamentosPage() {
       : 'Excluir ' + rot + '?';
     if (!(await confirm({ title: 'Excluir equipamento', message, danger: true, confirmLabel: 'Excluir' }))) return;
     try { await softDeleteEquipamento(e.id); await qc.invalidateQueries({ queryKey: ['equipamentos'] }); await qc.invalidateQueries({ queryKey: ['equipamentos-ref'] }); toast('Excluido.', 'success'); } catch (err) { toast((err as Error).message, 'error'); }
+  }
+  async function addVerif() {
+    if (!member || !editId) return;
+    const data = str(vf.data_verificacao); if (!data) { toast('Informe a data da verificação.', 'error'); return; }
+    setVBusy(true);
+    try {
+      await addVerificacao(member.tenant_id, editId, { data_verificacao: data, padrao_utilizado: str(vf.padrao_utilizado) || null, desvio_pct: num(vf.desvio_pct), conforme: vf.conforme !== false, responsavel: str(vf.responsavel) || null, observacao: str(vf.observacao) || null });
+      setVf({}); await qc.invalidateQueries({ queryKey: ['equip-verif', editId] });
+      toast('Verificação registrada.', 'success');
+    } catch (e) { toast((e as Error).message, 'error'); } finally { setVBusy(false); }
+  }
+  async function excluirVerif(id: string) {
+    if (!(await confirm({ title: 'Excluir verificação', message: 'Excluir este registro de verificação?', danger: true, confirmLabel: 'Excluir' }))) return;
+    try { await softDeleteVerificacao(id); await qc.invalidateQueries({ queryKey: ['equip-verif', editId] }); toast('Excluído.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
   }
 
   const columns: Array<Column<EquipamentoRow>> = [
@@ -190,6 +208,36 @@ export function EquipamentosPage() {
                       <label key={o.value} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={obrasAloc.has(o.value)} onChange={() => toggleObra(o.value)} /> {o.label}</label>
                     ))}
                   </div>}
+            </div>
+          ) : null}
+          {isPrensa ? (
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+              <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Verificação intermediária</strong>
+              <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '4px 0 8px' }}>Verificação periódica entre calibrações (anel/padrão). Vencida gera pendência — não bloqueia o ensaio. Deixe a periodicidade vazia para não controlar.</p>
+              <div style={{ maxWidth: 260 }}><Field label="Periodicidade (dias)" type="number" hint="Vazio = sem controle de verificação." value={String(f.verif_periodicidade_dias ?? '')} onChange={(e) => setF((s) => ({ ...s, verif_periodicidade_dias: e.target.value }))} /></div>
+              {!editId ? <p style={{ fontSize: 12, color: 'var(--ink-faint)', marginTop: 8 }}>Salve a prensa primeiro para registrar verificações.</p> : (
+                <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+                  {(() => { const st = verifStatus(num(f.verif_periodicidade_dias), verifQ.data?.[0]?.data_verificacao ?? null); return <span style={{ fontSize: 12, fontWeight: 700, color: st.cor }}>Status: {st.label}{st.proxima ? ' · próxima até ' + st.proxima.split('-').reverse().join('/') : ''}</span>; })()}
+                  <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', alignItems: 'end' }}>
+                    <Field label="Data" type="date" value={String(vf.data_verificacao ?? '')} onChange={(e) => setVf((s) => ({ ...s, data_verificacao: e.target.value }))} />
+                    <Field label="Padrão usado" value={String(vf.padrao_utilizado ?? '')} onChange={(e) => setVf((s) => ({ ...s, padrao_utilizado: e.target.value }))} />
+                    <Field label="Desvio (%)" type="number" value={String(vf.desvio_pct ?? '')} onChange={(e) => setVf((s) => ({ ...s, desvio_pct: e.target.value }))} />
+                    <Field label="Responsável" value={String(vf.responsavel ?? '')} onChange={(e) => setVf((s) => ({ ...s, responsavel: e.target.value }))} />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={vf.conforme !== false} onChange={(e) => setVf((s) => ({ ...s, conforme: e.target.checked }))} /> Conforme</label>
+                  <div><Button variant="secondary" disabled={vBusy} onClick={() => void addVerif()}>{vBusy ? 'Salvando...' : 'Registrar verificação'}</Button></div>
+                  {verifQ.isLoading ? <p style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Carregando…</p> : (verifQ.data ?? []).length === 0 ? <p style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Nenhuma verificação registrada.</p> : (
+                    <div style={{ display: 'grid', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+                      {(verifQ.data ?? []).map((v: VerificacaoRow) => (
+                        <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, border: '1px solid var(--line)', borderRadius: 8, padding: '6px 10px', fontSize: 12 }}>
+                          <span><b>{v.data_verificacao.split('-').reverse().join('/')}</b>{v.desvio_pct != null ? ' · desvio ' + v.desvio_pct + '%' : ''}{v.padrao_utilizado ? ' · ' + v.padrao_utilizado : ''} · <span style={{ fontWeight: 700, color: v.conforme ? '#16a34a' : 'var(--magenta)' }}>{v.conforme ? 'conforme' : 'não conforme'}</span></span>
+                          <button type="button" className="text-xs font-bold" style={{ color: 'var(--magenta)' }} onClick={() => void excluirVerif(v.id)}>excluir</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : null}
           <Field label="Observação" value={String(f.observacao ?? '')} onChange={(e) => setF((s) => ({ ...s, observacao: e.target.value }))} />

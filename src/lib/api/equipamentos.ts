@@ -10,6 +10,8 @@ export const TIPOS_EQUIP = [
   { value: 'balanca', label: 'Balança' },
   { value: 'molde', label: 'Molde' },
   { value: 'paquimetro', label: 'Paquímetro' },
+  { value: 'camara_umida', label: 'Câmara úmida' },
+  { value: 'tanque', label: 'Tanque de cura' },
   { value: 'outro', label: 'Outro' },
 ] as const;
 
@@ -18,11 +20,12 @@ export type EquipamentoRow = {
   capacidade_kn: number | null; classe: string | null; numero_certificado: string | null;
   data_calibracao: string | null; validade_calibracao: string | null; lab_calibrador: string | null;
   incerteza_mpa: number | null; anexo_certificado_path: string | null; observacao: string | null; ativo: boolean;
+  verif_periodicidade_dias: number | null;
 };
 export type EquipamentoRef = { id: string; tipo: string; apelido: string | null; marca_modelo: string | null; validade_calibracao: string | null; incerteza_mpa: number | null; ativo: boolean };
 export type UsoEquipamento = { rompimentos: number };
 
-const SEL = 'id, tipo, apelido, marca_modelo, numero_serie, capacidade_kn, classe, numero_certificado, data_calibracao, validade_calibracao, lab_calibrador, incerteza_mpa, anexo_certificado_path, observacao, ativo';
+const SEL = 'id, tipo, apelido, marca_modelo, numero_serie, capacidade_kn, classe, numero_certificado, data_calibracao, validade_calibracao, lab_calibrador, incerteza_mpa, anexo_certificado_path, observacao, ativo, verif_periodicidade_dias';
 
 export function rotuloEquip(e: { apelido?: string | null; marca_modelo?: string | null }): string {
   return (e.apelido || e.marca_modelo || '(sem nome)').trim();
@@ -36,7 +39,51 @@ export async function listEquipamentos(): Promise<EquipamentoRow[]> {
     capacidade_kn: r.capacidade_kn ?? null, classe: r.classe ?? null, numero_certificado: r.numero_certificado ?? null,
     data_calibracao: r.data_calibracao ?? null, validade_calibracao: r.validade_calibracao ?? null, lab_calibrador: r.lab_calibrador ?? null,
     incerteza_mpa: r.incerteza_mpa ?? null, anexo_certificado_path: r.anexo_certificado_path ?? null, observacao: r.observacao ?? null, ativo: r.ativo !== false,
+    verif_periodicidade_dias: r.verif_periodicidade_dias == null ? null : Number(r.verif_periodicidade_dias),
   }));
+}
+
+// B2: verificação intermediária da prensa (mig 172).
+export type VerificacaoRow = { id: string; equipamento_id: string; data_verificacao: string; padrao_utilizado: string | null; desvio_pct: number | null; conforme: boolean; responsavel: string | null; observacao: string | null };
+
+export async function listVerificacoes(equipamentoId: string): Promise<VerificacaoRow[]> {
+  const { data, error } = await db.from('equipamento_verificacoes')
+    .select('id, equipamento_id, data_verificacao, padrao_utilizado, desvio_pct, conforme, responsavel, observacao')
+    .eq('equipamento_id', equipamentoId).is('deleted_at', null).order('data_verificacao', { ascending: false });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, any>[]).map((r) => ({
+    id: String(r.id), equipamento_id: String(r.equipamento_id), data_verificacao: String(r.data_verificacao),
+    padrao_utilizado: r.padrao_utilizado ?? null, desvio_pct: r.desvio_pct == null ? null : Number(r.desvio_pct),
+    conforme: r.conforme !== false, responsavel: r.responsavel ?? null, observacao: r.observacao ?? null,
+  }));
+}
+
+export async function addVerificacao(tenantId: string, equipamentoId: string, v: { data_verificacao: string; padrao_utilizado?: string | null; desvio_pct?: number | null; conforme: boolean; responsavel?: string | null; observacao?: string | null }): Promise<void> {
+  const { error } = await db.from('equipamento_verificacoes').insert({
+    tenant_id: tenantId, equipamento_id: equipamentoId, data_verificacao: v.data_verificacao,
+    padrao_utilizado: v.padrao_utilizado ?? null, desvio_pct: v.desvio_pct ?? null, conforme: v.conforme,
+    responsavel: v.responsavel ?? null, observacao: v.observacao ?? null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function softDeleteVerificacao(id: string): Promise<void> {
+  const { error } = await db.from('equipamento_verificacoes').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+// Status da verificação a partir da última data + periodicidade (opt-in). Sem periodicidade = não controlado.
+export function verifStatus(periodicidadeDias: number | null, ultima: string | null): { label: string; cor: string; proxima: string | null } {
+  if (!periodicidadeDias || periodicidadeDias <= 0) return { label: 'sem controle', cor: 'var(--ink-faint)', proxima: null };
+  if (!ultima) return { label: 'nunca verificada', cor: 'var(--magenta)', proxima: null };
+  const prox = new Date(ultima + 'T00:00:00');
+  prox.setDate(prox.getDate() + periodicidadeDias);
+  const proxima = prox.toISOString().slice(0, 10);
+  const hoje = new Date().toISOString().slice(0, 10);
+  const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  if (proxima < hoje) return { label: 'vencida', cor: 'var(--magenta)', proxima };
+  if (proxima <= in30) return { label: 'vence em breve', cor: '#d97706', proxima };
+  return { label: 'em dia', cor: '#16a34a', proxima };
 }
 
 // Fonte leve para os seletores de prensa (Pacote 2). Cacheada em ['equipamentos-ref'].

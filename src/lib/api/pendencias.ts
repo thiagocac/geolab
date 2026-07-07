@@ -8,10 +8,11 @@ export type Sev = 'info' | 'warning' | 'danger';
 export type PendChave =
   | 'cp_hoje' | 'cp_atrasado' | 'cp_pendente' | 'insatisfatorio' | 'prog_sem_caminhao'
   | 'laudo_aprovar' | 'nc_aberta' | 'conc_sem_laudo' | 'importacao_pendente'
-  | 'cal_vencida' | 'cal_vencendo' | 'cert_vencida' | 'cert_vencendo';
+  | 'cal_vencida' | 'cal_vencendo' | 'cert_vencida' | 'cert_vencendo'
+  | 'verif_vencida' | 'verif_vencendo' | 'camara_fora_faixa';
 export type PendResumo = Record<PendChave, { count: number; sev: Sev }>;
 
-const CHAVES: PendChave[] = ['cp_hoje', 'cp_atrasado', 'cp_pendente', 'insatisfatorio', 'prog_sem_caminhao', 'laudo_aprovar', 'nc_aberta', 'conc_sem_laudo', 'importacao_pendente', 'cal_vencida', 'cal_vencendo', 'cert_vencida', 'cert_vencendo'];
+const CHAVES: PendChave[] = ['cp_hoje', 'cp_atrasado', 'cp_pendente', 'insatisfatorio', 'prog_sem_caminhao', 'laudo_aprovar', 'nc_aberta', 'conc_sem_laudo', 'importacao_pendente', 'cal_vencida', 'cal_vencendo', 'cert_vencida', 'cert_vencendo', 'verif_vencida', 'verif_vencendo', 'camara_fora_faixa'];
 
 export async function getPendenciasResumo(tenantId: string): Promise<PendResumo> {
   const { data, error } = await db.rpc('pendencias_resumo', { p_tenant: tenantId });

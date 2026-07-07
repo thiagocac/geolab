@@ -40,7 +40,7 @@ export function PreferenciasPage() {
   useEffect(() => {
     const c = q.data;
     if (c === undefined) return;
-    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '', endereco: c?.endereco ?? '', numero: c?.numero ?? '', bairro: c?.bairro ?? '', cidade: c?.cidade ?? '', uf: c?.uf ?? '', cep: c?.cep ?? '', certificacoes: Array.isArray(c?.certificacoes) ? c?.certificacoes : [] });
+    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, dispersao_par_limite_pct: c?.dispersao_par_limite_pct ?? 6, camara_temp_min_c: c?.camara_temp_min_c ?? 21, camara_temp_max_c: c?.camara_temp_max_c ?? 25, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '', endereco: c?.endereco ?? '', numero: c?.numero ?? '', bairro: c?.bairro ?? '', cidade: c?.cidade ?? '', uf: c?.uf ?? '', cep: c?.cep ?? '', certificacoes: Array.isArray(c?.certificacoes) ? c?.certificacoes : [] });
   }, [q.data]);
 
   function set(k: string, v: unknown) { setF((s) => ({ ...s, [k]: v })); }
@@ -69,6 +69,7 @@ export function PreferenciasPage() {
         responsavel_tecnico: str(f.responsavel_tecnico) || null, crea_rt: str(f.crea_rt) || null,
         acreditacao_inmetro: str(f.acreditacao_inmetro) || null, validade_acreditacao: str(f.validade_acreditacao) || null,
         idade_controle_default: num(f.idade_controle_default, 28), cp_overdue_days: num(f.cp_overdue_days, 2),
+        dispersao_par_limite_pct: num(f.dispersao_par_limite_pct, 6), camara_temp_min_c: num(f.camara_temp_min_c, 21), camara_temp_max_c: num(f.camara_temp_max_c, 25),
         nota_rodape: str(f.nota_rodape) || null, local_ensaio: str(f.local_ensaio) || null, art_numero: str(f.art_numero) || null, gerente_qualidade: str(f.gerente_qualidade) || null, crea_gq: str(f.crea_gq) || null,
         endereco: str(f.endereco) || null, numero: str(f.numero) || null, bairro: str(f.bairro) || null, cidade: str(f.cidade) || null, uf: str(f.uf) || null, cep: str(f.cep) || null,
         certificacoes: certs,
@@ -152,6 +153,17 @@ export function PreferenciasPage() {
         <div style={{ display: 'flex', gap: 12, padding: 16 }}>
           <Field label="Idade de controle padrao (dias)" type="number" value={String(f.idade_controle_default ?? 28)} onChange={(e) => set('idade_controle_default', e.target.value)} disabled={!podeEditar} />
           <Field label="Tolerância de atraso do CP (dias)" type="number" value={String(f.cp_overdue_days ?? 2)} onChange={(e) => set('cp_overdue_days', e.target.value)} disabled={!podeEditar} />
+        </div>
+      </Card>
+      <Card>
+        <CardHeader kicker="Qualidade do ensaio" title="Dispersão do par e câmara de cura" />
+        <div style={{ display: 'grid', gap: 12, padding: 16 }}>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Limite de dispersão entre os dois CPs do mesmo exemplar (Δ% na mesma idade) e faixa de temperatura da câmara úmida/tanque (NBR 9479, cura a 23±2 °C). Ambos geram apenas aviso — nunca bloqueiam.</p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Field label="Limite de dispersão do par (%)" type="number" value={String(f.dispersao_par_limite_pct ?? 6)} onChange={(e) => set('dispersao_par_limite_pct', e.target.value)} disabled={!podeEditar} hint="Acima disso, o Rompimentos marca aviso e o indicador de dispersão conta como fora." />
+            <Field label="Temperatura mínima da câmara (°C)" type="number" value={String(f.camara_temp_min_c ?? 21)} onChange={(e) => set('camara_temp_min_c', e.target.value)} disabled={!podeEditar} />
+            <Field label="Temperatura máxima da câmara (°C)" type="number" value={String(f.camara_temp_max_c ?? 25)} onChange={(e) => set('camara_temp_max_c', e.target.value)} disabled={!podeEditar} />
+          </div>
         </div>
       </Card>
       {podeEditar ? <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar preferencias'}</Button></div> : null}

@@ -15,6 +15,9 @@ export type ConfigLab = {
   crea_gq: string | null;
   idade_controle_default: number;
   cp_overdue_days: number;
+  dispersao_par_limite_pct: number;
+  camara_temp_min_c: number;
+  camara_temp_max_c: number;
   nota_rodape: string | null;
   logo_path: string | null;
   ensaio_campos: Record<string, boolean> | null;
@@ -31,7 +34,7 @@ export type ConfigLab = {
   certificacoes: Array<Record<string, unknown>> | null;
 };
 
-const SELECT_FULL = 'responsavel_tecnico, crea_rt, acreditacao_inmetro, validade_acreditacao, idade_controle_default, cp_overdue_days, nota_rodape, logo_path, ensaio_campos, laudo_campos, recebimento_campos, concretagem_campos, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes, endereco, numero, bairro, cidade, uf, cep, endereco_origem';
+const SELECT_FULL = 'responsavel_tecnico, crea_rt, acreditacao_inmetro, validade_acreditacao, idade_controle_default, cp_overdue_days, dispersao_par_limite_pct, camara_temp_min_c, camara_temp_max_c, nota_rodape, logo_path, ensaio_campos, laudo_campos, recebimento_campos, concretagem_campos, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes, endereco, numero, bairro, cidade, uf, cep, endereco_origem';
 const SELECT_LEGADO = 'responsavel_tecnico, crea_rt, acreditacao_inmetro, validade_acreditacao, idade_controle_default, cp_overdue_days, nota_rodape, logo_path, ensaio_campos, laudo_campos, recebimento_campos';
 
 export async function getConfigLab(tenantId: string): Promise<ConfigLab | null> {
