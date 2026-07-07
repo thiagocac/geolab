@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { trackDomainEvent } from '../telemetry';
 import { env } from '../env';
 import { calcMPa, maybeNotifyAbaixoFck } from './rompimento';
 
@@ -54,6 +55,7 @@ export async function importarLote(tenantId: string, linhas: LinhaInput[]): Prom
     n++;
   }
   await db.from('lotes_importacao').update({ confirmed_at: new Date().toISOString(), linhas_extraidas: n }).eq('id', loteId);
+  trackDomainEvent('importacao.confirmada', { origem: 'manual', linhas: n });
   return n;
 }
 

@@ -5306,6 +5306,24 @@ export type Database = {
       seed_nc_action_engine: { Args: { p_tenant: string }; Returns: number }
       seed_nc_rac_padrao: { Args: { p_tenant: string }; Returns: number }
       select_tenant: { Args: { p_tenant_id: string }; Returns: undefined }
+      telemetry_error_group_triage: { Args: { p_fingerprint: string; p_status?: string | null; p_muted_until?: string | null; p_note?: string | null }; Returns: undefined }
+      telemetry_error_groups: {
+        Args: { p_days?: number }
+        Returns: {
+          fingerprint: string
+          eventos: number
+          sessoes: number
+          first_seen: string
+          last_seen: string
+          versoes: string[] | null
+          sample_message: string | null
+          sample_url: string | null
+          nivel: string | null
+          grupo_status: string
+          muted_until: string | null
+          note: string | null
+        }[]
+      }
       set_numeracao_cp: {
         Args: { p_id: string; p_numeracao: string }
         Returns: undefined

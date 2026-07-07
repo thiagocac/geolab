@@ -199,6 +199,159 @@ function MiniTrend({ values, color = '#C5117E' }: { values: Array<number | null>
   );
 }
 
+type ErrGroup = {
+  fingerprint: string; eventos: number; sessoes: number; first_seen: string; last_seen: string;
+  versoes: string[] | null; sample_message: string | null; sample_url: string | null;
+  nivel: string | null; grupo_status: string; muted_until: string | null; note: string | null;
+};
+
+// M4 (auditoria de observabilidade, v177) — erros do frontend AGRUPADOS por fingerprint (trigger 049)
+// com triage persistente em telemetry_error_group (RPCs da mig 162, admin-only fail-closed):
+// Silenciar 7d (mute operacional — não apaga dado), Resolver (se o fingerprint voltar, é só reabrir) e Reabrir.
+function ErrorGroupsCard() {
+  const [busyFp, setBusyFp] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const grupos = useQuery({ queryKey: ['obs', 'errgroups'], refetchInterval: REFRESH_MS,
+    queryFn: () => rows<ErrGroup>(supabase.rpc('telemetry_error_groups', { p_days: 30 })) });
+
+  async function triage(fp: string, status: 'muted' | 'resolved' | 'novo', mutedUntil: string | null) {
+    setBusyFp(fp); setMsg(null);
+    try {
+      const { error } = await supabase.rpc('telemetry_error_group_triage', { p_fingerprint: fp, p_status: status, p_muted_until: mutedUntil, p_note: null });
+      if (error) throw new Error(error.message);
+      await grupos.refetch();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyFp(null);
+    }
+  }
+
+  const lista = grupos.data ?? [];
+  const btnCls = 'rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800';
+  const mutedNow = (g: ErrGroup) => g.grupo_status === 'muted' && (!g.muted_until || new Date(g.muted_until).getTime() > Date.now());
+
+  return (
+    <Card>
+      <CardHeader kicker="RUM" title="Erros agrupados (30d)">Erros e fatais do frontend agrupados por fingerprint — triage persistente: silenciar ruído conhecido, resolver o corrigido.</CardHeader>
+      <div className="p-5">
+        {msg ? <p className="mb-3 text-xs text-red-600 dark:text-red-400">{msg}</p> : null}
+        {grupos.isLoading ? <LoadingState /> : grupos.error ? <ErrorState message={(grupos.error as Error).message} /> : lista.length === 0 ? (
+          <p className="text-sm text-emerald-700 dark:text-emerald-400">Nenhum erro de frontend nos últimos 30 dias. ✓</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="table">
+              <thead><tr><th>Nível</th><th>Erro</th><th>Eventos</th><th>Sessões</th><th>Último</th><th>Status</th><th>Ações</th></tr></thead>
+              <tbody>
+                {lista.map((g) => (
+                  <tr key={g.fingerprint} className={mutedNow(g) || g.grupo_status === 'resolved' ? 'opacity-60' : ''}>
+                    <td><SeverityPill s={g.nivel === 'fatal' ? 'critical' : 'warning'} /></td>
+                    <td className="max-w-md">
+                      <div className="truncate font-medium text-slate-800 dark:text-slate-100" title={g.sample_message ?? ''}>{g.sample_message ?? '—'}</div>
+                      <div className="truncate text-xs text-slate-500" title={g.sample_url ?? ''}>
+                        {g.sample_url ?? ''}{g.versoes?.length ? ` · ${g.versoes.join(', ')}` : ''}
+                      </div>
+                    </td>
+                    <td className="tabular-nums">{g.eventos}</td>
+                    <td className="tabular-nums">{g.sessoes}</td>
+                    <td className="text-slate-500">{fmtAge(g.last_seen)}</td>
+                    <td>
+                      {mutedNow(g) ? <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">silenciado{g.muted_until ? ` até ${new Date(g.muted_until).toLocaleDateString('pt-BR')}` : ''}</span>
+                        : g.grupo_status === 'resolved' ? <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">resolvido</span>
+                        : <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">ativo</span>}
+                    </td>
+                    <td>
+                      <div className="flex flex-wrap gap-1.5">
+                        {g.grupo_status === 'resolved' || mutedNow(g) ? (
+                          <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => triage(g.fingerprint, 'novo', null)}>Reabrir</button>
+                        ) : (
+                          <>
+                            <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => triage(g.fingerprint, 'muted', new Date(Date.now() + 7 * 24 * 3600_000).toISOString())}>Silenciar 7d</button>
+                            <button type="button" className={btnCls} disabled={busyFp === g.fingerprint} onClick={() => triage(g.fingerprint, 'resolved', null)}>Resolver</button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+type DomainRow = { day: string; event: string; area: string; total: number; sessions: number; last_seen: string };
+
+// M5/uso (auditoria de observabilidade, v178) — funil de USO real do produto a partir dos eventos
+// de domínio (trackDomainEvent, v177) agregados em v_domain_events_daily. Sem PII: só contagens.
+function DomainUsageCard() {
+  const uso = useQuery({ queryKey: ['obs', 'domainuse'], refetchInterval: REFRESH_MS,
+    queryFn: () => rows<DomainRow>(supabase.from('v_domain_events_daily').select('day,event,area,total,sessions,last_seen').order('day', { ascending: false })) });
+
+  const lista = uso.data ?? [];
+  const desde14 = Date.now() - 14 * 24 * 3600_000;
+  const recentes = lista.filter((r) => new Date(r.day).getTime() >= desde14);
+
+  // Série diária (14d) do total de eventos de domínio.
+  const porDia = new Map<string, number>();
+  for (const r of recentes) { const k = String(r.day).slice(0, 10); porDia.set(k, (porDia.get(k) ?? 0) + Number(r.total)); }
+  const serie: Array<{ dia: string; total: number }> = [];
+  for (let i = 13; i >= 0; i--) { const k = new Date(Date.now() - i * 24 * 3600_000).toISOString().slice(0, 10); serie.push({ dia: k.slice(5), total: porDia.get(k) ?? 0 }); }
+
+  // Consolidação por evento (14d).
+  const porEvento = new Map<string, { area: string; total: number; sessions: number; last: string }>();
+  for (const r of recentes) {
+    const cur = porEvento.get(r.event);
+    if (cur) { cur.total += Number(r.total); cur.sessions += Number(r.sessions); if (r.last_seen > cur.last) cur.last = r.last_seen; }
+    else porEvento.set(r.event, { area: r.area, total: Number(r.total), sessions: Number(r.sessions), last: r.last_seen });
+  }
+  const eventos = Array.from(porEvento.entries()).map(([event, v]) => ({ event, ...v })).sort((a, b) => b.total - a.total);
+
+  return (
+    <Card>
+      <CardHeader kicker="Uso" title="Uso por dia (14 dias)">Eventos de domínio — o que os laboratórios realmente fizeram: concretagens, rompimentos, laudos, etiquetas, coletas e importações.</CardHeader>
+      <div className="p-5">
+        {uso.isLoading ? <LoadingState /> : uso.error ? <ErrorState message={(uso.error as Error).message} /> : eventos.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">Sem eventos de domínio ainda — passam a ser emitidos pelo frontend v177+ (laudo, rompimento em lote, concretagem, etiquetas, coleta, importação).</p>
+        ) : (
+          <div className="space-y-4">
+            <div style={{ height: 120 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={serie} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid vertical={false} stroke="var(--line)" />
+                  <XAxis dataKey="dia" tick={{ fill: 'var(--ink-faint)', fontSize: 10 }} axisLine={false} tickLine={false} interval={1} />
+                  <YAxis width={28} allowDecimals={false} tick={{ fill: 'var(--ink-faint)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ stroke: 'var(--line)' }} contentStyle={tipStyle} />
+                  <Area type="monotone" dataKey="total" name="eventos" stroke="#182863" fill="#18286322" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="table-scroll">
+              <table className="table">
+                <thead><tr><th>Evento</th><th>Área</th><th>Total (14d)</th><th>Sessões</th><th>Último</th></tr></thead>
+                <tbody>
+                  {eventos.map((e) => (
+                    <tr key={e.event}>
+                      <td className="font-medium text-slate-800 dark:text-slate-100">{e.event}</td>
+                      <td><span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{e.area}</span></td>
+                      <td className="tabular-nums">{e.total}</td>
+                      <td className="tabular-nums">{e.sessions}</td>
+                      <td className="text-slate-500">{fmtAge(e.last)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 type SevFilter = 'all' | 'critical' | 'warning';
 
 export function ObservabilidadePage() {
@@ -235,6 +388,15 @@ export function ObservabilidadePage() {
     } });
   const vitals = useQuery({ queryKey: ['obs', 'vitals'], refetchInterval: REFRESH_MS,
     queryFn: () => rows<Vital>(supabase.from('v_client_vitals_daily').select('day,metric,p75,samples').order('day', { ascending: false })) });
+  // M10 (v178): série LONGA dos vitals via rollup diário (barato: ~4 linhas/dia, retenção infinita).
+  const [vitalWin, setVitalWin] = useState<14 | 90>(14);
+  const vitalsLong = useQuery({ queryKey: ['obs', 'vitalsLong'], refetchInterval: REFRESH_MS, enabled: vitalWin === 90,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 90 * 24 * 3600_000).toISOString().slice(0, 10);
+      const raw = await rows<{ day: string; dim: string; p75: number | string | null; samples: number }>(
+        supabase.from('telemetry_rollup_daily').select('day,dim,p75,samples').eq('scope', 'vital').gte('day', since).order('day', { ascending: false }));
+      return raw.map((r) => ({ day: r.day, metric: r.dim, p75: r.p75 == null ? null : Number(r.p75), samples: r.samples } as Vital));
+    } });
 
   function refetchAll() {
     void Promise.all([mttr.refetch(), incidents.refetch(), resolved.refetch(), crons.refetch(), efs.refetch(), health.refetch(), release.refetch(), vitals.refetch()]);
@@ -434,6 +596,9 @@ export function ObservabilidadePage() {
       </Card>
 
       {/* Plano de controle da telemetria (runners de alarme & notificação) */}
+      {/* Erros agrupados (M4, v177) */}
+      <ErrorGroupsCard />
+
       <Card>
         <CardHeader kicker="Telemetria" title="Runners de alarme & notificação">Avaliam sinais e enviam e-mails de incidente. Se um atrasa, alertas podem não disparar — vigie a idade da última execução.</CardHeader>
         <div className="p-5">
@@ -543,16 +708,28 @@ export function ObservabilidadePage() {
         </Card>
       </div>
 
+      {/* Uso do produto (M5/v178) */}
+      <DomainUsageCard />
+
       {/* Web Vitals */}
       <Card>
-        <CardHeader kicker="RUM" title="Web Vitals (p75, 14 dias)">Tendência diária por métrica.</CardHeader>
+        <CardHeader kicker="RUM" title={`Web Vitals (p75, ${vitalWin} dias)`}>Tendência diária por métrica — 90d lê o rollup diário (telemetry_rollup_daily), não o cru.</CardHeader>
         <div className="p-5">
-          {vitals.isLoading ? <LoadingState /> : vitals.error ? <ErrorState message={(vitals.error as Error).message} />
-            : (vitals.data?.length ?? 0) === 0 ? <EmptyState />
+          <div className="mb-3 inline-flex rounded-lg border border-slate-300 p-0.5 dark:border-slate-600">
+            {([14, 90] as const).map((w) => (
+              <button key={w} type="button" onClick={() => setVitalWin(w)}
+                className={`rounded-md px-3 py-1 text-xs font-semibold ${vitalWin === w ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300'}`}>
+                {w} dias
+              </button>
+            ))}
+          </div>
+          {(vitalWin === 14 ? vitals.isLoading : vitalsLong.isLoading) ? <LoadingState />
+            : (vitalWin === 14 ? vitals.error : vitalsLong.error) ? <ErrorState message={((vitalWin === 14 ? vitals.error : vitalsLong.error) as Error).message} />
+            : (((vitalWin === 14 ? vitals.data : vitalsLong.data)?.length ?? 0) === 0) ? <EmptyState />
             : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {vitalMetrics.map((metric) => {
-                const series = buildDailySeries(vitals.data as Vital[], metric, 'p75', 14);
+                const series = buildDailySeries((vitalWin === 14 ? vitals.data : vitalsLong.data) as Vital[], metric, 'p75', vitalWin);
                 const last = [...series.values].reverse().find((v) => v != null);
                 if (last == null) return null;
                 return (

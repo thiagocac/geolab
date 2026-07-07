@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { trackDomainEvent } from '../telemetry';
 import { env } from '../env';
 
 // Etiquetas de CP PRÉ-NUMERADAS por LOTE (faixa contígua NNNNNN/AA por ano — migration 140).
@@ -26,6 +27,7 @@ export async function gerarEtiquetas(p: GerarEtiquetasParams): Promise<GerarEtiq
   if (error) throw new Error(error.message);
   const r = (data ?? {}) as GerarEtiquetasResult;
   if (r.ok === false) throw new Error(r.error || 'Falha ao gerar etiquetas');
+  trackDomainEvent('etiqueta.lote_gerado', { total: Math.max(0, Math.round(p.quantidade || 0)) + Math.max(0, Math.round(p.extra || 0)), por_concretagem: !!p.concretagemId });
   return r;
 }
 

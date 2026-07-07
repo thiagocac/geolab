@@ -63,9 +63,12 @@
   src:url('/fonts/MonaSans-LatinExt-Variable.woff2') format('woff2-variations');
   unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+1EF2-1EFF,U+2C60-2C7F,U+A720-A7FF;
 }
-@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:400;src:url('/fonts/JetBrainsMono-Regular.ttf') format('truetype')}
-@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:500;src:url('/fonts/JetBrainsMono-Medium.ttf') format('truetype')}
-@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:700;src:url('/fonts/JetBrainsMono-Bold.ttf') format('truetype')}
+/* M8 (auditoria de observabilidade, v179): JetBrains Mono em WOFF2 (fontsource 5.2.8, subset latin —
+   cobre PT-BR) no lugar dos TTF: ~2-4x menor por peso, melhora first-load/LCP (Auditoria-Performance §3.5).
+   Os .ttf antigos ficam órfãos no repo (remoção opcional; nada mais os referencia). */
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:400;src:url('/fonts/JetBrainsMono-Regular.woff2') format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:500;src:url('/fonts/JetBrainsMono-Medium.woff2') format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-display:swap;font-weight:700;src:url('/fonts/JetBrainsMono-Bold.woff2') format('woff2')}
 
 /* ---- design tokens (claro = valores originais; escuro adicionado) ---- */
 :root{

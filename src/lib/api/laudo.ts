@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { trackDomainEvent } from '../telemetry';
 import { env } from '../env';
 
 // Camada de laudos. Emissao/persistencia ficam na EF generate-laudo-ensaio-pdf
@@ -72,6 +73,7 @@ export async function gerarLaudo(concId: string, persist = true): Promise<{ blob
     const { data } = await db.from('lab_reports').select('id').eq('concretagem_id', concId).is('deleted_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle();
     labReportId = data?.id ? String(data.id) : '';
   }
+  if (persist) trackDomainEvent('laudo.gerado', { concretagem_id: concId });
   return { blob, labReportId };
 }
 
@@ -84,6 +86,7 @@ export async function downloadUrl(path: string): Promise<string> {
 export async function aprovarLaudo(id: string): Promise<void> {
   const { error } = await rpc.rpc('aprovar_laudo', { p_lab_report_id: id });
   if (error) throw new Error(error.message);
+  trackDomainEvent('laudo.aprovado', { lab_report_id: id });
 }
 export async function reabrirLaudo(id: string): Promise<void> {
   const { error } = await rpc.rpc('reabrir_laudo', { p_lab_report_id: id });
@@ -136,6 +139,7 @@ export async function enviarLaudoCliente(labReportId: string): Promise<{ sent: b
   });
   const out = (await resp.json().catch(() => ({}))) as { ok?: boolean; sent?: boolean; reason?: string; to?: string; error?: string };
   if (!resp.ok || out.ok === false) throw new Error(out.error ?? ('Erro ' + resp.status));
+  if (out.sent === true) trackDomainEvent('laudo.enviado_cliente', { lab_report_id: labReportId });
   return { sent: out.sent === true, reason: out.reason, to: out.to };
 }
 

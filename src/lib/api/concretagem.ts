@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { trackDomainEvent } from '../telemetry';
 import type { Database } from '../database.types';
 import { env } from '../env';
 import { normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../concreto';
@@ -73,6 +74,7 @@ export async function createConcretagem(tenantId: string, values: Record<string,
   const origem = String(values.origem ?? 'programada');
   const { data, error } = await db.from('concretagens').insert({ ...values, tenant_id: tenantId, status, origem } as unknown as Database['public']['Tables']['concretagens']['Insert']).select('id').single();
   if (error) throw new Error(error.message);
+  trackDomainEvent('concretagem.criada', { origem, status_inicial: status });
   return data as { id: string };
 }
 
@@ -81,7 +83,7 @@ export async function updateConcretagem(id: string, values: Record<string, unkno
   if (error) throw new Error(error.message);
 }
 
-export async function confirmarProgramacao(id: string): Promise<void> { await updateConcretagem(id, { status: 'registrado' }); }
+export async function confirmarProgramacao(id: string): Promise<void> { await updateConcretagem(id, { status: 'registrado' }); trackDomainEvent('concretagem.confirmada', { concretagem_id: id }); }
 export async function cancelarProgramacao(id: string): Promise<void> { await updateConcretagem(id, { status: 'cancelada' }); }
 
 // Atribuição de equipe na programação: moldador (já existente) + laboratorista (FK migration 118).

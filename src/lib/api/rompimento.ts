@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { trackDomainEvent } from '../telemetry';
 import { env } from '../env';
 import { cargaParaMpa, fatorHD as fatorHDCore, type UnidadeCarga } from '../concreto/cp';
 
@@ -283,6 +284,7 @@ export async function lancarRompimentosLote(itens: Array<Record<string, unknown>
   const abaixo = Array.isArray(d.abaixo_fck)
     ? (d.abaixo_fck as Rec[]).map((a) => ({ amostra_id: String(a.amostra_id), codigo: a.codigo == null ? null : String(a.codigo), exemplar: Number(a.exemplar), fck: Number(a.fck) }))
     : [];
+  trackDomainEvent('rompimento.lote_lancado', { itens: itens.length, ok: Number(d.ok ?? 0) });
   return { ok: Number(d.ok ?? 0), abaixoFck: abaixo };
 }
 

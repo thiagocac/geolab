@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { trackDomainEvent } from '../telemetry';
 import { env } from '../env';
 
 // Coleta de fôrmas (Fase 1) — worklist derivada da concretagem (mig 142) + roteiro do dia (mig 143/144).
@@ -26,6 +27,7 @@ export async function criarRoteiro(p: { data?: string | null; motorista_id?: str
   if (error) throw new Error(error.message);
   const r = (data ?? {}) as { ok?: boolean; id?: string; error?: string };
   if (r.ok === false) throw new Error(r.error || 'Falha ao criar roteiro');
+  trackDomainEvent('coleta.roteiro_criado', { paradas: p.itens.length });
   return String(r.id);
 }
 
