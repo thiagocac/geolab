@@ -2,6 +2,8 @@
 // FAIL-SAFE sem VISION_API_KEY. verify_jwt=true. Self-contained.
 // v27: extrai tambem hora_moldagem, qtde_cps e elementos_concretados (colunas da ficha) + confianca POR LINHA (conf),
 // para a tela de conferencia editavel destacar linhas duvidosas e validar a qtde contra o padrao de moldagem.
+// v39 (mig 170, slump em MM): o valor da coluna Abat.(mm) sai como slump_medido_mm (numero como escrito, em mm);
+// a chave legada slump_medido_cm continua no payload (mm/10) para o frontend anterior a v184.
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
 // --- Observabilidade (M1, auditoria 2026-07-07): registra cada invocacao em ef_invocation_log ---
@@ -28,8 +30,8 @@ const PROMPT = [
   'A grade tem UMA LINHA POR CAMINHAO-BETONEIRA, com colunas: Serie no | Qtde CPs | Abat.(mm) | Nota Fiscal no | Horario moldagem | TRANSPORTE (Inicio da mistura | Chegada a obra) | DESCARGA (Inicio | Termino) | Tempo total | Concreto aplicado (Unit. | Acum.) | C.B. no | Amostragem/Elementos concretados | CP por idade.',
   'Extraia uma entrada por linha PREENCHIDA (ignore linhas totalmente em branco).',
   'Responda APENAS um JSON valido, sem comentarios nem texto fora do JSON, exatamente neste formato:',
-  '{"caminhoes":[{"serie":1,"nota_fiscal":"","qtde_cps":null,"slump_medido_cm":0,"volume_m3":0,"hora_moldagem":"HH:MM","hora_saida_usina":"HH:MM","hora_chegada_obra":"HH:MM","hora_inicio_descarga":"HH:MM","hora_fim_descarga":"HH:MM","elementos_concretados":null,"placa":null,"motorista":null,"temperatura_concreto_c":null,"conf":0.0}],"confianca":0.0}',
-  'Mapeamento de colunas -> campos JSON: "Abat.(mm)"->slump_medido_cm ; "Nota Fiscal no"->nota_fiscal ; "Qtde CPs"->qtde_cps ; "Horario moldagem"->hora_moldagem ; "Inicio da mistura"->hora_saida_usina ; "Chegada a obra"->hora_chegada_obra ; "Descarga Inicio"->hora_inicio_descarga ; "Descarga Termino"->hora_fim_descarga ; "Concreto aplicado Unit."->volume_m3 ; "Amostragem/Elementos concretados"->elementos_concretados ; "Serie no"->serie.',
+  '{"caminhoes":[{"serie":1,"nota_fiscal":"","qtde_cps":null,"slump_medido_mm":0,"volume_m3":0,"hora_moldagem":"HH:MM","hora_saida_usina":"HH:MM","hora_chegada_obra":"HH:MM","hora_inicio_descarga":"HH:MM","hora_fim_descarga":"HH:MM","elementos_concretados":null,"placa":null,"motorista":null,"temperatura_concreto_c":null,"conf":0.0}],"confianca":0.0}',
+  'Mapeamento de colunas -> campos JSON: "Abat.(mm)"->slump_medido_mm (o numero exatamente como escrito, em milimetros) ; "Nota Fiscal no"->nota_fiscal ; "Qtde CPs"->qtde_cps ; "Horario moldagem"->hora_moldagem ; "Inicio da mistura"->hora_saida_usina ; "Chegada a obra"->hora_chegada_obra ; "Descarga Inicio"->hora_inicio_descarga ; "Descarga Termino"->hora_fim_descarga ; "Concreto aplicado Unit."->volume_m3 ; "Amostragem/Elementos concretados"->elementos_concretados ; "Serie no"->serie.',
   'Regras: use null quando o campo estiver ilegivel ou ausente; horarios em 24h "HH:MM"; numeros com ponto decimal; nunca invente valores; NAO confunda a coluna "CP por idade" (ex.: 2x7d 2x28d) com "Qtde CPs" (numero inteiro total); placa/motorista/temperatura normalmente nao existem nesta ficha (use null); "conf" e a legibilidade daquela LINHA (0 a 1) e "confianca" a legibilidade geral da ficha (0 a 1).',
 ].join('\n');
 
@@ -83,7 +85,9 @@ serveWithTelemetry('extract-ficha-vision', async (req) => {
     } catch {
       parsed = {};
     }
-    const cams = Array.isArray(parsed.caminhoes) ? (parsed.caminhoes as Rec[]) : [];
+    const cams0 = Array.isArray(parsed.caminhoes) ? (parsed.caminhoes as Rec[]) : [];
+    // mm e a fonte da verdade; mantem a chave legada _cm (mm/10) p/ frontend < v184.
+    const cams = cams0.map((c) => { const raw = c.slump_medido_mm ?? c.slump_medido_cm; const mm = raw == null || raw === '' ? null : Number(raw); const ok = mm != null && Number.isFinite(mm); return { ...c, slump_medido_mm: ok ? mm : null, slump_medido_cm: ok ? Math.round(((mm as number) / 10) * 10) / 10 : null }; });
     return json({ ok: true, enabled: true, _source: 'vision', dados: { concretagem_id: concretagemId, caminhoes: cams, confianca: parsed.confianca ?? null } });
   } catch (e) {
     return fail((e as Error).message || 'erro ao ler ficha', 500);

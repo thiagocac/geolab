@@ -1,6 +1,7 @@
 // generate-nc-report-pdf (Concresoft) - RAC (Relatorio de Acao Corretiva) de uma nao-conformidade.
 // Segue relatorios-ds.md (geometria/hierarquia) com cores da marca Concresoft. pdf-lib/Helvetica (sem WOFF2).
 // Padrao re-derivado da generate-medicao-pdf viva (self-contained, sem _shared; verify_jwt + RLS do solicitante).
+// v34 (revisao dos PDFs 2026-07-07): EMISSÃO em America/Sao_Paulo + acentuação tipográfica dos rótulos.
 import { PDFDocument, StandardFonts, rgb, PDFImage } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
@@ -25,12 +26,13 @@ const SUCCESS = rgb(0.180, 0.620, 0.357), WARN = rgb(0.718, 0.475, 0.122), SIGN 
 const PW = 595.28, PH = 841.89, MX = 32, RIGHT = PW - MX, CW = RIGHT - MX, BOTTOM = 38;
 
 const san = (s: unknown): string => String(s ?? '').replace(/→/g, '->').replace(/[–—]/g, '-').replace(/[^\x20-\xFF]/g, '?');
+const hojeSP = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
 const dbr = (s: unknown) => { const t = String(s ?? '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return '-'; const [y, m, d] = t.split('-'); return `${d}/${m}/${y}`; };
 const dthr = (s: unknown) => { if (!s) return '-'; const d = new Date(String(s)); if (isNaN(d.getTime())) return '-'; return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 
 function statusInfo(s: unknown): { cor: ReturnType<typeof rgb>; rot: string } {
   const v = String(s ?? '').toLowerCase();
-  if (v.includes('conclu') || v.includes('encerr') || v.includes('fech') || v.includes('resolv')) return { cor: SUCCESS, rot: 'CONCLUIDA' };
+  if (v.includes('conclu') || v.includes('encerr') || v.includes('fech') || v.includes('resolv')) return { cor: SUCCESS, rot: 'CONCLUÍDA' };
   if (v.includes('andamento') || v.includes('tratativa') || v.includes('analise')) return { cor: rgb(0.243, 0.176, 0.443), rot: 'EM ANDAMENTO' };
   if (v.includes('cancel')) return { cor: FAINT, rot: 'CANCELADA' };
   return { cor: WARN, rot: san(String(s ?? 'ABERTA')).toUpperCase() };
@@ -73,7 +75,7 @@ serveWithTelemetry('generate-nc-report-pdf', async (req) => {
     const st = statusInfo(nc.status);
 
     const doc = await PDFDocument.create();
-    doc.setTitle('RAC ' + numero); doc.setProducer('Concresoft'); doc.setAuthor(String(tenant?.name ?? 'Laboratorio')); doc.setSubject('Relatorio de Acao Corretiva');
+    doc.setTitle('RAC ' + numero); doc.setProducer('Concresoft'); doc.setAuthor(String(tenant?.name ?? 'Laboratorio')); doc.setSubject('Relatório de Ação Corretiva');
     const F = await doc.embedFont(StandardFonts.Helvetica);
     const FB = await doc.embedFont(StandardFonts.HelveticaBold);
     let page = doc.addPage([PW, PH]);
@@ -87,7 +89,7 @@ serveWithTelemetry('generate-nc-report-pdf', async (req) => {
     const clip = (s: unknown, size: number, maxW: number, f = F) => { let t = san(s); if (f.widthOfTextAtSize(t, size) <= maxW) return t; while (t.length > 1 && f.widthOfTextAtSize(t + '..', size) > maxW) t = t.slice(0, -1); return t + '..'; };
     const wrapLines = (s: unknown, size: number, maxW: number, f = F): string[] => { const ws = san(s).split(/\s+/).filter(Boolean); const out: string[] = []; let ln = ''; for (const w of ws) { const t = ln ? ln + ' ' + w : w; if (f.widthOfTextAtSize(t, size) > maxW && ln) { out.push(ln); ln = w; } else ln = t; } if (ln) out.push(ln); return out.length ? out : ['-']; };
     const newPage = (titulo: string): number => { page = doc.addPage([PW, PH]); const yy = PH - 50; T(titulo, MX, yy, 8, FB, BRAND); page.drawLine({ start: { x: MX, y: yy - 6 }, end: { x: RIGHT, y: yy - 6 }, thickness: 1.2, color: BRAND }); return yy - 20; };
-    const need = (h: number, y: number): number => (y - h < BOTTOM ? newPage('RAC ' + numero + ' (continuacao)') : y);
+    const need = (h: number, y: number): number => (y - h < BOTTOM ? newPage('RAC ' + numero + ' (continuação)') : y);
 
     const topo = PH - 30;
     if (logoImg) { const iw = logoImg.width, ih = logoImg.height; const sc = Math.min(150 / iw, 19 / ih); page.drawImage(logoImg, { x: MX, y: topo - ih * sc, width: iw * sc, height: ih * sc }); }
@@ -95,9 +97,9 @@ serveWithTelemetry('generate-nc-report-pdf', async (req) => {
     rect(RIGHT - 86, topo - 19, 15, 15, ACCENT); page.drawText('C', { x: RIGHT - 81.5, y: topo - 15.4, size: 9, font: FB, color: WHITE });
     const sw = FB.widthOfTextAtSize('soft', 13), cwid = FB.widthOfTextAtSize('Concre', 13);
     T('soft', RIGHT - sw, topo - 15.6, 13, FB, ACCENT); T('Concre', RIGHT - sw - cwid, topo - 15.6, 13, FB, BRAND);
-    T('Relatorio de Acao Corretiva', MX, PH - 52, 20, FB, BRAND);
-    T('RAC - tratativa de nao-conformidade - Concresoft', MX + 2, PH - 65, 8.5, F, MUTED);
-    TR('RAC No', RIGHT, PH - 40, 6.6, F, FAINT); TR(numero, RIGHT, PH - 62, 13, FB, BRAND);
+    T('Relatório de Ação Corretiva', MX, PH - 52, 20, FB, BRAND);
+    T('RAC - tratativa de não-conformidade - Concresoft', MX + 2, PH - 65, 8.5, F, MUTED);
+    TR('RAC Nº', RIGHT, PH - 40, 6.6, F, FAINT); TR(numero, RIGHT, PH - 62, 13, FB, BRAND);
     page.drawCircle({ x: RIGHT - FB.widthOfTextAtSize(st.rot, 7.5) - 8, y: PH - 71.5, size: 2.4, color: st.cor });
     TR(st.rot, RIGHT, PH - 73.5, 7.5, FB, st.cor);
     page.drawLine({ start: { x: MX, y: PH - 80 }, end: { x: MX + 170, y: PH - 80 }, thickness: 2, color: BRAND });
@@ -111,28 +113,28 @@ serveWithTelemetry('generate-nc-report-pdf', async (req) => {
     kv('CLIENTE', cliente?.razao_social || cliente?.nome_fantasia || '-', x2, y, w2);
     kv('ABERTURA', dbr(nc.data_abertura), x3, y, w3);
     y -= 26;
-    kv('CLASSIFICACAO', nc.classification_nome || nc.classification_code || '-', x1, y, w1);
+    kv('CLASSIFICAÇÃO', nc.classification_nome || nc.classification_code || '-', x1, y, w1);
     kv('TIPO', nc.tipo_nome || nc.tipo_code || '-', x2, y, w2);
     kv('SEVERIDADE', String(nc.severidade || '-').toUpperCase(), x3, y, w3);
     y -= 26;
     kv('ORIGEM', nc.origem || '-', x1, y, w1);
     kv('ENTIDADE DE ORIGEM', nc.entidade_origem ? (String(nc.entidade_origem) + (nc.entidade_origem_id ? ' ' + String(nc.entidade_origem_id).slice(0, 8) : '')) : '-', x2, y, w2);
-    kv('EMISSAO', dbr(new Date().toISOString()), x3, y, w3);
+    kv('EMISSÃO', dbr(hojeSP()), x3, y, w3);
     y -= 24; hline(MX, y, RIGHT, LINE); y -= 16;
 
-    T('DESCRICAO DA NAO-CONFORMIDADE', MX, y, 7.6, FB, BRAND); y -= 13;
+    T('DESCRIÇÃO DA NÃO-CONFORMIDADE', MX, y, 7.6, FB, BRAND); y -= 13;
     for (const l of wrapLines(nc.descricao || 'Sem descricao registrada.', 8, CW)) { y = need(12, y); T(l, MX, y, 8, F, MUTED); y -= 11; }
     y -= 9;
 
     y = need(60, y);
-    T('ACOES CORRETIVAS RECOMENDADAS', MX, y, 7.6, FB, BRAND);
-    T('(padrao por classificacao)', MX + FB.widthOfTextAtSize('ACOES CORRETIVAS RECOMENDADAS', 7.6) + 6, y, 6.4, F, FAINT); y -= 13;
+    T('AÇÕES CORRETIVAS RECOMENDADAS', MX, y, 7.6, FB, BRAND);
+    T('(padrão por classificação)', MX + FB.widthOfTextAtSize('AÇÕES CORRETIVAS RECOMENDADAS', 7.6) + 6, y, 6.4, F, FAINT); y -= 13;
     const cQuem = MX + CW * 0.60, cQuando = MX + CW * 0.80;
     page.drawLine({ start: { x: MX, y: y + 2 }, end: { x: RIGHT, y: y + 2 }, thickness: 0.8, color: BRAND });
-    T('ACAO CORRETIVA', MX, y - 8, 6.1, FB, BRAND); T('QUEM', cQuem, y - 8, 6.1, FB, BRAND); T('QUANDO', cQuando, y - 8, 6.1, FB, BRAND);
+    T('AÇÃO CORRETIVA', MX, y - 8, 6.1, FB, BRAND); T('QUEM', cQuem, y - 8, 6.1, FB, BRAND); T('QUANDO', cQuando, y - 8, 6.1, FB, BRAND);
     page.drawLine({ start: { x: MX, y: y - 12 }, end: { x: RIGHT, y: y - 12 }, thickness: 0.8, color: BRAND }); y -= 23;
     const racRows = (Array.isArray(racPad) ? racPad : []) as Record<string, unknown>[];
-    if (racRows.length === 0) { T('Nenhuma acao padrao cadastrada para esta classificacao.', MX, y, 7, F, FAINT); y -= 12; }
+    if (racRows.length === 0) { T('Nenhuma ação padrão cadastrada para esta classificação.', MX, y, 7, F, FAINT); y -= 12; }
     else for (const r of racRows) {
       const ls = wrapLines(r.acao_corretiva, 7, cQuem - MX - 8);
       y = need(ls.length * 9 + 8, y);
@@ -145,14 +147,14 @@ serveWithTelemetry('generate-nc-report-pdf', async (req) => {
     y -= 8;
 
     y = need(60, y);
-    T('ACOES REGISTRADAS', MX, y, 7.6, FB, BRAND);
-    T('(tratativa executada)', MX + FB.widthOfTextAtSize('ACOES REGISTRADAS', 7.6) + 6, y, 6.4, F, FAINT); y -= 13;
+    T('AÇÕES REGISTRADAS', MX, y, 7.6, FB, BRAND);
+    T('(tratativa executada)', MX + FB.widthOfTextAtSize('AÇÕES REGISTRADAS', 7.6) + 6, y, 6.4, F, FAINT); y -= 13;
     const dSit = MX + CW * 0.16, dDesc = MX + CW * 0.40;
     page.drawLine({ start: { x: MX, y: y + 2 }, end: { x: RIGHT, y: y + 2 }, thickness: 0.8, color: BRAND });
-    T('DATA', MX, y - 8, 6.1, FB, BRAND); T('SITUACAO', dSit, y - 8, 6.1, FB, BRAND); T('DESCRICAO', dDesc, y - 8, 6.1, FB, BRAND);
+    T('DATA', MX, y - 8, 6.1, FB, BRAND); T('SITUAÇÃO', dSit, y - 8, 6.1, FB, BRAND); T('DESCRIÇÃO', dDesc, y - 8, 6.1, FB, BRAND);
     page.drawLine({ start: { x: MX, y: y - 12 }, end: { x: RIGHT, y: y - 12 }, thickness: 0.8, color: BRAND }); y -= 23;
     const actRows = (Array.isArray(acoes) ? acoes : []) as Record<string, unknown>[];
-    if (actRows.length === 0) { T('Nenhuma acao registrada ate o momento.', MX, y, 7, F, FAINT); y -= 12; }
+    if (actRows.length === 0) { T('Nenhuma ação registrada até o momento.', MX, y, 7, F, FAINT); y -= 12; }
     else for (const a of actRows) {
       const ls = wrapLines(a.descricao, 7, RIGHT - dDesc);
       y = need(ls.length * 9 + 8, y);
@@ -166,19 +168,19 @@ serveWithTelemetry('generate-nc-report-pdf', async (req) => {
 
     y = need(96, y);
     page.drawRectangle({ x: MX, y: y - 32, width: CW, height: 32, color: BRAND050, borderColor: LINE, borderWidth: 0.6 });
-    T('Declara-se que as acoes acima refletem a tratativa da nao-conformidade ' + numero + ',', MX + 12, y - 13, 7.5, F, MUTED);
-    T('conforme registros do laboratorio na data de emissao.', MX + 12, y - 23, 7.5, F, MUTED);
+    T('Declara-se que as ações acima refletem a tratativa da não-conformidade ' + numero + ',', MX + 12, y - 13, 7.5, F, MUTED);
+    T('conforme registros do laboratório na data de emissão.', MX + 12, y - 23, 7.5, F, MUTED);
     TR('Status atual', RIGHT - 12, y - 12, 6.3, F, FAINT); TR(st.rot, RIGHT - 12, y - 23, 8, FB, st.cor);
     y -= 54;
     const cAss = MX + CW * 0.5;
     page.drawLine({ start: { x: cAss - 95, y }, end: { x: cAss + 95, y }, thickness: 0.7, color: SIGN }); y -= 11;
-    TC(String(cfg?.responsavel_tecnico || 'Responsavel Tecnico'), cAss, y, 7.8, FB, INK); y -= 9;
+    TC(String(cfg?.responsavel_tecnico || 'Responsável Técnico'), cAss, y, 7.8, FB, INK); y -= 9;
     if (cfg?.crea_rt) { TC('CREA ' + String(cfg.crea_rt), cAss, y, 6.4, F, FAINT); y -= 9; }
-    else { TC('Responsavel Tecnico', cAss, y, 6.4, F, FAINT); y -= 9; }
+    else { TC('Responsável Técnico', cAss, y, 6.4, F, FAINT); y -= 9; }
 
     const emitido = dthr(new Date().toISOString());
     const pages = doc.getPages(); const total = pages.length;
-    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: 27 }, end: { x: RIGHT, y: 27 }, thickness: 0.6, color: LINE }); p.drawText(san('Concresoft - RAC - ' + numero + ' - emitido ' + emitido), { x: MX, y: 18, size: 6.4, font: F, color: FAINT }); const pg = san('Pagina ' + (i + 1) + ' de ' + total); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: 18, size: 6.4, font: F, color: FAINT }); });
+    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: 27 }, end: { x: RIGHT, y: 27 }, thickness: 0.6, color: LINE }); p.drawText(san('Concresoft - RAC - ' + numero + ' - emitido ' + emitido), { x: MX, y: 18, size: 6.4, font: F, color: FAINT }); const pg = san('Página ' + (i + 1) + ' de ' + total); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: 18, size: 6.4, font: F, color: FAINT }); });
 
     const bytes = await doc.save();
     const fname = 'rac-' + san(numero).replace(/[^A-Za-z0-9_-]/g, '_') + '.pdf';

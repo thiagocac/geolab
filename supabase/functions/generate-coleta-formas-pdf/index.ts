@@ -3,6 +3,7 @@
 // (uma parada por bloco): obra/cliente, endereco, contato, formas a coletar, concretagens de origem,
 // e campos em branco p/ caneta (coletado / qtd / obs). QR no topo abre a rota no Google Maps (celular).
 // Self-contained (padrao generate-etiquetas-lote-pdf): verify_jwt + client anon com Authorization.
+// v11 (revisao dos PDFs 2026-07-07): 'Página X de N' no rodapé de todas as páginas + acentuação dos rótulos.
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
@@ -78,7 +79,7 @@ serveWithTelemetry('generate-coleta-formas-pdf', async (req) => {
     }
 
     const doc = await PDFDocument.create();
-    doc.setTitle('Roteiro de coleta de formas'); doc.setProducer('Concresoft');
+    doc.setTitle('Roteiro de coleta de fôrmas'); doc.setProducer('Concresoft');
     const F = await doc.embedFont(StandardFonts.Helvetica);
     const FB = await doc.embedFont(StandardFonts.HelveticaBold);
     const PW = 595, PH = 842, MX = 34;
@@ -96,9 +97,9 @@ serveWithTelemetry('generate-coleta-formas-pdf', async (req) => {
         } catch { /* qr opcional */ }
       }
       y -= 18;
-      page.drawText('Roteiro de coleta de formas', { x: MX, y, size: 11, font: FB, color: INK }); y -= 14;
+      page.drawText('Roteiro de coleta de fôrmas', { x: MX, y, size: 11, font: FB, color: INK }); y -= 14;
       page.drawText('Data: ' + dbr(rot.data) + (motorista ? '     Motorista: ' + motorista : '') , { x: MX, y, size: 9, font: F, color: MUTED }); y -= 12;
-      page.drawText(paradas.length + ' parada(s)  ·  ' + totalFormas + ' forma(s) a coletar', { x: MX, y, size: 9, font: FB, color: NAVY }); y -= 8;
+      page.drawText(paradas.length + ' parada(s)  ·  ' + totalFormas + ' fôrma(s) a coletar', { x: MX, y, size: 9, font: FB, color: NAVY }); y -= 8;
       page.drawLine({ start: { x: MX, y }, end: { x: PW - MX, y }, thickness: 1, color: NAVY }); y -= 16;
     };
     header();
@@ -113,7 +114,7 @@ serveWithTelemetry('generate-coleta-formas-pdf', async (req) => {
       page.drawText(String((it.ordem as number) ?? i + 1), { x: MX, y: y - 2, size: 15, font: FB, color: NAVY });
       const lx = MX + 24;
       page.drawText(fit(FB, nome, 11, 380), { x: lx, y: y - 2, size: 11, font: FB, color: INK });
-      page.drawText(qtd + ' formas', { x: PW - MX - 70, y: y - 2, size: 12, font: FB, color: NAVY });
+      page.drawText(qtd + ' fôrmas', { x: PW - MX - 70, y: y - 2, size: 12, font: FB, color: NAVY });
       let by = y - 16;
       page.drawText(fit(F, enderecoDe(d), 9, 500), { x: lx, y: by, size: 9, font: F, color: INK }); by -= 12;
       if (d.contato || d.telefone) { page.drawText(fit(F, 'Contato: ' + [d.contato, d.telefone].filter(Boolean).join(' · '), 9, 500), { x: lx, y: by, size: 9, font: F, color: MUTED }); by -= 12; }
@@ -126,10 +127,13 @@ serveWithTelemetry('generate-coleta-formas-pdf', async (req) => {
 
     if (rot.observacao) {
       if (y - 40 < 40) { page = doc.addPage([PW, PH]); y = PH - 40; }
-      page.drawText(fit(F, 'Observacoes: ' + String(rot.observacao), 9, PW - 2 * MX), { x: MX, y: y - 6, size: 9, font: F, color: MUTED });
+      page.drawText(fit(F, 'Observações: ' + String(rot.observacao), 9, PW - 2 * MX), { x: MX, y: y - 6, size: 9, font: F, color: MUTED });
     }
     // Assinatura do motorista no rodape da ultima pagina.
     page.drawText('Assinatura do motorista: ____________________________________', { x: MX, y: 34, size: 9, font: F, color: MUTED });
+
+    const allPages = doc.getPages();
+    allPages.forEach((p, i) => { const t = 'Página ' + (i + 1) + ' de ' + allPages.length; p.drawText(t, { x: PW - MX - F.widthOfTextAtSize(t, 7), y: 20, size: 7, font: F, color: MUTED }); });
 
     const bytes = await doc.save();
     return new Response(bytes, { headers: { 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="roteiro-coleta-formas.pdf"', ...cors } });
