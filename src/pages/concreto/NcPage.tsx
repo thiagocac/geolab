@@ -21,14 +21,21 @@ export function NcPage() {
   const { member, can } = useAuth();
   const qc = useQueryClient();
   const podeTratar = can('nc.gerenciar');
-  const [status, setStatus] = useState('');
+  const init = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const [status, setStatus] = useState(() => init.get('st') ?? '');
   const [sp, setSp] = useSearchParams();
   // biome-ignore lint/correctness/useExhaustiveDependencies: seed único no mount
   useEffect(() => {
     const s = sp.get('status');
     if (s) { setStatus(s); sp.delete('status'); setSp(sp, { replace: true }); }
   }, []);
-  const [obra, setObra] = useState('');
+  const [obra, setObra] = useState(() => init.get('obra') ?? '');
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (status) next.set('st', status);
+    if (obra) next.set('obra', obra);
+    if (next.toString() !== sp.toString()) setSp(next, { replace: true });
+  }, [status, obra, sp, setSp]);
   const [sel, setSel] = useState<NcRow | null>(null);
   const [novo, setNovo] = useState(false);
 

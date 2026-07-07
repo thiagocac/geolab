@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -19,12 +20,14 @@ export function ConfiguracoesPage({ inicial = 'preferencias' }: { inicial?: Aba 
     { key: 'notificacoes', label: 'Notificações', ok: hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro') },
   ];
   const disp = abas.filter((a) => a.ok);
-  const [aba, setAba] = useState<Aba>(disp.some((a) => a.key === inicial) ? inicial : (disp[0]?.key ?? 'preferencias'));
+  const [sp, setSp] = useSearchParams();
+  const [aba, setAba] = useState<Aba>(() => { const t = sp.get('tab') as Aba | null; if (t && disp.some((a) => a.key === t)) return t; return disp.some((a) => a.key === inicial) ? inicial : (disp[0]?.key ?? 'preferencias'); });
+  function trocar(k: Aba) { setAba(k); setSp({ tab: k }, { replace: true }); }
   if (!disp.length) return <Card className="p-8 text-center text-sm text-slate-600 dark:text-slate-300">Sem acesso às configurações.</Card>;
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {disp.map((a) => <Button key={a.key} variant={aba === a.key ? 'primary' : 'ghost'} onClick={() => setAba(a.key)}>{a.label}</Button>)}
+        {disp.map((a) => <Button key={a.key} variant={aba === a.key ? 'primary' : 'ghost'} onClick={() => trocar(a.key)}>{a.label}</Button>)}
       </div>
       {aba === 'preferencias' ? <PreferenciasPage /> : aba === 'campos' ? <ConfigCamposPage /> : aba === 'nc' ? <NcConfigPage /> : <NotificacoesPage />}
     </div>

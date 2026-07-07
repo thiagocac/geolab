@@ -19,6 +19,8 @@ type AuthState = {
   signOut: () => Promise<void>;
   selectTenant: (tenantId: string) => Promise<void>;
   reload: () => Promise<void>;
+  recovery: boolean;
+  clearRecovery: () => void;
   hasRole: (...roles: string[]) => boolean;
   can: (...permissions: string[]) => boolean;
   permissions: string[];
@@ -59,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tenants, setTenants] = useState<TenantOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [recovery, setRecovery] = useState(false);
 
   const loadContext = useCallback(async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -89,8 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.session) { await loadContext(); await recordLoginEventOnce(data.session); }
       setReady(true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, s) => {
       if (!active) return;
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true);
       setSession(s);
       if (s) { await loadContext(); await recordLoginEventOnce(s); } else { setMember(null); setTenants([]); setPermissions([]); }
     });
@@ -121,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   const needsTenantSelection = !!session && tenants.length > 1 && !member;
 
-  const value: AuthState = { ready, session, member, tenants, error, signIn, signOut, selectTenant, reload: loadContext, hasRole, can, permissions, needsTenantSelection };
+  const value: AuthState = { ready, session, member, tenants, error, signIn, signOut, selectTenant, reload: loadContext, hasRole, can, permissions, needsTenantSelection, recovery, clearRecovery: () => setRecovery(false) };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

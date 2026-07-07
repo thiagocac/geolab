@@ -14,6 +14,7 @@ import { listConcretagensCentral, createConcretagem, invokeFicha, listTracosComF
 import { TracoOptions } from '../../components/TracoOptions';
 import { listPecasObra } from '../../lib/api/estrutura';
 import { listReference } from '../../lib/api/client';
+import { FornecedorDatalist, FORNECEDORES_DL } from '../../components/domain/FornecedorDatalist';
 
 import { saveBlob as dl } from '../../lib/pdf';
 
@@ -38,20 +39,31 @@ export function ConcretagensPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
-  const [busca, setBusca] = useState('');
-  const [buscaQ, setBuscaQ] = useState('');
-  const [clienteFiltro, setClienteFiltro] = useState('');
-  const [obraFiltro, setObraFiltro] = useState('');
+  const init = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const [busca, setBusca] = useState(() => init.get('q') ?? '');
+  const [buscaQ, setBuscaQ] = useState(() => init.get('q') ?? '');
+  const [clienteFiltro, setClienteFiltro] = useState(() => init.get('cli') ?? '');
+  const [obraFiltro, setObraFiltro] = useState(() => init.get('obra') ?? '');
   const [page, setPage] = useState(0);
-  const [statusFiltro, setStatusFiltro] = useState('');
+  const [statusFiltro, setStatusFiltro] = useState(() => init.get('st') ?? '');
   const [spC, setSpC] = useSearchParams();
   // biome-ignore lint/correctness/useExhaustiveDependencies: seed único no mount
   useEffect(() => {
     const fl = spC.get('filtro');
     if (fl === 'sem_caminhao') { setStatusFiltro('programado'); spC.delete('filtro'); setSpC(spC, { replace: true }); }
   }, []);
-  const [dataDe, setDataDe] = useState('');
-  const [dataAte, setDataAte] = useState('');
+  const [dataDe, setDataDe] = useState(() => init.get('de') ?? '');
+  const [dataAte, setDataAte] = useState(() => init.get('ate') ?? '');
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (buscaQ) next.set('q', buscaQ);
+    if (clienteFiltro) next.set('cli', clienteFiltro);
+    if (obraFiltro) next.set('obra', obraFiltro);
+    if (statusFiltro) next.set('st', statusFiltro);
+    if (dataDe) next.set('de', dataDe);
+    if (dataAte) next.set('ate', dataAte);
+    if (next.toString() !== spC.toString()) setSpC(next, { replace: true });
+  }, [buscaQ, clienteFiltro, obraFiltro, statusFiltro, dataDe, dataAte, spC, setSpC]);
   const PAGE = 25;
   useEffect(() => { const t = setTimeout(() => { setBuscaQ(busca.trim()); setPage(0); }, 300); return () => clearTimeout(t); }, [busca]);
 
@@ -123,13 +135,14 @@ export function ConcretagensPage() {
           <SelectField label="Obra" value={String(form.work_id ?? '')} onChange={(e) => setForm((s) => ({ ...s, work_id: e.target.value || null, unit_id: null }))}><option value="">-</option>{(obras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
           <SelectField label="Traço (opcional)" value={String(form.operational_material_id ?? '')} onChange={(e) => { const id = e.target.value || null; const t = (tracos.data ?? []).find((x) => x.value === id); setForm((s) => ({ ...s, operational_material_id: id, fck_previsto: (s.fck_previsto == null || s.fck_previsto === '') && t?.fck != null ? t.fck : s.fck_previsto })); }}><option value="">-</option><TracoOptions tracos={tracos.data ?? []} workId={form.work_id ? String(form.work_id) : null} clientId={form.client_id ? String(form.client_id) : null} /></SelectField>
           {(pecas.data ?? []).length ? <SelectField label="Peça (estrutura)" value={String(form.unit_id ?? '')} onChange={(e) => { const id = e.target.value || null; const pc = (pecas.data ?? []).find((x) => x.id === id); setForm((s) => ({ ...s, unit_id: id, local_texto: pc ? pc.label : s.local_texto })); }}><option value="">- (ou digite o local abaixo)</option>{(pecas.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</SelectField> : null}
-          <Field label="Fornecedor (concreteira)" value={String(form.fornecedor_texto ?? '')} onChange={(e) => setForm((s) => ({ ...s, fornecedor_texto: e.target.value }))} />
+          <Field label="Fornecedor (concreteira)" list={FORNECEDORES_DL} value={String(form.fornecedor_texto ?? '')} onChange={(e) => setForm((s) => ({ ...s, fornecedor_texto: e.target.value }))} />
           <Field label="Data programada" type="date" value={String(form.data_programada ?? '')} onChange={(e) => setForm((s) => ({ ...s, data_programada: e.target.value || null }))} />
           <Field label="fck previsto (MPa)" type="number" value={String(form.fck_previsto ?? '')} onChange={(e) => setForm((s) => ({ ...s, fck_previsto: e.target.value === '' ? null : Number(e.target.value) }))} />
           <Field label="Local/peça" value={String(form.local_texto ?? '')} onChange={(e) => setForm((s) => ({ ...s, local_texto: e.target.value }))} />
           {form.origem === 'retroativa' ? <Field label="Justificativa (retroativa)" value={String(form.retroativa_justificativa ?? '')} onChange={(e) => setForm((s) => ({ ...s, retroativa_justificativa: e.target.value }))} /> : null}
         </div>
       </Modal>
+      <FornecedorDatalist />
     </div>
   );
 }

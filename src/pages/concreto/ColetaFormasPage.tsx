@@ -134,6 +134,8 @@ export function ColetaFormasPage() {
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
               <div style={{ maxWidth: 220 }}><Field label="Prontas há ≥ (dias)" type="number" min={0} step={1} value={dias} onChange={(e) => setDias(e.target.value)} hint="Fôrmas de concretagens com pelo menos N dias." /></div>
               <span className="text-sm" style={{ color: 'var(--ink-faint)' }}>{obras.length} obra(s) · {obras.reduce((s, o) => s + o.total, 0)} fôrma(s) em campo</span>
+              {obras.length ? <Button variant="ghost" onClick={() => setSel(new Set(obras.map((o) => o.work_id)))}>Selecionar todas</Button> : null}
+              {sel.size ? <Button variant="ghost" onClick={() => setSel(new Set<string>())}>Limpar seleção</Button> : null}
             </div>
             {wl.isLoading ? <LoadingState /> : wl.isError ? <ErrorState message={(wl.error as Error).message} /> : obras.length === 0 ? <EmptyState /> : (
               <div style={{ display: 'grid', gap: 8 }}>

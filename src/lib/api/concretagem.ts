@@ -325,3 +325,17 @@ export async function listConcretagensCentral(opts: { tenantId?: string; clientI
   }));
   return { rows, total };
 }
+
+
+// T8 (auditoria UX): fornecedores ja usados pelo lab, para autocompletar (datalist) o campo
+// texto-livre. Dedupe case-insensitive no cliente; sem migration (distinct via amostra recente).
+export async function listFornecedores(): Promise<string[]> {
+  const { data, error } = await db.from('concretagens').select('fornecedor_texto').is('deleted_at', null).not('fornecedor_texto', 'is', null).order('created_at', { ascending: false }).limit(400);
+  if (error) throw new Error(error.message);
+  const seen = new Set<string>(); const out: string[] = [];
+  for (const r of (data ?? []) as { fornecedor_texto: string | null }[]) {
+    const v = (r.fornecedor_texto ?? '').trim(); const k = v.toLowerCase();
+    if (v && !seen.has(k)) { seen.add(k); out.push(v); }
+  }
+  return out.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}

@@ -29,10 +29,11 @@ export function LaudosPage() {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
-  const [busca, setBusca] = useState('');
-  const [buscaQ, setBuscaQ] = useState('');
-  const [obraFiltro, setObraFiltro] = useState('');
-  const [statusFiltro, setStatusFiltro] = useState('');
+  const init = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const [busca, setBusca] = useState(() => init.get('q') ?? '');
+  const [buscaQ, setBuscaQ] = useState(() => init.get('q') ?? '');
+  const [obraFiltro, setObraFiltro] = useState(() => init.get('obra') ?? '');
+  const [statusFiltro, setStatusFiltro] = useState(() => init.get('st') ?? '');
   const [spL, setSpL] = useSearchParams();
   // biome-ignore lint/correctness/useExhaustiveDependencies: seed único no mount
   useEffect(() => {
@@ -40,6 +41,13 @@ export function LaudosPage() {
     if (s) { setStatusFiltro(s); spL.delete('status'); setSpL(spL, { replace: true }); }
   }, []);
   const [page, setPage] = useState(0);
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (buscaQ) next.set('q', buscaQ);
+    if (obraFiltro) next.set('obra', obraFiltro);
+    if (statusFiltro) next.set('st', statusFiltro);
+    if (next.toString() !== spL.toString()) setSpL(next, { replace: true });
+  }, [buscaQ, obraFiltro, statusFiltro, spL, setSpL]);
   const PAGE = 25;
   useEffect(() => { const t = setTimeout(() => { setBuscaQ(busca.trim()); setPage(0); }, 300); return () => clearTimeout(t); }, [busca]);
 

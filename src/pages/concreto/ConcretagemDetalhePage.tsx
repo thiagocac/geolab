@@ -10,6 +10,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
+import { FornecedorDatalist, FORNECEDORES_DL } from '../../components/domain/FornecedorDatalist';
 import { getConcretagem, listCaminhoes, listCpsDaConcretagem, addCaminhao, invokeFicha, updateConcretagem, listTracosComFck, padraoMoldagemDaConcretagem, lerNfImagem, uploadEvidencia, listEvidencias, signedEvidencia, excluirEvidencia, lerFichaImagem, type ConcretagemRow, type FichaCaminhaoOCR } from '../../lib/api/concretagem';
 import { TracoOptions } from '../../components/TracoOptions';
 import { TimelineList } from '../../components/TimelineList';
@@ -326,7 +327,7 @@ export function ConcretagemDetalhePage() {
               {conc.data?.work_id ? <button type="button" className="justify-self-start text-xs font-bold text-blue-600" onClick={() => nav('/tracos?work=' + String(conc.data?.work_id))}>Gerenciar traços desta obra</button> : null}
               {!form.operational_material_id ? <Field label="Traço / descrição manual" value={val(form.traco_texto)} onChange={(e) => patch('traco_texto', e.target.value)} /> : null}
               <Field label="FCK previsto (MPa)" type="number" value={val(form.fck_previsto)} onChange={(e) => patch('fck_previsto', e.target.value)} />
-              {onC('fornecedor') ? <Field label="Fornecedor / central" value={val(form.fornecedor_texto)} onChange={(e) => patch('fornecedor_texto', e.target.value)} /> : null}
+              {onC('fornecedor') ? <><Field label="Fornecedor / central" list={FORNECEDORES_DL} value={val(form.fornecedor_texto)} onChange={(e) => patch('fornecedor_texto', e.target.value)} /><FornecedorDatalist /></> : null}
               {onC('data_hora') ? <><Field label="Data programada" type="date" value={val(form.data_programada)} onChange={(e) => patch('data_programada', e.target.value)} /><Field label="Hora programada" type="time" value={val(form.hora_programada)} onChange={(e) => patch('hora_programada', e.target.value)} /><Field label="Data real" type="date" value={val(form.data_real)} onChange={(e) => patch('data_real', e.target.value)} /><Field label="Início real" type="time" value={val(form.hora_inicio)} onChange={(e) => patch('hora_inicio', e.target.value)} /><Field label="Fim real" type="time" value={val(form.hora_fim)} onChange={(e) => patch('hora_fim', e.target.value)} /></> : null}
               {onC('local_peca') && (pecas.data ?? []).length ? <SelectField label="Peça da estrutura" value="" onChange={(e) => { const pc = (pecas.data ?? []).find((x) => x.id === e.target.value); if (pc) patch('local_texto', pc.label); }}><option value="">Selecionar para preencher local</option>{(pecas.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</SelectField> : null}
               {onC('local_peca') ? <Field label="Local / peça" value={val(form.local_texto)} onChange={(e) => patch('local_texto', e.target.value)} /> : null}

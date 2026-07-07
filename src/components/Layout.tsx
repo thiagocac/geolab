@@ -1,10 +1,15 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 import { APP_VERSION } from '../lib/telemetry/core';
 import { Tooltip } from './ui/Tooltip';
 import { CommandPalette, type Command } from './ui/CommandPalette';
+import { Modal } from './ui/Modal';
+import { useToast } from '../lib/toast';
+import { getPendenciasResumo } from '../lib/api/pendencias';
+import { PEND_SECOES } from '../lib/pendenciasNav';
 import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Download, Tag, Truck } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
@@ -55,13 +60,32 @@ const sections: Section[] = [
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { member, signOut, hasRole } = useAuth();
+  const { member, signOut, hasRole, tenants, selectTenant } = useAuth();
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const can = (it: Item) => !it.roles || hasRole(...it.roles);
   const nav = useNavigate();
   const [cmdkOpen, setCmdkOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|ad|od)/.test(navigator.userAgent);
+  const toast = useToast();
+  const qc = useQueryClient();
+  const [labModal, setLabModal] = useState(false);
+  const [labBusy, setLabBusy] = useState(false);
+  // T13: badge de pendencias no menu (mesma RPC da tela; contagem filtrada pelo papel).
+  const pendQ = useQuery({ queryKey: ['pendencias-badge', member?.tenant_id ?? 'none'], enabled: !!member, staleTime: 5 * 60 * 1000, refetchInterval: 5 * 60 * 1000, queryFn: () => getPendenciasResumo(member!.tenant_id) });
+  const pendTotal = useMemo(() => {
+    const d = pendQ.data; if (!d) return 0;
+    let t = 0;
+    for (const sec of PEND_SECOES) for (const it of sec.itens) { if (hasRole(...it.roles)) t += d[it.chave]?.count ?? 0; }
+    return t;
+  }, [pendQ.data, hasRole]);
+  // T12: trocar de laboratorio sem deslogar (so multi-vinculo). Limpa o cache de queries do lab anterior.
+  async function trocarLab(id: string) {
+    setLabBusy(true);
+    try { await selectTenant(id); qc.clear(); setLabModal(false); nav('/', { viewTransition: true }); toast('Laboratório alterado.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); }
+    finally { setLabBusy(false); }
+  }
   const commands: Command[] = [
     { id: 'a-prog', label: 'Nova programação', group: 'Ações', run: () => nav('/programacoes/nova', { viewTransition: true }) },
     { id: 'a-obra', label: 'Nova obra', group: 'Ações', run: () => nav('/nova-obra', { viewTransition: true }) },
@@ -69,6 +93,7 @@ export function Layout({ children }: { children: ReactNode }) {
   ];
   return (
     <div className="app-shell">
+      <a href="#conteudo" className="skip-link">Pular para o conteúdo</a>
       {open ? <div className="nav-scrim" onClick={() => setOpen(false)} /> : null}
       <aside className={'sidebar' + (open ? ' open' : '')}>
         <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -92,7 +117,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   const Icon = it.icon;
                   return (
                     <NavLink key={it.to} to={it.to} end={it.end} viewTransition onClick={() => setOpen(false)} className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
-                      <Icon size={18} /> {it.label}
+                      <Icon size={18} /> {it.label}{it.to === '/gestao/pendencias' && pendTotal > 0 ? <span className="nav-count">{pendTotal > 99 ? '99+' : pendTotal}</span> : null}
                     </NavLink>
                   );
                 })}
@@ -106,6 +131,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <header className="topbar">
           <Tooltip label="Menu"><button type="button" className="icon-btn menu-btn" aria-label="Menu" onClick={() => setOpen((o) => !o)}><Menu size={20} /></button></Tooltip>
           <span style={{ fontWeight: 700, color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member?.tenant_name}</span>
+          {tenants.length > 1 ? <Tooltip label="Trocar de laboratório"><button type="button" className="icon-btn !min-h-8 !min-w-8" aria-label="Trocar de laboratório" onClick={() => setLabModal(true)}><Building2 size={16} /></button></Tooltip> : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
             <button type="button" className="topbar-search" onClick={() => setCmdkOpen(true)} aria-label="Buscar (Ctrl+K)"><span className="hide-sm">Buscar</span><kbd>{isMac ? '⌘K' : 'Ctrl+K'}</kbd></button>
             <div className="theme-toggle">
@@ -117,6 +143,17 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main id="conteudo" className="page-wrap">{children}</main>
+        <Modal open={labModal} title="Trocar de laboratório" onClose={() => setLabModal(false)}>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {tenants.map((t) => (
+              <button key={t.tenant_id} type="button" disabled={t.is_selected || labBusy} onClick={() => void trocarLab(t.tenant_id)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 12, background: t.is_selected ? 'var(--surface-2)' : 'var(--surface)', color: 'var(--ink)', cursor: t.is_selected ? 'default' : 'pointer', opacity: labBusy ? 0.6 : 1, textAlign: 'left', font: 'inherit' }}>
+                <span style={{ fontWeight: 600 }}>{t.tenant_name}<small style={{ color: 'var(--ink-faint)', fontWeight: 400 }}> · {t.role}</small></span>
+                {t.is_selected ? <CheckCircle size={16} /> : null}
+              </button>
+            ))}
+          </div>
+        </Modal>
         <CommandPalette commands={commands} open={cmdkOpen} onOpenChange={setCmdkOpen} />
       </div>
     </div>

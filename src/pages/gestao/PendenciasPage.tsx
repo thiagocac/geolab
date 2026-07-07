@@ -5,39 +5,12 @@ import { useAuth } from '../../lib/auth';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { LoadingState, ErrorState } from '../../components/ui/State';
-import { getPendenciasResumo, type PendChave, type Sev } from '../../lib/api/pendencias';
+import { getPendenciasResumo, type Sev } from '../../lib/api/pendencias';
+import { PEND_SECOES, type PendItem } from '../../lib/pendenciasNav';
 
 // Console consolidado de pendencias do lab (exceção ao seletor de obra, como a agenda).
 // Cada item: contagem grande clicável -> deep-link para a tela dona com filtro inicial.
 // Linhas com contagem 0 colapsam; itens são filtrados pelo papel (roles) do usuário.
-type Item = { chave: PendChave; titulo: string; descricao: string; rota: string; roles: string[] };
-type Secao = { area: string; itens: Item[] };
-
-const labRoles = ['admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo'];
-const qualidade = ['admin', 'admin_consulte', 'gestor_qualidade'];
-
-const SECOES: Secao[] = [
-  { area: 'Operação', itens: [
-    { chave: 'cp_hoje', titulo: 'CPs a romper hoje', descricao: 'Corpos de prova com rompimento previsto para hoje.', rota: '/rompimentos?janela=hoje', roles: labRoles },
-    { chave: 'cp_atrasado', titulo: 'CPs atrasados', descricao: 'Pendentes com data prevista já vencida.', rota: '/rompimentos?janela=atrasados', roles: labRoles },
-    { chave: 'cp_pendente', titulo: 'CPs pendentes (total)', descricao: 'Todos os CPs aguardando rompimento.', rota: '/rompimentos?janela=pendentes', roles: labRoles },
-    { chave: 'prog_sem_caminhao', titulo: 'Programações sem caminhão', descricao: 'Concretagens programadas sem nenhum caminhão/NF lançado.', rota: '/concretagens?filtro=sem_caminhao', roles: labRoles },
-    { chave: 'importacao_pendente', titulo: 'Importações pendentes', descricao: 'Lotes de importação extraídos aguardando confirmação.', rota: '/importacoes', roles: labRoles },
-  ] },
-  { area: 'Qualidade', itens: [
-    { chave: 'insatisfatorio', titulo: 'Resultados insatisfatórios', descricao: 'Exemplares abaixo do fck na idade de controle.', rota: '/rompimentos?janela=insatisfatorios', roles: qualidade },
-    { chave: 'laudo_aprovar', titulo: 'Laudos a aprovar/emitir', descricao: 'Laudos em rascunho aguardando aprovação.', rota: '/laudos?status=pendente', roles: qualidade },
-    { chave: 'nc_aberta', titulo: 'Não conformidades abertas', descricao: 'NCs com status aberto, aguardando tratativa.', rota: '/nao-conformidades?status=aberta', roles: qualidade },
-    { chave: 'conc_sem_laudo', titulo: 'Concretagens sem laudo', descricao: 'Ensaios concluídos (sem CP pendente) e ainda sem laudo emitido.', rota: '/laudos', roles: qualidade },
-  ] },
-  { area: 'Conformidade', itens: [
-    { chave: 'cal_vencida', titulo: 'Calibrações vencidas', descricao: 'Equipamentos ativos com calibração vencida.', rota: '/cadastros?tab=equipamentos&cal=vencida', roles: labRoles },
-    { chave: 'cal_vencendo', titulo: 'Calibrações a vencer (30d)', descricao: 'Equipamentos ativos com calibração vencendo em até 30 dias.', rota: '/cadastros?tab=equipamentos&cal=vence30', roles: labRoles },
-    { chave: 'cert_vencida', titulo: 'Certificações vencidas', descricao: 'Colaboradores ativos com certificação vencida.', rota: '/cadastros?tab=colaboradores&cert=vencida', roles: qualidade },
-    { chave: 'cert_vencendo', titulo: 'Certificações a vencer (30d)', descricao: 'Colaboradores ativos com certificação vencendo em até 30 dias.', rota: '/cadastros?tab=colaboradores&cert=vence30', roles: qualidade },
-  ] },
-];
-
 const SEV_COR: Record<Sev, string> = { danger: 'var(--magenta)', warning: '#d97706', info: 'var(--ink-soft)' };
 const SEV_BG: Record<Sev, string> = { danger: 'rgba(197,17,126,0.08)', warning: 'rgba(217,119,6,0.08)', info: 'transparent' };
 
@@ -48,8 +21,8 @@ export function PendenciasPage() {
 
   const secoesVisiveis = useMemo(() => {
     const data = q.data;
-    if (!data) return [] as Array<{ area: string; itens: Array<Item & { count: number; sev: Sev }> }>;
-    return SECOES.map((s) => ({
+    if (!data) return [] as Array<{ area: string; itens: Array<PendItem & { count: number; sev: Sev }> }>;
+    return PEND_SECOES.map((s) => ({
       area: s.area,
       itens: s.itens
         .filter((it) => hasRole(...it.roles))

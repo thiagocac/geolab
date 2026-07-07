@@ -47,6 +47,7 @@ const WebhooksPage = lazy(() => import('./pages/gestao/WebhooksPage').then((m) =
 const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
 const LaudoAprovarPage = lazy(() => import('./pages/LaudoAprovarPage').then((m) => ({ default: m.LaudoAprovarPage })));
 const PortalPublicoPage = lazy(() => import('./pages/portal/PortalPublicoPage').then((m) => ({ default: m.PortalPublicoPage })));
+const RedefinirSenhaPage = lazy(() => import('./pages/RedefinirSenhaPage').then((m) => ({ default: m.RedefinirSenhaPage })));
 
 /**
  * Monta a correlação de rota da telemetria (v173). O hook useRouteTelemetry existia desde a
@@ -59,7 +60,7 @@ function RouteTelemetryMount() {
 }
 
 export function App() {
-  const { ready, session, needsTenantSelection, hasRole } = useAuth();
+  const { ready, session, needsTenantSelection, hasRole, recovery } = useAuth();
 
   // Rota PUBLICA de validacao (fora do gate de auth) — alvo do QR do laudo.
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/validar')) {
@@ -104,6 +105,19 @@ export function App() {
   }
 
   if (!ready) return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'var(--ink-faint)' }}>Carregando...</div>;
+
+  // Redefinicao de senha (T7): rota direta OU evento PASSWORD_RECOVERY (o link do e-mail pode
+  // cair na raiz quando o redirect nao esta allowlisted no Auth — o evento cobre esse caminho).
+  if (recovery || (typeof window !== 'undefined' && window.location.pathname.startsWith('/redefinir-senha'))) {
+    return (
+      <BrowserRouter>
+        <Suspense fallback={<LoadingState />}>
+          <Routes><Route path="*" element={<RedefinirSenhaPage />} /></Routes>
+        </Suspense>
+      </BrowserRouter>
+    );
+  }
+
   if (!session) return <LoginScreen />;
   if (needsTenantSelection) return <TenantSelectionPage />;
   const podeOperacao = hasRole('admin', 'admin_consulte');

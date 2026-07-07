@@ -224,6 +224,8 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 @keyframes vt-out{to{opacity:0;transform:translateY(-6px)}}
 @keyframes vt-in{from{opacity:0;transform:translateY(10px)}}
 
+.skip-link{position:absolute;left:-9999px;top:0;z-index:120;background:var(--surface);color:var(--ink);padding:10px 16px;border-radius:0 0 12px 0;font-weight:700;box-shadow:var(--shadow-pop)}
+.skip-link:focus{left:0}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;min-width:40px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--ink-soft);cursor:pointer;position:relative}
 .icon-btn:hover{background:var(--surface-2);color:var(--ink)}
 .theme-toggle{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden}

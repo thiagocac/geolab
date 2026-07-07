@@ -8,6 +8,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
+import { FornecedorDatalist, FORNECEDORES_DL } from '../../components/domain/FornecedorDatalist';
 import { createConcretagem, listTracosComFck } from '../../lib/api/concretagem';
 import { TracoOptions } from '../../components/TracoOptions';
 import { listReference } from '../../lib/api/client';
@@ -75,7 +76,7 @@ export function NovaProgramacaoPage() {
             {!form.operational_material_id ? <Field label="Traço manual" value={val(form.traco_texto)} onChange={(e) => patch('traco_texto', e.target.value)} /> : null}
             {form.work_id ? <button type="button" className="justify-self-start text-xs font-bold text-blue-600" onClick={() => nav('/tracos?work=' + String(form.work_id))}>Gerenciar traços desta obra</button> : null}
             <Field label="FCK (MPa)" type="number" value={val(form.fck_previsto)} onChange={(e) => patch('fck_previsto', e.target.value)} />
-            <Field label="Fornecedor / central" value={val(form.fornecedor_texto)} onChange={(e) => patch('fornecedor_texto', e.target.value)} />
+            <Field label="Fornecedor / central" list={FORNECEDORES_DL} value={val(form.fornecedor_texto)} onChange={(e) => patch('fornecedor_texto', e.target.value)} />
             <Field label="Data prevista" type="date" value={val(form.data_programada)} onChange={(e) => patch('data_programada', e.target.value)} />
             <Field label="Hora prevista" type="time" value={val(form.hora_programada)} onChange={(e) => patch('hora_programada', e.target.value)} />
             <Field label="Volume previsto (m³)" type="number" value={val(form.volume_programado_m3)} onChange={(e) => patch('volume_programado_m3', e.target.value)} />
@@ -96,6 +97,7 @@ export function NovaProgramacaoPage() {
         <Button variant="ghost" onClick={() => nav('/programacoes', { viewTransition: true })}>Cancelar</Button>
         <Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar programação'}</Button>
       </div>
+      <FornecedorDatalist />
     </section>
   );
 }

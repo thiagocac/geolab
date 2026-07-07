@@ -27,7 +27,7 @@ const tabs: Tab[] = [
 ];
 
 export function CadastrosPage() {
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
   const [active, setActive] = useState(() => {
     const k = sp.get('tab');
     if (k) { const i = tabs.findIndex((t) => t.key === k); if (i >= 0) return i; if (k === 'colaboradores') return tabs.length; }
@@ -39,8 +39,8 @@ export function CadastrosPage() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {tabs.map((tab, i) => <Button key={tab.key} variant={i === active ? 'primary' : 'ghost'} onClick={() => setActive(i)}>{tab.label}</Button>)}
-        <Button variant={isColab ? 'primary' : 'ghost'} onClick={() => setActive(COLAB)}>Colaboradores</Button>
+        {tabs.map((tab, i) => <Button key={tab.key} variant={i === active ? 'primary' : 'ghost'} onClick={() => { setActive(i); setSp({ tab: tab.key }, { replace: true }); }}>{tab.label}</Button>)}
+        <Button variant={isColab ? 'primary' : 'ghost'} onClick={() => { setActive(COLAB); setSp({ tab: 'colaboradores' }, { replace: true }); }}>Colaboradores</Button>
       </div>
       {isColab
         ? <ColaboradoresPage />
