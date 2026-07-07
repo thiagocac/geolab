@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FilePicker } from '../../components/ui/FilePicker';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -363,7 +364,7 @@ export function MateriaisPage() {
             <div className="mt-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <div className="text-sm font-bold text-slate-600 dark:text-slate-300">Carta traço (anexo)</div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="text-xs" aria-label="Anexar carta traço" onChange={(e) => setCartaFile(e.target.files?.[0] ?? null)} />
+                <FilePicker label="Anexar carta traço" accept=".pdf,.png,.jpg,.jpeg,.webp" onFiles={(fs) => setCartaFile(fs[0] ?? null)} />
                 {cartaPath && !cartaFile ? <button type="button" className="text-xs font-bold" style={{ color: 'var(--magenta)' }} onClick={() => abrirCarta(cartaPath)}>ver carta atual</button> : null}
                 {cartaPath || cartaFile ? <button type="button" className="text-xs font-bold text-slate-400 hover:text-red-600" onClick={() => { setCartaFile(null); setCartaPath(null); }}>Remover</button> : null}
               </div>

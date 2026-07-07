@@ -7,6 +7,7 @@ import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-quer
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FilePicker } from '../../components/ui/FilePicker';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
@@ -203,7 +204,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
             {tmplObj?.mensagem ? <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>{tmplObj.mensagem}</p> : null}
             <Field label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
             <TextArea label="Anotacao" value={anotacao} onChange={(e) => setAnotacao(e.target.value)} />
-            <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (opcional)</span><input className="input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+            <div className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (opcional)</span><FilePicker onFiles={(fs) => setFile(fs[0] ?? null)} /></div>
             <div><Button onClick={() => void registrar()} disabled={busy || !tmpl}>{busy ? 'Registrando...' : 'Registrar acao'}</Button></div>
           </div>
         ) : concluida ? <p className="text-sm" style={{ color: '#16a34a', fontWeight: 700 }}>NC concluida.</p> : null}

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FilePicker } from '../../components/ui/FilePicker';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField } from '../../components/ui/Field';
@@ -127,7 +128,7 @@ export function ImportacoesPage() {
         <>
           <Card>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-              <input type="file" accept="image/*" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
+              <FilePicker label="Escolher imagens" accept="image/*" multiple onFiles={setFiles} />
               <Button onClick={() => void lerOcr()} disabled={ocrBusy}>{ocrBusy ? 'Lendo...' : 'Ler com IA'}</Button>
               {ocrMsg ? <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{ocrMsg}</span> : null}
             </div>

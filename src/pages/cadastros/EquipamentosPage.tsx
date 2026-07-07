@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FilePicker } from '../../components/ui/FilePicker';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Drawer } from '../../components/ui/Drawer';
@@ -172,7 +173,7 @@ export function EquipamentosPage() {
               <Field label="Incerteza (MPa)" type="number" value={String(f.incerteza_mpa ?? '')} onChange={(e) => setF((s) => ({ ...s, incerteza_mpa: e.target.value }))} />
             </div>
             <div style={{ marginTop: 12 }}>
-              <label className="block min-w-0 space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Certificado (PDF/scan)</span><input type="file" className="input" accept="application/pdf,image/*" onChange={(e) => setCertFile(e.target.files?.[0] ?? null)} /></label>
+              <div className="block min-w-0 space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Certificado (PDF/scan)</span><FilePicker accept="application/pdf,image/*" onFiles={(fs) => setCertFile(fs[0] ?? null)} /></div>
               {atual?.anexo_certificado_path && !certFile ? <button type="button" className="mt-1 text-xs font-bold" style={{ color: 'var(--magenta)' }} onClick={() => abrirAnexo(atual.anexo_certificado_path as string)}>ver certificado atual</button> : null}
             </div>
           </div>

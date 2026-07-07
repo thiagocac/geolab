@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FilePicker } from '../../components/ui/FilePicker';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field } from '../../components/ui/Field';
@@ -105,7 +106,7 @@ export function PreferenciasPage() {
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)' }}>Logo do laboratório</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 6 }}>
               {q.data?.logo_path && logoUrl.data ? <img src={logoUrl.data} alt="Logo" style={{ height: 48, maxWidth: 180, objectFit: 'contain', border: '1px solid var(--line)', borderRadius: 8, padding: 4, background: 'var(--surface)' }} /> : <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Sem logo (o laudo usa o nome do lab).</span>}
-              {podeEditar ? <><input type="file" accept="image/png,image/jpeg" disabled={logoBusy} onChange={(e) => void handleLogo(e.target.files?.[0] ?? undefined)} />{q.data?.logo_path ? <Button variant="ghost" onClick={() => void removeLogo()}>Remover</Button> : null}</> : null}
+              {podeEditar ? <><FilePicker label={logoBusy ? 'Enviando…' : 'Escolher logo'} accept="image/png,image/jpeg" disabled={logoBusy} resetAfter onFiles={(fs) => void handleLogo(fs[0] ?? undefined)} />{q.data?.logo_path ? <Button variant="ghost" onClick={() => void removeLogo()}>Remover</Button> : null}</> : null}
             </div>
           </div>
         </div>

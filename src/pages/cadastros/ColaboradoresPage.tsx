@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FilePicker } from '../../components/ui/FilePicker';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Drawer } from '../../components/ui/Drawer';
@@ -180,7 +181,7 @@ export function ColaboradoresPage() {
                   <SelectField label="Tipo" value={String(cf.tipo ?? '')} onChange={(e) => setCf((s) => ({ ...s, tipo: e.target.value }))}><option value="">-</option>{TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}</SelectField>
                   <Field label="Número" value={String(cf.numero ?? '')} onChange={(e) => setCf((s) => ({ ...s, numero: e.target.value }))} />
                   <Field label="Validade" type="date" value={String(cf.validade ?? '')} onChange={(e) => setCf((s) => ({ ...s, validade: e.target.value }))} />
-                  <label className="block min-w-0 space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (PDF/scan)</span><input key={fileKey} type="file" className="input" accept="application/pdf,image/*" onChange={(e) => setCertFile(e.target.files?.[0] ?? null)} /></label>
+                  <div className="block min-w-0 space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (PDF/scan)</span><FilePicker key={fileKey} accept="application/pdf,image/*" onFiles={(fs) => setCertFile(fs[0] ?? null)} /></div>
                   <Button variant="secondary" onClick={() => void adicionarCert()} disabled={busyCert}>{busyCert ? 'Enviando...' : 'Adicionar'}</Button>
                 </div>
               </div>

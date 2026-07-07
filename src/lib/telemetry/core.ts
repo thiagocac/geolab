@@ -1,4 +1,4 @@
-export const APP_VERSION = 'v182';
+export const APP_VERSION = 'v183';
 export type TelemetryLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export const TELEMETRY_CONFIG = { maxBatch: 25, flushIntervalMs: 10_000, maxBuffer: 200, maxMessage: 2000, maxStack: 8000 };

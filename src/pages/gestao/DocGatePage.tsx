@@ -4,6 +4,7 @@ import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { FilePicker } from '../../components/ui/FilePicker';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { Button } from '../../components/ui/Button';
@@ -194,7 +195,7 @@ export function DocGatePage() {
         <div className="space-y-3">
           <Field label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
           <Field label="Validade (se aplicável)" type="date" value={validade} onChange={(e) => setValidade(e.target.value)} />
-          <label className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Arquivo</span><input className="input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+          <div className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Arquivo</span><FilePicker onFiles={(fs) => setFile(fs[0] ?? null)} /></div>
           <p className="text-xs text-slate-500">O documento entra como <strong>em análise</strong>; um gestor/RT aprova ou recusa. Aprovado e dentro da validade, vira <strong>conforme</strong> e libera o gate.</p>
         </div>
       </Modal>

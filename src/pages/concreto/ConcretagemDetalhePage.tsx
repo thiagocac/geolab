@@ -11,6 +11,7 @@ import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { LoadingState, ErrorState } from '../../components/ui/State';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
 import { FornecedorDatalist, FORNECEDORES_DL } from '../../components/domain/FornecedorDatalist';
+import { FilePicker } from '../../components/ui/FilePicker';
 import { getConcretagem, listCaminhoes, listCpsDaConcretagem, addCaminhao, invokeFicha, updateConcretagem, listTracosComFck, padraoMoldagemDaConcretagem, lerNfImagem, uploadEvidencia, listEvidencias, signedEvidencia, excluirEvidencia, lerFichaImagem, type ConcretagemRow, type FichaCaminhaoOCR } from '../../lib/api/concretagem';
 import { TracoOptions } from '../../components/TracoOptions';
 import { TimelineList } from '../../components/TimelineList';
@@ -380,7 +381,7 @@ export function ConcretagemDetalhePage() {
           <Card>
             <CardHeader kicker="Registro fotográfico" title="Evidências">Fotos do local, dos CPs ou da ficha física. Visíveis só para a equipe do laboratório.</CardHeader>
             <div className="space-y-3 p-4">
-              <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Adicionar foto:</span><input type="file" accept="image/*" disabled={upEvi} onChange={(e) => { const f = e.target.files?.[0] ?? null; void onUploadEvidencia(f); e.currentTarget.value = ''; }} />{upEvi ? <span className="text-xs text-slate-500">enviando...</span> : null}</label>
+              <div className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Adicionar foto:</span><FilePicker label="Escolher foto" accept="image/*" disabled={upEvi} resetAfter onFiles={(fs) => void onUploadEvidencia(fs[0] ?? null)} />{upEvi ? <span className="text-xs text-slate-500">enviando...</span> : null}</div>
               {evidencias.isLoading ? <p className="text-sm text-slate-500">Carregando...</p> : (evidencias.data?.length ?? 0) === 0 ? <p className="text-sm text-slate-500">Nenhuma evidência ainda.</p> : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {(evidencias.data ?? []).map((ev) => (
@@ -399,7 +400,7 @@ export function ConcretagemDetalhePage() {
       <Modal open={open} wide title="Adicionar caminhão + CPs" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvarCaminhao()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar caminhão e gerar CPs'}</Button></>}>
         <div className="space-y-4">
           <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
-            <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Ler NF (foto):</span><input type="file" accept="image/*" disabled={lendoNf} onChange={(e) => { const f = e.target.files?.[0]; if (f) void lerNf(f); e.currentTarget.value = ''; }} />{lendoNf ? <span className="text-xs text-slate-500">lendo...</span> : null}</label>
+            <div className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Ler NF (foto):</span><FilePicker label="Escolher foto" accept="image/*" disabled={lendoNf} resetAfter onFiles={(fs) => { if (fs[0]) void lerNf(fs[0]); }} />{lendoNf ? <span className="text-xs text-slate-500">lendo...</span> : null}</div>
             <p className="mt-1 text-xs text-slate-500">Fotografe a DANFE/nota do caminhão para preencher os campos. Requer VISION_API_KEY; confira antes de salvar.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
@@ -442,7 +443,7 @@ export function ConcretagemDetalhePage() {
       <Modal open={fichaOpen} wide title="Importar ficha de moldagem (OCR)" onClose={() => setFichaOpen(false)} footer={<><Button variant="ghost" onClick={() => setFichaOpen(false)}>Fechar</Button>{fichaRows.length ? <Button onClick={() => void onCriarDetectados()} disabled={gravandoFicha || !fichaRows.some((r) => r.criar && str(r.nota_fiscal))}>{gravandoFicha ? 'Criando...' : 'Criar ' + fichaRows.filter((r) => r.criar && str(r.nota_fiscal)).length + ' caminhão(ões) + CPs'}</Button> : null}</>}>
         <div className="space-y-4">
           <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
-            <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Foto ou scan da ficha preenchida:</span><input type="file" accept="image/*" disabled={lendoFicha} onChange={(e) => { const f = e.target.files?.[0]; if (f) void onLerFicha(f); e.currentTarget.value = ''; }} />{lendoFicha ? <span className="text-xs text-slate-500">lendo…</span> : null}</label>
+            <div className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Foto ou scan da ficha preenchida:</span><FilePicker label="Escolher imagem" accept="image/*" disabled={lendoFicha} resetAfter onFiles={(fs) => { if (fs[0]) void onLerFicha(fs[0]); }} />{lendoFicha ? <span className="text-xs text-slate-500">lendo…</span> : null}</div>
             <p className="mt-1 text-xs text-slate-500">A IA lê a grade manuscrita (uma linha por caminhão) e monta a conferência abaixo. Nada é gravado antes de você confirmar — edite qualquer campo que o OCR tiver errado.</p>
           </div>
           <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">Cada caminhão criado gera <b>{padraoConc.total} CP(s)</b> pelo padrão de moldagem da concretagem/traço{padraoConc.txt ? <> ({padraoConc.txt})</> : null}. Se precisar de outro padrão, ajuste na etapa 1 antes de importar.</div>

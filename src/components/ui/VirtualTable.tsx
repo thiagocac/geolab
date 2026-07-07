@@ -12,6 +12,7 @@ export function VirtualTable<T>({ data, columns, rowId, height = 560, estimateRo
   data: T[]; columns: ColumnDef<T, unknown>[]; rowId: (row: T) => string; height?: number; estimateRow?: number; emptyLabel?: string;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [mLimit, setMLimit] = useState(40); // T24: mobile rende cartoes sem virtualizacao — limita e pagina
   const table = useReactTable({ data, columns, state: { sorting }, onSortingChange: setSorting, getRowId: rowId, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel() });
   const rows = table.getRowModel().rows;
   const parentRef = useRef<HTMLDivElement>(null);
@@ -59,7 +60,7 @@ export function VirtualTable<T>({ data, columns, rowId, height = 560, estimateRo
       <div className="space-y-2 md:hidden">
         {rows.length === 0 ? (
           <div className="vt-empty card">{emptyLabel}</div>
-        ) : rows.map((row) => (
+        ) : rows.slice(0, mLimit).map((row) => (
           <div key={row.id} className="card space-y-1.5 p-3">
             {row.getVisibleCells().map((cell) => {
               const content = flexRender(cell.column.columnDef.cell, cell.getContext());
@@ -73,6 +74,7 @@ export function VirtualTable<T>({ data, columns, rowId, height = 560, estimateRo
             })}
           </div>
         ))}
+        {rows.length > mLimit ? <button type="button" className="btn btn-secondary w-full" onClick={() => setMLimit((v) => v + 80)}>Mostrar mais ({rows.length - mLimit} restantes)</button> : null}
       </div>
     </>
   );
