@@ -123,10 +123,14 @@ export function captureException(error: unknown, opts?: { category?: string; sev
   });
 }
 
+// Chunk stale pós-deploy (asset trocado pelo Netlify): erro recuperável por reload (ver main.tsx),
+// NÃO é bug do app — não deve contar no error_rate. Filtrado aqui na fonte.
+const isChunkError = (m: unknown) => /dynamically imported module|Importing a module script failed|error loading dynamically imported/i.test(String(m ?? ''));
+
 export function installTelemetry() {
   if (installed) return; installed = true;
-  window.addEventListener('error', (ev) => emit({ category: 'error', name: ev.message || 'window.error', severity: 'error', fingerprint: hash(`${ev.message}:${ev.filename}:${ev.lineno}`), metadata: { filename: ev.filename, lineno: ev.lineno, colno: ev.colno, breadcrumbs: readBreadcrumbs() } }));
-  window.addEventListener('unhandledrejection', (ev) => { const r = (ev.reason ?? {}) as { message?: string; stack?: string }; emit({ category: 'error', name: r.message ?? String(ev.reason), severity: 'error', fingerprint: hash(String(r.message ?? ev.reason)), metadata: { stack: (r.stack ?? '').slice(0, TELEMETRY_CONFIG.maxStack), breadcrumbs: readBreadcrumbs() } }); });
+  window.addEventListener('error', (ev) => { if (isChunkError(ev.message)) return; emit({ category: 'error', name: ev.message || 'window.error', severity: 'error', fingerprint: hash(`${ev.message}:${ev.filename}:${ev.lineno}`), metadata: { filename: ev.filename, lineno: ev.lineno, colno: ev.colno, breadcrumbs: readBreadcrumbs() } }); });
+  window.addEventListener('unhandledrejection', (ev) => { const r = (ev.reason ?? {}) as { message?: string; stack?: string }; if (isChunkError(r.message ?? ev.reason)) return; emit({ category: 'error', name: r.message ?? String(ev.reason), severity: 'error', fingerprint: hash(String(r.message ?? ev.reason)), metadata: { stack: (r.stack ?? '').slice(0, TELEMETRY_CONFIG.maxStack), breadcrumbs: readBreadcrumbs() } }); });
   window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushUnload(); });
   window.addEventListener('pagehide', flushUnload);
   window.addEventListener('online', () => { void flushTelemetry(); });

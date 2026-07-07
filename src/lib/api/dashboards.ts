@@ -51,11 +51,11 @@ function asSnapshot(data: unknown, filters: DashboardFilters): LabDashboardSnaps
 
 export async function getLabDashboardSnapshot(filters: DashboardFilters): Promise<LabDashboardSnapshot> {
   const { data, error } = await db.rpc('dashboard_laboratorio_snapshot', {
-    p_from: filters.from ?? null,
-    p_to: filters.to ?? null,
-    p_client_id: filters.clientId ?? null,
-    p_work_id: filters.workId ?? null,
-    p_material_kind: filters.materialKind ?? 'concreto',
+    p_from: filters.from || null,
+    p_to: filters.to || null,
+    p_client_id: filters.clientId || null,
+    p_work_id: filters.workId || null,
+    p_material_kind: filters.materialKind || 'concreto',
   });
   if (error) throw new Error(error.message);
   return asSnapshot(data, filters);
@@ -80,7 +80,7 @@ export async function cartaControleOpcoes(): Promise<CartaOpcoes> {
 }
 
 export async function getCartaControle(scope: CartaScope, id: string | null, fornecedor: string | null, from?: string | null, to?: string | null): Promise<CartaControle> {
-  const { data, error } = await db.rpc('carta_controle', { p_scope: scope, p_id: id, p_fornecedor: fornecedor, p_from: from ?? null, p_to: to ?? null });
+  const { data, error } = await db.rpc('carta_controle', { p_scope: scope, p_id: id || null, p_fornecedor: fornecedor || null, p_from: from || null, p_to: to || null });
   if (error) throw new Error(error.message);
   const d = (data ?? {}) as Record<string, any>;
   const pontos: CartaPonto[] = (Array.isArray(d.pontos) ? d.pontos : []).map((p: any) => ({

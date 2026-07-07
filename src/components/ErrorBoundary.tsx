@@ -19,6 +19,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: unknown, info: { componentStack?: string | null }) {
+    const msg = error instanceof Error ? error.message : String(error);
+    // Chunk stale pós-deploy: recuperável por reload (guard anti-loop por query param); não loga fatal.
+    if (/dynamically imported module|Importing a module script failed|error loading dynamically imported/i.test(msg)) {
+      try { const u = new URL(window.location.href); const last = Number(u.searchParams.get('_r') || '0'); if (Date.now() - last > 15000) { u.searchParams.set('_r', String(Date.now())); window.location.replace(u.toString()); } } catch { /* */ }
+      return;
+    }
     captureException(error, {
       category: 'react',
       severity: 'fatal',
