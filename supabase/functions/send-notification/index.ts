@@ -9,6 +9,12 @@ const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { sta
 const fail = (m: string, status = 400, details?: unknown) => json({ ok: false, error: m, details }, status);
 const asStr = (v: unknown, f = '') => (typeof v === 'string' && v.trim() ? v.trim() : f);
 const lower = (v: unknown) => asStr(v).toLowerCase();
+const timingSafeEqualStr = (a: string, b: string): boolean => {
+  const ea = new TextEncoder().encode(a), eb = new TextEncoder().encode(b);
+  if (ea.length !== eb.length) return false;
+  let r = 0; for (let i = 0; i < ea.length; i++) r |= ea[i] ^ eb[i];
+  return r === 0;
+};
 
 const TITLES: Record<string, string> = {
   laudo_pronto: 'Laudo pronto para conferencia',
@@ -71,10 +77,18 @@ Deno.serve(async (req) => {
 
     const notifySecret = req.headers.get('x-notify-secret') ?? '';
     const bearer = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
-    let jwtOk = false;
-    if (bearer) { const { data } = await svc.auth.getUser(bearer); jwtOk = !!data.user; }
-    const secretOk = !!settings?.dispatch_secret && notifySecret === settings.dispatch_secret;
+    const secretOk = !!settings?.dispatch_secret && timingSafeEqualStr(notifySecret, String(settings.dispatch_secret));
+    // Secret interno (notify-event, crons) passa sem restricao. Sessao (JWT) e amarrada ao lab do usuario.
+    let callerAuthId = '';
+    if (!secretOk && bearer) { const { data } = await svc.auth.getUser(bearer); callerAuthId = asStr(data.user?.id); }
+    const jwtOk = !!callerAuthId;
     if (!secretOk && !jwtOk) return fail('nao autorizado', 401);
+    let callerTenants: string[] = [];
+    if (!secretOk) {
+      const { data: cm } = await svc.from('members').select('tenant_id').eq('auth_id', callerAuthId).eq('active', true).is('deleted_at', null);
+      callerTenants = (cm ?? []).map((r: Record<string, unknown>) => asStr(r.tenant_id)).filter(Boolean);
+      if (!callerTenants.length) return fail('sem vinculo de laboratorio', 403);
+    }
 
     const eventType = asStr(body.event_type, 'system.event');
     const memberId = asStr(body.member_id);
@@ -89,6 +103,17 @@ Deno.serve(async (req) => {
     }
     if (!to) return fail('email obrigatorio');
     const tenantId = asStr(body.tenant_id, asStr(member?.tenant_id));
+    if (!secretOk) {
+      // Via sessao: destinatario deve ser membro do MESMO laboratorio (sem e-mail livre) + rate limit.
+      if (!memberId || !member) return fail('via sessao, informe member_id do destinatario', 403);
+      if (!tenantId || !callerTenants.includes(tenantId)) return fail('destinatario fora do seu laboratorio', 403);
+      if (asStr(member.tenant_id) !== tenantId) return fail('destinatario fora do seu laboratorio', 403);
+      to = lower(member.email);
+      if (!to) return fail('membro sem e-mail', 422);
+      const bkt = new Date(); bkt.setMinutes(0, 0, 0);
+      const { data: calls } = await svc.rpc('bump_notification_rate_limit', { p_actor_key: `send:${tenantId}`, p_bucket_start: bkt.toISOString() });
+      if (Number(calls ?? 0) > 60) return fail('limite de envios por hora atingido', 429);
+    }
     const dedupeKey = asStr(body.dedupe_key, `${eventType}:${asStr(body.entity_type, 'generic')}:${asStr(body.entity_id, crypto.randomUUID())}:${to}`);
     const rendered = render(eventType, { ...body, email: to });
     const logBase = { tenant_id: tenantId || null, dedupe_key: dedupeKey, recipient_email: to, event_type: eventType, notification_type: eventType, payload: body, track_token: crypto.randomUUID() };

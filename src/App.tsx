@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/auth';
+import { useRouteTelemetry } from './lib/telemetry';
 import { LoginScreen } from './components/LoginScreen';
 import { TenantSelectionPage } from './pages/TenantSelectionPage';
 import { Layout } from './components/Layout';
@@ -46,6 +47,16 @@ const WebhooksPage = lazy(() => import('./pages/gestao/WebhooksPage').then((m) =
 const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
 const LaudoAprovarPage = lazy(() => import('./pages/LaudoAprovarPage').then((m) => ({ default: m.LaudoAprovarPage })));
 const PortalPublicoPage = lazy(() => import('./pages/portal/PortalPublicoPage').then((m) => ({ default: m.PortalPublicoPage })));
+
+/**
+ * Monta a correlação de rota da telemetria (v173). O hook useRouteTelemetry existia desde a
+ * Camada 5 mas nunca foi montado — sem ele não há trace por rota, breadcrumb de navegação nem
+ * métrica spa-nav-ms (a categoria 'metric' estava vazia no banco). Precisa viver DENTRO do Router.
+ */
+function RouteTelemetryMount() {
+  useRouteTelemetry();
+  return null;
+}
 
 export function App() {
   const { ready, session, needsTenantSelection, hasRole } = useAuth();
@@ -100,6 +111,7 @@ export function App() {
   const podeGerirClientes = hasRole('admin', 'admin_consulte');
   return (
     <BrowserRouter>
+      <RouteTelemetryMount />
       <Layout>
         <Suspense fallback={<LoadingState />}>
           <Routes>

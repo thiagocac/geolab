@@ -21,6 +21,7 @@ import {
   lancarRompimentosLote,
   lancarSituacaoCp,
   listCpsRompimento,
+  ROMP_CAP,
   notifyAbaixoFck,
   resultadoAtual,
   resumoRompimentos,
@@ -608,6 +609,7 @@ export function RompimentosPage() {
 
       <div className="flex flex-wrap gap-2 text-xs font-bold">
         <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-200">{filtradas.length} CP(s) no recorte</span>
+        {rows.length >= ROMP_CAP ? <span className="rounded-md bg-amber-100 px-2 py-1 text-amber-800" title="A lista foi limitada para desempenho. Refine por cliente, obra ou busca para carregar o restante — os contadores acima permanecem exatos.">lista limitada a {ROMP_CAP} — refine os filtros</span> : null}
         <span className="rounded-md bg-amber-100 px-2 py-1 text-amber-800">{countPend} pendente(s)</span>
         <span className="rounded-md bg-red-100 px-2 py-1 text-red-700">{countAtr} atrasado(s)</span>
         <span className="rounded-md bg-green-100 px-2 py-1 text-green-700">{countRom} rompido(s)</span>

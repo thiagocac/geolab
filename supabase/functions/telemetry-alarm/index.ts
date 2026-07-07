@@ -153,10 +153,11 @@ async function handler(req: Request): Promise<Response> {
 }
 
 // notifyAdmins: e-mail dos alertas criticos via send-notification (unico ponto Resend).
-// CORRECAO: alinhado ao contrato vivo do hub (igual aos crons de digest) -> x-notify-secret +
-// member_id + deep_link. Antes mandava Bearer service-role + recipient_member_id/link (401/400).
-// O canal in-app vem da tabela telemetry_alert (painel de Observabilidade), nao do hub; por isso
-// so acionamos o send-notification quando o canal de e-mail estiver habilitado.
+// v34 (auditoria de observabilidade 2026-07-06): apos enviar com sucesso para >=1 admin, marca
+// telemetry_alert.notified_at do alerta aberto. Sem isso, o backstop SQL
+// (telemetry_notify_pending_alerts, agora sem filtro de kind) reenviaria o mesmo alerta na hora
+// seguinte (e-mail duplicado). Alertas que ESCALARAM warning->critical (is_new=false) nao passam
+// por aqui e ficam para o backstop — por design.
 async function notifyAdmins(svc: ReturnType<typeof getServiceClient>, alerts: CriticalAlert[], channels: { inApp: boolean; email: boolean }): Promise<number> {
   if (!channels.email) return 0;
   if (alerts.length === 0 || !SUPABASE_URL) return 0;
@@ -167,14 +168,20 @@ async function notifyAdmins(svc: ReturnType<typeof getServiceClient>, alerts: Cr
   const secret = String(settings?.dispatch_secret ?? '');
   if (!secret) return 0;
   let sent = 0;
+  const okKeys: string[] = [];
   for (const a of alerts) {
     const title = 'Alerta critico de telemetria: ' + a.title;
+    let sentThis = 0;
     for (const adm of admins) {
       try {
         const res = await fetch(SUPABASE_URL + '/functions/v1/send-notification', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-notify-secret': secret }, body: JSON.stringify({ member_id: adm.member_id, title, body: a.detail, deep_link: SITE_PATH, cta_label: 'Abrir Observabilidade', reference: a.key, event_type: 'system', entity_type: 'telemetry_alert', dedupe_key: 'telemetry_alert:' + a.key + ':' + a.instanceTag + ':' + adm.member_id }) });
-        if (res.ok) sent++;
+        if (res.ok) { sent++; sentThis++; }
       } catch { /* notificacao nunca derruba o cron */ }
     }
+    if (sentThis > 0) okKeys.push(a.key);
+  }
+  if (okKeys.length > 0) {
+    try { await svc.from('telemetry_alert').update({ notified_at: new Date().toISOString() }).in('alert_key', okKeys).eq('status', 'open').is('notified_at', null); } catch { /* best-effort */ }
   }
   return sent;
 }

@@ -9,6 +9,14 @@
  * Corpo: lote { events: [...] } OU evento único legado. Insere tudo em 1 chamada.
  * Rate-limit por (ip:session)/min conta por REQUISIÇÃO. Honra kill-switch ingest_enabled
  * e sample_rate (erros/fatais sempre mantidos). verify_jwt=false (browser no unload).
+ *
+ * v32 (auditoria de observabilidade 2026-07-06) — SIMPLE REQUEST sem preflight:
+ *   - O frontend v175+ envia com content-type text/plain e SEM headers custom → zero OPTIONS
+ *     (o preflight dobrava as invocações da EF; ver GEOLAB-Auditoria-Performance-v1 §3.3).
+ *     req.json() não exige content-type — parseia o texto normalmente.
+ *   - Como simple request não carrega Authorization, o token pode vir no CORPO
+ *     ({ events, access_token }) — mesma proteção TLS; usado só para atribuir member/tenant.
+ *     Fallback: Authorization header (clientes antigos seguem funcionando).
  */
 import { handleCors } from '../_shared/cors.ts';
 import { getServiceClient } from '../_shared/client.ts';
@@ -90,9 +98,14 @@ function toCanonical(e: RawEvent): EventInput {
   };
 }
 
-async function resolveMember(req: Request, svc: ReturnType<typeof getServiceClient>) {
+/**
+ * Resolve member/tenant a partir do token: 1º o access_token do CORPO (simple request v175+),
+ * 2º o Authorization header (legado). Best-effort — telemetria anônima é aceita.
+ */
+async function resolveMember(req: Request, svc: ReturnType<typeof getServiceClient>, bodyToken?: string) {
   const auth = req.headers.get('Authorization') || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const headerToken = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const token = (typeof bodyToken === 'string' && bodyToken.startsWith('eyJ')) ? bodyToken.trim() : headerToken;
   if (!token || !token.startsWith('eyJ')) return { member_id: null, tenant_id: null };
   const { data: userResult } = await svc.auth.getUser(token);
   if (!userResult?.user) return { member_id: null, tenant_id: null };
@@ -124,7 +137,8 @@ async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return fail('Método não permitido', 405);
 
   try {
-    const payload = await req.json().catch(() => ({})) as (RawEvent & { events?: RawEvent[] });
+    // req.json() parseia o corpo independentemente do content-type (text/plain incluso).
+    const payload = await req.json().catch(() => ({})) as (RawEvent & { events?: RawEvent[]; access_token?: string });
 
     // Lote { events: [...] } OU evento único legado (message OU name).
     const rawEvents: RawEvent[] = Array.isArray(payload.events)
@@ -159,7 +173,7 @@ async function handler(req: Request): Promise<Response> {
       : events.filter((e) => isErrorLevel(e.level) || Math.random() < settings.sampleRate);
     if (sampled.length === 0) return ok({ recorded: 0, sampled_out: events.length });
 
-    const actor = await resolveMember(req, svc);
+    const actor = await resolveMember(req, svc, payload.access_token);
     const userAgent = cut(req.headers.get('user-agent'), 500);
 
     const rows = sampled

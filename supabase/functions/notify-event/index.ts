@@ -8,6 +8,12 @@ const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { sta
 const fail = (m: string, status = 400, details?: unknown) => json({ ok: false, error: m, details }, status);
 const asStr = (v: unknown, f = '') => (typeof v === 'string' && v.trim() ? v.trim() : f);
 const lower = (v: unknown) => asStr(v).toLowerCase();
+const timingSafeEqualStr = (a: string, b: string): boolean => {
+  const ea = new TextEncoder().encode(a), eb = new TextEncoder().encode(b);
+  if (ea.length !== eb.length) return false;
+  let r = 0; for (let i = 0; i < ea.length; i++) r |= ea[i] ^ eb[i];
+  return r === 0;
+};
 const MAX_RECIPIENTS = 1000;
 
 Deno.serve(async (req) => {
@@ -24,10 +30,20 @@ Deno.serve(async (req) => {
     if (se) return fail(se.message, 500);
     const secret = req.headers.get('x-notify-secret') ?? '';
     const bearer = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
-    let jwtOk = false;
-    if (bearer) { const { data } = await svc.auth.getUser(bearer); jwtOk = !!data.user; }
-    const secretOk = !!settings?.dispatch_secret && secret === settings.dispatch_secret;
+    const secretOk = !!settings?.dispatch_secret && timingSafeEqualStr(secret, String(settings.dispatch_secret));
+    let callerAuthId = '';
+    if (!secretOk && bearer) { const { data } = await svc.auth.getUser(bearer); callerAuthId = asStr(data.user?.id); }
+    const jwtOk = !!callerAuthId;
     if (!secretOk && !jwtOk) return fail('nao autorizado', 401);
+    // Via sessao (JWT): so dispara eventos no proprio laboratorio + rate limit anti-amplificacao.
+    if (!secretOk) {
+      const { data: cm } = await svc.from('members').select('tenant_id').eq('auth_id', callerAuthId).eq('active', true).is('deleted_at', null);
+      const callerTenants = (cm ?? []).map((r: Record<string, unknown>) => asStr(r.tenant_id)).filter(Boolean);
+      if (!callerTenants.includes(tenantId)) return fail('evento fora do seu laboratorio', 403);
+      const bkt = new Date(); bkt.setMinutes(0, 0, 0);
+      const { data: calls } = await svc.rpc('bump_notification_rate_limit', { p_actor_key: `notify:${tenantId}`, p_bucket_start: bkt.toISOString() });
+      if (Number(calls ?? 0) > 120) return fail('limite de eventos por hora atingido', 429);
+    }
 
     const { data: roleRows } = await svc.from('role_notification_types').select('role_code').eq('event_type', eventType).eq('enabled', true).eq('channel', 'email');
     const roleCodes = [...new Set((roleRows ?? []).map((r: Record<string, unknown>) => asStr(r.role_code)).filter(Boolean))];

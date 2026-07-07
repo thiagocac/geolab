@@ -127,8 +127,10 @@ export function otimizarSequencia(origem: { lat: number; lng: number } | null, p
   const start = origem ?? pts[0];
   const rest = pts.slice();
   const ordem: Ponto[] = [];
-  let cur = start;
-  while (rest.length) { let bi = 0, bd = Infinity; for (let i = 0; i < rest.length; i++) { const d = hav(cur, rest[i]); if (d < bd) { bd = d; bi = i; } } const next = rest[bi]; cur = next; ordem.push(next); rest.splice(bi, 1); }
+  // FIX v175 (auditoria): cur era inferido como uniao {lat,lng}|Ponto e ordem.push(cur) nao compilava
+  // (TS2345; quebrava o tsc do gate/Netlify). Runtime identico: o push sempre recebe um Ponto de rest.
+  let cur: { lat: number; lng: number } = start;
+  while (rest.length) { let bi = 0, bd = Infinity; for (let i = 0; i < rest.length; i++) { const d = hav(cur, rest[i]); if (d < bd) { bd = d; bi = i; } } const prox = rest[bi]; ordem.push(prox); rest.splice(bi, 1); cur = prox; }
   const d0 = (p: Ponto) => (origem ? hav(origem, p) : 0);
   let improved = true, guard = 0;
   while (improved && guard++ < 60) {

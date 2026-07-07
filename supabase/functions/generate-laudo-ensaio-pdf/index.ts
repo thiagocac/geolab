@@ -154,6 +154,9 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const statusCor = conforme == null ? FAINT : conforme ? OKG : DANGER;
     const numero = String(conc.numero_relatorio ?? '').trim() || `${String(conc.codigo ?? '').replace(/[^0-9]/g, '').slice(-6).padStart(6, '0')}/${String(conc.data_real ?? conc.data_programada ?? '').slice(0, 4) || '2026'}`;
     const codVal = `LAU-${String(conc.codigo ?? 'XXXX')}`;
+    const { data: _exTok } = await admin.from('lab_reports').select('validacao_token').eq('tenant_id', conc.tenant_id).eq('concretagem_id', conc.id).eq('escopo', 'concretagem').is('deleted_at', null).maybeSingle();
+    const valToken = String((_exTok as { validacao_token?: string } | null)?.validacao_token ?? crypto.randomUUID());
+    const valUrl = `https://app.concresoft.io/validar/${valToken}`;
     const interessado = String(cliente?.razao_social || cliente?.nome_fantasia || tenant?.name || '-');
     const rt = String(cfg?.responsavel_tecnico || work?.responsavel_tecnico || '');
     const creaRt = String(cfg?.crea_rt || work?.crea || '');
@@ -361,7 +364,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     y -= 8;
 
     need(ON.qr_validacao && gqNome ? 140 : 70, false); const sigY = y;
-    if (ON.qr_validacao) { try { const qr = QRCode.create('https://app.concresoft.io/validar/' + codVal, { errorCorrectionLevel: 'M' }); const size = qr.modules.size; const dataq = qr.modules.data; const box = 54; const m = box / size; const ox = MX, oy = y - box; for (let r = 0; r < size; r++) for (let c2 = 0; c2 < size; c2++) if (dataq[r * size + c2]) page.drawRectangle({ x: ox + c2 * m, y: oy + (size - 1 - r) * m, width: m + 0.2, height: m + 0.2, color: INK }); T('Validação pública', MX + 64, y - 10, 6.4, FB, INK); T('app.concresoft.io/validar/', MX + 64, y - 20, 6.2, F, MUTED); T(codVal, MX + 64, y - 29, 6.2, FB, INK); T('Assinatura: QR + validação pública (ICP-Brasil na v2).', MX + 64, y - 38, 6.2, F, MUTED); } catch (_) { /* QR opcional */ } }
+    if (ON.qr_validacao) { try { const qr = QRCode.create(valUrl, { errorCorrectionLevel: 'M' }); const size = qr.modules.size; const dataq = qr.modules.data; const box = 54; const m = box / size; const ox = MX, oy = y - box; for (let r = 0; r < size; r++) for (let c2 = 0; c2 < size; c2++) if (dataq[r * size + c2]) page.drawRectangle({ x: ox + c2 * m, y: oy + (size - 1 - r) * m, width: m + 0.2, height: m + 0.2, color: INK }); T('Validação pública', MX + 64, y - 10, 6.4, FB, INK); T('app.concresoft.io/validar/', MX + 64, y - 20, 6.2, F, MUTED); T(codVal, MX + 64, y - 29, 6.2, FB, INK); T('Assinatura: QR + validação pública (ICP-Brasil na v2).', MX + 64, y - 38, 6.2, F, MUTED); } catch (_) { /* QR opcional */ } }
     const sx = MX + CW * 0.52;
     hline(sx, sigY - 30, sx + CW * 0.40, MUTED, 0.6);
     T(rt || 'Responsável Técnico', sx, sigY - 40, 8, FB, INK);
@@ -384,7 +387,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
         const campos = { laboratorio_nome: tenant?.name ?? 'Laboratorio', responsavel_tecnico: rt || null, crea_rt: creaRt || null, storage_path: path, hash_sha256: hash, data_emissao: hoje };
         const { data: existing } = await admin.from('lab_reports').select('id, revisao').eq('tenant_id', conc.tenant_id).eq('concretagem_id', conc.id).eq('escopo', 'concretagem').is('deleted_at', null).maybeSingle();
         if (existing) { await admin.from('lab_reports').update({ ...campos, numero, revisao: (Number(existing.revisao) || 0) + 1, status: 'em_revisao', updated_at: new Date().toISOString() }).eq('id', existing.id); labReportId = existing.id as string; }
-        else { const { data: novo } = await admin.from('lab_reports').insert({ tenant_id: conc.tenant_id, client_id: conc.client_id, work_id: conc.work_id, escopo: 'concretagem', concretagem_id: conc.id, numero, origem: 'sistema', status: 'rascunho', revisao: 0, ...campos }).select('id').maybeSingle(); labReportId = (novo?.id as string) ?? null; }
+        else { const { data: novo } = await admin.from('lab_reports').insert({ tenant_id: conc.tenant_id, client_id: conc.client_id, work_id: conc.work_id, escopo: 'concretagem', concretagem_id: conc.id, numero, origem: 'sistema', status: 'rascunho', revisao: 0, validacao_token: valToken, ...campos }).select('id').maybeSingle(); labReportId = (novo?.id as string) ?? null; }
         if (labReportId) { await admin.from('laudo_resultados').update({ deleted_at: new Date().toISOString() }).eq('lab_report_id', labReportId).is('deleted_at', null); const vincs = tlist.map((t) => ({ tenant_id: conc.tenant_id, lab_report_id: labReportId, material_test_id: t.id as string, vinculo_origem: 'sistema' })).filter((v) => v.material_test_id); if (vincs.length) await admin.from('laudo_resultados').insert(vincs); }
       } catch (_) { /* best-effort */ }
     }

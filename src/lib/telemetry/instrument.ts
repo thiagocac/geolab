@@ -37,28 +37,78 @@ export function emit(e: TelemetryEvent) {
   } catch { /* telemetria nunca quebra o produto */ }
 }
 
-export async function flushTelemetry() {
-  if (!queue.length || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
-  const events = queue.splice(0, TELEMETRY_CONFIG.maxBatch);
+/**
+ * Envio SIMPLE REQUEST (auditoria de observabilidade v173): content-type text/plain e nenhum
+ * header custom → o browser NÃO faz preflight OPTIONS (antes, cada flush custava 2 invocações
+ * da EF e 1 RTT extra — GEOLAB-Auditoria-Performance-v1 §3.3). A EF client-telemetry v32 parseia
+ * o corpo com req.json() (content-type-agnóstico) e aceita o access_token no CORPO para atribuir
+ * member/tenant (simple request não carrega Authorization).
+ */
+let lastToken: string | null = null;
+
+async function readAccessToken(): Promise<string | null> {
   try {
-    await supabase.functions.invoke('client-telemetry', { body: { events } });
-    if (queue.length) void flushTelemetry();
+    const { data } = await supabase.auth.getSession();
+    lastToken = data.session?.access_token ?? null;
+  } catch { /* mantém o último conhecido */ }
+  return lastToken;
+}
+
+function telemetryUrl(extra?: Record<string, string>): string {
+  const u = new URL(`${env.supabaseUrl}/functions/v1/client-telemetry`);
+  const trace = currentTraceId();
+  if (trace) u.searchParams.set('trace_id', trace);
+  for (const [k, v] of Object.entries(extra ?? {})) u.searchParams.set(k, v);
+  return u.toString();
+}
+
+/** POST sem preflight. true = consumido (sucesso ou 4xx descartável); false = reenfileirar. */
+async function postEvents(events: Array<Record<string, unknown>>, token: string | null): Promise<boolean> {
+  try {
+    const body = JSON.stringify(token ? { events, access_token: token } : { events });
+    const res = await fetch(telemetryUrl(), { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body });
+    if (res.ok) return true;
+    return res.status >= 400 && res.status < 500; // 4xx (payload inválido/rate-limit): descarta o lote — nunca envenena a fila
   } catch {
-    queue.unshift(...events);
-    if (queue.length > TELEMETRY_CONFIG.maxBuffer) queue.splice(0, queue.length - TELEMETRY_CONFIG.maxBuffer);
+    return false; // rede/5xx: reenfileira
+  }
+}
+
+let flushing = false;
+export async function flushTelemetry() {
+  if (flushing) return;
+  if (!queue.length || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+  flushing = true;
+  try {
+    const token = await readAccessToken();
+    while (queue.length) {
+      const events = queue.splice(0, TELEMETRY_CONFIG.maxBatch);
+      const consumed = await postEvents(events, token);
+      if (!consumed) {
+        queue.unshift(...events);
+        if (queue.length > TELEMETRY_CONFIG.maxBuffer) queue.splice(0, queue.length - TELEMETRY_CONFIG.maxBuffer);
+        break;
+      }
+    }
+  } finally {
+    flushing = false;
   }
 }
 
 // Descarga no fim do ciclo de vida (pagehide/oculto): keepalive → sendBeacon. Sem storage.
+// v173: lotes de 50 (cap da EF — antes um buffer cheio perdia o excedente) e simple request
+// (sem preflight: o par OPTIONS+POST raramente completava durante o teardown da página).
 function flushUnload() {
   if (!queue.length) return;
-  const events = queue.splice(0, queue.length);
-  try {
-    const url = `${env.supabaseUrl}/functions/v1/client-telemetry?apikey=${env.supabaseAnonKey}`;
-    const payload = JSON.stringify({ events });
-    void fetch(url, { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json', apikey: env.supabaseAnonKey }, body: payload });
-  } catch {
-    try { navigator.sendBeacon?.(`${env.supabaseUrl}/functions/v1/client-telemetry?apikey=${env.supabaseAnonKey}`, new Blob([JSON.stringify({ events })], { type: 'application/json' })); } catch { /* best-effort */ }
+  const all = queue.splice(0, queue.length);
+  for (let i = 0; i < all.length; i += 50) {
+    const events = all.slice(i, i + 50);
+    const body = JSON.stringify(lastToken ? { events, access_token: lastToken } : { events });
+    try {
+      void fetch(telemetryUrl({ apikey: env.supabaseAnonKey }), { method: 'POST', keepalive: true, headers: { 'content-type': 'text/plain;charset=UTF-8' }, body });
+    } catch {
+      try { navigator.sendBeacon?.(telemetryUrl({ apikey: env.supabaseAnonKey }), new Blob([body], { type: 'text/plain;charset=UTF-8' })); } catch { /* best-effort */ }
+    }
   }
 }
 
