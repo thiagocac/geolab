@@ -22,3 +22,11 @@ export async function createTracoObra(tenantId: string, workId: string, values: 
   const { error } = await db.from('operational_materials').insert({ ...values, tenant_id: tenantId, work_id: workId, client_id: clientId, material_kind: 'concreto' });
   if (error) throw new Error(error.message);
 }
+
+// D4 — duplicar obra (RPC duplicar_obra, mig 177): copia estrutura + traços + config, não dados operacionais.
+export async function duplicarObra(workId: string): Promise<string> {
+  const rpc = (supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: { message: string } | null }>).bind(supabase);
+  const { data, error } = await rpc('duplicar_obra', { p_work_id: workId });
+  if (error) throw new Error(error.message);
+  return String(data);
+}

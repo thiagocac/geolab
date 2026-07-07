@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { AdminListPage } from '../../components/patterns/AdminListPage';
+import { useToast } from '../../lib/toast';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { duplicarObra } from '../../lib/api/obras';
 import { Button } from '../../components/ui/Button';
 import type { Column, FieldSpec, DomainRow } from '../../lib/api/types';
 import { ColaboradoresPage } from './ColaboradoresPage';
@@ -36,6 +40,13 @@ export function CadastrosPage() {
   const COLAB = tabs.length;
   const isColab = active === COLAB;
   const t = tabs[Math.min(active, tabs.length - 1)];
+  const qc = useQueryClient();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const obrasActions = [{ label: 'Duplicar', run: async (row: DomainRow) => {
+    if (!(await confirm({ title: 'Duplicar obra', message: 'Criar uma cópia desta obra com estrutura, traços e configuração? Dados operacionais (concretagens, CPs, laudos) não são copiados.', confirmLabel: 'Duplicar' }))) return;
+    try { await duplicarObra(String(row.id)); await qc.invalidateQueries(); toast('Obra duplicada.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
+  } }];
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -46,7 +57,7 @@ export function CadastrosPage() {
         ? <ColaboradoresPage />
         : t.dedicated && t.key === 'equipamentos'
         ? <EquipamentosPage />
-        : <AdminListPage key={t.key} title={t.label} kicker="Cadastros" description={t.description} table={t.table} columns={t.columns} fields={t.fields} initialSort={t.sort} canDelete canCreate={t.canCreate} />}
+        : <AdminListPage key={t.key} title={t.label} kicker="Cadastros" description={t.description} table={t.table} columns={t.columns} fields={t.fields} initialSort={t.sort} canDelete canCreate={t.canCreate} rowActions={t.key === 'obras' ? obrasActions : undefined} />}
     </div>
   );
 }

@@ -7,6 +7,7 @@ export const Truck = (p:IconProps)=><Icon {...p}><path d="M3 7h11v9H3z"/><path d
 export const Boxes = (p:IconProps)=><Icon {...p}><path d="M3 7 12 3l9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></Icon>;
 export const FlaskConical = (p:IconProps)=><Icon {...p}><path d="M10 2h4"/><path d="M11 2v6l-5 9a3 3 0 0 0 3 5h6a3 3 0 0 0 3-5l-5-9V2"/><path d="M8 17h8"/></Icon>;
 export const Thermometer = (p:IconProps)=><Icon {...p}><path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0Z"/></Icon>;
+export const CalendarDays = (p:IconProps)=><Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M16 2v4"/></Icon>;
 export const GripVertical = (p:IconProps)=><Icon {...p}><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></Icon>;
 export const HelpCircle = (p:IconProps)=><Icon {...p}><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></Icon>;
 export const Copy = (p:IconProps)=><Icon {...p}><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></Icon>;

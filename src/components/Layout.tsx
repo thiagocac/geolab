@@ -10,14 +10,14 @@ import { Modal } from './ui/Modal';
 import { useToast } from '../lib/toast';
 import { getPendenciasResumo } from '../lib/api/pendencias';
 import { PEND_SECOES } from '../lib/pendenciasNav';
-import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Download, Tag, Truck, Thermometer } from './ui/icons';
+import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Download, Tag, Truck, Thermometer, CalendarDays } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
 type Section = { title?: string; items: Item[] };
 const labRoles = ['admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro'];
 const adminRoles = ['admin', 'admin_consulte'];
 const sections: Section[] = [
-  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles }, { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles }] },
+  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/hoje', label: 'Hoje no lab', icon: CalendarDays, roles: labRoles }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles }, { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles }] },
   { title: 'Concreto', items: [
     { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
     { to: '/concretagens', label: 'Concretagens', icon: MixerTruck, roles: labRoles },
@@ -39,10 +39,12 @@ const sections: Section[] = [
   ] },
   { title: 'Gestão', items: [
     { to: '/financeiro', label: 'Financeiro', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
+    { to: '/propostas', label: 'Propostas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
     { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
     { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles },
     { to: '/coleta-formas', label: 'Coleta de fôrmas', icon: Truck, roles: labRoles },
     { to: '/diario-cura', label: 'Diário de cura', icon: Thermometer, roles: labRoles },
+    { to: '/rota-dia', label: 'Rota do dia', icon: Truck, roles: labRoles },
     { to: '/configuracoes', label: 'Configurações', icon: Settings, roles: labRoles },
   ] },
   { title: 'Operação interna', items: [

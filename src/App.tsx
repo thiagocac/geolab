@@ -30,6 +30,8 @@ const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ defau
 const PendenciasPage = lazy(() => import('./pages/gestao/PendenciasPage').then((m) => ({ default: m.PendenciasPage })));
 const ProdutividadePage = lazy(() => import('./pages/gestao/ProdutividadePage').then((m) => ({ default: m.ProdutividadePage })));
 const DiarioCuraPage = lazy(() => import('./pages/gestao/DiarioCuraPage').then((m) => ({ default: m.DiarioCuraPage })));
+const HojePage = lazy(() => import('./pages/gestao/HojePage').then((m) => ({ default: m.HojePage })));
+const RotaDiaPage = lazy(() => import('./pages/gestao/RotaDiaPage').then((m) => ({ default: m.RotaDiaPage })));
 const FormasPage = lazy(() => import('./pages/gestao/FormasPage').then((m) => ({ default: m.FormasPage })));
 const ClientePortalPage = lazy(() => import('./pages/portal/ClientePortalPage').then((m) => ({ default: m.ClientePortalPage })));
 const ClienteUsuariosPage = lazy(() => import('./pages/portal/ClienteUsuariosPage').then((m) => ({ default: m.ClienteUsuariosPage })));
@@ -155,6 +157,9 @@ export function App() {
             <Route path="/medicoes" element={<FinanceiroPage inicial="medicao" />} />
             <Route path="/produtividade" element={<ProdutividadePage />} />
             <Route path="/diario-cura" element={<DiarioCuraPage />} />
+            <Route path="/hoje" element={<HojePage />} />
+            <Route path="/rota-dia" element={<RotaDiaPage />} />
+            <Route path="/propostas" element={<FinanceiroPage inicial="propostas" />} />
             <Route path="/faturas" element={<FinanceiroPage inicial="faturas" />} />
             <Route path="/formas" element={<FormasPage />} />
             <Route path="/coleta-formas" element={<ColetaFormasPage />} />
