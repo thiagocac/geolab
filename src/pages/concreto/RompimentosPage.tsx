@@ -26,6 +26,7 @@ import {
   ROMP_CAP,
   notifyAbaixoFck,
   resultadoAtual,
+  ocrAgendaRompimento,
   resumoRompimentos,
   setNumeracaoCp,
   type CpRompimento,
@@ -46,7 +47,7 @@ const sanitizeDecimal = (raw: string, maxDec = 4): string => {
 const normalize = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 type EditState = { valor?: string; carga?: string; data?: string; hora?: string; tipo_ruptura?: string; massa_cp_g?: string; numeracao?: string };
-type ImportLine = { key: string; numero: string; resultado: string; carga?: string; unidade?: string; massa?: string; data: string; hora: string; tipo: string; cp?: CpRompimento; ok: boolean; msg: string };
+type ImportLine = { key: string; numero: string; resultado: string; carga?: string; unidade?: string; massa?: string; data: string; hora: string; tipo: string; cp?: CpRompimento; ok: boolean; msg: string; conf?: number; origem?: string };
 
 function cpNumero(c: CpRompimento): string {
   const md = c.metadata ?? {};
@@ -123,6 +124,7 @@ export function RompimentosPage() {
   const [numValor, setNumValor] = useState('');
   const confirm = useConfirm();
   const [importOpen, setImportOpen] = useState(false);
+  const [lendoAgenda, setLendoAgenda] = useState(false);
   const [importLines, setImportLines] = useState<ImportLine[]>([]);
   const [bulkData, setBulkData] = useState('');
   const [bulkHora, setBulkHora] = useState('');
@@ -527,6 +529,30 @@ export function RompimentosPage() {
     reader.readAsArrayBuffer(file);
   }
 
+  function importarAgendaFoto(file: File | null) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      setLendoAgenda(true);
+      try {
+        const b64 = String(reader.result).split(',')[1] ?? '';
+        const res = await ocrAgendaRompimento(b64, file.type || 'image/jpeg');
+        if (!res.enabled) { toast(res.reason || 'OCR indisponível (VISION_API_KEY não configurada).', 'info'); return; }
+        if (!res.linhas.length) { toast('Nenhuma linha reconhecida na foto — tente uma imagem mais nítida e reta.', 'info'); return; }
+        const linhas: ImportLine[] = res.linhas.map((l, idx) => {
+          const numero = String(l.numeracao ?? '').trim();
+          const resultado = l.resultado_mpa != null ? String(l.resultado_mpa) : '';
+          const carga = l.carga != null ? String(l.carga) : undefined;
+          const cp = rows.find((r) => normalize(cpNumero(r)) === normalize(numero) || normalize(r.codigo) === normalize(numero) || normalize(r.numeracao_lab ?? '') === normalize(numero));
+          const temValor = !!resultado || !!carga;
+          return { key: numero || `linha-${idx + 1}`, numero, resultado, carga, unidade: 'kn', massa: '', data: l.data_rompimento ?? '', hora: l.hora ?? '', tipo: l.tipo_ruptura ?? '', cp, ok: !!cp && temValor, conf: l.conf ?? undefined, origem: 'importacao_agenda_ocr', msg: cp ? (temValor ? 'pronto' : 'sem resultado') : 'CP não localizado' } satisfies ImportLine;
+        });
+        setImportLines(linhas); setImportOpen(true);
+      } catch (e) { toast((e as Error).message, 'error'); } finally { setLendoAgenda(false); }
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function aplicarImportacao() {
     if (!member) return;
     setBusy(true);
@@ -545,7 +571,7 @@ export function RompimentosPage() {
           data_rompimento: l.data || dataRef,
           hora_rompimento: l.hora || null,
           equipamento_id: campoPrensa ? (prensaId || (l.cp as CpRompimento) && resultadoAtual(l.cp as CpRompimento)?.equipamento_id || null) : null,
-          origem_log: 'importacao_planilha_rompimento',
+          origem_log: l.origem || 'importacao_planilha_rompimento',
         });
         ok++;
       }
@@ -723,7 +749,7 @@ export function RompimentosPage() {
       </Modal>
 
       <Modal open={importOpen} wide title="Importar resultados" onClose={() => setImportOpen(false)} footer={<><Button variant="ghost" onClick={() => setImportOpen(false)}>Cancelar</Button><Button onClick={() => void aplicarImportacao()} disabled={busy || !importLines.some((l) => l.ok)}>{busy ? 'Importando...' : 'Importar resultados'}</Button></>}>
-        <div className="space-y-4"><FilePicker label="Escolher planilha" accept=".xlsx,.xls,.csv" onFiles={(fs) => importarArquivo(fs[0] ?? null)} />{campoPrensa && prensas.length > 0 ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa destas leituras</span><select className="input max-w-xs" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">Manter a já registrada (se houver)</option>{prensas.map((p) => <option key={p.id} value={p.id}>{rotuloEquip(p)}</option>)}</select></label> : null}{importLines.length ? <div className="max-h-80 overflow-auto rounded-xl border border-slate-200"><table className="w-full text-left text-xs"><thead><tr className="bg-slate-50"><th className="p-2">Linha</th><th>CP</th><th>Resultado</th><th>Data</th><th>Status</th></tr></thead><tbody>{importLines.map((l) => <tr key={l.key} className="border-t"><td className="p-2">{l.key}</td><td>{l.numero || l.cp?.codigo}</td><td>{l.resultado}</td><td>{l.data}</td><td className={l.ok ? 'text-green-700' : 'text-red-700'}>{l.msg}</td></tr>)}</tbody></table></div> : <p className="text-sm text-slate-500">Use o modelo exportado pela tela. Colunas aceitas: corpo_prova_id, numeração/código, resultado_mpa <span className="italic">ou</span> carga + unidade_carga, massa_cp_g, data_rompimento, hora_rompimento, tipo_ruptura.</p>}</div>
+        <div className="space-y-4"><FilePicker label="Escolher planilha" accept=".xlsx,.xls,.csv" onFiles={(fs) => importarArquivo(fs[0] ?? null)} /><div className="rounded-xl border border-dashed border-slate-200 p-2 dark:border-slate-700"><div className="block space-y-1"><span className="text-sm font-bold">Ou leia a foto da agenda preenchida à caneta (OCR)</span><FilePicker label={lendoAgenda ? 'Lendo…' : 'Escolher foto da agenda'} accept="image/*" disabled={lendoAgenda} resetAfter onFiles={(fs) => importarAgendaFoto(fs[0] ?? null)} /></div><p className="mt-1 text-xs text-slate-500">Imprima a agenda (botão Agenda PDF), rompa e anote data/hora e MPa à caneta; o OCR casa o CP pela numeração impressa e traz os valores para conferência. Revise antes de importar.</p></div>{campoPrensa && prensas.length > 0 ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa destas leituras</span><select className="input max-w-xs" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">Manter a já registrada (se houver)</option>{prensas.map((p) => <option key={p.id} value={p.id}>{rotuloEquip(p)}</option>)}</select></label> : null}{importLines.length ? <div className="max-h-80 overflow-auto rounded-xl border border-slate-200"><table className="w-full text-left text-xs"><thead><tr className="bg-slate-50"><th className="p-2">Linha</th><th>CP</th><th>Resultado</th><th>Data</th><th>Conf.</th><th>Status</th></tr></thead><tbody>{importLines.map((l) => <tr key={l.key} className="border-t"><td className="p-2">{l.key}</td><td>{l.numero || l.cp?.codigo}</td><td>{l.resultado}</td><td>{l.data}</td><td className={l.conf != null && l.conf < 0.6 ? 'font-bold text-amber-600' : 'text-slate-500'}>{l.conf != null ? Math.round(l.conf * 100) + '%' : '—'}</td><td className={l.ok ? 'text-green-700' : 'text-red-700'}>{l.msg}</td></tr>)}</tbody></table></div> : <p className="text-sm text-slate-500">Use o modelo exportado pela tela. Colunas aceitas: corpo_prova_id, numeração/código, resultado_mpa <span className="italic">ou</span> carga + unidade_carga, massa_cp_g, data_rompimento, hora_rompimento, tipo_ruptura.</p>}</div>
       </Modal>
     </section>
   );

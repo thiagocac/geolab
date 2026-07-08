@@ -11,12 +11,12 @@ import { PropostasPage } from './PropostasPage';
 // C3 — módulo financeiro consolidado em abas. Cada aba é a página existente (papéis por aba).
 type Aba = 'medicao' | 'faturas' | 'contratos' | 'propostas';
 export function FinanceiroPage({ inicial = 'medicao' }: { inicial?: Aba }) {
-  const { hasRole } = useAuth();
+  const { hasRole, can } = useAuth();
   const abas: { key: Aba; label: string; ok: boolean }[] = [
     { key: 'medicao', label: 'Medição', ok: hasRole('admin', 'admin_consulte') },
     { key: 'faturas', label: 'Faturas', ok: hasRole('admin', 'admin_consulte', 'financeiro') },
     { key: 'contratos', label: 'Contratos', ok: hasRole('admin', 'admin_consulte') },
-    { key: 'propostas', label: 'Propostas', ok: hasRole('admin', 'admin_consulte', 'financeiro') },
+    { key: 'propostas', label: 'Propostas', ok: can('proposta.ver') },
   ];
   const disp = abas.filter((a) => a.ok);
   const [sp, setSp] = useSearchParams();

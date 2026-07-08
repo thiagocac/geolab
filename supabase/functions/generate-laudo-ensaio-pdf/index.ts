@@ -7,16 +7,11 @@
 // colide mais com contato (fluxo p/ 3a linha), rodape de validacao respeita 'qr_validacao', observacoes finais citam
 // normas conforme toggles; clip por largura em interessado/endereco/pares/caminhoes/equipamentos (anti-sobreposicao).
 // v44: condicao de preparo do traco virou OPCIONAL no CRUD -> sem fallback 'A' falso: 'condição X' so sai quando informada.
-// v58 (revisao dos PDFs 2026-07-07): (1) texto/rodape de validacao imprimem o TOKEN do QR (v174) em vez do codigo
-// sequencial — fecha a superficie de enumeracao tambem no texto; (2) revisoes NUNCA sobrescrevem: storage path por
-// revisao (…-R{n}.pdf); (3) cabecalho das tabelas repete apos quebra de pagina; (4) datas de emissao em
-// America/Sao_Paulo; (5) NFs ordenadas numericamente; (6) 'SEM FCK DEFINIDO' quando ha resultado de controle mas
-// fck ausente; (7) falha de persistencia sinalizada via header x-persist-error; (8) slump em MM (mig 170).
 import { PDFDocument, StandardFonts, rgb, PDFImage } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
 
-const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'access-control-allow-methods': 'POST,OPTIONS', 'access-control-expose-headers': 'x-lab-report-id, x-persist-error' };
+const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'access-control-allow-methods': 'POST,OPTIONS', 'access-control-expose-headers': 'x-lab-report-id' };
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...cors } });
 
 const NAVY = rgb(0.094, 0.157, 0.388);
@@ -36,13 +31,12 @@ const PW = 595.28, PH = 841.89, MX = 40, RIGHT = PW - MX, CW = RIGHT - MX, BOTTO
 const san = (s: unknown): string => String(s ?? '')
   .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/→/g, '->').replace(/≈/g, '~')
   .replace(/[‘’‛′]/g, "'").replace(/[“”″]/g, '"')
-  .replace(/[–—−]/g, '-').replace(/…/g, '...').replace(/ /g, ' ')
+  .replace(/[–—−]/g, '-').replace(/…/g, '...').replace(/\u00A0/g, ' ')
   .replace(/[^\x00-\xFF]/g, '?');
 const fmt = (n: number | null | undefined, d = 1) => (n == null || !isFinite(n) ? '-' : n.toFixed(d).replace('.', ','));
 const dbr = (s: unknown) => { const t = String(s ?? '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return '-'; const [y, m, dd] = t.split('-'); return `${dd}/${m}/${y}`; };
 const hhmm = (s: unknown): string => { const t = String(s ?? '').trim(); const m = t.match(/^(\d{1,2}):(\d{2})/); return m ? `${m[1].padStart(2, '0')}:${m[2]}` : (t || '-'); };
 const emb = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? v as Record<string, unknown> : {});
-const hojeSP = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
 async function sha256Hex(bytes: Uint8Array): Promise<string> { const d = await crypto.subtle.digest('SHA-256', bytes); return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
 
 const _ctSvc = () => createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
@@ -91,7 +85,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       sb.from('client_works').select('nome, cidade, uf, endereco, responsavel_tecnico, crea').eq('id', conc.work_id).maybeSingle(),
       sb.from('lab_clients').select('razao_social, nome_fantasia, email, telefone').eq('id', conc.client_id).maybeSingle(),
       sb.from('tenants').select('name').eq('id', conc.tenant_id).maybeSingle(),
-      conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_mm, slump_tolerancia_mm, bombeado, componentes, idade_controle_dias').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
+      conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_cm, slump_tolerancia_cm, bombeado, componentes, idade_controle_dias').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
       sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes, idade_controle_default').eq('tenant_id', conc.tenant_id).maybeSingle(),
       conc.moldador_id ? sb.from('colaboradores').select('nome').eq('id', conc.moldador_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
@@ -110,7 +104,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const eqIds = [...new Set(tlist.map((t) => t.equipamento_id).filter(Boolean))] as string[];
     const [{ data: cps }, { data: receipts }, { data: equips }] = await Promise.all([
       cpIds.length ? sb.from('corpos_prova').select('id, codigo, data_moldagem').in('id', cpIds) : Promise.resolve({ data: [] }),
-      rcIds.length ? sb.from('material_receipts').select('id, nota_fiscal, serie, external_key, placa, motorista, volume_m3, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, slump_medido_mm, temperatura_concreto_c, houve_adicao_agua, agua_litros, rejeitado, motivo_rejeicao, elementos_concretados, observacoes').in('id', rcIds) : Promise.resolve({ data: [] }),
+      rcIds.length ? sb.from('material_receipts').select('id, nota_fiscal, serie, external_key, placa, motorista, volume_m3, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, slump_medido_cm, temperatura_concreto_c, houve_adicao_agua, agua_litros, rejeitado, motivo_rejeicao, elementos_concretados, observacoes').in('id', rcIds) : Promise.resolve({ data: [] }),
       eqIds.length ? sb.from('equipamentos').select('id, marca_modelo, numero_serie, classe, numero_certificado, validade_calibracao, lab_calibrador, incerteza_mpa').in('id', eqIds) : Promise.resolve({ data: [] }),
     ]);
     const cpById = new Map((cps ?? []).map((r: Record<string, unknown>) => [r.id, r]));
@@ -137,7 +131,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const grupos = new Map<string, Record<string, unknown>[]>();
     for (const t of tlist) { const k = String(t.receipt_id ?? 'sem-nf'); const a = grupos.get(k) ?? []; a.push(t); grupos.set(k, a); }
     const nfKey = (id: string) => { const rc = rcById.get(id) as Record<string, unknown> | undefined; return rc ? String(rc.nota_fiscal ?? rc.serie ?? '-') : '-'; };
-    const exemplares = [...grupos.entries()].sort((a, b) => nfKey(a[0]).localeCompare(nfKey(b[0]), 'pt-BR', { numeric: true }));
+    const exemplares = [...grupos.entries()].sort((a, b) => nfKey(a[0]).localeCompare(nfKey(b[0])));
 
     // ACEITACAO POR EXEMPLAR (v1): maior do par na idade de controle, por NF
     const resExemplar: number[] = [];
@@ -156,12 +150,12 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const loteFckEst = lote && lote.fck_est != null ? Number(lote.fck_est) : null;
     const usaLote = loteFckEst != null;
     const conforme = usaLote ? (fck > 0 ? (loteFckEst as number) >= fck : null) : (menorExemplar != null && fck > 0 ? menorExemplar >= fck : null);
-    const statusTxt = conforme != null ? (conforme ? 'CONFORME' : 'NÃO CONFORME') : ((n > 0 || usaLote) ? 'SEM FCK DEFINIDO' : 'AGUARDANDO IDADE DE CONTROLE');
+    const statusTxt = conforme == null ? 'AGUARDANDO IDADE DE CONTROLE' : conforme ? 'CONFORME' : 'NÃO CONFORME';
     const statusCor = conforme == null ? FAINT : conforme ? OKG : DANGER;
-    const numero = String(conc.numero_relatorio ?? '').trim() || `${String(conc.codigo ?? '').replace(/[^0-9]/g, '').slice(-6).padStart(6, '0')}/${String(conc.data_real ?? conc.data_programada ?? '').slice(0, 4) || hojeSP().slice(0, 4)}`;
+    const numero = String(conc.numero_relatorio ?? '').trim() || `${String(conc.codigo ?? '').replace(/[^0-9]/g, '').slice(-6).padStart(6, '0')}/${String(conc.data_real ?? conc.data_programada ?? '').slice(0, 4) || '2026'}`;
     const codVal = `LAU-${String(conc.codigo ?? 'XXXX')}`;
-    const { data: exReport } = await admin.from('lab_reports').select('id, revisao, validacao_token, storage_path').eq('tenant_id', conc.tenant_id).eq('concretagem_id', conc.id).eq('escopo', 'concretagem').is('deleted_at', null).maybeSingle();
-    const valToken = String((exReport as { validacao_token?: string } | null)?.validacao_token ?? crypto.randomUUID());
+    const { data: _exTok } = await admin.from('lab_reports').select('validacao_token').eq('tenant_id', conc.tenant_id).eq('concretagem_id', conc.id).eq('escopo', 'concretagem').is('deleted_at', null).maybeSingle();
+    const valToken = String((_exTok as { validacao_token?: string } | null)?.validacao_token ?? crypto.randomUUID());
     const valUrl = `https://app.concresoft.io/validar/${valToken}`;
     const interessado = String(cliente?.razao_social || cliente?.nome_fantasia || tenant?.name || '-');
     const rt = String(cfg?.responsavel_tecnico || work?.responsavel_tecnico || '');
@@ -203,7 +197,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const kv = (lbl: string, val: string, x: number, maxw?: number) => { T(lbl, x, y, 6.3, F, FAINT); T(maxw ? clip(val, 8.2, maxw, FB) : val, x, y - 10, 8.2, FB, INK); };
 
     const W1 = CW * 0.34 - 10, W2 = CW * 0.28 - 10, W3 = CW * 0.22 - 10, W4 = CW * 0.16;
-    kv('INTERESSADO', interessado, MX, W1); kv('OBRA', String(work?.nome || '-'), MX + CW * 0.34, W2); kv('COD. CONCRETAGEM', String(conc.codigo || '-'), MX + CW * 0.62, W3); kv('EMISSÃO', dbr(hojeSP()), MX + CW * 0.84, W4);
+    kv('INTERESSADO', interessado, MX, W1); kv('OBRA', String(work?.nome || '-'), MX + CW * 0.34, W2); kv('COD. CONCRETAGEM', String(conc.codigo || '-'), MX + CW * 0.62, W3); kv('EMISSÃO', dbr(new Date().toISOString()), MX + CW * 0.84, W4);
     y -= 24;
     kv('ENDEREÇO', [work?.endereco, work?.cidade, work?.uf].filter(Boolean).join(' - ') || '-', MX, W1);
     if (ON.responsavel_tecnico) { kv('RESP. TÉCNICO', rt || '-', MX + CW * 0.34, W2); kv('CREA', creaRt || '-', MX + CW * 0.62, W3); }
@@ -223,7 +217,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       if (CON.traco_fck) { pares.push(['Traço', tracoNome]); pares.push(['Fck (MPa)', fmt(fck, 1)]); }
       if (ON.amostragem) pares.push(['Amostragem', condicao ? 'Total - condição ' + condicao : 'Total']);
       if (om?.condicao_preparo) pares.push(['Condição de preparo', String(om.condicao_preparo || '-')]);
-      if (om?.slump_previsto_mm != null) pares.push(['Abatimento prev. (mm)', `${fmt(Number(om.slump_previsto_mm), 0)} ± ${fmt(Number(om.slump_tolerancia_mm ?? 0), 0)}`]);
+      if (om?.slump_previsto_cm != null) pares.push(['Abatimento prev. (cm)', `${fmt(Number(om.slump_previsto_cm), 1)} ± ${fmt(Number(om.slump_tolerancia_cm ?? 0), 1)}`]);
       if (om?.brita) pares.push(['Brita / agregado', String(om.brita || '-')]);
       if (om?.fator_ac != null) pares.push(['A/C projeto', fmt(Number(om.fator_ac), 2)]);
       if (CON.bombeado) pares.push(['Lançamento', conc.bombeado || om?.bombeado ? 'Bombeado' : 'Convencional']);
@@ -280,7 +274,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
         if (RON.horarios_transporte && (rc.hora_saida_usina || rc.hora_chegada_obra)) partes.push('Transp. ' + hhmm(rc.hora_saida_usina) + ' -> ' + hhmm(rc.hora_chegada_obra));
         if (RON.horarios_descarga && (rc.hora_inicio_descarga || rc.hora_fim_descarga)) partes.push('Desc. ' + hhmm(rc.hora_inicio_descarga) + ' -> ' + hhmm(rc.hora_fim_descarga));
         if (RON.hora_moldagem && rc.hora_moldagem) partes.push('Mold. ' + hhmm(rc.hora_moldagem));
-        if (RON.slump && rc.slump_medido_mm != null) partes.push('Slump ' + fmt(Number(rc.slump_medido_mm), 0) + ' mm');
+        if (RON.slump && rc.slump_medido_cm != null) partes.push('Slump ' + fmt(Number(rc.slump_medido_cm), 1) + ' cm');
         if (ON.temperatura && rc.temperatura_concreto_c != null) partes.push('Temp. concreto ' + fmt(Number(rc.temperatura_concreto_c), 0) + ' °C');
         if (RON.agua_adicionada && rc.houve_adicao_agua) partes.push('Água adicionada ' + fmt(Number(rc.agua_litros ?? 0), 0) + ' L');
         if (RON.rejeicao && rc.rejeitado) partes.push('Rejeitado: ' + String(rc.motivo_rejeicao || '-'));
@@ -308,12 +302,12 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       const ctrl = arr.filter(isCtrl).map((t) => Number(t.resultado_valor)).filter(isFinite);
       const rexVal = ctrl.length ? Math.max(...ctrl) : null;
       need(13, true); rect(MX, y - 11, CW, 12, NAVYL);
-      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m³` : '') + (RON.slump && rc?.slump_medido_mm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_mm), 0)} mm` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '') + (arr.length && arr[0].capeamento ? '  -  Bases ' + String(arr[0].capeamento) : '');
+      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m³` : '') + (RON.slump && rc?.slump_medido_cm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_cm), 1)} cm` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '') + (arr.length && arr[0].capeamento ? '  -  Bases ' + String(arr[0].capeamento) : '');
       T(clip(faixa, 6.8, CW - 10, FB), MX + 5, y - 8, 6.8, FB, NAVY); y -= 12;
       if (ON.elemento && RON.elementos_concretados && rc?.elementos_concretados) { need(10, true); T(clip('Local: ' + String(rc.elementos_concretados), 6.2, CW - 10), MX + 5, y - 7, 6.2, F, MUTED); y -= 11; }
       let first = true;
       for (let i = 0; i < arr.length; i++) {
-        const t = arr[i]; const _pg = page; need(12, true); if (page !== _pg) thead();
+        const t = arr[i]; need(12, true);
         const cp = cpById.get(t.corpo_prova_id as string) as Record<string, unknown> | undefined;
         const d = Number(t.cp_diametro_mm ?? 0) || 100, h = Number(t.cp_altura_mm ?? 0) || 200;
         const row: Record<string, string> = { cp: String(cp?.codigo ?? i + 1).split('-').pop() || String(i + 1), idade: `${idade(t)} ${String(t.idade_unidade) === 'hora' ? 'h' : 'dias'}`, data: dbr(t.data_rompimento), dh: `${fmt(d, 0)} × ${fmt(h, 0)}`, hd: fmt(h / d, 2), rup: String(t.tipo_ruptura || '-'), carga: t.carga_ruptura_kn != null ? fmt(Number(t.carga_ruptura_kn), 1) : '-', rcp: fmt(Number(t.resultado_valor), 1), rex: first && rexVal != null ? fmt(rexVal, 1) : '' };
@@ -340,20 +334,22 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
 
     if (ON.equipamentos && (equips ?? []).length) {
       sec('Equipamentos utilizados');
+      rect(MX, y - 11, CW, 12, NAVY);
       const ec = [['Equipamento', 0.24], ['Classe', 0.08], ['Nº série', 0.15], ['Certificado', 0.17], ['Lab. calibrador', 0.20], ['Válido até', 0.16]] as [string, number][];
-      const eqHead = () => { rect(MX, y - 11, CW, 12, NAVY); let ex2 = MX; for (const [l, w] of ec) { T(l, ex2 + 3, y - 8, 6.1, FB, WHITE); ex2 += w * CW; } y -= 12; };
-      eqHead();
-      for (const eq of (equips ?? []) as Record<string, unknown>[]) { const _pg = page; need(12, true); if (page !== _pg) eqHead(); const inc = ON.incerteza && eq.incerteza_mpa != null ? ' (u=' + fmt(Number(eq.incerteza_mpa), 1) + ')' : ''; const vals = [String(eq.marca_modelo || '-') + inc, String(eq.classe || '-'), String(eq.numero_serie || '-'), String(eq.numero_certificado || '-'), String(eq.lab_calibrador || '-'), dbr(eq.validade_calibracao)]; let x2 = MX; for (let k = 0; k < ec.length; k++) { T(clip(vals[k], 6.5, ec[k][1] * CW - 6), x2 + 3, y - 8, 6.5, F, INK); x2 += ec[k][1] * CW; } y -= 11; hline(MX, y, RIGHT, rgb(0.93, 0.95, 0.98), 0.4); }
+      let ex2 = MX; for (const [l, w] of ec) { T(l, ex2 + 3, y - 8, 6.1, FB, WHITE); ex2 += w * CW; }
+      y -= 12;
+      for (const eq of (equips ?? []) as Record<string, unknown>[]) { need(12, true); const inc = ON.incerteza && eq.incerteza_mpa != null ? ' (u=' + fmt(Number(eq.incerteza_mpa), 1) + ')' : ''; const vals = [String(eq.marca_modelo || '-') + inc, String(eq.classe || '-'), String(eq.numero_serie || '-'), String(eq.numero_certificado || '-'), String(eq.lab_calibrador || '-'), dbr(eq.validade_calibracao)]; let x2 = MX; for (let k = 0; k < ec.length; k++) { T(clip(vals[k], 6.5, ec[k][1] * CW - 6), x2 + 3, y - 8, 6.5, F, INK); x2 += ec[k][1] * CW; } y -= 11; hline(MX, y, RIGHT, rgb(0.93, 0.95, 0.98), 0.4); }
       y -= 6;
     }
 
     if (ON.certificacoes && certs.length) {
       sec('Certificações do laboratório');
+      rect(MX, y - 11, CW, 12, NAVY);
       const cc = [['Tipo / escopo', 0.40], ['Número', 0.22], ['Órgão', 0.20], ['Validade', 0.18]] as [string, number][];
-      const ccHead = () => { rect(MX, y - 11, CW, 12, NAVY); let cxc = MX; for (const [l, w] of cc) { T(l, cxc + 3, y - 8, 6.1, FB, WHITE); cxc += w * CW; } y -= 12; };
-      ccHead();
+      let cxc = MX; for (const [l, w] of cc) { T(l, cxc + 3, y - 8, 6.1, FB, WHITE); cxc += w * CW; }
+      y -= 12;
       for (const ce of certs) {
-        const _pg = page; need(12, true); if (page !== _pg) ccHead();
+        need(12, true);
         const vals = [String(ce.tipo ?? ce.nome ?? '-'), String(ce.numero ?? '-'), String(ce.orgao ?? '-'), ce.validade ? dbr(ce.validade) : '-'];
         let x3 = MX; for (let k = 0; k < cc.length; k++) { T(clip(vals[k], 6.5, cc[k][1] * CW - 6), x3 + 3, y - 8, 6.5, F, INK); x3 += cc[k][1] * CW; } y -= 11; hline(MX, y, RIGHT, rgb(0.93, 0.95, 0.98), 0.4); }
       y -= 6;
@@ -368,7 +364,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     y -= 8;
 
     need(ON.qr_validacao && gqNome ? 140 : 70, false); const sigY = y;
-    if (ON.qr_validacao) { try { const qr = QRCode.create(valUrl, { errorCorrectionLevel: 'M' }); const size = qr.modules.size; const dataq = qr.modules.data; const box = 54; const m = box / size; const ox = MX, oy = y - box; for (let r = 0; r < size; r++) for (let c2 = 0; c2 < size; c2++) if (dataq[r * size + c2]) page.drawRectangle({ x: ox + c2 * m, y: oy + (size - 1 - r) * m, width: m + 0.2, height: m + 0.2, color: INK }); T('Validação pública', MX + 64, y - 10, 6.4, FB, INK); T('app.concresoft.io/validar/', MX + 64, y - 20, 6.2, F, MUTED); T(valToken, MX + 64, y - 29, 6.2, FB, INK); T('Assinatura: QR + validação pública (ICP-Brasil na v2).', MX + 64, y - 38, 6.2, F, MUTED); } catch (_) { /* QR opcional */ } }
+    if (ON.qr_validacao) { try { const qr = QRCode.create(valUrl, { errorCorrectionLevel: 'M' }); const size = qr.modules.size; const dataq = qr.modules.data; const box = 54; const m = box / size; const ox = MX, oy = y - box; for (let r = 0; r < size; r++) for (let c2 = 0; c2 < size; c2++) if (dataq[r * size + c2]) page.drawRectangle({ x: ox + c2 * m, y: oy + (size - 1 - r) * m, width: m + 0.2, height: m + 0.2, color: INK }); T('Validação pública', MX + 64, y - 10, 6.4, FB, INK); T('app.concresoft.io/validar/', MX + 64, y - 20, 6.2, F, MUTED); T(codVal, MX + 64, y - 29, 6.2, FB, INK); T('Assinatura: QR + validação pública (ICP-Brasil na v2).', MX + 64, y - 38, 6.2, F, MUTED); } catch (_) { /* QR opcional */ } }
     const sx = MX + CW * 0.52;
     hline(sx, sigY - 30, sx + CW * 0.40, MUTED, 0.6);
     T(rt || 'Responsável Técnico', sx, sigY - 40, 8, FB, INK);
@@ -378,29 +374,24 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     if (gqNome) { hline(MX, gqY - 30, MX + CW * 0.40, MUTED, 0.6); T(gqNome, MX, gqY - 40, 8, FB, INK); T('Gerente da Qualidade', MX, gqY - 49, 6.4, F, MUTED); if (gqCrea) T('CREA ' + gqCrea, MX, gqY - 57, 6.4, F, FAINT); }
 
     const pages = doc.getPages(); const total = pages.length;
-    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: BOTTOM - 9 }, end: { x: RIGHT, y: BOTTOM - 9 }, thickness: 0.6, color: LINE }); if (ON.qr_validacao) p.drawText(san('Validação pública - app.concresoft.io/validar/' + valToken), { x: MX, y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); const pg = san(`Página ${i + 1} de ${total}`); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); });
+    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: BOTTOM - 9 }, end: { x: RIGHT, y: BOTTOM - 9 }, thickness: 0.6, color: LINE }); if (ON.qr_validacao) p.drawText(san('Validação pública - app.concresoft.io/validar/' + codVal), { x: MX, y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); const pg = san(`Página ${i + 1} de ${total}`); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); });
 
     const bytes = await doc.save();
     let labReportId: string | null = null;
-    let persistErr = false;
     if (body.persist === true) {
       try {
         const hash = await sha256Hex(bytes);
-        // Revisoes nunca sobrescrevem: um objeto por revisao no Storage (…-R0.pdf, …-R1.pdf, …).
-        // BACKFILL: laudo que existe SEM PDF (ex.: registrado por outro fluxo) ganha o PDF sem virar
-        // revisao e SEM mudar o status — so anexa storage_path/hash (Baixar passa a funcionar).
-        const hadPdf = !!(exReport as { storage_path?: string | null } | null)?.storage_path;
-        const nextRev = exReport ? (Number((exReport as { revisao?: number }).revisao) || 0) + (hadPdf ? 1 : 0) : 0;
-        const path = `${conc.tenant_id}/laudos/${codVal}-R${nextRev}.pdf`;
-        const up = await admin.storage.from('lab-reports').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
-        if (up.error) throw new Error(up.error.message);
-        const campos = { laboratorio_nome: tenant?.name ?? 'Laboratorio', responsavel_tecnico: rt || null, crea_rt: creaRt || null, storage_path: path, hash_sha256: hash, data_emissao: hojeSP() };
-        if (exReport) { const patch: Record<string, unknown> = { ...campos, numero, revisao: nextRev, updated_at: new Date().toISOString() }; if (hadPdf) patch.status = 'em_revisao'; const { error: ue } = await admin.from('lab_reports').update(patch).eq('id', (exReport as { id: string }).id); if (ue) throw new Error(ue.message); labReportId = (exReport as { id: string }).id; }
-        else { const { data: novo, error: ie } = await admin.from('lab_reports').insert({ tenant_id: conc.tenant_id, client_id: conc.client_id, work_id: conc.work_id, escopo: 'concretagem', concretagem_id: conc.id, numero, origem: 'sistema', status: 'rascunho', revisao: 0, validacao_token: valToken, ...campos }).select('id').maybeSingle(); if (ie) throw new Error(ie.message); labReportId = (novo?.id as string) ?? null; }
+        const path = `${conc.tenant_id}/laudos/${codVal}.pdf`;
+        await admin.storage.from('lab-reports').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
+        const hoje = new Date().toISOString().slice(0, 10);
+        const campos = { laboratorio_nome: tenant?.name ?? 'Laboratorio', responsavel_tecnico: rt || null, crea_rt: creaRt || null, storage_path: path, hash_sha256: hash, data_emissao: hoje };
+        const { data: existing } = await admin.from('lab_reports').select('id, revisao').eq('tenant_id', conc.tenant_id).eq('concretagem_id', conc.id).eq('escopo', 'concretagem').is('deleted_at', null).maybeSingle();
+        if (existing) { await admin.from('lab_reports').update({ ...campos, numero, revisao: (Number(existing.revisao) || 0) + 1, status: 'em_revisao', updated_at: new Date().toISOString() }).eq('id', existing.id); labReportId = existing.id as string; }
+        else { const { data: novo } = await admin.from('lab_reports').insert({ tenant_id: conc.tenant_id, client_id: conc.client_id, work_id: conc.work_id, escopo: 'concretagem', concretagem_id: conc.id, numero, origem: 'sistema', status: 'rascunho', revisao: 0, validacao_token: valToken, ...campos }).select('id').maybeSingle(); labReportId = (novo?.id as string) ?? null; }
         if (labReportId) { await admin.from('laudo_resultados').update({ deleted_at: new Date().toISOString() }).eq('lab_report_id', labReportId).is('deleted_at', null); const vincs = tlist.map((t) => ({ tenant_id: conc.tenant_id, lab_report_id: labReportId, material_test_id: t.id as string, vinculo_origem: 'sistema' })).filter((v) => v.material_test_id); if (vincs.length) await admin.from('laudo_resultados').insert(vincs); }
-      } catch (_) { persistErr = true; labReportId = null; /* PDF segue; front avisa via x-persist-error */ }
+      } catch (_) { /* best-effort */ }
     }
-    return new Response(bytes, { headers: { ...cors, 'content-type': 'application/pdf', 'content-disposition': `inline; filename="laudo-${san(conc.codigo)}.pdf"`, 'x-lab-report-id': labReportId ?? '', ...(persistErr ? { 'x-persist-error': '1' } : {}) } });
+    return new Response(bytes, { headers: { ...cors, 'content-type': 'application/pdf', 'content-disposition': `inline; filename="laudo-${san(conc.codigo)}.pdf"`, 'x-lab-report-id': labReportId ?? '' } });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }

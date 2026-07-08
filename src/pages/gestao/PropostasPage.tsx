@@ -68,6 +68,11 @@ export function PropostasPage() {
   }
 
   async function imprimir(id: string) {
+    // Aba aberta SINCRONA no clique (invariante do pdf.ts: 0 window.open(await…)). Sem 'noopener'
+    // de propósito: com ele o window.open('') retorna null e o fluxo morre; o opener é anulado à mão.
+    const w = window.open('', '_blank', 'width=900,height=1000');
+    if (!w) { toast('Permita pop-ups para imprimir a proposta.', 'info'); return; }
+    try { w.opener = null; } catch { /* noop */ }
     try {
       const [p, cfg] = await Promise.all([getProposta(id), member ? getConfigLab(member.tenant_id) : Promise.resolve(null)]);
       const esc = (s: unknown) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
@@ -86,10 +91,8 @@ export function PropostasPage() {
 ${p.condicao_pagamento ? `<div class="box"><b>Condições de pagamento:</b> ${esc(p.condicao_pagamento)}</div>` : ''}
 ${p.observacoes ? `<div class="box">${esc(p.observacoes)}</div>` : ''}
 </body></html>`;
-      const w = window.open('', '_blank', 'noopener,width=900,height=1000');
-      if (!w) { toast('Permita pop-ups para imprimir a proposta.', 'info'); return; }
       w.document.write(html); w.document.close();
-    } catch (e) { toast((e as Error).message, 'error'); }
+    } catch (e) { try { w.close(); } catch { /* noop */ } toast((e as Error).message, 'error'); }
   }
 
   const rows = q.data ?? [];

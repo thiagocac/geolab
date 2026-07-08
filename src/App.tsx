@@ -63,7 +63,7 @@ function RouteTelemetryMount() {
 }
 
 export function App() {
-  const { ready, session, needsTenantSelection, hasRole, recovery } = useAuth();
+  const { ready, session, needsTenantSelection, hasRole, can, recovery } = useAuth();
 
   // Rota PUBLICA de validacao (fora do gate de auth) — alvo do QR do laudo.
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/validar')) {
@@ -123,9 +123,7 @@ export function App() {
 
   if (!session) return <LoginScreen />;
   if (needsTenantSelection) return <TenantSelectionPage />;
-  const podeOperacao = hasRole('admin', 'admin_consulte');
   const podeLab = hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro');
-  const podeGerirClientes = hasRole('admin', 'admin_consulte');
   return (
     <BrowserRouter>
       <RouteTelemetryMount />
@@ -148,8 +146,8 @@ export function App() {
             <Route path="/nao-conformidades" element={<NcPage />} />
             <Route path="/gestao/nc-config" element={<ConfiguracoesPage inicial="nc" />} />
             <Route path="/importacoes" element={<ImportacoesShell />} />
-            <Route path="/importacoes/excel" element={podeLab ? <ImportacoesShell inicial="excel" /> : <Navigate to="/" replace />} />
-            <Route path="/dashboards" element={podeLab ? <LabDashboardsPage /> : <Navigate to="/" replace />} />
+            <Route path="/importacoes/excel" element={can('importacao.executar') ? <ImportacoesShell inicial="excel" /> : <Navigate to="/" replace />} />
+            <Route path="/dashboards" element={can('dashboard.ver') ? <LabDashboardsPage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/contratos-financeiro" element={<FinanceiroPage inicial="contratos" />} />
             <Route path="/notificacoes" element={<ConfiguracoesPage inicial="notificacoes" />} />
             <Route path="/gestao/pendencias" element={<PendenciasPage />} />
@@ -167,19 +165,19 @@ export function App() {
             <Route path="/configuracoes" element={<ConfiguracoesPage />} />
             <Route path="/financeiro" element={<FinanceiroPage />} />
             <Route path="/portal-cliente" element={<ClientePortalPage />} />
-            <Route path="/portal/usuarios-clientes" element={podeGerirClientes ? <ClienteUsuariosPage /> : <Navigate to="/portal-cliente" replace />} />
-            <Route path="/operacao" element={podeOperacao ? <OperacaoPage /> : <Navigate to="/" replace />} />
-            <Route path="/observabilidade" element={podeOperacao ? <ObservabilidadePage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/backups" element={podeOperacao ? <BackupsPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/emails" element={podeOperacao ? <EmailLogPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/timeline" element={podeOperacao ? <TimelinePage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/documentos" element={podeOperacao ? <DocGatePage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/rbac" element={podeOperacao ? <RbacPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/delegacoes" element={podeOperacao ? <DelegacoesPage /> : <Navigate to="/" replace />} />
+            <Route path="/portal/usuarios-clientes" element={can('portal.gerenciar') ? <ClienteUsuariosPage /> : <Navigate to="/portal-cliente" replace />} />
+            <Route path="/operacao" element={can('operacao.interna') ? <OperacaoPage /> : <Navigate to="/" replace />} />
+            <Route path="/observabilidade" element={can('observabilidade.ver') ? <ObservabilidadePage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/backups" element={can('backup.executar') ? <BackupsPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/emails" element={can('email.gerenciar') ? <EmailLogPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/timeline" element={can('auditoria.ver') ? <TimelinePage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/documentos" element={can('docgate.ver') ? <DocGatePage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/rbac" element={can('rbac.gerenciar') ? <RbacPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/delegacoes" element={can('workflow.delegar') ? <DelegacoesPage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/seguranca-conta" element={podeLab ? <SegurancaContaPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/comunicados" element={podeOperacao ? <BroadcastsPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/backlog" element={podeOperacao ? <AdminBacklogPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/webhooks" element={podeOperacao ? <WebhooksPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/comunicados" element={can('comunicado.gerenciar') ? <BroadcastsPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/backlog" element={can('operacao.interna') ? <AdminBacklogPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/webhooks" element={can('api.gerenciar') ? <WebhooksPage /> : <Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

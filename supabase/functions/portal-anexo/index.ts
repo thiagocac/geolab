@@ -22,11 +22,10 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service, { auth: { persistSession: false } });
     const { data: ures } = await sb.auth.getUser();
     if (!ures?.user) return json({ ok: false, error: 'nao autenticado' }, 401);
-    const { data: member } = await sb.from('members').select('id, tenant_id, role, roles, portal_permissoes').eq('auth_id', ures.user.id).eq('active', true).is('deleted_at', null).order('is_selected', { ascending: false }).limit(1).maybeSingle();
+    const { data: member } = await sb.from('members').select('id, tenant_id, role, roles').eq('auth_id', ures.user.id).eq('active', true).is('deleted_at', null).order('is_selected', { ascending: false }).limit(1).maybeSingle();
     if (!member) return json({ ok: false, error: 'membro nao encontrado' }, 403);
     const roles = Array.isArray(member.roles) ? member.roles as string[] : [];
     const isCliente = member.role === 'cliente' || roles.includes('cliente');
-    const perm = (member.portal_permissoes && typeof member.portal_permissoes === 'object') ? member.portal_permissoes as Record<string, unknown> : null;
 
     async function podeAcessarObra(workId: string): Promise<boolean> {
       if (!isCliente) return true;
@@ -59,8 +58,8 @@ Deno.serve(async (req) => {
     const anexos = Array.isArray(md.anexos) ? md.anexos as Record<string, unknown>[] : [];
 
     if (action === 'list') return json({ ok: true, anexos });
-    if (isCliente && perm && perm.anexar === false) return json({ ok: false, error: 'recurso "anexar" nao habilitado para este acesso' }, 403);
 
+    // upload
     const filename = clean(body.filename) || 'anexo';
     const mime = clean(body.mime) || 'application/octet-stream';
     const content = typeof body.content_base64 === 'string' ? body.content_base64 : '';

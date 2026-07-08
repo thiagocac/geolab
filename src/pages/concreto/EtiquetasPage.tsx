@@ -15,11 +15,11 @@ const dataBR = (s: string | null) => (s && s.length >= 10 ? s.slice(0, 10).split
 const intOf = (v: string) => Math.max(0, Math.round(Number(v) || 0));
 
 export function EtiquetasPage() {
-  const { member, hasRole } = useAuth();
+  const { member, can } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
-  const podeGerar = hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo');
+  const podeGerar = can('etiqueta.gerenciar');
 
   const [modo, setModo] = useState<'avulsa' | 'concretagem'>('avulsa');
   const [qtd, setQtd] = useState('50');

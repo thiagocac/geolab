@@ -10,7 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudosPaged, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, type LaudoRow } from '../../lib/api/laudo';
+import { listLaudosPaged, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao } from '../../lib/api/laudo';
 import { listReference } from '../../lib/api/client';
 import { temDelegacaoAprovacao } from '../../lib/api/delegacoes';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -87,22 +87,9 @@ export function LaudosPage() {
     setBusy(false); setProg(null);
     if (ok) fecharNovo();
   }
-  async function baixar(r: LaudoRow) {
-    if (r.storage_path) {
-      const tab = openDeferredTab();
-      try { tab.set(await downloadUrl(r.storage_path)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
-      return;
-    }
-    // Laudo registrado sem PDF anexado (ex.: carga inicial): gera e persiste na hora pela EF.
-    // A EF (v58+) trata linha sem storage_path como 1ª materialização - preenche o PDF SEM bump de revisão e SEM mudar o status.
-    if (!r.concretagem_id) { toast('Laudo sem PDF e sem concretagem vinculada - não há como gerar automaticamente.', 'error'); return; }
-    const tab = openDeferredTab('Gerando PDF do laudo…');
-    try {
-      const { blob } = await gerarLaudo(r.concretagem_id, true);
-      tab.openBlob(blob, 'laudo-' + String(r.numero || 'sem-numero').replace(/\//g, '-') + '.pdf');
-      await qc.invalidateQueries({ queryKey: ['laudos'] });
-      toast('PDF do laudo gerado e anexado. Os próximos downloads são imediatos.', 'success');
-    } catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
+  async function baixar(path: string | null) {
+    if (!path) { toast('Laudo ainda nao persistido.', 'error'); return; }
+    const tab = openDeferredTab(); try { tab.set(await downloadUrl(path)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
   }
   async function aprovar(id: string) {
     const ehFinal = cls.data?.[id] === 'final';
@@ -153,7 +140,7 @@ export function LaudosPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
-                  <Button variant="ghost" onClick={() => void baixar(r)}>Baixar</Button>
+                  <Button variant="ghost" onClick={() => void baixar(r.storage_path)}>Baixar</Button>
                   {podeEmitir && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
                   {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void reabrir(r.id)}>Reabrir</Button> : null}

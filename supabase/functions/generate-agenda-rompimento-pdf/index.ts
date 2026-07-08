@@ -4,10 +4,6 @@
 // v9: opcional agrupar_prensa=true -> secoes por prensa PREVISTA (alocacao equipamento_obras da obra do CP);
 // v11: labName prioriza o vinculo SELECIONADO (members.is_selected) p/ usuario multi-lab.
 // CP pendente herda a prensa da obra; multiplas prensas -> secao "Varias prensas"; nenhuma -> "Sem prensa".
-// v25 (revisao dos PDFs 2026-07-07): (1) escopo pelo LABORATORIO SELECIONADO (multi-lab nao mistura tenants);
-// (2) filtros de data/situacao NO SERVIDOR (antes trazia a tabela inteira e o PostgREST cortava em 1000 em
-// silencio) + teto explicito de 2000 com aviso no PDF; (3) situacao default 'pendente' — agenda e lista de
-// trabalho (body.situacao='todas' imprime tudo, como antes); (4) acentuacao tipografica dos rotulos.
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
@@ -42,30 +38,20 @@ serveWithTelemetry('generate-agenda-rompimento-pdf', async (req) => {
     const { data: u } = await sb.auth.getUser();
     if (!u?.user) return json({ error: 'nao autenticado' }, 401);
 
-    let labName = 'Laboratório'; let tenantSel = '';
-    const { data: mems } = await sb.from('members').select('tenant_id, tenants(name), is_selected').eq('auth_id', u.user.id).eq('active', true).is('deleted_at', null).order('is_selected', { ascending: false, nullsFirst: false }).limit(1);
-    if (mems && mems.length) { labName = String(emb((mems[0] as Rel).tenants).name ?? labName); tenantSel = String((mems[0] as Rel).tenant_id ?? ''); }
-    if (!tenantSel) return json({ error: 'nenhum laboratório vinculado/selecionado' }, 403);
+    let labName = 'Laboratorio';
+    const { data: mems } = await sb.from('members').select('tenants(name), is_selected').eq('auth_id', u.user.id).eq('active', true).is('deleted_at', null).order('is_selected', { ascending: false, nullsFirst: false }).limit(1);
+    if (mems && mems.length) labName = String(emb((mems[0] as Rel).tenants).name ?? labName);
 
-    const ref = String(body.data_ref ?? new Date().toISOString().slice(0, 10));
-    const janela = String(body.janela ?? 'ate');
-    const situ = String(body.situacao ?? 'pendente'); // agenda = lista de trabalho; 'todas' imprime tudo
-    const CAP = 2000; // teto explicito (o PostgREST cortaria em 1000 SEM aviso)
     const SEL = 'id, codigo, numeracao_lab, external_key, idade_dias, idade_unidade, data_prevista_rompimento, situacao, valor_esperado, material_receipts(nota_fiscal, serie), material_test_types(nome, codigo), concretagens(codigo, work_id, fck_previsto, client_works(nome), lab_clients(razao_social, nome_fantasia))';
-    const buildQ = (sel: string) => {
-      let q = sb.from('corpos_prova').select(sel).is('deleted_at', null).eq('tenant_id', tenantSel);
-      if (janela === 'ate') q = q.lte('data_prevista_rompimento', ref);
-      else if (janela === 'dia') q = q.eq('data_prevista_rompimento', ref);
-      if (situ && situ !== 'todas') q = q.eq('situacao', situ);
-      return q.order('data_prevista_rompimento', { ascending: true }).limit(CAP);
-    };
-    let { data, error } = await buildQ(SEL);
+    let { data, error } = await sb.from('corpos_prova').select(SEL).is('deleted_at', null).order('data_prevista_rompimento', { ascending: true });
     if (error && /numeracao_lab/i.test(error.message)) {
-      const retry = await buildQ(SEL.replace('numeracao_lab, ', ''));
+      const retry = await sb.from('corpos_prova').select(SEL.replace('numeracao_lab, ', '')).is('deleted_at', null).order('data_prevista_rompimento', { ascending: true });
       data = retry.data; error = retry.error;
     }
     if (error) return json({ error: error.message }, 403);
-    const capado = ((data ?? []) as Rel[]).length >= CAP;
+
+    const ref = String(body.data_ref ?? new Date().toISOString().slice(0, 10));
+    const janela = String(body.janela ?? 'ate');
     const tipo = String(body.tipo_ensaio ?? 'compressao');
     const idade = String(body.idade ?? 'todas');
     const nf = norm(body.nota_fiscal ?? '');
@@ -121,13 +107,13 @@ serveWithTelemetry('generate-agenda-rompimento-pdf', async (req) => {
     const fill = (x: number, ytop: number, w: number, h: number, c: ReturnType<typeof rgb>) => page.drawRectangle({ x, y: ytop - h, width: w, height: h, color: c });
 
     const cols: Array<{ label: string; w: number; x?: number }> = [
-      { label: 'Numeração', w: 78 },
+      { label: 'Numeracao', w: 78 },
       { label: 'Cliente / obra', w: 132 },
       { label: 'NF', w: 42 },
       { label: 'Idade', w: 32 },
       { label: 'Data prevista', w: 54 },
       { label: 'Data / hora rompimento', w: 86 },
-      { label: entrarCarga ? ('Carga de ruptura (' + cargaUnidade + ')') : 'Tensão de ruptura (MPa)', w: 91 },
+      { label: entrarCarga ? ('Carga de ruptura (' + cargaUnidade + ')') : 'Tensao de ruptura (MPa)', w: 91 },
     ];
     const sumW = cols.reduce((a, c) => a + c.w, 0); const kf = Wu / sumW; let cxacc = x0;
     for (const c of cols) { c.x = cxacc; c.w = c.w * kf; cxacc += c.w; }
@@ -143,14 +129,13 @@ serveWithTelemetry('generate-agenda-rompimento-pdf', async (req) => {
     const headerBand = (): number => {
       let y = H - M; const th = 40; fill(x0, y, Wu, th, navy);
       txt(x0 + 10, y - 15, labName, 12, B, white);
-      txt(x0 + 10, y - 27, 'Controle Tecnológico de Materiais - Concreto', 6.5, F, rgb(0.78, 0.81, 0.9));
+      txt(x0 + 10, y - 27, 'Controle Tecnologico de Materiais - Concreto', 6.5, F, rgb(0.78, 0.81, 0.9));
       txtR(x1 - 8, y - 12, 'AGENDA DE ROMPIMENTOS', 11, B, white);
       const refc = rgb(0.78, 0.81, 0.9);
       txtR(x1 - 8, y - 23, 'NBR 5739 - 5738 - 16886 - 16889', 5.6, F, refc);
       txtR(x1 - 8, y - 31, 'app.concresoft.io', 5.6, F, refc);
       y -= th + 7;
-      txt(x0, y, 'Data de referência: ' + dbr(ref) + '   |   CPs no recorte: ' + rows.length + (situ && situ !== 'todas' ? '   |   situação: ' + situ : '') + (agruparPrensa ? '   |   agrupado por prensa' : '') + (entrarCarga ? '   |   campo: Carga (' + cargaUnidade + ')' : ''), 8.5, F, lbl);
-      if (capado) { y -= 11; txt(x0, y, 'Atenção: recorte cortado em ' + CAP + ' CPs — refine os filtros.', 8, B, rgb(0.78, 0.10, 0.10)); }
+      txt(x0, y, 'Data de referencia: ' + dbr(ref) + '   |   CPs no recorte: ' + rows.length + (agruparPrensa ? '   |   agrupado por prensa' : '') + (entrarCarga ? '   |   campo: Carga (' + cargaUnidade + ')' : ''), 8.5, F, lbl);
       return y - 9;
     };
     const colHeader = (y: number): number => {
@@ -217,7 +202,7 @@ serveWithTelemetry('generate-agenda-rompimento-pdf', async (req) => {
       const finalKeys = [...pKeys, ...(buckets.has('multi') ? ['multi'] : []), ...(buckets.has('none') ? ['none'] : [])];
       for (const k of finalKeys) {
         const list = buckets.get(k) as Rel[];
-        const titulo = k === 'multi' ? 'Várias prensas alocadas' : k === 'none' ? 'Sem prensa alocada' : ('Prensa: ' + (prensaRotulo.get(k.slice(2)) ?? '-'));
+        const titulo = k === 'multi' ? 'Varias prensas alocadas' : k === 'none' ? 'Sem prensa alocada' : ('Prensa: ' + (prensaRotulo.get(k.slice(2)) ?? '-'));
         if (y - (sech + rowh) < 48) y = startPage(false);
         y = drawSection(y, titulo, list.length);
         for (const r of list) {
@@ -230,7 +215,7 @@ serveWithTelemetry('generate-agenda-rompimento-pdf', async (req) => {
     if (!rows.length) txtC(W / 2, H - 150, 'Nenhum CP no recorte selecionado.', 9, F, lbl);
 
     const pages = doc.getPages();
-    pages.forEach((p, i) => { p.drawText(san(labName + ' - app.concresoft.io'), { x: M, y: 22, size: 6.5, font: F, color: lbl }); p.drawText(san('Página ' + (i + 1) + '/' + pages.length), { x: x1 - 52, y: 22, size: 6.5, font: F, color: lbl }); });
+    pages.forEach((p, i) => { p.drawText(san(labName + ' - app.concresoft.io'), { x: M, y: 22, size: 6.5, font: F, color: lbl }); p.drawText(san('Pagina ' + (i + 1) + '/' + pages.length), { x: x1 - 52, y: 22, size: 6.5, font: F, color: lbl }); });
     const bytes = await doc.save();
     return new Response(bytes, { headers: { ...cors, 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="agenda-rompimentos-' + ref + '.pdf"' } });
   } catch (e) {

@@ -20,12 +20,12 @@ const STATUS_COR: Record<string, string> = { pendente: 'var(--ink-faint)', parci
 const STATUS_ROTULO: Record<string, string> = { pendente: 'pendente', parcial: 'parcial', coletado: 'coletado', pulado: 'pulado', aberto: 'aberto', em_rota: 'em rota', concluido: 'concluído', cancelado: 'cancelado' };
 
 export function ColetaFormasPage() {
-  const { member, hasRole } = useAuth();
+  const { member, can } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
   const nav = useNavigate();
-  const podeGerar = hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo');
+  const podeGerar = can('coleta.executar');
 
   const [aba, setAba] = useState<'coletar' | 'roteiros'>('coletar');
   const [dias, setDias] = useState('1');

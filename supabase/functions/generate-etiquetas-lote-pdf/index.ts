@@ -6,7 +6,6 @@
 // nome do laboratório; quando o lote é de uma concretagem, imprime também obra + nº do relatório.
 // Dois layouts: 'rolo' (60x40mm, 1/pagina — termica) e 'a4' (21/folha, 63,5x38,1, 3x7 — Avery/Pimaco).
 // Self-contained (padrao generate-etiquetas-cp-pdf): verify_jwt + client anon com Authorization (RLS decide).
-// v12 (revisao dos PDFs 2026-07-07): teto de 2000 etiquetas por PDF (protege a EF de lote absurdo) + acento.
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
@@ -64,7 +63,7 @@ function drawLabel(page: ReturnType<PDFDocument['addPage']>, F: Fonte, FB: Fonte
   page.drawText('/' + (aa ?? ''), { x: lx + nnw + 1.5, y: ny, size: 11, font: FB, color: MUTED });
   // Obra + relatorio (so nos lotes de concretagem).
   if (d.obra) { ny -= 11; page.drawText(fit(FB, d.obra, 7.5, lw + qs), { x: lx, y: ny, size: 7.5, font: FB, color: NAVY }); }
-  if (d.rel) { ny -= 9; page.drawText(fit(F, 'Relatório ' + d.rel, 7, lw + qs), { x: lx, y: ny, size: 7, font: F, color: INK }); }
+  if (d.rel) { ny -= 9; page.drawText(fit(F, 'Relatorio ' + d.rel, 7, lw + qs), { x: lx, y: ny, size: 7, font: F, color: INK }); }
   // Codigo fraco no rodape (leitura de apoio).
   page.drawText(fit(F, d.code, 5.5, w - 2 * m), { x: lx, y: y + m - 1, size: 5.5, font: F, color: FAINT });
 }
@@ -91,7 +90,6 @@ serveWithTelemetry('generate-etiquetas-lote-pdf', async (req) => {
 
     const ini = Number(lote.seq_inicial), fim = Number(lote.seq_final);
     if (!Number.isFinite(ini) || !Number.isFinite(fim) || fim < ini) return json({ error: 'faixa invalida' }, 422);
-    if (fim - ini + 1 > 2000) return json({ error: 'lote com ' + (fim - ini + 1) + ' etiquetas excede o teto de 2000 por PDF — divida a impressao' }, 422);
     const yy = String(Number(lote.ano)).slice(-2);
     const labNome = String((lote.tenants as Record<string, unknown> | null)?.name ?? '');
 

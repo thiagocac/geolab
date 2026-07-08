@@ -5,11 +5,14 @@ const failures = [];
 function walk(dir) { if (!existsSync(dir)) return []; return readdirSync(dir).flatMap(name => { if (name === 'node_modules' || name === 'dist' || name.startsWith('.')) return []; const p=join(dir,name); const s=statSync(p); return s.isDirectory()?walk(p):[p]; }); }
 const pkg = JSON.parse(readFileSync(join(root,'package.json'),'utf8'));
 const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
-for (const name of ['next','@remix-run/react','@prisma/client','drizzle-orm','redux','@reduxjs/toolkit','styled-components','@emotion/react','@emotion/styled']) if (deps[name]) failures.push(`Dependencia proibida: ${name}`);
+for (const name of ['next','@remix-run/react','@prisma/client','drizzle-orm','redux','@reduxjs/toolkit','styled-components','@emotion/react','@emotion/styled','lucide-react']) if (deps[name]) failures.push(`Dependencia proibida: ${name}`);
 for (const f of walk(join(root,'src')).filter(f=>/\.(ts|tsx)$/.test(f))) {
   const text=readFileSync(f,'utf8');
   if (/console\.(log|debug)\s*\(/.test(text)) failures.push(`${f}: console.log/debug proibido`);
   if (/\batob\s*\(/.test(text)) failures.push(`${f}: atob proibido`);
+  if (/\b(?:window\.)?(?:localStorage|sessionStorage)\s*[.[]/.test(text)) failures.push(`${f}: localStorage/sessionStorage proibido (regra do DS: estado só em memória)`);
+  if (/from\s+['"]lucide-react['"]/.test(text)) failures.push(`${f}: lucide-react proibido (icones em src/components/ui/icons.tsx)`);
+  if (/\.tsx$/.test(f) && /<form[\s>]/.test(text)) failures.push(`${f}: <form> nativo proibido (usar handlers onClick/onChange)`);
   if (/offlineQueue|signature-providers|Autentique|ZapSign|gov\.br/.test(text)) failures.push(`${f}: fora de escopo da V1`);
   if (/navigator\.serviceWorker\.register|registerServiceWorker/.test(text)) failures.push(`${f}: service worker de captura/offline proibido`);
 }

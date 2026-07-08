@@ -12,16 +12,16 @@ import { getPendenciasResumo } from '../lib/api/pendencias';
 import { PEND_SECOES } from '../lib/pendenciasNav';
 import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Download, Tag, Truck, Thermometer, CalendarDays } from './ui/icons';
 
-type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[] };
+type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[]; perm?: string };
 type Section = { title?: string; items: Item[] };
 const labRoles = ['admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro'];
 const adminRoles = ['admin', 'admin_consulte'];
 const sections: Section[] = [
-  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/hoje', label: 'Hoje no lab', icon: CalendarDays, roles: labRoles }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles }, { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles }] },
+  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/hoje', label: 'Hoje no lab', icon: CalendarDays, roles: labRoles }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles, perm: 'dashboard.ver' }, { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles }] },
   { title: 'Concreto', items: [
     { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
     { to: '/concretagens', label: 'Concretagens', icon: MixerTruck, roles: labRoles },
-    { to: '/etiquetas', label: 'Etiquetas', icon: Tag, roles: labRoles },
+    { to: '/etiquetas', label: 'Etiquetas', icon: Tag, roles: labRoles, perm: 'etiqueta.ver' },
     { to: '/rompimentos', label: 'Rompimentos', icon: Compress, roles: labRoles },
     { to: '/laudos', label: 'Laudos', icon: FileText, roles: labRoles },
     { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
@@ -32,41 +32,41 @@ const sections: Section[] = [
   { title: 'Cadastros', items: [
     { to: '/cadastros', label: 'Cadastros', icon: Boxes, roles: labRoles },
     { to: '/estrutura', label: 'Estrutura', icon: Layers, roles: labRoles },
-    { to: '/portal/usuarios-clientes', label: 'Usuários de clientes', icon: Users, roles: adminRoles },
+    { to: '/portal/usuarios-clientes', label: 'Usuários de clientes', icon: Users, roles: adminRoles, perm: 'portal.gerenciar' },
   ] },
   { title: 'Portal', items: [
     { to: '/portal-cliente', label: 'Portal do cliente', icon: Building2, roles: ['cliente', 'admin', 'admin_consulte'] },
   ] },
   { title: 'Gestão', items: [
     { to: '/financeiro', label: 'Financeiro', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
-    { to: '/propostas', label: 'Propostas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
+    { to: '/propostas', label: 'Propostas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'], perm: 'proposta.ver' },
     { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
-    { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles },
-    { to: '/coleta-formas', label: 'Coleta de fôrmas', icon: Truck, roles: labRoles },
-    { to: '/diario-cura', label: 'Diário de cura', icon: Thermometer, roles: labRoles },
+    { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles, perm: 'forma.ver' },
+    { to: '/coleta-formas', label: 'Coleta de fôrmas', icon: Truck, roles: labRoles, perm: 'coleta.executar' },
+    { to: '/diario-cura', label: 'Diário de cura', icon: Thermometer, roles: labRoles, perm: 'cura.ver' },
     { to: '/rota-dia', label: 'Rota do dia', icon: Truck, roles: labRoles },
     { to: '/configuracoes', label: 'Configurações', icon: Settings, roles: labRoles },
   ] },
   { title: 'Operação interna', items: [
-    { to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles },
-    { to: '/gestao/backups', label: 'Backups', icon: Download, roles: adminRoles },
-    { to: '/gestao/emails', label: 'E-mails', icon: FileText, roles: adminRoles },
-    { to: '/gestao/timeline', label: 'Linha do tempo', icon: Clock, roles: adminRoles },
-    { to: '/gestao/documentos', label: 'Documentos e gate', icon: ClipboardCheck, roles: adminRoles },
-    { to: '/gestao/rbac', label: 'Permissões', icon: Users, roles: adminRoles },
-    { to: '/gestao/delegacoes', label: 'Delegações', icon: Users, roles: adminRoles },
+    { to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles, perm: 'operacao.interna' },
+    { to: '/gestao/backups', label: 'Backups', icon: Download, roles: adminRoles, perm: 'backup.executar' },
+    { to: '/gestao/emails', label: 'E-mails', icon: FileText, roles: adminRoles, perm: 'email.gerenciar' },
+    { to: '/gestao/timeline', label: 'Linha do tempo', icon: Clock, roles: adminRoles, perm: 'auditoria.ver' },
+    { to: '/gestao/documentos', label: 'Documentos e gate', icon: ClipboardCheck, roles: adminRoles, perm: 'docgate.ver' },
+    { to: '/gestao/rbac', label: 'Permissões', icon: Users, roles: adminRoles, perm: 'rbac.gerenciar' },
+    { to: '/gestao/delegacoes', label: 'Delegações', icon: Users, roles: adminRoles, perm: 'workflow.delegar' },
     { to: '/gestao/seguranca-conta', label: 'Segurança da conta', icon: ShieldAlert, roles: labRoles },
-    { to: '/gestao/comunicados', label: 'Comunicados', icon: Bell, roles: adminRoles },
-    { to: '/gestao/backlog', label: 'Backlog interno', icon: ClipboardCheck, roles: adminRoles },
-    { to: '/gestao/webhooks', label: 'Webhooks/API', icon: Settings, roles: adminRoles },
+    { to: '/gestao/comunicados', label: 'Comunicados', icon: Bell, roles: adminRoles, perm: 'comunicado.gerenciar' },
+    { to: '/gestao/backlog', label: 'Backlog interno', icon: ClipboardCheck, roles: adminRoles, perm: 'operacao.interna' },
+    { to: '/gestao/webhooks', label: 'Webhooks/API', icon: Settings, roles: adminRoles, perm: 'api.gerenciar' },
   ] },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { member, signOut, hasRole, tenants, selectTenant } = useAuth();
+  const { member, signOut, hasRole, can, tenants, selectTenant } = useAuth();
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
-  const can = (it: Item) => !it.roles || hasRole(...it.roles);
+  const canSee = (it: Item) => it.perm ? can(it.perm) : (!it.roles || hasRole(...it.roles));
   const nav = useNavigate();
   const [cmdkOpen, setCmdkOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac|iP(hone|ad|od)/.test(navigator.userAgent);
@@ -92,7 +92,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const commands: Command[] = [
     { id: 'a-prog', label: 'Nova programação', group: 'Ações', run: () => nav('/programacoes/nova', { viewTransition: true }) },
     { id: 'a-obra', label: 'Nova obra', group: 'Ações', run: () => nav('/nova-obra', { viewTransition: true }) },
-    ...sections.flatMap((sec) => sec.items.filter(can).map((it) => ({ id: 'n-' + it.to, label: it.label, group: sec.title ?? 'Geral', run: () => nav(it.to, { viewTransition: true }) }))),
+    ...sections.flatMap((sec) => sec.items.filter(canSee).map((it) => ({ id: 'n-' + it.to, label: it.label, group: sec.title ?? 'Geral', run: () => nav(it.to, { viewTransition: true }) }))),
   ];
   return (
     <div className="app-shell">
@@ -111,7 +111,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
         <nav className="sidebar-nav">
           {sections.map((sec, i) => {
-            const items = sec.items.filter(can);
+            const items = sec.items.filter(canSee);
             if (!items.length) return null;
             return (
               <div key={i}>

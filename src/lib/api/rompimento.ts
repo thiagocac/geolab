@@ -299,3 +299,24 @@ export async function notifyAbaixoFck(tenantId: string, a: LoteAbaixoFck): Promi
     });
   } catch { /* best-effort */ }
 }
+
+// OCR da AGENDA de rompimentos preenchida à caneta (EF extract-agenda-vision). Casa CP pela numeração.
+export type AgendaOcrLinha = { numeracao: string; data_rompimento: string | null; hora: string | null; resultado_mpa: number | null; carga: number | null; tipo_ruptura: string | null; conf: number | null };
+export async function ocrAgendaRompimento(imageBase64: string, mime: string): Promise<{ enabled: boolean; reason?: string; linhas: AgendaOcrLinha[]; confianca: number | null }> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/extract-agenda-vision', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ image_base64: imageBase64, mime }),
+  });
+  if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
+  const j = (await resp.json()) as Rec;
+  const d = (j?.dados ?? {}) as Rec;
+  const linhas: AgendaOcrLinha[] = (Array.isArray(d.linhas) ? d.linhas as Rec[] : []).map((l) => ({
+    numeracao: String(l.numeracao ?? '').trim(), data_rompimento: (l.data_rompimento as string) ?? null, hora: (l.hora as string) ?? null,
+    resultado_mpa: l.resultado_mpa == null ? null : Number(l.resultado_mpa), carga: l.carga == null ? null : Number(l.carga),
+    tipo_ruptura: (l.tipo_ruptura as string) ?? null, conf: l.conf == null ? null : Number(l.conf),
+  }));
+  return { enabled: j?.enabled !== false, reason: j?.reason as string | undefined, linhas, confianca: (d.confianca as number) ?? null };
+}
