@@ -6,15 +6,17 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField } from '../../components/ui/Field';
+import { FilePicker } from '../../components/ui/FilePicker';
 import { Badge } from '../../components/ui/Badge';
 import { LoadingState, ErrorState } from '../../components/ui/State';
-import { getSignatureSettings, saveSignatureSettings, MODOS, NIVEL_POR_MODO, type SignatureSettings, type SignatureMode } from '../../lib/api/assinatura';
+import { getSignatureSettings, saveSignatureSettings, uploadRubrica, MODOS, NIVEL_POR_MODO, type SignatureSettings, type SignatureMode } from '../../lib/api/assinatura';
+import { assertImagem, assertUploadSize } from '../../lib/upload';
 
 const NIVEL_TONE = { simples: 'neutral', avancada: 'info', qualificada: 'success' } as const;
 const NIVEL_LABEL = { simples: 'Assinatura simples', avancada: 'Assinatura avancada', qualificada: 'Assinatura qualificada (ICP-Brasil)' } as const;
 
 export function AssinaturaConfigPage() {
-  const { can } = useAuth();
+  const { can, member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const pode = can('laudo.assinar_config');
@@ -23,6 +25,14 @@ export function AssinaturaConfigPage() {
   const [draft, setDraft] = useState<SignatureSettings | null>(null);
   const cur = draft ?? q.data ?? null;
   const [busy, setBusy] = useState(false);
+  const [rubricaBusy, setRubricaBusy] = useState(false);
+
+  async function handleRubrica(file?: File) {
+    if (!file || !member || !cur) return;
+    setRubricaBusy(true);
+    try { assertImagem(file); assertUploadSize(file); const path = await uploadRubrica(member.tenant_id, file, cur); setDraft({ ...cur, imagem_rubrica_path: path }); await qc.invalidateQueries({ queryKey: ['signature-settings'] }); toast('Rubrica enviada.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setRubricaBusy(false); }
+  }
 
   function set<K extends keyof SignatureSettings>(k: K, v: SignatureSettings[K]) { if (cur) setDraft({ ...cur, [k]: v }); }
 
@@ -88,6 +98,17 @@ export function AssinaturaConfigPage() {
               ) : null}
             </div>
           </Card>
+
+          {cur.modo === 'imagem_rubrica' ? (
+            <Card className="p-5">
+              <h2 className="text-lg font-black text-slate-950 dark:text-slate-50" style={{ marginBottom: 4 }}>Imagem da rubrica</h2>
+              <p className="text-sm" style={{ color: 'var(--ink-faint)', marginBottom: 14 }}>Imagem carimbada na area de assinatura do laudo (PNG ou JPG; fundo transparente de preferencia).</p>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className="text-sm" style={{ color: 'var(--ink-faint)' }}>{cur.imagem_rubrica_path ? 'Rubrica enviada.' : 'Nenhuma rubrica enviada.'}</span>
+                {pode ? <FilePicker label={rubricaBusy ? 'Enviando...' : 'Escolher imagem'} accept="image/png,image/jpeg" disabled={rubricaBusy} resetAfter onFiles={(fs) => void handleRubrica(fs[0])} /> : null}
+              </div>
+            </Card>
+          ) : null}
 
           {isIcp ? (
             <Card className="p-5">

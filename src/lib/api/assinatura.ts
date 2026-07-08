@@ -18,6 +18,7 @@ export type SignatureSettings = {
   titular_tipo: '' | 'e-cpf' | 'e-cnpj';
   titular_nome: string;
   titular_doc: string;
+  imagem_rubrica_path: string | null;
 };
 
 // Nivel juridico derivado do modo (fonte unica no front; o backend recalcula ao assinar).
@@ -41,11 +42,11 @@ export const MODOS: { key: SignatureMode; label: string; desc: string; futuro?: 
   { key: 'gateway_externo', label: 'Gateway externo', desc: 'Plataformas externas de assinatura (fase futura).', futuro: true },
 ];
 
-const DEFAULT: SignatureSettings = { modo: 'qr_publico', exigir_para_emissao: false, carimbo_tempo: false, ltv: false, titular_tipo: '', titular_nome: '', titular_doc: '' };
+const DEFAULT: SignatureSettings = { modo: 'qr_publico', exigir_para_emissao: false, carimbo_tempo: false, ltv: false, titular_tipo: '', titular_nome: '', titular_doc: '', imagem_rubrica_path: null };
 
 export async function getSignatureSettings(): Promise<SignatureSettings> {
   const { data, error } = await db.from('lab_signature_settings')
-    .select('modo, exigir_para_emissao, carimbo_tempo, ltv, titular_tipo, titular_nome, titular_doc')
+    .select('modo, exigir_para_emissao, carimbo_tempo, ltv, titular_tipo, titular_nome, titular_doc, imagem_rubrica_path')
     .maybeSingle();
   if (error) throw new Error(error.message);
   const r = data as Record<string, unknown> | null;
@@ -58,6 +59,7 @@ export async function getSignatureSettings(): Promise<SignatureSettings> {
     titular_tipo: (r.titular_tipo ?? '') as SignatureSettings['titular_tipo'],
     titular_nome: (r.titular_nome ?? '') as string,
     titular_doc: (r.titular_doc ?? '') as string,
+    imagem_rubrica_path: (r.imagem_rubrica_path ?? null) as string | null,
   };
 }
 
@@ -72,6 +74,24 @@ export async function saveSignatureSettings(s: SignatureSettings): Promise<void>
     p_titular_tipo: s.titular_tipo || null,
     p_titular_nome: s.titular_nome || null,
     p_titular_doc: s.titular_doc || null,
+    p_imagem_rubrica_path: s.imagem_rubrica_path || null,
   });
   if (error) throw new Error(error.message);
+}
+
+export async function uploadRubrica(tenantId: string, file: File, cur: SignatureSettings): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+  const path = `${tenantId}/assinatura/rubrica.${ext}`;
+  const store = supabase as unknown as { storage: { from: (b: string) => { upload: (p: string, f: File, o: unknown) => Promise<{ error: { message: string } | null }>; createSignedUrl: (p: string, n: number) => Promise<{ data: { signedUrl?: string } | null; error: { message: string } | null }> } } };
+  const { error } = await store.storage.from('anexos').upload(path, file, { upsert: true, contentType: file.type || 'image/png' });
+  if (error) throw new Error(error.message);
+  await saveSignatureSettings({ ...cur, imagem_rubrica_path: path });
+  return path;
+}
+
+export async function rubricaSignedUrl(path: string): Promise<string> {
+  const store = supabase as unknown as { storage: { from: (b: string) => { createSignedUrl: (p: string, n: number) => Promise<{ data: { signedUrl?: string } | null; error: { message: string } | null }> } } };
+  const { data, error } = await store.storage.from('anexos').createSignedUrl(path, 300);
+  if (error) throw new Error(error.message);
+  return String(data?.signedUrl ?? '');
 }

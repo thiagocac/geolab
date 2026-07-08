@@ -7,6 +7,7 @@
 // colide mais com contato (fluxo p/ 3a linha), rodape de validacao respeita 'qr_validacao', observacoes finais citam
 // normas conforme toggles; clip por largura em interessado/endereco/pares/caminhoes/equipamentos (anti-sobreposicao).
 // v44: condicao de preparo do traco virou OPCIONAL no CRUD -> sem fallback 'A' falso: 'condição X' so sai quando informada.
+// v45 (Onda 1 assinatura): bloco de assinatura DINAMICO por lab_signature_settings.modo (nenhuma/qr_publico/imagem_rubrica/icp/govbr/gateway).
 import { PDFDocument, StandardFonts, rgb, PDFImage } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
@@ -31,7 +32,7 @@ const PW = 595.28, PH = 841.89, MX = 40, RIGHT = PW - MX, CW = RIGHT - MX, BOTTO
 const san = (s: unknown): string => String(s ?? '')
   .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/→/g, '->').replace(/≈/g, '~')
   .replace(/[‘’‛′]/g, "'").replace(/[“”″]/g, '"')
-  .replace(/[–—−]/g, '-').replace(/…/g, '...').replace(/\u00A0/g, ' ')
+  .replace(/[–—−]/g, '-').replace(/…/g, '...').replace(/ /g, ' ')
   .replace(/[^\x00-\xFF]/g, '?');
 const fmt = (n: number | null | undefined, d = 1) => (n == null || !isFinite(n) ? '-' : n.toFixed(d).replace('.', ','));
 const dbr = (s: unknown) => { const t = String(s ?? '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return '-'; const [y, m, dd] = t.split('-'); return `${dd}/${m}/${y}`; };
@@ -89,6 +90,13 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes, idade_controle_default').eq('tenant_id', conc.tenant_id).maybeSingle(),
       conc.moldador_id ? sb.from('colaboradores').select('nome').eq('id', conc.moldador_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
+
+    // (v45 assinatura) modo de assinatura do laboratorio governa o bloco de assinatura do PDF.
+    const { data: sigSettings } = await admin.from('lab_signature_settings').select('modo, imagem_rubrica_path').eq('tenant_id', conc.tenant_id).maybeSingle();
+    const sigMode = String((sigSettings as { modo?: string } | null)?.modo ?? 'qr_publico');
+    const isIcpMode = sigMode === 'a1_local' || sigMode === 'nuvem_psc' || sigMode === 'govbr' || sigMode === 'gateway_externo';
+    let rubricaBytes: Uint8Array | null = null; let rubricaPng = true;
+    if (sigMode === 'imagem_rubrica' && (sigSettings as { imagem_rubrica_path?: string } | null)?.imagem_rubrica_path) { try { const rpth = String((sigSettings as { imagem_rubrica_path?: string }).imagem_rubrica_path); const dl = await admin.storage.from('anexos').download(rpth); if (dl.data) { rubricaBytes = new Uint8Array(await dl.data.arrayBuffer()); const rp = rpth.toLowerCase(); rubricaPng = !(rp.endsWith('.jpg') || rp.endsWith('.jpeg')); } } catch (_) { rubricaBytes = null; } }
 
     let logoBytes: Uint8Array | null = null; let logoPng = true;
     if (cfg?.logo_path) { try { const dl = await admin.storage.from('lab-reports').download(String(cfg.logo_path)); if (dl.data) { logoBytes = new Uint8Array(await dl.data.arrayBuffer()); const lp = String(cfg.logo_path).toLowerCase(); logoPng = !(lp.endsWith('.jpg') || lp.endsWith('.jpeg')); } } catch (_) { logoBytes = null; } }
@@ -174,6 +182,8 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     let page = doc.addPage([PW, PH]);
     let logoImg: PDFImage | null = null;
     if (logoBytes) { try { logoImg = logoPng ? await doc.embedPng(logoBytes) : await doc.embedJpg(logoBytes); } catch (_) { logoImg = null; } }
+    let rubricaImg: PDFImage | null = null;
+    if (rubricaBytes) { try { rubricaImg = rubricaPng ? await doc.embedPng(rubricaBytes) : await doc.embedJpg(rubricaBytes); } catch (_) { rubricaImg = null; } }
     const T = (s: unknown, x: number, y: number, size: number, f = F, c = INK) => page.drawText(san(s), { x, y, size, font: f, color: c });
     const TR = (s: unknown, xr: number, y: number, size: number, f = F, c = INK) => { const w = f.widthOfTextAtSize(san(s), size); page.drawText(san(s), { x: xr - w, y, size, font: f, color: c }); };
     const rect = (x: number, y: number, w: number, h: number, c: unknown, border?: unknown) => page.drawRectangle({ x, y, width: w, height: h, color: c as undefined, borderColor: border as undefined, borderWidth: border ? 0.6 : 0 });
@@ -363,18 +373,23 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     if (lineS) { T(lineS, MX, y, 7, F, MUTED); y -= 9.5; }
     y -= 8;
 
-    need(ON.qr_validacao && gqNome ? 140 : 70, false); const sigY = y;
-    if (ON.qr_validacao) { try { const qr = QRCode.create(valUrl, { errorCorrectionLevel: 'M' }); const size = qr.modules.size; const dataq = qr.modules.data; const box = 54; const m = box / size; const ox = MX, oy = y - box; for (let r = 0; r < size; r++) for (let c2 = 0; c2 < size; c2++) if (dataq[r * size + c2]) page.drawRectangle({ x: ox + c2 * m, y: oy + (size - 1 - r) * m, width: m + 0.2, height: m + 0.2, color: INK }); T('Validação pública', MX + 64, y - 10, 6.4, FB, INK); T('app.concresoft.io/validar/', MX + 64, y - 20, 6.2, F, MUTED); T(codVal, MX + 64, y - 29, 6.2, FB, INK); T('Assinatura: QR + validação pública (ICP-Brasil na v2).', MX + 64, y - 38, 6.2, F, MUTED); } catch (_) { /* QR opcional */ } }
+    // (v45 assinatura) Bloco de assinatura dinamico por sigMode.
+    const qrOn = ON.qr_validacao && sigMode !== 'nenhuma' && sigMode !== 'imagem_rubrica';
+    const seloTxt = (sigMode === 'a1_local' || sigMode === 'nuvem_psc') ? 'Assinado digitalmente - ICP-Brasil.' : sigMode === 'govbr' ? 'Assinado eletronicamente via gov.br.' : sigMode === 'gateway_externo' ? 'Assinado via plataforma de assinatura.' : 'Assinatura: QR + validacao publica.';
+    const rubricaShown = sigMode === 'imagem_rubrica' && !!rubricaImg;
+    need((qrOn || rubricaShown) && gqNome ? 140 : 70, false); const sigY = y;
+    if (rubricaShown && rubricaImg) { const iw = rubricaImg.width, ih = rubricaImg.height; const sc = Math.min(120 / iw, 44 / ih); page.drawImage(rubricaImg, { x: MX, y: y - 44, width: iw * sc, height: ih * sc }); T('Assinatura eletronica', MX, y - 52, 6.2, F, MUTED); }
+    else if (qrOn) { try { const qr = QRCode.create(valUrl, { errorCorrectionLevel: 'M' }); const size = qr.modules.size; const dataq = qr.modules.data; const box = 54; const m = box / size; const ox = MX, oy = y - box; for (let r = 0; r < size; r++) for (let c2 = 0; c2 < size; c2++) if (dataq[r * size + c2]) page.drawRectangle({ x: ox + c2 * m, y: oy + (size - 1 - r) * m, width: m + 0.2, height: m + 0.2, color: INK }); T(isIcpMode ? 'Validação pública (ITI)' : 'Validação pública', MX + 64, y - 10, 6.4, FB, INK); T('app.concresoft.io/validar/', MX + 64, y - 20, 6.2, F, MUTED); T(codVal, MX + 64, y - 29, 6.2, FB, INK); T(seloTxt, MX + 64, y - 38, 6.2, F, MUTED); } catch (_) { /* QR opcional */ } }
     const sx = MX + CW * 0.52;
     hline(sx, sigY - 30, sx + CW * 0.40, MUTED, 0.6);
     T(rt || 'Responsável Técnico', sx, sigY - 40, 8, FB, INK);
     T('Responsável Técnico', sx, sigY - 49, 6.4, F, MUTED);
     if (creaRt || art) T('CREA ' + (creaRt || '-') + (art ? ' - ART ' + art : ''), sx, sigY - 57, 6.4, F, FAINT);
-    const gqY = ON.qr_validacao ? sigY - 72 : sigY; // GQ desce p/ baixo do bloco de QR (evita sobreposicao)
+    const gqY = (qrOn || rubricaShown) ? sigY - 72 : sigY; // GQ desce p/ baixo do bloco de QR/rubrica (evita sobreposicao)
     if (gqNome) { hline(MX, gqY - 30, MX + CW * 0.40, MUTED, 0.6); T(gqNome, MX, gqY - 40, 8, FB, INK); T('Gerente da Qualidade', MX, gqY - 49, 6.4, F, MUTED); if (gqCrea) T('CREA ' + gqCrea, MX, gqY - 57, 6.4, F, FAINT); }
 
     const pages = doc.getPages(); const total = pages.length;
-    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: BOTTOM - 9 }, end: { x: RIGHT, y: BOTTOM - 9 }, thickness: 0.6, color: LINE }); if (ON.qr_validacao) p.drawText(san('Validação pública - app.concresoft.io/validar/' + codVal), { x: MX, y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); const pg = san(`Página ${i + 1} de ${total}`); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); });
+    pages.forEach((p, i) => { p.drawLine({ start: { x: MX, y: BOTTOM - 9 }, end: { x: RIGHT, y: BOTTOM - 9 }, thickness: 0.6, color: LINE }); if (qrOn) p.drawText(san('Validação pública - app.concresoft.io/validar/' + codVal), { x: MX, y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); const pg = san(`Página ${i + 1} de ${total}`); p.drawText(pg, { x: RIGHT - F.widthOfTextAtSize(pg, 6.4), y: BOTTOM - 18, size: 6.4, font: F, color: FAINT }); });
 
     const bytes = await doc.save();
     let labReportId: string | null = null;

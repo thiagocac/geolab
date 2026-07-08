@@ -9,8 +9,9 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Badge } from '../../components/ui/Badge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudosPaged, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao } from '../../lib/api/laudo';
+import { listLaudosPaged, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, assinarLaudo } from '../../lib/api/laudo';
 import { listReference } from '../../lib/api/client';
 import { temDelegacaoAprovacao } from '../../lib/api/delegacoes';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -96,6 +97,7 @@ export function LaudosPage() {
     if (!(await confirm({ title: 'Emitir laudo', message: ehFinal ? 'Emitir este laudo Final? Ele será enviado automaticamente ao cliente por e-mail (conforme a configuração de despacho).' : 'Emitir este laudo? Após a emissão ele fica disponível para download e envio ao cliente.', confirmLabel: 'Emitir' }))) return;
     try {
       await aprovarLaudo(id);
+      try { await assinarLaudo(id); } catch { /* assinatura best-effort conforme o modo do lab */ }
       await Promise.all([qc.invalidateQueries({ queryKey: ['laudos'] }), qc.invalidateQueries({ queryKey: ['laudos-cls'] })]);
       if (cls.data?.[id] === 'final') {
         try { const r = await enviarLaudoCliente(id); toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configurações de e-mail.')), r.sent ? 'success' : 'info'); }
@@ -140,6 +142,7 @@ export function LaudosPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
+                  {r.assinatura_status === 'assinado' ? <Badge tone="success">Assinado</Badge> : (r.assinatura_status === 'pendente' || r.assinatura_status === 'em_processo') ? <Badge tone="info">Assinatura pendente</Badge> : null}
                   <Button variant="ghost" onClick={() => void baixar(r.storage_path)}>Baixar</Button>
                   {podeEmitir && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
                   {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}

@@ -12,11 +12,12 @@ export type LaudoRow = {
   id: string; numero: string; status: string; revisao: number;
   data_emissao: string | null; storage_path: string | null; concretagem_id: string | null;
   work_id: string | null; client_works?: { nome: string } | null;
+  assinatura_status?: string | null;
 };
 
 export async function listLaudos(tenantId?: string): Promise<LaudoRow[]> {
   let q = db.from('lab_reports')
-    .select('id, numero, status, revisao, data_emissao, storage_path, concretagem_id, work_id, client_works(nome)')
+    .select('id, numero, status, revisao, data_emissao, storage_path, concretagem_id, work_id, assinatura_status, client_works(nome)')
     .is('deleted_at', null);
   if (tenantId) q = q.eq('tenant_id', tenantId); // filtro explícito ativa o índice por tenant; RLS segue garantindo o isolamento
   const { data, error } = await q.order('created_at', { ascending: false });
@@ -28,7 +29,7 @@ export async function listLaudosPaged(opts: { tenantId?: string; workId?: string
   const pageSize = opts.pageSize ?? 25;
   const page = Math.max(0, opts.page ?? 0);
   let q = db.from('lab_reports')
-    .select('id, numero, status, revisao, data_emissao, storage_path, concretagem_id, work_id, client_works(nome)', { count: 'exact' })
+    .select('id, numero, status, revisao, data_emissao, storage_path, concretagem_id, work_id, assinatura_status, client_works(nome)', { count: 'exact' })
     .is('deleted_at', null);
   if (opts.tenantId) q = q.eq('tenant_id', opts.tenantId);
   if (opts.workId) q = q.eq('work_id', opts.workId);
@@ -145,6 +146,20 @@ export async function enviarLaudoCliente(labReportId: string): Promise<{ sent: b
   return { sent: out.sent === true, reason: out.reason, to: out.to };
 }
 
+
+// Aplica a assinatura configurada (lab_signature_settings.modo) ao laudo emitido (EF sign-laudo-pdf).
+export async function assinarLaudo(labReportId: string): Promise<{ status: string; modo: string }> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/sign-laudo-pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ lab_report_id: labReportId }),
+  });
+  const out = (await resp.json().catch(() => ({}))) as { status?: string; modo?: string; error?: string };
+  if (!resp.ok) throw new Error(out.error ?? ('Erro ' + resp.status));
+  return { status: String(out.status ?? ''), modo: String(out.modo ?? '') };
+}
 
 // Classificacao Parcial/Final dos laudos do tenant (badge + auto-envio ao emitir Final). RPC laudos_parcial_final (064).
 export async function listLaudosClassificacao(): Promise<Record<string, string>> {
