@@ -7,15 +7,17 @@ import { PreferenciasPage } from './PreferenciasPage';
 import { ConfigCamposPage } from './ConfigCamposPage';
 import { NcConfigPage } from './NcConfigPage';
 import { NotificacoesPage } from './NotificacoesPage';
+import { AssinaturaConfigPage } from './AssinaturaConfigPage';
 
 // C4 — configurações do laboratório consolidadas em abas. Cada aba é a página existente.
 // ConfigCamposPage tem suas próprias sub-abas via ?aba= (recebimento/laudo/...) — sem colisão (o shell usa estado local).
-type Aba = 'preferencias' | 'campos' | 'nc' | 'notificacoes';
+type Aba = 'preferencias' | 'campos' | 'assinatura' | 'nc' | 'notificacoes';
 export function ConfiguracoesPage({ inicial = 'preferencias' }: { inicial?: Aba }) {
   const { hasRole } = useAuth();
   const abas: { key: Aba; label: string; ok: boolean }[] = [
     { key: 'preferencias', label: 'Preferências', ok: hasRole('admin', 'admin_consulte') },
     { key: 'campos', label: 'Campos', ok: hasRole('admin', 'admin_consulte') },
+    { key: 'assinatura', label: 'Assinatura', ok: hasRole('admin', 'admin_consulte', 'gestor_qualidade') },
     { key: 'nc', label: 'Config de NC', ok: hasRole('admin', 'admin_consulte', 'gestor_qualidade') },
     { key: 'notificacoes', label: 'Notificações', ok: hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro') },
   ];
@@ -29,7 +31,7 @@ export function ConfiguracoesPage({ inicial = 'preferencias' }: { inicial?: Aba 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {disp.map((a) => <Button key={a.key} variant={aba === a.key ? 'primary' : 'ghost'} onClick={() => trocar(a.key)}>{a.label}</Button>)}
       </div>
-      {aba === 'preferencias' ? <PreferenciasPage /> : aba === 'campos' ? <ConfigCamposPage /> : aba === 'nc' ? <NcConfigPage /> : <NotificacoesPage />}
+      {aba === 'preferencias' ? <PreferenciasPage /> : aba === 'campos' ? <ConfigCamposPage /> : aba === 'assinatura' ? <AssinaturaConfigPage /> : aba === 'nc' ? <NcConfigPage /> : <NotificacoesPage />}
     </div>
   );
 }
