@@ -40,7 +40,6 @@ export const PADRAO_MOLDAGEM_SHORTCUTS: readonly PadraoMoldagemShortcut[] = [
   { label: '+ Vazio', idadeControle: 0, unidadeIdade: 'dias', mode: 'empty' },
   { label: '12 horas', idadeControle: 12, unidadeIdade: 'horas', mode: 'value', valorMpa: 3 },
   { label: '14 horas', idadeControle: 14, unidadeIdade: 'horas', mode: 'value', valorMpa: 3 },
-  { label: '60 horas', idadeControle: 60, unidadeIdade: 'horas', mode: 'percent', crescimentoPct: 60 },
   { label: '3 dias', idadeControle: 3, unidadeIdade: 'dias', mode: 'percent', crescimentoPct: 50 },
   { label: '7 dias', idadeControle: 7, unidadeIdade: 'dias', mode: 'percent', crescimentoPct: 70 },
   { label: '14 dias', idadeControle: 14, unidadeIdade: 'dias', mode: 'percent', crescimentoPct: 85 },
@@ -69,32 +68,58 @@ export function padraoMoldagemAgeInHours(pm: Pick<PadraoMoldagem, 'idadeControle
   return pm.unidadeIdade === 'horas' ? n : n * 24;
 }
 
+// Curva de resistencia esperada por idade — FONTE UNICA (o cliente nao lanca mais valor esperado/cresc.).
+// Ancoras: 12h/14h = 3 MPa fixos; 3d=50%, 7d=70%, 14d=85%, 28d=100%, 63d=100% do FCK previsto.
+// Qualquer outra idade (inclusive outra idade de controle) = interpolacao linear em MPa pela idade-em-horas.
+const CURVA_ESPERADO: ReadonlyArray<{ h: number; mpa: (fck: number) => number }> = [
+  { h: 12, mpa: () => 3 },
+  { h: 14, mpa: () => 3 },
+  { h: 72, mpa: (f) => f * 0.5 },
+  { h: 168, mpa: (f) => f * 0.7 },
+  { h: 336, mpa: (f) => f * 0.85 },
+  { h: 672, mpa: (f) => f },
+  { h: 1512, mpa: (f) => f },
+];
+const round1 = (n: number): number => Math.round(n * 10) / 10;
+
+export function esperadoMpaPorIdade(idadeControle: number | string, unidadeIdade: UnidadeIdade, fck?: number | null): number | null {
+  const f = toNumber(fck);
+  if (f === null || f <= 0) return null;
+  const h = padraoMoldagemAgeInHours({ idadeControle, unidadeIdade });
+  if (!Number.isFinite(h) || h <= 0) return null;
+  const pts = CURVA_ESPERADO.map((p) => ({ h: p.h, v: p.mpa(f) }));
+  if (h <= pts[0].h) return round1(pts[0].v);
+  if (h >= pts[pts.length - 1].h) return round1(pts[pts.length - 1].v);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    if (h >= a.h && h <= b.h) { const frac = (h - a.h) / (b.h - a.h); return round1(a.v + frac * (b.v - a.v)); }
+  }
+  return round1(f);
+}
+
+export function crescimentoPctPorIdade(idadeControle: number | string, unidadeIdade: UnidadeIdade, fck?: number | null): number | null {
+  const f = toNumber(fck);
+  const esp = esperadoMpaPorIdade(idadeControle, unidadeIdade, fck);
+  if (f === null || f <= 0 || esp === null) return null;
+  return Math.round((esp / f) * 100);
+}
+
 export function linhaDeAtalho(sc: PadraoMoldagemShortcut, fck?: number | null): PadraoMoldagem {
-  const base: PadraoMoldagem = {
+  const vazio = sc.mode === 'empty';
+  return {
     id: moldUid(),
-    idadeControle: sc.mode === 'empty' ? '' : sc.idadeControle,
+    idadeControle: vazio ? '' : sc.idadeControle,
     unidadeIdade: sc.unidadeIdade,
     tipoEnsaio: 'compressao',
-    valorEsperado: '',
-    crescimentoPct: '',
+    valorEsperado: vazio ? '' : (esperadoMpaPorIdade(sc.idadeControle, sc.unidadeIdade, fck) ?? ''),
+    crescimentoPct: vazio ? '' : (crescimentoPctPorIdade(sc.idadeControle, sc.unidadeIdade, fck) ?? ''),
     quantidadeCp: 2,
   };
-  if (sc.mode === 'percent' && sc.crescimentoPct != null) {
-    base.crescimentoPct = sc.crescimentoPct;
-    base.valorEsperado = fck != null ? Math.round((fck * sc.crescimentoPct) / 100 * 10) / 10 : '';
-  } else if (sc.mode === 'value' && sc.valorMpa != null) {
-    base.valorEsperado = sc.valorMpa;
-    base.crescimentoPct = fck != null && fck > 0 ? Math.round((sc.valorMpa / fck) * 100) : '';
-  }
-  return base;
 }
 
 export function padroesMoldagemPadrao(fck?: number | null): PadraoMoldagem[] {
-  const v = fck ?? '';
-  return [
-    { id: moldUid(), idadeControle: 28, unidadeIdade: 'dias', tipoEnsaio: 'compressao', valorEsperado: v, crescimentoPct: 100, quantidadeCp: 2 },
-    { id: moldUid(), idadeControle: 63, unidadeIdade: 'dias', tipoEnsaio: 'compressao', valorEsperado: v, crescimentoPct: 100, quantidadeCp: 2 },
-  ];
+  const mk = (idade: number): PadraoMoldagem => ({ id: moldUid(), idadeControle: idade, unidadeIdade: 'dias', tipoEnsaio: 'compressao', valorEsperado: esperadoMpaPorIdade(idade, 'dias', fck) ?? '', crescimentoPct: crescimentoPctPorIdade(idade, 'dias', fck) ?? '', quantidadeCp: 2 });
+  return [mk(28), mk(63)];
 }
 
 export type TracoPadrao = { descricao: string; aplicacao: string; fck: number; slumpPrevisto: number; slumpTolerancia: number; validadeMinutos: number; brita?: string };
@@ -118,19 +143,23 @@ function normalizeUnidade(raw: unknown): UnidadeIdade {
 }
 
 export function normalizePadroes(value: unknown, fck?: number | null): PadraoMoldagem[] {
-  if (!Array.isArray(value) || !value.length) return padroesMoldagemPadrao(fck);
-  return value
-    .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
-    .map((r) => {
-      const idadeControle = (r.idadeControle ?? r.idade ?? '') as number | string;
-      const unidadeIdade = normalizeUnidade(r.unidadeIdade ?? r.unidade);
-      const quantidade = (r.quantidadeCp ?? r.quantidade ?? 2) as number | string;
-      const valorEsperado = (r.valorEsperado ?? r.valor_esperado ?? (fck ?? '')) as number | string;
-      const crescimentoPct = (r.crescimentoPct ?? r.crescimento_pct ?? '') as number | string;
-      const tipoRaw = String(r.tipoEnsaio ?? r.tipo_ensaio ?? 'compressao');
-      const tipoEnsaio = (['compressao', 'elasticidade', 'tracao_flexao'].includes(tipoRaw) ? tipoRaw : 'compressao') as TipoEnsaioPadrao;
-      return { id: typeof r.id === 'string' ? r.id : moldUid(), idadeControle, unidadeIdade, tipoEnsaio, valorEsperado, crescimentoPct, quantidadeCp: quantidade };
-    });
+  const arr = (!Array.isArray(value) || !value.length)
+    ? padroesMoldagemPadrao(fck)
+    : value
+        .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+        .map((r) => {
+          const idadeControle = (r.idadeControle ?? r.idade ?? '') as number | string;
+          const unidadeIdade = normalizeUnidade(r.unidadeIdade ?? r.unidade);
+          const quantidade = (r.quantidadeCp ?? r.quantidade ?? 2) as number | string;
+          const tipoRaw = String(r.tipoEnsaio ?? r.tipo_ensaio ?? 'compressao');
+          const tipoEnsaio = (['compressao', 'elasticidade', 'tracao_flexao'].includes(tipoRaw) ? tipoRaw : 'compressao') as TipoEnsaioPadrao;
+          // valorEsperado/crescimentoPct SEMPRE derivados do FCK+idade (cliente nao lanca mais).
+          const valorEsperado = esperadoMpaPorIdade(idadeControle, unidadeIdade, fck) ?? '';
+          const crescimentoPct = crescimentoPctPorIdade(idadeControle, unidadeIdade, fck) ?? '';
+          return { id: typeof r.id === 'string' ? r.id : moldUid(), idadeControle, unidadeIdade, tipoEnsaio, valorEsperado, crescimentoPct, quantidadeCp: quantidade };
+        });
+  // Sempre ordenado da menor idade para a maior (12h vem antes de 28d).
+  return [...arr].sort((a, b) => padraoMoldagemAgeInHours(a) - padraoMoldagemAgeInHours(b));
 }
 
 export function padroesToDb(value: PadraoMoldagem[]): Record<string, unknown>[] {

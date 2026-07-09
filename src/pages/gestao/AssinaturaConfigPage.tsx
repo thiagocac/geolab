@@ -9,7 +9,7 @@ import { Field, SelectField } from '../../components/ui/Field';
 import { FilePicker } from '../../components/ui/FilePicker';
 import { Badge } from '../../components/ui/Badge';
 import { LoadingState, ErrorState } from '../../components/ui/State';
-import { getSignatureSettings, saveSignatureSettings, uploadRubrica, MODOS, NIVEL_POR_MODO, type SignatureSettings, type SignatureMode } from '../../lib/api/assinatura';
+import { getSignatureSettings, saveSignatureSettings, uploadRubrica, getSigningCert, uploadSigningCert, MODOS, NIVEL_POR_MODO, type SignatureSettings, type SignatureMode } from '../../lib/api/assinatura';
 import { assertImagem, assertUploadSize } from '../../lib/upload';
 
 const NIVEL_TONE = { simples: 'neutral', avancada: 'info', qualificada: 'success' } as const;
@@ -26,6 +26,16 @@ export function AssinaturaConfigPage() {
   const cur = draft ?? q.data ?? null;
   const [busy, setBusy] = useState(false);
   const [rubricaBusy, setRubricaBusy] = useState(false);
+  const [senhaCert, setSenhaCert] = useState('');
+  const [certBusy, setCertBusy] = useState(false);
+  const certQ = useQuery({ queryKey: ['signing-cert'], queryFn: getSigningCert });
+  function fileToBase64(file: File): Promise<string> { return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result || '').split(',')[1] ?? ''); r.onerror = () => reject(new Error('Falha ao ler o arquivo.')); r.readAsDataURL(file); }); }
+  async function handleCertUpload(file?: File) {
+    if (!file || !senhaCert || !cur) return;
+    setCertBusy(true);
+    try { const b64 = await fileToBase64(file); await uploadSigningCert(b64, senhaCert, cur.titular_tipo || undefined); setSenhaCert(''); await qc.invalidateQueries({ queryKey: ['signing-cert'] }); toast('Certificado enviado e guardado com seguranca.', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setCertBusy(false); }
+  }
 
   async function handleRubrica(file?: File) {
     if (!file || !member || !cur) return;
@@ -123,6 +133,25 @@ export function AssinaturaConfigPage() {
                 <Field label="Nome do titular" value={cur.titular_nome} disabled={!pode} onChange={(e) => set('titular_nome', e.target.value)} />
                 <Field label="CPF / CNPJ" value={cur.titular_doc} disabled={!pode} onChange={(e) => set('titular_doc', e.target.value)} />
               </div>
+            </Card>
+          ) : null}
+
+          {cur.modo === 'a1_local' ? (
+            <Card className="p-5">
+              <h2 className="text-lg font-black text-slate-950 dark:text-slate-50" style={{ marginBottom: 4 }}>Certificado A1 (ICP-Brasil)</h2>
+              <p className="text-sm" style={{ color: 'var(--ink-faint)', marginBottom: 12 }}>Suba o arquivo .pfx/.p12 e a senha. O certificado e guardado cifrado (Vault) e a assinatura e aplicada automaticamente ao emitir o laudo.</p>
+              {certQ.data ? (
+                <div className="text-sm" style={{ marginBottom: 12 }}>Ativo: <b>{certQ.data.titular_nome}</b> &middot; {certQ.data.titular_doc} &middot; valido ate {certQ.data.nao_depois}{certQ.data.emissor_ac ? ' \u00b7 ' + certQ.data.emissor_ac : ''}</div>
+              ) : <div className="text-sm" style={{ color: 'var(--ink-faint)', marginBottom: 12 }}>Nenhum certificado ativo.</div>}
+              {pode ? (
+                <div style={{ display: 'grid', gap: 10, maxWidth: 440 }}>
+                  <Field label="Senha do certificado" type="password" value={senhaCert} onChange={(e) => setSenhaCert(e.target.value)} autoComplete="off" />
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <FilePicker label={certBusy ? 'Enviando...' : 'Escolher .pfx / .p12'} accept=".pfx,.p12,application/x-pkcs12" disabled={certBusy || !senhaCert} resetAfter onFiles={(fs) => void handleCertUpload(fs[0])} />
+                    {!senhaCert ? <span className="text-xs" style={{ color: 'var(--ink-faint)' }}>Informe a senha antes de escolher o arquivo.</span> : null}
+                  </div>
+                </div>
+              ) : null}
             </Card>
           ) : null}
 

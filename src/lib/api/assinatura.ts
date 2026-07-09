@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { env } from '../env';
 
 // Configuracao da assinatura do laudo (Onda 0 da feature de assinatura).
 // Leitura: tabela lab_signature_settings (RLS member-gated, filtra pelo tenant selecionado).
@@ -94,4 +95,27 @@ export async function rubricaSignedUrl(path: string): Promise<string> {
   const { data, error } = await store.storage.from('anexos').createSignedUrl(path, 300);
   if (error) throw new Error(error.message);
   return String(data?.signedUrl ?? '');
+}
+
+export type SigningCert = { id: string; titular_nome: string; titular_doc: string; titular_tipo: string; emissor_ac: string | null; nao_depois: string; status: string };
+
+export async function getSigningCert(): Promise<SigningCert | null> {
+  const { data, error } = await db.from('lab_signing_certificates')
+    .select('id, titular_nome, titular_doc, titular_tipo, emissor_ac, nao_depois, status')
+    .eq('status', 'ativo').is('deleted_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as SigningCert) ?? null;
+}
+
+export async function uploadSigningCert(pfxBase64: string, senha: string, titularTipo?: string): Promise<{ titular_nome: string; nao_depois: string }> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token ?? '';
+  const resp = await fetch(env.supabaseUrl + '/functions/v1/upload-signing-cert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ pfx_base64: pfxBase64, senha, titular_tipo: titularTipo }),
+  });
+  const out = (await resp.json().catch(() => ({}))) as { ok?: boolean; certificado?: { titular_nome: string; nao_depois: string }; error?: string };
+  if (!resp.ok || out.ok === false) throw new Error(out.error ?? ('Erro ' + resp.status));
+  return out.certificado as { titular_nome: string; nao_depois: string };
 }

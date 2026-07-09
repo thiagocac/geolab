@@ -187,7 +187,7 @@ export function ProgramacoesPage() {
             ) : (
               <div className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
                 <div className="mb-2 flex items-center justify-between gap-2"><span className="text-slate-500">Padrão de moldagem <span className="font-bold text-slate-700 dark:text-slate-200">— traço não cadastrado, edite abaixo</span></span><span className="font-bold">{cpsAmostra} CP por amostra</span></div>
-                <MoldingStandardEditor value={padraoEdit} onChange={setPadraoEdit} fck={formasRow.fck_previsto ?? null} simple />
+                <MoldingStandardEditor value={padraoEdit} onChange={setPadraoEdit} fck={formasRow.fck_previsto ?? null} />
                 <p className="mt-2 text-xs text-slate-500">Sem traço cadastrado, o padrão vem do default (NBR 5739: 28d e 63d, 2 CP cada). Ajuste as idades e a quantidade de CP — o valor é salvo nesta concretagem e usado para gerar os CPs.</p>
               </div>
             )}

@@ -231,7 +231,7 @@ export function MateriaisPage() {
         especificacao: str(f.especificacao) || null,
         bombeado: f.bombeado,
         observacoes: str(f.observacoes) || null,
-        padrao_moldagem: padroesToDb(ordenado(padrao)), // menor idade sempre primeiro (persistido ordenado)
+        padrao_moldagem: padroesToDb(normalizePadroes(padrao, fckAtual)), // recalcula esperado do FCK + ordena por idade
         carta_traco_path: cartaPath,
         componentes: (() => { const c: Record<string, unknown> = {}; const add = (k: string, m: unknown, pr: unknown) => { const mm = str(m), pp = str(pr); if (mm || pp) c[k] = { marca: mm || null, procedencia: pp || null }; }; add('cimento', f.comp_cimento_marca, f.comp_cimento_proc); add('brita', f.comp_brita_marca, f.comp_brita_proc); add('areia', f.comp_areia_marca, f.comp_areia_proc); add('aditivo', f.comp_aditivo_marca, f.comp_aditivo_proc); { const pp = str(f.comp_agua_proc); if (pp) c['agua'] = { procedencia: pp }; } return c; })(),
         schema_campos: { origem_ui: 'geolab-v23-geomat-tracos' },
@@ -384,7 +384,7 @@ export function MateriaisPage() {
               <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
                 <table className="min-w-[760px] w-full text-left text-sm">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-                    <tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Idade</th><th className="px-3 py-2">Unidade</th><th className="px-3 py-2">Tipo de ensaio</th><th className="px-3 py-2">Valor esp. (MPa)</th><th className="px-3 py-2">Cresc. %</th><th className="px-3 py-2">Qtd CP</th><th /></tr>
+                    <tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Idade</th><th className="px-3 py-2">Unidade</th><th className="px-3 py-2">Tipo de ensaio</th><th className="px-3 py-2">Qtd CP</th><th /></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {padrao.map((p, i) => (
@@ -393,8 +393,6 @@ export function MateriaisPage() {
                         <td className="px-3 py-2"><input className="input" type="number" value={String(p.idadeControle)} onChange={(e) => setPm(i, { idadeControle: e.target.value })} /></td>
                         <td className="px-3 py-2"><select className="input" value={p.unidadeIdade} onChange={(e) => setPm(i, { unidadeIdade: e.target.value as UnidadeIdade })}>{UNIDADE_IDADE_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
                         <td className="px-3 py-2"><select className="input" value={p.tipoEnsaio} onChange={(e) => setPm(i, { tipoEnsaio: e.target.value as TipoEnsaioPadrao })}>{TIPO_ENSAIO_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
-                        <td className="px-3 py-2"><input className="input" type="number" value={String(p.valorEsperado)} onChange={(e) => setPm(i, { valorEsperado: e.target.value })} /></td>
-                        <td className="px-3 py-2"><input className="input" type="number" value={String(p.crescimentoPct)} onChange={(e) => setPm(i, { crescimentoPct: e.target.value })} /></td>
                         <td className="px-3 py-2"><input className="input" type="number" value={String(p.quantidadeCp)} onChange={(e) => setPm(i, { quantidadeCp: e.target.value })} /></td>
                         <td className="px-3 py-2"><button type="button" className="text-slate-400 hover:text-red-600" onClick={() => rmPm(i)}>×</button></td>
                       </tr>

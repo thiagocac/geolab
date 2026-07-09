@@ -9,7 +9,7 @@ import {
  * (idade, unidade, tipo de ensaio, valor esperado, crescimento %, qtd CP).
  * Valor armazenado como JSON em operational_materials.padrao_moldagem.
  */
-export function MoldingStandardEditor({ value, onChange, fck, simple = false }: { value: PadraoMoldagem[]; onChange: (next: PadraoMoldagem[]) => void; fck?: number | null; simple?: boolean }) {
+export function MoldingStandardEditor({ value, onChange, fck }: { value: PadraoMoldagem[]; onChange: (next: PadraoMoldagem[]) => void; fck?: number | null }) {
   const rows = normalizePadroes(value, fck);
   const set = (id: string, patch: Partial<PadraoMoldagem>) => onChange(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const remove = (id: string) => onChange(rows.filter((r) => r.id !== id));
@@ -40,7 +40,7 @@ export function MoldingStandardEditor({ value, onChange, fck, simple = false }: 
                 <th className="w-8">#</th>
                 <th>Idade</th>
                 <th>Unidade</th>
-                {!simple ? <><th>Tipo de ensaio</th><th>Valor esp. (MPa)</th><th>Cresc. %</th></> : null}
+                <th>Tipo de ensaio</th>
                 <th>Qtd CP</th>
                 <th className="w-8"><span className="sr-only">Remover</span></th>
               </tr>
@@ -55,17 +55,11 @@ export function MoldingStandardEditor({ value, onChange, fck, simple = false }: 
                       {UNIDADE_IDADE_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </td>
-                  {!simple ? (
-                    <>
-                      <td>
-                        <select className="input !min-h-9 w-44 px-2 py-1" value={r.tipoEnsaio} onChange={(e) => set(r.id, { tipoEnsaio: e.target.value as TipoEnsaioPadrao })} aria-label={`Tipo de ensaio da linha ${i + 1}`}>
-                          {TIPO_ENSAIO_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                      </td>
-                      <td><input className="input !min-h-9 w-24 px-2 py-1" type="number" min="0" step="0.1" value={r.valorEsperado} placeholder={r.tipoEnsaio === 'compressao' ? '(FCK)' : ''} onChange={(e) => set(r.id, { valorEsperado: e.target.value })} aria-label={`Valor esperado da linha ${i + 1}`} /></td>
-                      <td><input className="input !min-h-9 w-20 px-2 py-1" type="number" min="0" max="100" step="1" value={r.crescimentoPct} onChange={(e) => set(r.id, { crescimentoPct: e.target.value })} aria-label={`Crescimento da linha ${i + 1}`} /></td>
-                    </>
-                  ) : null}
+                  <td>
+                    <select className="input !min-h-9 w-44 px-2 py-1" value={r.tipoEnsaio} onChange={(e) => set(r.id, { tipoEnsaio: e.target.value as TipoEnsaioPadrao })} aria-label={`Tipo de ensaio da linha ${i + 1}`}>
+                      {TIPO_ENSAIO_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </td>
                   <td><input className="input !min-h-9 w-16 px-2 py-1" type="number" min="0" step="1" value={r.quantidadeCp} onChange={(e) => set(r.id, { quantidadeCp: e.target.value })} aria-label={`Quantidade de CPs da linha ${i + 1}`} /></td>
                   <td>
                     <button type="button" className="icon-btn !min-h-8 !min-w-8" onClick={() => remove(r.id)} aria-label={`Remover linha ${i + 1}`} title="Remover"><X size={15} /></button>

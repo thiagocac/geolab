@@ -130,9 +130,7 @@ export function ConcretagemDetalhePage() {
     for (const it of dbp) { const q = Number(it.quantidade) || 0; total += q; parts.push(q + '\u00d7' + String(it.idade) + (String(it.unidade) === 'hora' ? 'h' : 'd')); }
     return { txt: parts.join('  '), total };
   }, [conc.data]);
-  const numManual = onR('numeracao_cp_manual');
   const numSlots = useMemo(() => {
-    if (!numManual) return [] as { key: string; idx: number; ageHours: number; ageLabel: string }[];
     const dbPad = padroesToDb(normalizePadroes(camPadrao, fckAtual));
     const slots: { key: string; idx: number; ageHours: number; ageLabel: string }[] = [];
     let idx = 0;
@@ -145,7 +143,7 @@ export function ConcretagemDetalhePage() {
       for (let i = 0; i < qtd; i++) { slots.push({ key: String(r.id) + '-' + i, idx, ageHours, ageLabel }); idx++; }
     }
     return slots;
-  }, [numManual, camPadrao, fckAtual]);
+  }, [camPadrao, fckAtual]);
   const numSlotsSorted = useMemo(() => [...numSlots].sort((a, b) => a.ageHours - b.ageHours || a.idx - b.idx), [numSlots]);
 
   function patch(k: string, v: unknown) { setForm((s) => ({ ...s, [k]: v })); }
@@ -176,13 +174,18 @@ export function ConcretagemDetalhePage() {
     setPrimeiroNum('');
     setOpen(true);
   }
+  function aplicarSeq(first: string) {
+    const t = first.trim();
+    if (!t || !numSlotsSorted.length) { setNumeracaoMap({}); return; }
+    const next: Record<string, string> = {};
+    numSlotsSorted.forEach((sl, j) => { next[sl.key] = bumpNumeracao(t, j); });
+    setNumeracaoMap(next);
+  }
   function gerarNumeracao() {
     const first = primeiroNum.trim();
-    if (!first) { toast('Informe a numeração do primeiro CP (o de menor idade de controle).', 'warning'); return; }
+    if (!first) { toast('Informe a numeração do 1º CP (o de menor idade).', 'warning'); return; }
     if (!numSlotsSorted.length) { toast('Defina as idades e quantidades dos CPs primeiro.', 'warning'); return; }
-    const next: Record<string, string> = {};
-    numSlotsSorted.forEach((sl, j) => { next[sl.key] = bumpNumeracao(first, j); });
-    setNumeracaoMap(next);
+    aplicarSeq(first);
   }
   function buscarPadraoCaminhao() {
     const c = conc.data;
@@ -210,7 +213,7 @@ export function ConcretagemDetalhePage() {
     try {
       if (!str(camForm.nota_fiscal)) throw new Error('Nota fiscal é obrigatória.');
       const serie = (cams.data?.length ?? 0) + 1;
-      const numeracoes = numManual ? numSlots.map((sl) => numeracaoMap[sl.key] ?? null) : undefined;
+      const numeracoes = numSlots.map((sl) => numeracaoMap[sl.key] ?? null);
       await addCaminhao(member.tenant_id, c, serie, { ...camForm, padrao_moldagem: camPadrao, numeracoes });
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['caminhoes', id] }), qc.invalidateQueries({ queryKey: ['cps', id] }), qc.invalidateQueries({ queryKey: ['rompimentos'] }), qc.invalidateQueries({ queryKey: ['concretagem', id] }),
@@ -422,11 +425,10 @@ export function ConcretagemDetalhePage() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-black text-slate-950 dark:text-slate-50">Amostra e CPs deste caminhão</h3><p className="text-xs text-slate-500">Ajuste idades e quantidades antes de salvar. O sistema gera os CPs automaticamente.</p></div><Button variant="secondary" onClick={buscarPadraoCaminhao}>Buscar padrão de moldagem</Button></div>
             <MoldingStandardEditor value={camPadrao} onChange={setCamPadrao} fck={fckAtual} />
           </div>
-          {numManual ? (
-            <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+          <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
               <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-                <div><h3 className="font-black text-slate-950 dark:text-slate-50">Numeração dos corpos de prova</h3><p className="text-xs text-slate-500">Numeração interna do laboratório, gravada em cada CP. Digite a do 1º CP (o de menor idade) e gere a sequência, ou preencha manualmente.</p></div>
-                <div className="flex items-end gap-2"><Field label="Nº do 1º CP" value={primeiroNum} onChange={(e) => setPrimeiroNum(e.target.value)} /><Button variant="secondary" onClick={gerarNumeracao} disabled={!numSlotsSorted.length}>Gerar numeração</Button></div>
+                <div><h3 className="font-black text-slate-950 dark:text-slate-50">Numeração dos corpos de prova</h3><p className="text-xs text-slate-500">Numeração interna do laboratório, gravada em cada CP. Digite o nº do 1º CP (o de menor idade) e o sistema preenche os demais em sequência — ajuste qualquer um se precisar.</p></div>
+                <div className="flex items-end gap-2"><Field label="Nº do 1º CP" value={primeiroNum} onChange={(e) => { const v = e.target.value; setPrimeiroNum(v); aplicarSeq(v); }} /><Button variant="secondary" onClick={gerarNumeracao} disabled={!numSlotsSorted.length}>Gerar sequência</Button></div>
               </div>
               {numSlotsSorted.length === 0 ? <p className="rounded-xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-500 dark:border-slate-700">Defina as idades e quantidades acima para numerar os CPs.</p> : (
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -436,7 +438,6 @@ export function ConcretagemDetalhePage() {
                 </div>
               )}
             </div>
-          ) : null}
         </div>
       </Modal>
 

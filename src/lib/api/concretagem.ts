@@ -2,7 +2,7 @@ import { supabase } from '../supabase';
 import { trackDomainEvent } from '../telemetry';
 import type { Database } from '../database.types';
 import { env } from '../env';
-import { normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../concreto';
+import { esperadoMpaPorIdade, normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../concreto';
 import { assertImagem, assertUploadSize } from '../upload';
 
 const db = supabase;
@@ -135,6 +135,18 @@ export function padraoMoldagemDaConcretagem(conc: ConcretagemRow | null | undefi
   return normalizePadroes(p, fck);
 }
 
+// Padrão de moldagem da última concretagem cadastrada no tenant — usado p/ semear a próxima programação.
+export async function ultimoPadraoMoldagem(tenantId: string): Promise<PadraoMoldagem[] | null> {
+  if (!tenantId) return null;
+  const { data, error } = await db.from('concretagens')
+    .select('metadata, fck_previsto, operational_materials(padrao_moldagem, fck_mpa)')
+    .eq('tenant_id', tenantId).is('deleted_at', null)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (error || !data) return null;
+  const pad = padraoMoldagemDaConcretagem(data as unknown as ConcretagemRow);
+  return pad.length ? pad : null;
+}
+
 function sanitizeCaminhaoValues(values: Record<string, unknown>): Record<string, unknown> {
   const allowed = ['nota_fiscal', 'placa', 'motorista', 'volume_m3', 'slump_medido_cm', 'temperatura_concreto_c', 'hora_saida_usina', 'hora_chegada_obra', 'hora_inicio_descarga', 'hora_fim_descarga', 'hora_moldagem', 'houve_adicao_agua', 'agua_litros', 'rejeitado', 'motivo_rejeicao', 'elementos_concretados', 'observacoes', 'external_key'];
   const out: Record<string, unknown> = {};
@@ -172,7 +184,9 @@ export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie:
     const idade = toNumber(item.idade ?? item.idadeControle) ?? 28;
     const qtd = toNumber(item.quantidade ?? item.quantidadeCp) ?? 2;
     const unidade = String(item.unidade ?? item.unidadeIdade ?? 'dia').startsWith('hora') ? 'hora' : 'dia';
-    const valorEsperado = toNumber(item.valor_esperado ?? item.valorEsperado) ?? conc.fck_previsto ?? conc.operational_materials?.fck_mpa ?? null;
+    const fckRef = conc.fck_previsto ?? conc.operational_materials?.fck_mpa ?? null;
+    // Valor esperado SEMPRE calculado do FCK previsto + idade (curva/interpolacao); nao mais lancado.
+    const valorEsperado = esperadoMpaPorIdade(idade, unidade === 'hora' ? 'horas' : 'dias', fckRef) ?? toNumber(item.valor_esperado ?? item.valorEsperado) ?? fckRef ?? null;
     for (let i = 0; i < qtd; i++) {
       const rawNum = numeracoes[n - 1];
       const numeracaoLab = typeof rawNum === 'string' && rawNum.trim() ? rawNum.trim() : null;

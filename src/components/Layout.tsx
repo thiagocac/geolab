@@ -24,7 +24,7 @@ const sections: Section[] = [
     { to: '/etiquetas', label: 'Etiquetas', icon: Tag, roles: labRoles, perm: 'etiqueta.ver' },
     { to: '/rompimentos', label: 'Rompimentos', icon: Compress, roles: labRoles },
     { to: '/laudos', label: 'Laudos', icon: FileText, roles: labRoles },
-    { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
+    // [v202] Aceitacao de lotes retirada do menu (pagina/logica preservadas). Reative descomentando: { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
     { to: '/nao-conformidades', label: 'Não-conformidades', icon: AlertTriangle, roles: labRoles },
     { to: '/importacoes', label: 'Importações', icon: Import, roles: labRoles },
     { to: '/tracos', label: 'Traços', icon: Beaker, roles: labRoles },

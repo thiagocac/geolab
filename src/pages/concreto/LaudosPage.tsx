@@ -11,7 +11,7 @@ import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Badge } from '../../components/ui/Badge';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
-import { listLaudosPaged, listConcretagensComResultado, gerarLaudo, downloadUrl, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, assinarLaudo } from '../../lib/api/laudo';
+import { listLaudosPaged, listConcretagensComResultado, gerarLaudo, aprovarLaudo, reabrirLaudo, notifyLaudoPronto, criarLinkAprovacao, enviarLaudoCliente, listLaudosClassificacao, assinarLaudo, baixarLaudoUrl, conformidadeControle, type ExemplarControle } from '../../lib/api/laudo';
 import { listReference } from '../../lib/api/client';
 import { temDelegacaoAprovacao } from '../../lib/api/delegacoes';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -29,6 +29,7 @@ export function LaudosPage() {
   const podeEmitir = podeAprovar || (delegQ.data ?? false);
   const [novo, setNovo] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const [verConc, setVerConc] = useState<{ codigo: string; idade: number; exemplares: ExemplarControle[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
   const init = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -57,6 +58,8 @@ export function LaudosPage() {
   const worksFiltro = useQuery({ queryKey: ['ref', 'client_works', 'all'], queryFn: () => listReference('client_works', 'nome') });
   const cls = useQuery({ queryKey: ['laudos-cls'], queryFn: listLaudosClassificacao });
   const elegiveis = useQuery({ queryKey: ['conc-result', member?.tenant_id], queryFn: () => listConcretagensComResultado(member?.tenant_id), enabled: novo });
+  const idsEleg = (elegiveis.data ?? []).map((c) => c.id);
+  const confQ = useQuery({ queryKey: ['conf-ctrl', idsEleg.join(',')], queryFn: () => conformidadeControle(idsEleg), enabled: novo && idsEleg.length > 0 });
 
 
   function toggle(cid: string) { setSel((s) => { const n = new Set(s); if (n.has(cid)) n.delete(cid); else n.add(cid); return n; }); }
@@ -88,9 +91,8 @@ export function LaudosPage() {
     setBusy(false); setProg(null);
     if (ok) fecharNovo();
   }
-  async function baixar(path: string | null) {
-    if (!path) { toast('Laudo ainda nao persistido.', 'error'); return; }
-    const tab = openDeferredTab(); try { tab.set(await downloadUrl(path)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
+  async function baixar(id: string, path: string | null) {
+    const tab = openDeferredTab(); try { tab.set(await baixarLaudoUrl(id, path)); } catch (e) { tab.fail(); toast((e as Error).message, 'error'); }
   }
   async function aprovar(id: string) {
     const ehFinal = cls.data?.[id] === 'final';
@@ -143,7 +145,7 @@ export function LaudosPage() {
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
                   {r.assinatura_status === 'assinado' ? <Badge tone="success">Assinado</Badge> : (r.assinatura_status === 'pendente' || r.assinatura_status === 'em_processo') ? <Badge tone="info">Assinatura pendente</Badge> : null}
-                  <Button variant="ghost" onClick={() => void baixar(r.storage_path)}>Baixar</Button>
+                  <Button variant="ghost" onClick={() => void baixar(r.id, r.storage_path)}>Baixar</Button>
                   {podeEmitir && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
                   {podeAprovar && r.status !== 'emitido' ? <Button variant="ghost" onClick={() => void gerarLink(r.id)}>Link aprovação</Button> : null}
                   {podeAprovar && r.status === 'emitido' ? <Button variant="ghost" onClick={() => void reabrir(r.id)}>Reabrir</Button> : null}
@@ -165,6 +167,7 @@ export function LaudosPage() {
       ) : null}
       <Modal open={novo} wide title="Novo laudo (individual ou em lote)" onClose={fecharNovo} footer={<><Button variant="ghost" onClick={fecharNovo}>Cancelar</Button><Button variant="secondary" onClick={() => void previewOne()} disabled={busy || sel.size !== 1}>Pré-visualizar</Button><Button onClick={() => void gerar()} disabled={busy || sel.size === 0}>{busy ? (prog ? ('Gerando ' + prog.done + '/' + prog.total + '...') : 'Gerando...') : ('Gerar ' + (sel.size || '') + ' laudo' + (sel.size === 1 ? '' : 's')).replace('  ', ' ').trim()}</Button></>}>
         <div style={{ display: 'grid', gap: 10 }}>
+          {(() => { const nc = [...sel].filter((id) => confQ.data?.[id]?.algum_nao_conforme).length; return nc > 0 ? (<div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.35)' }} className="text-sm text-red-700 dark:text-red-300"><strong>Atenção:</strong> {nc} concretagem(ns) selecionada(s) com resultado na idade de controle <strong>abaixo do fck</strong>. Analise antes de emitir.</div>) : null; })()}
           <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>Selecione uma ou mais concretagens com resultados lançados. <strong>Pré-visualizar</strong> gera o PDF sem persistir (apenas com 1 selecionada). <strong>Gerar</strong> persiste como rascunho e dispara a notificacao interna. Aceitação por exemplar (NF) na idade de controle.</p>
           {elegiveis.isLoading ? <LoadingState /> : (elegiveis.data ?? []).length === 0 ? <EmptyState /> : (
             <>
@@ -175,13 +178,28 @@ export function LaudosPage() {
                 {(elegiveis.data ?? []).map((c) => (
                   <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '4px 6px', borderRadius: 6, background: sel.has(c.id) ? 'var(--surface-2, rgba(0,0,0,0.05))' : 'transparent' }}>
                     <input type="checkbox" checked={sel.has(c.id)} onChange={() => toggle(c.id)} />
-                    <span>{(c.codigo ?? c.id.slice(0, 8)) + ' · ' + (c.work_nome ?? '-')}</span>
+                    <span style={{ flex: 1 }}>{(c.codigo ?? c.id.slice(0, 8)) + ' · ' + (c.work_nome ?? '-')}</span>
+                    {confQ.data?.[c.id]?.algum_nao_conforme ? (<><Badge tone="danger">Abaixo do fck ({confQ.data[c.id].idade_controle}d)</Badge><Button variant="ghost" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); const d = confQ.data![c.id]; setVerConc({ codigo: c.codigo ?? c.id.slice(0, 8), idade: d.idade_controle, exemplares: d.exemplares }); }}>Ver resultados</Button></>) : null}
                   </label>
                 ))}
               </div>
             </>
           )}
         </div>
+      </Modal>
+
+      <Modal open={!!verConc} title={'Resultados na idade de controle' + (verConc ? ' · ' + verConc.codigo : '')} onClose={() => setVerConc(null)} footer={<Button onClick={() => setVerConc(null)}>Fechar</Button>}>
+        {verConc ? (
+          <div className="table-scroll">
+            <table className="table">
+              <thead><tr><th>NF / Exemplar</th><th>Resistência ({verConc.idade}d)</th><th>fck</th><th>Situação</th></tr></thead>
+              <tbody>
+                {verConc.exemplares.map((e, i) => (<tr key={i}><td>{e.nf}</td><td>{e.exemplar.toFixed(1)} MPa</td><td>{e.fck.toFixed(1)} MPa</td><td>{e.nao_conforme ? <Badge tone="danger">Abaixo do fck</Badge> : <Badge tone="success">Conforme</Badge>}</td></tr>))}
+                {!verConc.exemplares.length ? <tr><td colSpan={4} className="text-sm" style={{ color: 'var(--ink-faint)' }}>Sem resultados na idade de controle.</td></tr> : null}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );

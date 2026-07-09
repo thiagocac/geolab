@@ -25,7 +25,8 @@ const ConfiguracoesPage = lazy(() => import('./pages/gestao/ConfiguracoesPage').
 const EtiquetasPage = lazy(() => import('./pages/concreto/EtiquetasPage').then((m) => ({ default: m.EtiquetasPage })));
 const LaudosPage = lazy(() => import('./pages/concreto/LaudosPage').then((m) => ({ default: m.LaudosPage })));
 const LabDashboardsPage = lazy(() => import('./pages/dashboards/LabDashboardsPage').then((m) => ({ default: m.LabDashboardsPage })));
-const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
+// [v202] Aceitacao de lotes retirada do sistema (mantida implementada p/ religar). Reative: descomente este import, a Route /lotes (App.tsx) e o item de menu (Layout.tsx).
+// const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
 const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
 const PendenciasPage = lazy(() => import('./pages/gestao/PendenciasPage').then((m) => ({ default: m.PendenciasPage })));
 const ProdutividadePage = lazy(() => import('./pages/gestao/ProdutividadePage').then((m) => ({ default: m.ProdutividadePage })));
@@ -142,7 +143,7 @@ export function App() {
             <Route path="/rompimentos" element={<RompimentosPage />} />
             <Route path="/etiquetas" element={<EtiquetasPage />} />
             <Route path="/laudos" element={<LaudosPage />} />
-            <Route path="/lotes" element={<LotesPage />} />
+            {/* [v202] Aceitacao de lotes retirada. Reative descomentando: <Route path="/lotes" element={<LotesPage />} /> */}
             <Route path="/nao-conformidades" element={<NcPage />} />
             <Route path="/gestao/nc-config" element={<ConfiguracoesPage inicial="nc" />} />
             <Route path="/importacoes" element={<ImportacoesShell />} />

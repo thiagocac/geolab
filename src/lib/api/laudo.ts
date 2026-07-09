@@ -59,6 +59,18 @@ export async function listConcretagensComResultado(tenantId?: string): Promise<C
   return [...seen.values()];
 }
 
+export type ExemplarControle = { nf: string; exemplar: number; fck: number; nao_conforme: boolean };
+export type ConformidadeControle = { concretagem_id: string; idade_controle: number; fck: number | null; tem_controle: boolean; algum_nao_conforme: boolean; n_exemplares: number; n_nao_conforme: number; exemplares: ExemplarControle[] };
+// Conformidade na idade de controle (para alertar antes de emitir): exemplar (maior do par) < fck.
+export async function conformidadeControle(ids: string[]): Promise<Record<string, ConformidadeControle>> {
+  if (!ids.length) return {};
+  const { data, error } = await rpc.rpc('laudo_conformidade_controle', { p_concretagem_ids: ids });
+  if (error) throw new Error(error.message);
+  const m: Record<string, ConformidadeControle> = {};
+  for (const r of ((data ?? []) as ConformidadeControle[])) m[r.concretagem_id] = r;
+  return m;
+}
+
 export async function gerarLaudo(concId: string, persist = true): Promise<{ blob: Blob; labReportId: string }> {
   const { data: sess } = await supabase.auth.getSession();
   const token = sess.session?.access_token ?? '';
@@ -84,6 +96,17 @@ export async function downloadUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('lab-reports').createSignedUrl(path, 120);
   if (error) throw new Error(error.message);
   return data.signedUrl;
+}
+
+// Prioriza o PDF assinado (modo a1_local grava <path>-signed.pdf) quando houver assinatura vigente.
+export async function baixarLaudoUrl(labReportId: string, fallbackPath: string | null): Promise<string> {
+  const { data } = await db.from('laudo_assinaturas')
+    .select('signed_storage_path')
+    .eq('lab_report_id', labReportId).eq('status', 'assinado').not('signed_storage_path', 'is', null)
+    .order('revisao', { ascending: false }).limit(1).maybeSingle();
+  const path = (data?.signed_storage_path as string | undefined) || fallbackPath;
+  if (!path) throw new Error('Laudo ainda nao persistido.');
+  return downloadUrl(path);
 }
 
 export async function aprovarLaudo(id: string): Promise<void> {

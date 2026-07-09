@@ -26,7 +26,6 @@ export const CAMPOS_RECEBIMENTO: CampoCatalogo[] = [
   { key: 'rejeicao', label: 'Caminhão rejeitado + motivo', hint: 'Registro simples de rejeição/ressalva.', on: true },
   { key: 'elementos_concretados', label: 'Elementos concretados por caminhão', hint: 'Texto livre quando a obra não usa estrutura cadastrada.', on: true },
   { key: 'observacoes_caminhao', label: 'Observações por caminhão', hint: 'Texto livre por caminhão/NF.', on: true },
-  { key: 'numeracao_cp_manual', label: 'Numeração de CP manual (laboratório)', hint: 'Liga a numeração interna dos CPs na moldagem. Na tela de Caminhões + CPs aparece um campo por CP e o botão "Gerar numeração": digite o número do 1º CP (o de menor idade de controle) e o sistema preenche a sequência. Desligado por padrão.', on: false },
 ];
 
 export const CAMPOS_CONCRETAGEM: CampoCatalogo[] = [
