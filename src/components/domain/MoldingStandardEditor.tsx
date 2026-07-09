@@ -49,7 +49,7 @@ export function MoldingStandardEditor({ value, onChange, fck }: { value: PadraoM
               {rows.map((r, i) => (
                 <tr key={r.id}>
                   <td className="text-xs text-slate-400 dark:text-slate-500">{i + 1}</td>
-                  <td><input className="input !min-h-9 w-20 px-2 py-1" type="number" min="0" step="1" value={r.idadeControle} onChange={(e) => set(r.id, { idadeControle: e.target.value })} aria-label={`Idade da linha ${i + 1}`} /></td>
+                  <td><input className="input input-num !min-h-9 py-1" type="number" min="0" step="1" value={r.idadeControle} onChange={(e) => set(r.id, { idadeControle: e.target.value })} aria-label={`Idade da linha ${i + 1}`} /></td>
                   <td>
                     <select className="input !min-h-9 w-24 px-2 py-1" value={r.unidadeIdade} onChange={(e) => set(r.id, { unidadeIdade: e.target.value as UnidadeIdade })} aria-label={`Unidade da linha ${i + 1}`}>
                       {UNIDADE_IDADE_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -60,7 +60,7 @@ export function MoldingStandardEditor({ value, onChange, fck }: { value: PadraoM
                       {TIPO_ENSAIO_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </td>
-                  <td><input className="input !min-h-9 w-16 px-2 py-1" type="number" min="0" step="1" value={r.quantidadeCp} onChange={(e) => set(r.id, { quantidadeCp: e.target.value })} aria-label={`Quantidade de CPs da linha ${i + 1}`} /></td>
+                  <td><input className="input input-num !min-h-9 py-1" type="number" min="0" step="1" value={r.quantidadeCp} onChange={(e) => set(r.id, { quantidadeCp: e.target.value })} aria-label={`Quantidade de CPs da linha ${i + 1}`} /></td>
                   <td>
                     <button type="button" className="icon-btn !min-h-8 !min-w-8" onClick={() => remove(r.id)} aria-label={`Remover linha ${i + 1}`} title="Remover"><X size={15} /></button>
                   </td>

@@ -124,17 +124,19 @@ export function padroesMoldagemPadrao(fck?: number | null): PadraoMoldagem[] {
 
 export type TracoPadrao = { descricao: string; aplicacao: string; fck: number; slumpPrevisto: number; slumpTolerancia: number; validadeMinutos: number; brita?: string };
 export const TRACOS_PADRAO: readonly TracoPadrao[] = [
-  { descricao: 'FCK 25 | BRITA 1 | SLUMP 10±2 CM', aplicacao: 'Radier, Térreo, Pavimentos', fck: 25, slumpPrevisto: 10, slumpTolerancia: 2, validadeMinutos: 150, brita: '1' },
-  { descricao: 'FCK 30 | BRITA 1 | SLUMP 10±2 CM', aplicacao: 'Sapata, Cortina, Blocos', fck: 30, slumpPrevisto: 10, slumpTolerancia: 2, validadeMinutos: 150, brita: '1' },
-  { descricao: 'FCK 30 | BRITA 0 | SLUMP 22±3 CM', aplicacao: 'Estaca Hélice', fck: 30, slumpPrevisto: 22, slumpTolerancia: 3, validadeMinutos: 120, brita: '0' },
-  { descricao: 'FCK 40 | BRITA 0 | SLUMP 16±3 CM', aplicacao: 'Contenções', fck: 40, slumpPrevisto: 16, slumpTolerancia: 3, validadeMinutos: 120, brita: '0' },
-  { descricao: 'FCK 25 | BRITA 0 | FLOW 70±5 CM', aplicacao: 'Parede/Laje', fck: 25, slumpPrevisto: 70, slumpTolerancia: 5, validadeMinutos: 150, brita: '0' },
+  { descricao: 'FCK 25 | BRITA 1 | SLUMP 100±20 MM', aplicacao: 'Radier, Térreo, Pavimentos', fck: 25, slumpPrevisto: 100, slumpTolerancia: 20, validadeMinutos: 150, brita: '1' },
+  { descricao: 'FCK 30 | BRITA 1 | SLUMP 100±20 MM', aplicacao: 'Sapata, Cortina, Blocos', fck: 30, slumpPrevisto: 100, slumpTolerancia: 20, validadeMinutos: 150, brita: '1' },
+  { descricao: 'FCK 30 | BRITA 0 | SLUMP 220±30 MM', aplicacao: 'Estaca Hélice', fck: 30, slumpPrevisto: 220, slumpTolerancia: 30, validadeMinutos: 120, brita: '0' },
+  { descricao: 'FCK 40 | BRITA 0 | SLUMP 160±30 MM', aplicacao: 'Contenções', fck: 40, slumpPrevisto: 160, slumpTolerancia: 30, validadeMinutos: 120, brita: '0' },
+  { descricao: 'FCK 25 | BRITA 0 | FLOW 700±50 MM', aplicacao: 'Parede/Laje', fck: 25, slumpPrevisto: 700, slumpTolerancia: 50, validadeMinutos: 150, brita: '0' },
 ];
 
 export function parseSlumpFromDescricao(descricao: string): { previsto: number; tolerancia: number } | null {
-  const m = /(?:SLUMP|FLOW)\s*(\d+(?:[.,]\d+)?)\s*(?:±|\+\/-|\+-)\s*(\d+(?:[.,]\d+)?)/i.exec(descricao || '');
+  const m = /(?:SLUMP|FLOW)\s*(\d+(?:[.,]\d+)?)\s*(?:±|\+\/-|\+-)\s*(\d+(?:[.,]\d+)?)\s*(MM|CM)?/i.exec(descricao || '');
   if (!m) return null;
-  return { previsto: Number(m[1].replace(',', '.')), tolerancia: Number(m[2].replace(',', '.')) };
+  // Canonico = mm. Sem unidade ou 'CM' interpreta como cm (converte x10); 'MM' ja em mm.
+  const fator = (m[3] || '').toUpperCase() === 'MM' ? 1 : 10;
+  return { previsto: Number(m[1].replace(',', '.')) * fator, tolerancia: Number(m[2].replace(',', '.')) * fator };
 }
 
 function normalizeUnidade(raw: unknown): UnidadeIdade {

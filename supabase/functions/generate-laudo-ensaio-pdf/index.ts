@@ -86,7 +86,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       sb.from('client_works').select('nome, cidade, uf, endereco, responsavel_tecnico, crea').eq('id', conc.work_id).maybeSingle(),
       sb.from('lab_clients').select('razao_social, nome_fantasia, email, telefone').eq('id', conc.client_id).maybeSingle(),
       sb.from('tenants').select('name').eq('id', conc.tenant_id).maybeSingle(),
-      conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_cm, slump_tolerancia_cm, bombeado, componentes, idade_controle_dias').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
+      conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_mm, slump_tolerancia_mm, bombeado, componentes, idade_controle_dias').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
       sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes, idade_controle_default').eq('tenant_id', conc.tenant_id).maybeSingle(),
       conc.moldador_id ? sb.from('colaboradores').select('nome').eq('id', conc.moldador_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
@@ -112,7 +112,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const eqIds = [...new Set(tlist.map((t) => t.equipamento_id).filter(Boolean))] as string[];
     const [{ data: cps }, { data: receipts }, { data: equips }] = await Promise.all([
       cpIds.length ? sb.from('corpos_prova').select('id, codigo, data_moldagem').in('id', cpIds) : Promise.resolve({ data: [] }),
-      rcIds.length ? sb.from('material_receipts').select('id, nota_fiscal, serie, external_key, placa, motorista, volume_m3, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, slump_medido_cm, temperatura_concreto_c, houve_adicao_agua, agua_litros, rejeitado, motivo_rejeicao, elementos_concretados, observacoes').in('id', rcIds) : Promise.resolve({ data: [] }),
+      rcIds.length ? sb.from('material_receipts').select('id, nota_fiscal, serie, external_key, placa, motorista, volume_m3, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, slump_medido_mm, temperatura_concreto_c, houve_adicao_agua, agua_litros, rejeitado, motivo_rejeicao, elementos_concretados, observacoes').in('id', rcIds) : Promise.resolve({ data: [] }),
       eqIds.length ? sb.from('equipamentos').select('id, marca_modelo, numero_serie, classe, numero_certificado, validade_calibracao, lab_calibrador, incerteza_mpa').in('id', eqIds) : Promise.resolve({ data: [] }),
     ]);
     const cpById = new Map((cps ?? []).map((r: Record<string, unknown>) => [r.id, r]));
@@ -227,7 +227,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       if (CON.traco_fck) { pares.push(['Traço', tracoNome]); pares.push(['Fck (MPa)', fmt(fck, 1)]); }
       if (ON.amostragem) pares.push(['Amostragem', condicao ? 'Total - condição ' + condicao : 'Total']);
       if (om?.condicao_preparo) pares.push(['Condição de preparo', String(om.condicao_preparo || '-')]);
-      if (om?.slump_previsto_cm != null) pares.push(['Abatimento prev. (cm)', `${fmt(Number(om.slump_previsto_cm), 1)} ± ${fmt(Number(om.slump_tolerancia_cm ?? 0), 1)}`]);
+      if (om?.slump_previsto_mm != null) pares.push(['Abatimento prev. (mm)', `${fmt(Number(om.slump_previsto_mm), 0)} ± ${fmt(Number(om.slump_tolerancia_mm ?? 0), 0)}`]);
       if (om?.brita) pares.push(['Brita / agregado', String(om.brita || '-')]);
       if (om?.fator_ac != null) pares.push(['A/C projeto', fmt(Number(om.fator_ac), 2)]);
       if (CON.bombeado) pares.push(['Lançamento', conc.bombeado || om?.bombeado ? 'Bombeado' : 'Convencional']);
@@ -284,7 +284,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
         if (RON.horarios_transporte && (rc.hora_saida_usina || rc.hora_chegada_obra)) partes.push('Transp. ' + hhmm(rc.hora_saida_usina) + ' -> ' + hhmm(rc.hora_chegada_obra));
         if (RON.horarios_descarga && (rc.hora_inicio_descarga || rc.hora_fim_descarga)) partes.push('Desc. ' + hhmm(rc.hora_inicio_descarga) + ' -> ' + hhmm(rc.hora_fim_descarga));
         if (RON.hora_moldagem && rc.hora_moldagem) partes.push('Mold. ' + hhmm(rc.hora_moldagem));
-        if (RON.slump && rc.slump_medido_cm != null) partes.push('Slump ' + fmt(Number(rc.slump_medido_cm), 1) + ' cm');
+        if (RON.slump && rc.slump_medido_mm != null) partes.push('Slump ' + fmt(Number(rc.slump_medido_mm), 0) + ' mm');
         if (ON.temperatura && rc.temperatura_concreto_c != null) partes.push('Temp. concreto ' + fmt(Number(rc.temperatura_concreto_c), 0) + ' °C');
         if (RON.agua_adicionada && rc.houve_adicao_agua) partes.push('Água adicionada ' + fmt(Number(rc.agua_litros ?? 0), 0) + ' L');
         if (RON.rejeicao && rc.rejeitado) partes.push('Rejeitado: ' + String(rc.motivo_rejeicao || '-'));
@@ -312,7 +312,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       const ctrl = arr.filter(isCtrl).map((t) => Number(t.resultado_valor)).filter(isFinite);
       const rexVal = ctrl.length ? Math.max(...ctrl) : null;
       need(13, true); rect(MX, y - 11, CW, 12, NAVYL);
-      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m³` : '') + (RON.slump && rc?.slump_medido_cm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_cm), 1)} cm` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '') + (arr.length && arr[0].capeamento ? '  -  Bases ' + String(arr[0].capeamento) : '');
+      const faixa = `Exemplar ${exi}  -  NF ${nfKey(rid)}` + (RON.volume_m3 && rc?.volume_m3 ? `  -  Vol ${fmt(Number(rc.volume_m3), 1)} m³` : '') + (RON.slump && rc?.slump_medido_mm != null ? `  -  Slump ${fmt(Number(rc.slump_medido_mm), 0)} mm` : '') + (ON.ficha_moldagem && rc?.external_key ? `  -  Ficha ${String(rc.external_key)}` : '') + (arr.length && arr[0].capeamento ? '  -  Bases ' + String(arr[0].capeamento) : '');
       T(clip(faixa, 6.8, CW - 10, FB), MX + 5, y - 8, 6.8, FB, NAVY); y -= 12;
       if (ON.elemento && RON.elementos_concretados && rc?.elementos_concretados) { need(10, true); T(clip('Local: ' + String(rc.elementos_concretados), 6.2, CW - 10), MX + 5, y - 7, 6.2, F, MUTED); y -= 11; }
       let first = true;

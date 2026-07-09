@@ -43,8 +43,8 @@ type FormState = {
   fck_mpa: string;
   fcj_mpa: string;
   desvio_padrao_mpa: string;
-  slump_previsto_cm: string;
-  slump_tolerancia_cm: string;
+  slump_previsto_mm: string;
+  slump_tolerancia_mm: string;
   validade_concreto_minutos: string;
   idade_controle_dias: string;
   condicao_preparo: string;
@@ -74,8 +74,8 @@ type FormState = {
 
 function vazio(): FormState {
   return {
-    descricao: 'FCK 30 | BRITA 1 | SLUMP 10±2 CM', aplicacao: 'Sapata, Cortina, Blocos', fck_mpa: '30', fcj_mpa: '', desvio_padrao_mpa: '',
-    slump_previsto_cm: '10', slump_tolerancia_cm: '2', validade_concreto_minutos: '150', idade_controle_dias: '28', condicao_preparo: '', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false, comp_cimento_marca: '', comp_cimento_proc: '', comp_brita_marca: '', comp_brita_proc: '', comp_areia_marca: '', comp_areia_proc: '', comp_aditivo_marca: '', comp_aditivo_proc: '', comp_agua_proc: '',
+    descricao: 'FCK 30 | BRITA 1 | SLUMP 100±20 MM', aplicacao: 'Sapata, Cortina, Blocos', fck_mpa: '30', fcj_mpa: '', desvio_padrao_mpa: '',
+    slump_previsto_mm: '100', slump_tolerancia_mm: '20', validade_concreto_minutos: '150', idade_controle_dias: '28', condicao_preparo: '', brita: '1', dmax_agregado_mm: '', fator_ac: '', cimento_tipo: '', consumo_cimento_kg_m3: '', aditivo_tipo: '', metodo_cura: '', especificacao: '', observacoes: '', bombeado: false, comp_cimento_marca: '', comp_cimento_proc: '', comp_brita_marca: '', comp_brita_proc: '', comp_areia_marca: '', comp_areia_proc: '', comp_aditivo_marca: '', comp_aditivo_proc: '', comp_agua_proc: '',
     escopo: 'lab', client_id: '', work_id: '',
   };
 }
@@ -89,8 +89,8 @@ function fromRow(t: TracoRow): FormState {
     fck_mpa: t.fck_mpa == null ? '' : String(t.fck_mpa),
     fcj_mpa: t.fcj_mpa == null ? '' : String(t.fcj_mpa),
     desvio_padrao_mpa: t.desvio_padrao_mpa == null ? '' : String(t.desvio_padrao_mpa),
-    slump_previsto_cm: t.slump_previsto_cm == null ? '' : String(t.slump_previsto_cm),
-    slump_tolerancia_cm: t.slump_tolerancia_cm == null ? '' : String(t.slump_tolerancia_cm),
+    slump_previsto_mm: t.slump_previsto_mm == null ? '' : String(t.slump_previsto_mm),
+    slump_tolerancia_mm: t.slump_tolerancia_mm == null ? '' : String(t.slump_tolerancia_mm),
     validade_concreto_minutos: t.validade_concreto_minutos == null ? '' : String(t.validade_concreto_minutos),
     idade_controle_dias: t.idade_controle_dias == null ? '' : String(t.idade_controle_dias),
     condicao_preparo: t.condicao_preparo ?? '',
@@ -126,8 +126,8 @@ function aplicarPadrao(p: TracoPadrao, atual: FormState, setF: (v: FormState) =>
   base.descricao = p.descricao;
   base.aplicacao = p.aplicacao;
   base.fck_mpa = String(p.fck);
-  base.slump_previsto_cm = String(p.slumpPrevisto);
-  base.slump_tolerancia_cm = String(p.slumpTolerancia);
+  base.slump_previsto_mm = String(p.slumpPrevisto);
+  base.slump_tolerancia_mm = String(p.slumpTolerancia);
   base.validade_concreto_minutos = String(p.validadeMinutos);
   base.brita = p.brita ?? parseBrita(p.descricao);
   setF(base);
@@ -217,8 +217,8 @@ export function MateriaisPage() {
         fcj_mpa: num(f.fcj_mpa),
         desvio_padrao_mpa: num(f.desvio_padrao_mpa),
         condicao_preparo: str(f.condicao_preparo) || null,
-        slump_previsto_cm: num(f.slump_previsto_cm) ?? slump?.previsto ?? null,
-        slump_tolerancia_cm: num(f.slump_tolerancia_cm) ?? slump?.tolerancia ?? null,
+        slump_previsto_mm: num(f.slump_previsto_mm) ?? slump?.previsto ?? null,
+        slump_tolerancia_mm: num(f.slump_tolerancia_mm) ?? slump?.tolerancia ?? null,
         validade_concreto_minutos: num(f.validade_concreto_minutos),
         idade_controle_dias: num(f.idade_controle_dias),
         brita: str(f.brita) || parseBrita(descricao) || null,
@@ -285,7 +285,7 @@ export function MateriaisPage() {
               <div key={t.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{t.nome}</span>{t.work_id ? <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">Obra: {t.client_works?.nome ?? '—'}</span> : t.client_id ? <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">Construtora: {t.lab_clients?.nome_fantasia || t.lab_clients?.razao_social || '—'}</span> : <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">Catálogo do lab</span>}</div>
-                  <div className="mt-1 text-xs text-slate-500">{t.aplicacao || '-'} · FCK {t.fck_mpa ?? '-'} MPa · slump {t.slump_previsto_cm ?? '-'}±{t.slump_tolerancia_cm ?? '-'} cm · validade {t.validade_concreto_minutos ?? '-'} min{t.idade_controle_dias != null ? ` · controle ${t.idade_controle_dias}d` : ''} · {normalizePadroes(t.padrao_moldagem, t.fck_mpa).length} idade(s)</div>
+                  <div className="mt-1 text-xs text-slate-500">{t.aplicacao || '-'} · FCK {t.fck_mpa ?? '-'} MPa · slump {t.slump_previsto_mm ?? '-'}±{t.slump_tolerancia_mm ?? '-'} mm · validade {t.validade_concreto_minutos ?? '-'} min{t.idade_controle_dias != null ? ` · controle ${t.idade_controle_dias}d` : ''} · {normalizePadroes(t.padrao_moldagem, t.fck_mpa).length} idade(s)</div>
                 </div>
                 <div className="flex gap-2">
                   {t.carta_traco_path ? <Button variant="ghost" onClick={() => abrirCarta(t.carta_traco_path as string)}>Carta traço</Button> : null}
@@ -325,8 +325,8 @@ export function MateriaisPage() {
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-4">
               <Field label="FCK (MPa) *" type="number" value={f.fck_mpa} onChange={(e) => patch('fck_mpa', e.target.value)} />
-              <Field label="Slump prev. (cm)" type="number" value={f.slump_previsto_cm} onChange={(e) => patch('slump_previsto_cm', e.target.value)} />
-              <Field label="Tolerância (±cm)" type="number" value={f.slump_tolerancia_cm} onChange={(e) => patch('slump_tolerancia_cm', e.target.value)} />
+              <Field label="Slump prev. (mm)" type="number" value={f.slump_previsto_mm} onChange={(e) => patch('slump_previsto_mm', e.target.value)} />
+              <Field label="Tolerância (±mm)" type="number" value={f.slump_tolerancia_mm} onChange={(e) => patch('slump_tolerancia_mm', e.target.value)} />
               <Field label="Validade (min)" type="number" value={f.validade_concreto_minutos} onChange={(e) => patch('validade_concreto_minutos', e.target.value)} />
               <Field label="Idade de controle (dias)" type="number" value={f.idade_controle_dias} onChange={(e) => patch('idade_controle_dias', e.target.value)} />
             </div>
@@ -390,10 +390,10 @@ export function MateriaisPage() {
                     {padrao.map((p, i) => (
                       <tr key={p.id}>
                         <td className="px-3 py-2 text-xs font-bold text-slate-500">{i + 1}</td>
-                        <td className="px-3 py-2"><input className="input" type="number" value={String(p.idadeControle)} onChange={(e) => setPm(i, { idadeControle: e.target.value })} /></td>
+                        <td className="px-3 py-2"><input className="input input-num" type="number" value={String(p.idadeControle)} onChange={(e) => setPm(i, { idadeControle: e.target.value })} /></td>
                         <td className="px-3 py-2"><select className="input" value={p.unidadeIdade} onChange={(e) => setPm(i, { unidadeIdade: e.target.value as UnidadeIdade })}>{UNIDADE_IDADE_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
                         <td className="px-3 py-2"><select className="input" value={p.tipoEnsaio} onChange={(e) => setPm(i, { tipoEnsaio: e.target.value as TipoEnsaioPadrao })}>{TIPO_ENSAIO_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
-                        <td className="px-3 py-2"><input className="input" type="number" value={String(p.quantidadeCp)} onChange={(e) => setPm(i, { quantidadeCp: e.target.value })} /></td>
+                        <td className="px-3 py-2"><input className="input input-num" type="number" value={String(p.quantidadeCp)} onChange={(e) => setPm(i, { quantidadeCp: e.target.value })} /></td>
                         <td className="px-3 py-2"><button type="button" className="text-slate-400 hover:text-red-600" onClick={() => rmPm(i)}>×</button></td>
                       </tr>
                     ))}

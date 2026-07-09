@@ -1,4 +1,4 @@
-// send-notification (Concresoft) - UNICO ponto de saida Resend.
+// send-notification (Concresoft) - UNICO ponto de saida Resend. Suporta anexos internos (via x-notify-secret) + dedupe idempotente por dedupe_key (status 'sent').
 // Gates INLINE, branding Concresoft, fail-closed em RESEND_API_KEY.
 // Gate: auth -> inativo -> preferencia -> papel -> QUIET HOURS (is_in_quiet_hours, fail-open) -> allowlist -> supressao -> dispatch/dry-run.
 // QUIET HOURS (v11): eventos NAO-system respeitam o silencio do membro (fuso proprio); falha na checagem = envia (fail-open).
@@ -31,16 +31,36 @@ const TITLES: Record<string, string> = {
   resultado_abaixo_fck: 'Resultado abaixo do fck na idade de controle',
   cp_atrasado: 'Corpo de prova atrasado',
   calibracao_vencendo: 'Calibracao de equipamento vencendo',
+  laudo_disponivel_cliente: 'Laudo disponivel para o cliente',
 };
 const KICKERS: Record<string, string> = {
   laudo_pronto: 'LAUDO',
   resultado_abaixo_fck: 'ALERTA DE RESULTADO',
   cp_atrasado: 'AGENDA DE ROMPIMENTO',
   calibracao_vencendo: 'CALIBRACAO',
+  laudo_disponivel_cliente: 'LAUDO',
 };
 const GRAD = 'linear-gradient(135deg,#182863 0%,#3E2D71 55%,#C5117E 100%)';
 const BRAND_LOGO = 'https://app.concresoft.io/brand/concresoft-lockup-white-2x.png';
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
+// Anexos: SO em chamada interna confiavel (x-notify-secret). Externos (JWT) nunca anexam. Limite 1 anexo / ~16MB base64.
+const MAX_INTERNAL_ATTACHMENTS = 1;
+const MAX_ATTACHMENT_BASE64_CHARS = 16_000_000;
+type ResendAttachment = { filename: string; content: string };
+function attachmentsFromPayload(p: Record<string, unknown>, trustedInternalCall: boolean): ResendAttachment[] {
+  if (!trustedInternalCall || !Array.isArray(p.attachments)) return [];
+  const out: ResendAttachment[] = [];
+  for (const raw of p.attachments.slice(0, MAX_INTERNAL_ATTACHMENTS)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const item = raw as Record<string, unknown>;
+    const filename = asStr(item.filename).replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 120);
+    const content = asStr(item.content);
+    if (!filename || !content || content.length > MAX_ATTACHMENT_BASE64_CHARS) continue;
+    if (!/^[A-Za-z0-9+/=\r\n]+$/.test(content)) continue;
+    out.push({ filename, content });
+  }
+  return out;
+}
 
 // Template transacional "bulletproof" do Concresoft Email Kit. Valores ja escapados pelo chamador.
 function emailShell(o: { preheader: string; kicker: string; titulo: string; corpoHtml: string; url?: string; botaoLabel?: string; referencia?: string; data?: string; motivoEnvio: string; urlPreferencias?: string }) {
@@ -125,9 +145,12 @@ serveWithTelemetry('send-notification', async (req) => {
       if (Number(calls ?? 0) > 60) return fail('limite de envios por hora atingido', 429);
     }
     const dedupeKey = asStr(body.dedupe_key, `${eventType}:${asStr(body.entity_type, 'generic')}:${asStr(body.entity_id, crypto.randomUUID())}:${to}`);
+    const { data: dedupePrev } = await svc.from('notification_dispatch_log').select('status, resend_id').eq('dedupe_key', dedupeKey).eq('status', 'sent').maybeSingle();
+    if (dedupePrev) return json({ ok: true, status: 'sent', dedupe_key: dedupeKey, deduped: true, resend_id: dedupePrev.resend_id ?? null });
     const rendered = render(eventType, { ...body, email: to });
     const logBase = { tenant_id: tenantId || null, dedupe_key: dedupeKey, recipient_email: to, event_type: eventType, notification_type: eventType, payload: body, track_token: crypto.randomUUID() };
     const log = (extra: Record<string, unknown>) => svc.from('notification_dispatch_log').upsert({ ...logBase, ...extra }, { onConflict: 'dedupe_key' });
+    const attachments = attachmentsFromPayload(body, secretOk);
 
     if (memberId) {
       const { data: prefs } = await svc.from('member_notification_prefs').select('channel').eq('member_id', memberId).eq('event_type', eventType);
@@ -168,16 +191,18 @@ serveWithTelemetry('send-notification', async (req) => {
     const dispatchEnabled = settings?.dispatch_enabled === true;
     const dryRun = settings?.dry_run !== false;
     if (!dispatchEnabled || dryRun) {
-      await log({ status: 'queued', entity_type: asStr(body.entity_type), entity_id: asStr(body.entity_id), metadata: { dry_run: true, dispatch_enabled: dispatchEnabled } });
+      await log({ status: 'queued', entity_type: asStr(body.entity_type), entity_id: asStr(body.entity_id), metadata: { dry_run: true, dispatch_enabled: dispatchEnabled, attachment_count: attachments.length } });
       return json({ ok: true, status: 'queued', dry_run: true, dedupe_key: dedupeKey });
     }
     const apiKey = Deno.env.get('RESEND_API_KEY');
     const from = Deno.env.get('RESEND_FROM_EMAIL') ?? Deno.env.get('RESEND_FROM') ?? 'nao-responda@avisos.consultegeo.org';
     if (!apiKey) return fail('RESEND_API_KEY ausente: fail-closed', 500);
-    const res = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body: JSON.stringify({ from, to: [to], subject: rendered.subject, html: rendered.html, text: rendered.text, headers: { 'X-Entity-Ref-ID': dedupeKey } }) });
+    const resendPayload: Record<string, unknown> = { from, to: [to], subject: rendered.subject, html: rendered.html, text: rendered.text, headers: { 'X-Entity-Ref-ID': dedupeKey } };
+    if (attachments.length) resendPayload.attachments = attachments;
+    const res = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body: JSON.stringify(resendPayload) });
     const sent = await res.json().catch(() => ({})) as Record<string, unknown>;
     if (!res.ok) { await log({ status: 'failed', error_message: JSON.stringify(sent) }); return fail('falha ao enviar pelo Resend', 502, sent); }
-    await log({ status: 'sent', entity_type: asStr(body.entity_type), entity_id: asStr(body.entity_id), resend_id: asStr(sent.id), metadata: { provider: 'resend' } });
+    await log({ status: 'sent', entity_type: asStr(body.entity_type), entity_id: asStr(body.entity_id), resend_id: asStr(sent.id), metadata: { provider: 'resend', attachment_count: attachments.length } });
     return json({ ok: true, status: 'sent', dedupe_key: dedupeKey, resend_id: sent.id });
   } catch (e) {
     return fail((e as Error).message, 500);

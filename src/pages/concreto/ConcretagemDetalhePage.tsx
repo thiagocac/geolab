@@ -31,7 +31,7 @@ const val = (v: unknown) => v == null ? '' : String(v);
 const dateBr = (iso?: string | null) => { if (!iso) return '-'; const [y, m, d] = iso.slice(0, 10).split('-'); return d && m && y ? `${d}/${m}/${y}` : iso; };
 
 // Linha editável da conferência do OCR da ficha (valores como texto p/ edição livre).
-type FichaRowEdit = { criar: boolean; serie: string; nota_fiscal: string; volume_m3: string; slump_medido_cm: string; hora_moldagem: string; hora_saida_usina: string; hora_chegada_obra: string; hora_inicio_descarga: string; hora_fim_descarga: string; elementos_concretados: string; qtde_cps: string; conf: number | null };
+type FichaRowEdit = { criar: boolean; serie: string; nota_fiscal: string; volume_m3: string; slump_medido_mm: string; hora_moldagem: string; hora_saida_usina: string; hora_chegada_obra: string; hora_inicio_descarga: string; hora_fim_descarga: string; elementos_concretados: string; qtde_cps: string; conf: number | null };
 // Normaliza horário manuscrito lido por OCR ("8:5", "08h30", "8.30") -> "HH:MM"; inválido -> null.
 const hhmmNorm = (v: unknown): string | null => { const t = String(v ?? '').trim(); if (!t) return null; const m = /^(\d{1,2})\s*[:hH.,]?\s*(\d{2})$/.exec(t); if (!m) return null; const h = Math.min(23, Number(m[1])); return String(h).padStart(2, '0') + ':' + m[2]; };
 
@@ -257,7 +257,7 @@ export function ConcretagemDetalhePage() {
           serie: cv.serie != null ? String(cv.serie) : '',
           nota_fiscal: nf,
           volume_m3: cv.volume_m3 != null ? String(cv.volume_m3) : '',
-          slump_medido_cm: cv.slump_medido_cm != null ? String(cv.slump_medido_cm) : '',
+          slump_medido_mm: cv.slump_medido_mm != null ? String(cv.slump_medido_mm) : '',
           hora_moldagem: str(cv.hora_moldagem), hora_saida_usina: str(cv.hora_saida_usina), hora_chegada_obra: str(cv.hora_chegada_obra), hora_inicio_descarga: str(cv.hora_inicio_descarga), hora_fim_descarga: str(cv.hora_fim_descarga),
           elementos_concretados: str(cv.elementos_concretados), qtde_cps: cv.qtde_cps != null ? String(cv.qtde_cps) : '', conf: cv.conf ?? null,
         };
@@ -286,7 +286,7 @@ export function ConcretagemDetalhePage() {
         await addCaminhao(member.tenant_id, c, serie, {
           nota_fiscal: nf,
           volume_m3: num(r.volume_m3),
-          slump_medido_cm: num(r.slump_medido_cm),
+          slump_medido_mm: num(r.slump_medido_mm),
           hora_moldagem: hhmmNorm(r.hora_moldagem),
           hora_saida_usina: hhmmNorm(r.hora_saida_usina),
           hora_chegada_obra: hhmmNorm(r.hora_chegada_obra),
@@ -363,7 +363,7 @@ export function ConcretagemDetalhePage() {
                 return (
                   <Card key={cam.id} className="overflow-hidden">
                     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
-                      <div><div className="font-black text-slate-950 dark:text-slate-50">Caminhão {cam.serie ?? '-'} · NF {cam.nota_fiscal}</div><div className="mt-1 text-xs text-slate-500">{onR('placa') ? `Placa ${cam.placa ?? '-'} · ` : ''}{onR('volume_m3') ? `Volume ${cam.volume_m3 ?? '-'} m³ · ` : ''}{onR('slump') ? `Slump ${cam.slump_medido_cm ?? '-'} cm · ` : ''}{onR('temperatura_concreto') ? `Temp. ${cam.temperatura_concreto_c ?? '-'} °C` : ''}</div></div>
+                      <div><div className="font-black text-slate-950 dark:text-slate-50">Caminhão {cam.serie ?? '-'} · NF {cam.nota_fiscal}</div><div className="mt-1 text-xs text-slate-500">{onR('placa') ? `Placa ${cam.placa ?? '-'} · ` : ''}{onR('volume_m3') ? `Volume ${cam.volume_m3 ?? '-'} m³ · ` : ''}{onR('slump') ? `Slump ${cam.slump_medido_mm ?? '-'} mm · ` : ''}{onR('temperatura_concreto') ? `Temp. ${cam.temperatura_concreto_c ?? '-'} °C` : ''}</div></div>
                       {cam.rejeitado ? <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">Rejeitado</span> : <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-700">Recebido</span>}
                     </div>
                     <div className="grid gap-3 p-4 md:grid-cols-3">
@@ -412,7 +412,7 @@ export function ConcretagemDetalhePage() {
             {onR('placa') ? <Field label="Placa" value={val(camForm.placa)} onChange={(e) => patchCam('placa', e.target.value)} /> : null}
             {onR('motorista') ? <Field label="Motorista" value={val(camForm.motorista)} onChange={(e) => patchCam('motorista', e.target.value)} /> : null}
             {onR('volume_m3') ? <Field label="Volume (m³)" type="number" value={val(camForm.volume_m3)} onChange={(e) => patchCam('volume_m3', e.target.value === '' ? null : Number(e.target.value))} /> : null}
-            {onR('slump') ? <Field label="Slump medido (cm)" type="number" value={val(camForm.slump_medido_cm)} onChange={(e) => patchCam('slump_medido_cm', e.target.value === '' ? null : Number(e.target.value))} /> : null}
+            {onR('slump') ? <Field label="Slump medido (mm)" type="number" value={val(camForm.slump_medido_mm)} onChange={(e) => patchCam('slump_medido_mm', e.target.value === '' ? null : Number(e.target.value))} /> : null}
             {onR('temperatura_concreto') ? <Field label="Temperatura concreto (°C)" type="number" value={val(camForm.temperatura_concreto_c)} onChange={(e) => patchCam('temperatura_concreto_c', e.target.value === '' ? null : Number(e.target.value))} /> : null}
             {onR('horarios_transporte') ? <><Field label="Saída da usina" type="time" value={val(camForm.hora_saida_usina)} onChange={(e) => patchCam('hora_saida_usina', e.target.value)} /><Field label="Chegada à obra" type="time" value={val(camForm.hora_chegada_obra)} onChange={(e) => patchCam('hora_chegada_obra', e.target.value)} /></> : null}
             {onR('horarios_descarga') ? <><Field label="Início descarga" type="time" value={val(camForm.hora_inicio_descarga)} onChange={(e) => patchCam('hora_inicio_descarga', e.target.value)} /><Field label="Fim descarga" type="time" value={val(camForm.hora_fim_descarga)} onChange={(e) => patchCam('hora_fim_descarga', e.target.value)} /></> : null}
@@ -467,7 +467,7 @@ export function ConcretagemDetalhePage() {
                         <td className="py-1.5 pr-2"><input className="input h-7 w-12 px-1 text-xs" value={r.serie} onChange={(e) => setFichaRow(i, { serie: e.target.value })} aria-label="Série" /></td>
                         <td className="py-1.5 pr-2"><input className="input h-7 w-24 px-1 text-xs font-bold" value={r.nota_fiscal} onChange={(e) => setFichaRow(i, { nota_fiscal: e.target.value, criar: r.criar || !!e.target.value.trim() })} aria-label="Nota fiscal" /></td>
                         <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.volume_m3} onChange={(e) => setFichaRow(i, { volume_m3: e.target.value })} aria-label="Volume" /></td>
-                        <td className="py-1.5 pr-2"><input className="input h-7 w-14 px-1 text-xs" value={r.slump_medido_cm} onChange={(e) => setFichaRow(i, { slump_medido_cm: e.target.value })} aria-label="Slump" /></td>
+                        <td className="py-1.5 pr-2"><input className="input h-7 w-14 px-1 text-xs" value={r.slump_medido_mm} onChange={(e) => setFichaRow(i, { slump_medido_mm: e.target.value })} aria-label="Slump" /></td>
                         <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.hora_moldagem} onChange={(e) => setFichaRow(i, { hora_moldagem: e.target.value })} placeholder="HH:MM" aria-label="Hora da moldagem" /></td>
                         <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.hora_saida_usina} onChange={(e) => setFichaRow(i, { hora_saida_usina: e.target.value })} placeholder="HH:MM" aria-label="Saída da usina" /></td>
                         <td className="py-1.5 pr-2"><input className="input h-7 w-16 px-1 text-xs" value={r.hora_chegada_obra} onChange={(e) => setFichaRow(i, { hora_chegada_obra: e.target.value })} placeholder="HH:MM" aria-label="Chegada à obra" /></td>

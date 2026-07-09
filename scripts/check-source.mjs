@@ -47,6 +47,11 @@ for (const f of walk(fnRoot).filter(f=>f.endsWith('.ts'))) {
   const text=readFileSync(f,'utf8');
   if (/console\.(log|debug)\s*\(/.test(text)) failures.push(`${f}: console.log/debug proibido`);
   if (/esm\.sh/.test(text)) failures.push(`${f}: esm.sh proibido`);
+  const displayPath = f.slice(root.length + 1).replaceAll('\\','/');
+  const isSendNotification = displayPath === 'supabase/functions/send-notification/index.ts';
+  if (!isSendNotification && (/https:\/\/api\.resend\.com\/emails/.test(text) || /Deno\.env\.get\(['"]RESEND_API_KEY['"]\)/.test(text))) {
+    failures.push(`${displayPath}: saida Resend direta proibida (send-notification e o unico ponto Resend); delegue para supabase/functions/send-notification`);
+  }
 }
 if (failures.length) { for (const f of failures) process.stderr.write(f+'\n'); process.exit(1); }
 process.stdout.write('check-source OK\n');

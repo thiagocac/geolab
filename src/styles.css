@@ -24,7 +24,7 @@
   --color-magenta-700: oklch(40.4% 0.160 351);
   --color-magenta-800: oklch(32.9% 0.129 348);
   --color-magenta-900: oklch(25.2% 0.097 347);
-  --font-sans: 'Mona Sans', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -52,17 +52,7 @@
   ::placeholder { color: var(--ink-faint); opacity: 1; }
 }
 
-/* ---- fontes da marca GEOLAB (self-hosted; Mona Sans + JetBrains Mono) ---- */
-@font-face{
-  font-family:'Mona Sans';font-style:normal;font-display:swap;font-weight:200 900;font-stretch:75% 125%;
-  src:url('/fonts/MonaSans-Latin-Variable.woff2') format('woff2-variations');
-  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
-}
-@font-face{
-  font-family:'Mona Sans';font-style:normal;font-display:swap;font-weight:200 900;font-stretch:75% 125%;
-  src:url('/fonts/MonaSans-LatinExt-Variable.woff2') format('woff2-variations');
-  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+1EF2-1EFF,U+2C60-2C7F,U+A720-A7FF;
-}
+/* ---- fontes da marca GEOLAB: self-hosted somente p/ mono (JetBrains Mono); sans usa Inter/system. Mona Sans nao versionada -> removida p/ evitar 404 do preload. Auditoria v204 (GEA-005). ---- */
 /* M8 (auditoria de observabilidade, v179): JetBrains Mono em WOFF2 (fontsource 5.2.8, subset latin —
    cobre PT-BR) no lugar dos TTF: ~2-4x menor por peso, melhora first-load/LCP (Auditoria-Performance §3.5).
    Os .ttf antigos ficam órfãos no repo (remoção opcional; nada mais os referencia). */
@@ -75,7 +65,7 @@
   color-scheme:light;
   --navy:var(--color-navy);--navy-deep:var(--color-navy-deep);--purple:var(--color-purple);--magenta:var(--color-magenta);--magenta-light:var(--color-magenta-light);
   --grad-brand:linear-gradient(135deg in oklch,var(--color-navy) 0%,var(--color-purple) 55%,var(--color-magenta) 100%);
-  --font-sans:'Mona Sans',Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --font-sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --paper:oklch(98.2% 0.005 85);--surface:oklch(100% 0 0);--surface-2:oklch(98.4% 0.004 262);
   --ink:oklch(20.8% 0.040 262);--ink-soft:oklch(44.6% 0.037 262);--ink-faint:oklch(55.4% 0.040 262);
@@ -113,6 +103,11 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .input::placeholder{color:var(--ink-faint)}
 .input:focus{border-color:var(--magenta);box-shadow:0 0 0 3px rgb(197 17 126 / .16);outline:none}
 .input[aria-invalid="true"]{border-color:var(--magenta)}
+/* Campo numerico compacto (idade de controle / qtd CP em tabelas de padrao de moldagem):
+   largura fixa + sem setas nativas para o valor ficar sempre visivel. Especificidade .input.input-num vence .input{width:100%} */
+.input.input-num{width:5.5rem;min-width:5.5rem;text-align:center}
+.input.input-num::-webkit-outer-spin-button,.input.input-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.input.input-num{-moz-appearance:textfield;appearance:textfield}
 .btn{min-height:44px;border-radius:14px;border:1px solid transparent;padding:10px 14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2),box-shadow var(--dur-3),transform var(--dur-1) var(--ease-out)}
 .btn:disabled{cursor:not-allowed;opacity:.55}
 .btn-primary{background:var(--grad-brand);color:white}
@@ -128,7 +123,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .table tbody tr:hover{background:var(--surface-2)}
 .card{border:1px solid var(--line);background:var(--surface);border-radius:24px;box-shadow:var(--shadow-card);transition:box-shadow var(--dur-3) var(--ease-out),border-color var(--dur-3)}
 
-/* ---- tipografia display (Mona Sans: peso + largura editorial) ---- */
+/* ---- tipografia display (Inter/system: peso editorial) ---- */
 .display{font-weight:720;font-stretch:110%;letter-spacing:-.015em;line-height:1.12}
 
 /* ---- skeleton shimmer (guard global de prefers-reduced-motion ja desliga) ---- */
@@ -232,7 +227,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .theme-toggle button{min-height:36px;width:38px;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--ink-faint);border:none;cursor:pointer}
 .theme-toggle button.on{background:var(--surface-2);color:var(--ink)}
 .menu-btn{display:none}
-.nav-scrim{position:fixed;inset:0;background:rgb(2 6 23 / .45);z-index:38}
+.nav-scrim{position:fixed;inset:0;background:rgb(2 6 23 / .45);z-index:38;border:0;padding:0;appearance:none}
 
 /* ---- popover de notificações ---- */
 .dd-backdrop{position:fixed;inset:0;z-index:45}

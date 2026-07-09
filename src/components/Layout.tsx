@@ -97,7 +97,7 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <a href="#conteudo" className="skip-link">Pular para o conteúdo</a>
-      {open ? <div className="nav-scrim" onClick={() => setOpen(false)} /> : null}
+      {open ? <button type="button" className="nav-scrim" aria-label="Fechar menu" onClick={() => setOpen(false)} /> : null}
       <aside className={'sidebar' + (open ? ' open' : '')}>
         <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <svg viewBox="0 0 104 100" width="30" height="29" aria-hidden="true" style={{ flexShrink: 0 }}>

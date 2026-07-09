@@ -2247,6 +2247,7 @@ export type Database = {
           rejeitado: boolean
           serie: number | null
           slump_medido_cm: number | null
+          slump_medido_mm: number | null
           temperatura_concreto_c: number | null
           tempo_transporte_min: number | null
           tenant_id: string
@@ -2275,6 +2276,7 @@ export type Database = {
           rejeitado?: boolean
           serie?: number | null
           slump_medido_cm?: number | null
+          slump_medido_mm?: number | null
           temperatura_concreto_c?: number | null
           tempo_transporte_min?: number | null
           tenant_id: string
@@ -2303,6 +2305,7 @@ export type Database = {
           rejeitado?: boolean
           serie?: number | null
           slump_medido_cm?: number | null
+          slump_medido_mm?: number | null
           temperatura_concreto_c?: number | null
           tempo_transporte_min?: number | null
           tenant_id?: string
@@ -3660,7 +3663,9 @@ export type Database = {
           resistencia_desforma_mpa: number | null
           schema_campos: Json
           slump_previsto_cm: number | null
+          slump_previsto_mm: number | null
           slump_tolerancia_cm: number | null
+          slump_tolerancia_mm: number | null
           tem_dosagem_agua: boolean
           tem_fibra: boolean
           tenant_id: string
@@ -3699,7 +3704,9 @@ export type Database = {
           resistencia_desforma_mpa?: number | null
           schema_campos?: Json
           slump_previsto_cm?: number | null
+          slump_previsto_mm?: number | null
           slump_tolerancia_cm?: number | null
+          slump_tolerancia_mm?: number | null
           tem_dosagem_agua?: boolean
           tem_fibra?: boolean
           tenant_id: string
@@ -3738,7 +3745,9 @@ export type Database = {
           resistencia_desforma_mpa?: number | null
           schema_campos?: Json
           slump_previsto_cm?: number | null
+          slump_previsto_mm?: number | null
           slump_tolerancia_cm?: number | null
+          slump_tolerancia_mm?: number | null
           tem_dosagem_agua?: boolean
           tem_fibra?: boolean
           tenant_id?: string

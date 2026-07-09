@@ -20,7 +20,7 @@ export const CAMPOS_RECEBIMENTO: CampoCatalogo[] = [
   { key: 'horarios_transporte', label: 'Horários de transporte', hint: 'Saída da usina e chegada à obra.', on: true },
   { key: 'horarios_descarga', label: 'Horários de descarga', hint: 'Início e fim da descarga.', on: true },
   { key: 'hora_moldagem', label: 'Horário da moldagem', hint: 'Hora real da coleta dos CPs.', on: true },
-  { key: 'slump', label: 'Abatimento / slump medido (cm)', hint: 'Campo central do recebimento NBR 7212.', on: true },
+  { key: 'slump', label: 'Abatimento / slump medido (mm)', hint: 'Campo central do recebimento NBR 7212.', on: true },
   { key: 'temperatura_concreto', label: 'Temperatura do concreto (°C)', hint: 'Medida no recebimento (tela e ficha). A exibição no laudo é controlada na aba Laudo (“Temperatura do concreto”).', on: true },
   { key: 'agua_adicionada', label: 'Água adicionada na obra', hint: 'Registra sim/não e litros adicionados.', on: true },
   { key: 'rejeicao', label: 'Caminhão rejeitado + motivo', hint: 'Registro simples de rejeição/ressalva.', on: true },
