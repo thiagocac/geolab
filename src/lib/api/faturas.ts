@@ -20,7 +20,8 @@ export async function listFaturas(status?: string, tenantId?: string): Promise<F
 }
 
 export async function listMedicoesFaturaveis(): Promise<MedicaoFaturavel[]> {
-  const { data: meds, error } = await db.from('medicoes').select('id, competencia, valor_total, client_id').eq('status', 'fechada').is('deleted_at', null).order('created_at', { ascending: false });
+  // Faturável = medição fechada, sem fatura ativa. Aceita também 'aberta' (medições antigas/seed usam esse rótulo). Exclui 'faturada'/'cancelada'.
+  const { data: meds, error } = await db.from('medicoes').select('id, competencia, valor_total, client_id, status').in('status', ['fechada', 'aberta']).is('deleted_at', null).order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   const { data: fats } = await db.from('faturas').select('medicao_id, status').is('deleted_at', null).neq('status', 'cancelada');
   const faturadas = new Set(((fats ?? []) as any[]).map((f) => String(f.medicao_id)));

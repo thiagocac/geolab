@@ -1,25 +1,19 @@
-# GEOLAB — v203 — instruções de aplicação
+# GEOLAB — v207 — instruções de aplicação
 
-Release **frontend puro**. Sem migration, sem Edge Function. `CACHE_NAME` + `APP_VERSION` bumpados juntos para **v203**.
+**Saúde operacional — p95 do `notify-event`.** Backend (EF) já deployado via MCP; este zip carrega o **espelho** (commit obrigatório senão o push reverte) + o bump.
 
-## O que muda — Padrão de moldagem na Nova Programação
-Na tela **Nova programação** (`/programacoes/nova`), o padrão de moldagem sai do bloco inline e passa a um **botão "Padrão de moldagem"** que abre o editor em **modal**. A semente (default) segue estas regras:
+## Backend — JÁ DEPLOYADO (MCP)
+- **EF `notify-event` v50** (sha `9e91da70…`, era `35f50b16…`; `verify_jwt=false` preservado): o fan-out para `send-notification` deixou de ser **sequencial** (`for...await`, somava ~0,5–1,5s por destinatário → p95 ~8,3s) e passou a **paralelo em lotes de 12** (`Promise.all`, com `try/catch` por envio). p95 esperado ≈ 1 round-trip do `send-notification` (~1,5s). Semântica preservada (mesmos resultados por destinatário, outbox marcado `processed` ao fim).
+- **Espelho** `supabase/functions/notify-event/index.ts` atualizado — precisa ir pro Git para o próximo push não reverter o deploy.
 
-- **Primeira concretagem** (nenhuma cadastrada ainda no sistema): abre com **2 CP de 28 dias**.
-- **Com concretagens já cadastradas**: a semente é o **padrão de moldagem da última concretagem cadastrada** no laboratório (a mais recente por `created_at`). Como cada programação salva vira "a última", a **próxima** programação já abre com o mesmo padrão da anterior — sem redigitar.
-- **Traço cadastrado selecionado**: o padrão do traço prevalece (herdado). Voltar para "Manual" volta a semear pela última concretagem.
-- O usuário pode ajustar tudo no modal; a lista fica sempre ordenada da menor idade para a maior e o valor esperado é calculado do FCK.
+## Bounce de e-mail 12,5% — DIAGNOSTICADO, sem ação de código
+- Era **pico histórico de endereços de teste** (`obras@isa.example.com` — domínio reservado, bounce sempre; `demo@concresoft.com.br`) já **suprimidos** (`email_suppressions`; 15 `suppressed` no período). Nenhum member usa `.example.com`.
+- O alarme **não está mais ativo**: janela 24h atual = 5 envios / 0 bounces, e o piso `alert_email_min_sent=20` já barra ruído de baixo volume. Auto-resolvente; não mexi no limiar (seria mascarar).
 
-O card mostra um **resumo** do padrão atual (ex.: `2×28d  (2 CP)`) e a origem da sugestão.
+## Arquivos (patches)
+- supabase/functions/notify-event/index.ts (espelho paralelizado)
+- src/lib/telemetry/core.ts (APP_VERSION v207)
+- public/sw.js (CACHE_NAME v207)
 
-## Arquivos alterados (patches)
-- src/lib/api/concretagem.ts        (nova função `ultimoPadraoMoldagem(tenantId)`)
-- src/pages/concreto/NovaProgramacaoPage.tsx  (botão + modal + semente da última concretagem; fallback 2×28d)
-- src/lib/telemetry/core.ts         (APP_VERSION = v203)
-- public/sw.js                      (CACHE_NAME = consultegeo-geolab-v203)
-
-## Como aplicar
-Copiar estes arquivos por cima da árvore atual (mesmos caminhos) e dar push (GitHub → Netlify CI builda).
-
-## Gate local (espelho do Netlify)
-check-source OK · biome lint 0 · vitest 23/23 · vite build OK. `tsc --noEmit` roda no Netlify CI.
+## Gate
+check-source OK · biome 0 · vitest 23/23 · esbuild da EF OK. Frontend sem mudança de código (só bump). `vite`/`tsc` no Netlify.

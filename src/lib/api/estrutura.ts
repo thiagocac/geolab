@@ -35,9 +35,14 @@ export async function delEstrutura(table: string, id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-// Peças de uma obra para o seletor na concretagem (label amigável).
+// Peças de uma obra para o seletor na concretagem (label amigável) — repontado p/ work_structures (v204).
 export async function listPecasObra(workId: string): Promise<{ id: string; label: string }[]> {
-  const { data, error } = await db.from('units').select('id, codigo, nome, unidade_completa, ativa, ordem').eq('work_id', workId).is('deleted_at', null).order('ordem', { ascending: true });
+  const { data, error } = await db.from('work_structures').select('nome, pecas').eq('work_id', workId).is('deleted_at', null).order('ordem', { ascending: true });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Record<string, any>[]).filter((r) => r.ativa !== false).map((r) => ({ id: String(r.id), label: String(r.unidade_completa || ((r.codigo ? r.codigo + ' - ' : '') + (r.nome ?? r.id))) }));
+  const out: { id: string; label: string }[] = [];
+  for (const s of (data ?? []) as Record<string, any>[]) {
+    const est = String(s.nome ?? '');
+    for (const p of (Array.isArray(s.pecas) ? s.pecas : []) as Record<string, any>[]) out.push({ id: String(p.id), label: est + ' \u00b7 ' + String(p.nome ?? '') });
+  }
+  return out;
 }

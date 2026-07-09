@@ -82,10 +82,20 @@ serveWithTelemetry('notify-event', async (req) => {
 
     const sendUrl = `${url}/functions/v1/send-notification`;
     const results: Array<{ email: string; status: number; ok: boolean }> = [];
-    for (const r of uniq) {
+    // Fan-out PARALELO (auditoria 2026-07-09: o p95 de ~8,3s era o for-await sequencial somando os round-trips do send-notification).
+    const sendOne = async (r: Record<string, unknown>) => {
       const payload = { ...body, tenant_id: tenantId, event_type: eventType, member_id: r.id, email: r.email, dedupe_key: asStr(body.dedupe_key, `${eventType}:${asStr(body.entity_type, 'generic')}:${asStr(body.entity_id, crypto.randomUUID())}:${r.id}`) };
-      const res = await fetch(sendUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-notify-secret': settings?.dispatch_secret ?? '' }, body: JSON.stringify(payload) });
-      results.push({ email: asStr(r.email), status: res.status, ok: res.ok });
+      try {
+        const res = await fetch(sendUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-notify-secret': settings?.dispatch_secret ?? '' }, body: JSON.stringify(payload) });
+        return { email: asStr(r.email), status: res.status, ok: res.ok };
+      } catch (_e) {
+        return { email: asStr(r.email), status: 0, ok: false };
+      }
+    };
+    const CONCURRENCY = 12;
+    for (let i = 0; i < uniq.length; i += CONCURRENCY) {
+      const batch = await Promise.all(uniq.slice(i, i + CONCURRENCY).map((r: Record<string, unknown>) => sendOne(r)));
+      for (const b of batch) results.push(b);
     }
     if (body.outbox_id) await svc.from('notify_event_outbox').update({ status: 'processed', processed_at: new Date().toISOString(), attempts: 1 }).eq('id', asStr(body.outbox_id));
     return json({ ok: true, event_type: eventType, recipients: results.length, results });

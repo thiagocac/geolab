@@ -11,6 +11,8 @@ import { Modal } from '../../components/ui/Modal';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
 import { FornecedorDatalist, FORNECEDORES_DL } from '../../components/domain/FornecedorDatalist';
 import { createConcretagem, listTracosComFck, ultimoPadraoMoldagem } from '../../lib/api/concretagem';
+import { listEstruturas } from '../../lib/api/estruturaObra';
+import { EstruturaPecaSelect } from '../../components/domain/EstruturaPecaSelect';
 import { TracoOptions } from '../../components/TracoOptions';
 import { listReference } from '../../lib/api/client';
 import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaboradores';
@@ -43,6 +45,7 @@ export function NovaProgramacaoPage() {
   const clientes = useQuery({ queryKey: ['ref', 'lab_clients', 'prog'], queryFn: () => listReference('lab_clients', 'razao_social') });
   const obras = useQuery({ queryKey: ['ref', 'client_works', form.client_id, 'prog'], queryFn: () => listReference('client_works', 'nome', form.client_id ? { client_id: String(form.client_id) } : undefined), enabled: !!form.client_id });
   const tracos = useQuery({ queryKey: ['tracos-fck', form.work_id, form.client_id], queryFn: () => listTracosComFck(form.work_id ? String(form.work_id) : null, form.client_id ? String(form.client_id) : null) });
+  const estruturas = useQuery({ queryKey: ['estruturas-prog', form.work_id], queryFn: () => listEstruturas(String(form.work_id)), enabled: !!form.work_id });
   const colabRef = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradoresRef });
   const moldadores = filtrarPorFuncao(colabRef.data ?? [], 'Moldador');
   // Semente do padrao de moldagem: ultima concretagem cadastrada no sistema (senao fica no default 2x28d).
@@ -69,7 +72,7 @@ export function NovaProgramacaoPage() {
         data_programada: str(form.data_programada) || null, hora_programada: str(form.hora_programada) || null,
         local_texto: str(form.local_texto) || null, volume_programado_m3: num(form.volume_programado_m3),
         dimensao_cp: str(form.dimensao_cp) || '100x200', moldador_id: str(form.moldador_id) || null,
-        observacoes: str(form.observacoes) || null, metadata: { padrao_moldagem: padroesToDb(padrao), origem_ui: 'programacao-lab-v203' },
+        observacoes: str(form.observacoes) || null, metadata: { padrao_moldagem: padroesToDb(padrao), origem_ui: 'programacao-lab-v204', ...(form.peca_id ? { estrutura_id: form.estrutura_id, peca_id: form.peca_id, peca_nome: form.peca_nome } : {}) },
       };
       const created = await createConcretagem(member.tenant_id, payload);
       await qc.invalidateQueries({ queryKey: ['programacoes'] });
@@ -102,7 +105,8 @@ export function NovaProgramacaoPage() {
             <Field label="Data prevista" type="date" value={val(form.data_programada)} onChange={(e) => patch('data_programada', e.target.value)} />
             <Field label="Hora prevista" type="time" value={val(form.hora_programada)} onChange={(e) => patch('hora_programada', e.target.value)} />
             <Field label="Volume previsto (m³)" type="number" value={val(form.volume_programado_m3)} onChange={(e) => patch('volume_programado_m3', e.target.value)} />
-            <Field label="Local / peça" value={val(form.local_texto)} onChange={(e) => patch('local_texto', e.target.value)} />
+            {(estruturas.data ?? []).length ? <EstruturaPecaSelect estruturas={estruturas.data ?? []} onPick={(v) => setForm((s) => ({ ...s, local_texto: v.local, estrutura_id: v.estrutura_id, peca_id: v.peca_id, peca_nome: v.peca_nome }))} /> : null}
+            <Field label={(estruturas.data ?? []).length ? 'Local / peça (ou digite)' : 'Local / peça'} value={val(form.local_texto)} onChange={(e) => patch('local_texto', e.target.value)} />
             <SelectField label="Dimensão CP" value={val(form.dimensao_cp)} onChange={(e) => patch('dimensao_cp', e.target.value)}><option value="100x200">100 x 200 mm</option><option value="150x300">150 x 300 mm</option></SelectField>
             <SelectField label="Moldador" value={val(form.moldador_id)} onChange={(e) => patch('moldador_id', e.target.value)}><option value="">A definir</option>{moldadores.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</SelectField>
           </div>

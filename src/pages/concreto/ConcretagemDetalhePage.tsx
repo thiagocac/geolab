@@ -18,7 +18,8 @@ import { TimelineList } from '../../components/TimelineList';
 import { listConcretagemTimeline, listWorkTimeline } from '../../lib/api/timeline';
 import { getConfigLab } from '../../lib/api/preferencias';
 import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaboradores';
-import { listPecasObra } from '../../lib/api/estrutura';
+import { listEstruturas } from '../../lib/api/estruturaObra';
+import { EstruturaPecaSelect } from '../../components/domain/EstruturaPecaSelect';
 import { CAMPOS_CONCRETAGEM, CAMPOS_RECEBIMENTO, initCampoState } from '../../lib/concreto/camposEnsaioLaudo';
 import { bumpNumeracao, normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../../lib/concreto';
 
@@ -98,7 +99,7 @@ export function ConcretagemDetalhePage() {
   const colabRef = useQuery({ queryKey: ['colaboradores-ref'], queryFn: listColaboradoresRef });
   const colaboradores = filtrarPorFuncao(colabRef.data ?? [], 'Moldador');
   const cfg = useQuery({ queryKey: ['config_concretagem_recebimento', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
-  const pecas = useQuery({ queryKey: ['pecas-conc-detail', conc.data?.work_id ?? 'none'], queryFn: () => listPecasObra(conc.data?.work_id ?? ''), enabled: !!conc.data?.work_id });
+  const estruturas = useQuery({ queryKey: ['estruturas-conc-detail', conc.data?.work_id ?? 'none'], queryFn: () => listEstruturas(conc.data?.work_id ?? ''), enabled: !!conc.data?.work_id });
   const [tlScope, setTlScope] = useState<'concretagem' | 'obra'>('concretagem');
   const tl = useQuery({ queryKey: ['conc-timeline', id, tlScope, conc.data?.work_id ?? null], queryFn: () => { const w = conc.data?.work_id; return (tlScope === 'obra' && w) ? listWorkTimeline(w) : listConcretagemTimeline(id); }, enabled: !!conc.data });
 
@@ -333,7 +334,7 @@ export function ConcretagemDetalhePage() {
               <Field label="FCK previsto (MPa)" type="number" value={val(form.fck_previsto)} onChange={(e) => patch('fck_previsto', e.target.value)} />
               {onC('fornecedor') ? <><Field label="Fornecedor / central" list={FORNECEDORES_DL} value={val(form.fornecedor_texto)} onChange={(e) => patch('fornecedor_texto', e.target.value)} /><FornecedorDatalist /></> : null}
               {onC('data_hora') ? <><Field label="Data programada" type="date" value={val(form.data_programada)} onChange={(e) => patch('data_programada', e.target.value)} /><Field label="Hora programada" type="time" value={val(form.hora_programada)} onChange={(e) => patch('hora_programada', e.target.value)} /><Field label="Data real" type="date" value={val(form.data_real)} onChange={(e) => patch('data_real', e.target.value)} /><Field label="Início real" type="time" value={val(form.hora_inicio)} onChange={(e) => patch('hora_inicio', e.target.value)} /><Field label="Fim real" type="time" value={val(form.hora_fim)} onChange={(e) => patch('hora_fim', e.target.value)} /></> : null}
-              {onC('local_peca') && (pecas.data ?? []).length ? <SelectField label="Peça da estrutura" value="" onChange={(e) => { const pc = (pecas.data ?? []).find((x) => x.id === e.target.value); if (pc) patch('local_texto', pc.label); }}><option value="">Selecionar para preencher local</option>{(pecas.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</SelectField> : null}
+              {onC('local_peca') && (estruturas.data ?? []).length ? <EstruturaPecaSelect estruturas={estruturas.data ?? []} onPick={(v) => patch('local_texto', v.local)} /> : null}
               {onC('local_peca') ? <Field label="Local / peça" value={val(form.local_texto)} onChange={(e) => patch('local_texto', e.target.value)} /> : null}
               {onC('volume_programado') ? <><Field label="Volume programado (m³)" type="number" value={val(form.volume_programado_m3)} onChange={(e) => patch('volume_programado_m3', e.target.value)} /><Field label="Volume lançado (m³)" type="number" value={val(form.volume_lancado_m3)} onChange={(e) => patch('volume_lancado_m3', e.target.value)} /></> : null}
               {onC('moldador') ? <SelectField label="Moldador" value={val(form.moldador_id)} onChange={(e) => patch('moldador_id', e.target.value)}><option value="">-</option>{colaboradores.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</SelectField> : null}

@@ -13,13 +13,35 @@ import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, open
 import { listPortalResultados, listPortalLaudosView } from '../../lib/api/portalResultados';
 import { submitPortalCorrecao, getPortalCorrecaoConfig, listMeusPedidosCorrecao } from '../../lib/api/portalCorrecao';
 import type { PortalCorrecaoInput } from '../../lib/portal/types';
+import { PortalEstruturaTab } from './PortalEstruturaTab';
+import { listPortalEstruturas } from '../../lib/api/portalEstrutura';
 
 const blank = (): PortalProgramacaoInput & { key: string } => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown): number | null => { const s = str(v).replace(',', '.'); if (!s) return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
 const anexosDe = (md: unknown): PortalAnexo[] => { const o = md as Record<string, unknown> | null; return o && Array.isArray(o.anexos) ? o.anexos as PortalAnexo[] : []; };
 
-type Tab = 'programacao' | 'resultados';
+type Tab = 'programacao' | 'resultados' | 'estrutura';
+
+// Célula "Local / peça" da tabela de programação: se a obra tem estrutura, mostra Estrutura + Peça
+// (preenchem o texto); senão, texto livre.
+function PortalLocalCell({ workId, value, onChange }: { workId: string; value: string; onChange: (v: string) => void }) {
+  const est = useQuery({ queryKey: ['portal-estruturas', workId], queryFn: () => listPortalEstruturas(workId), enabled: !!workId });
+  const [estId, setEstId] = useState('');
+  const lista = est.data ?? [];
+  const cur = lista.find((e) => e.id === estId) ?? null;
+  return (
+    <div className="min-w-[200px] space-y-1">
+      {lista.length ? (
+        <div className="flex gap-1">
+          <select className="input !min-h-9 w-1/2 px-1 text-xs" value={estId} onChange={(e) => setEstId(e.target.value)} aria-label="Estrutura"><option value="">Estrutura</option>{lista.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}</select>
+          <select className="input !min-h-9 w-1/2 px-1 text-xs" value="" disabled={!cur} onChange={(e) => { const p = cur?.pecas.find((x) => x.id === e.target.value); if (p && cur) onChange(cur.nome + ' · ' + p.nome); }} aria-label="Peça"><option value="">Peça</option>{(cur?.pecas ?? []).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select>
+        </div>
+      ) : null}
+      <input className="input min-w-[180px]" value={value} onChange={(e) => onChange(e.target.value)} placeholder="Ex.: laje torre A" />
+    </div>
+  );
+}
 
 export function ClientePortalPage() {
   const toast = useToast();
@@ -65,6 +87,7 @@ export function ClientePortalPage() {
       <div role="tablist" aria-label="Seções do portal" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
         <button role="tab" type="button" aria-selected={tab === 'programacao'} onClick={() => setTab('programacao')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'programacao' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Programação</button>
         <button role="tab" type="button" aria-selected={tab === 'resultados'} onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button>
+        <button role="tab" type="button" aria-selected={tab === 'estrutura'} onClick={() => setTab('estrutura')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'estrutura' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Estrutura da Obra</button>
       </div>
 
       {tab === 'programacao' ? (
@@ -80,7 +103,7 @@ export function ClientePortalPage() {
                       <td className="p-2"><select className="input min-w-[190px]" value={r.work_id} onChange={(e) => patch(r.key, 'work_id', e.target.value)}><option value="">Selecione</option>{(works.data ?? []).map((w) => <option key={w.id} value={w.id}>{w.nome}</option>)}</select></td>
                       <td><input className="input min-w-[140px]" type="date" value={r.data_programada} onChange={(e) => patch(r.key, 'data_programada', e.target.value)} /></td>
                       <td><input className="input min-w-[100px]" type="time" value={r.hora_programada ?? ''} onChange={(e) => patch(r.key, 'hora_programada', e.target.value)} /></td>
-                      <td><input className="input min-w-[180px]" value={r.local_texto ?? ''} onChange={(e) => patch(r.key, 'local_texto', e.target.value)} placeholder="Ex.: laje torre A" /></td>
+                      <td><PortalLocalCell workId={r.work_id} value={r.local_texto ?? ''} onChange={(v) => patch(r.key, 'local_texto', v)} /></td>
                       <td><input className="input min-w-[220px]" value={r.traco_texto ?? ''} onChange={(e) => patch(r.key, 'traco_texto', e.target.value)} placeholder="FCK 30 | BRITA 1 | SLUMP 10±2" /></td>
                       <td><input className="input w-24" type="number" value={r.fck_previsto ?? ''} onChange={(e) => patch(r.key, 'fck_previsto', e.target.value)} /></td>
                       <td><input className="input min-w-[160px]" value={r.fornecedor_texto ?? ''} onChange={(e) => patch(r.key, 'fornecedor_texto', e.target.value)} /></td>
@@ -113,6 +136,8 @@ export function ClientePortalPage() {
             )}
           </Card>
         </>
+      ) : tab === 'estrutura' ? (
+        <PortalEstruturaTab works={(works.data ?? []).map((w) => ({ id: w.id, nome: w.nome }))} />
       ) : (
         <LaudosResultadosPanel
           works={(works.data ?? []).map((w) => ({ id: w.id, nome: w.nome }))}
