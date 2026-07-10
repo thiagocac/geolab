@@ -25,6 +25,7 @@ const ConfiguracoesPage = lazy(() => import('./pages/gestao/ConfiguracoesPage').
 const EtiquetasPage = lazy(() => import('./pages/concreto/EtiquetasPage').then((m) => ({ default: m.EtiquetasPage })));
 const LaudosPage = lazy(() => import('./pages/concreto/LaudosPage').then((m) => ({ default: m.LaudosPage })));
 const LabDashboardsPage = lazy(() => import('./pages/dashboards/LabDashboardsPage').then((m) => ({ default: m.LabDashboardsPage })));
+const TemplatesDocumentosPage = lazy(() => import('./pages/gestao/TemplatesDocumentosPage').then((m) => ({ default: m.TemplatesDocumentosPage })));
 // [v202] Aceitacao de lotes retirada do sistema (mantida implementada p/ religar). Reative: descomente este import, a Route /lotes (App.tsx) e o item de menu (Layout.tsx).
 // const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
 const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
@@ -152,6 +153,7 @@ export function App() {
             <Route path="/gestao/contratos-financeiro" element={<FinanceiroPage inicial="contratos" />} />
             <Route path="/notificacoes" element={<ConfiguracoesPage inicial="notificacoes" />} />
             <Route path="/gestao/pendencias" element={<PendenciasPage />} />
+            <Route path="/gestao/templates-documentos" element={can('documento_template.ver') ? <TemplatesDocumentosPage /> : <Navigate to="/" replace />} />
             <Route path="/preferencias" element={<ConfiguracoesPage inicial="preferencias" />} />
             <Route path="/medicoes" element={<FinanceiroPage inicial="medicao" />} />
             <Route path="/produtividade" element={<ProdutividadePage />} />

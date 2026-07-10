@@ -6,9 +6,20 @@ export type EstruturaPecaPick = { local: string; estrutura_id: string; estrutura
 
 // Dois selects encadeados: Estrutura (Bloco/Torre) -> Peça (Unidade). Ao escolher a peça, chama onPick
 // com o texto "Estrutura · Peça" e os ids (para gravar em local_texto + metadata).
-export function EstruturaPecaSelect({ estruturas, onPick }: { estruturas: Estrutura[]; onPick: (v: EstruturaPecaPick) => void }) {
-  const [estId, setEstId] = useState('');
-  const [pecaId, setPecaId] = useState('');
+export function EstruturaPecaSelect({ estruturas, onPick, initialLocal }: { estruturas: Estrutura[]; onPick: (v: EstruturaPecaPick) => void; initialLocal?: string }) {
+  // v216: hidrata a seleção a partir do local salvo ("Estrutura · Peça") — reabrir a tela
+  // mostra a peça escolhida em vez de voltar ao placeholder.
+  const [estId, setEstId] = useState(() => {
+    const [en, pn] = String(initialLocal ?? '').split(' · ');
+    const e = en ? estruturas.find((x) => x.nome === en.trim()) : null;
+    return e && (!pn || e.pecas.some((pc) => pc.nome === pn.trim())) ? e.id : '';
+  });
+  const [pecaId, setPecaId] = useState(() => {
+    const [en, pn] = String(initialLocal ?? '').split(' · ');
+    const e = en ? estruturas.find((x) => x.nome === en.trim()) : null;
+    const pc = e && pn ? e.pecas.find((x) => x.nome === pn.trim()) : null;
+    return pc ? pc.id : '';
+  });
   const est = estruturas.find((e) => e.id === estId) ?? null;
   return (
     <>

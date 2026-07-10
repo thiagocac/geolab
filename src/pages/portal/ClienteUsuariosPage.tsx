@@ -107,8 +107,8 @@ export function ClienteUsuariosPage() {
       )}
       <Modal open={open} title="Novo usuario de cliente" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void criar()} disabled={busy}>{busy ? 'Criando...' : 'Criar acesso'}</Button></>}>
         <div className="space-y-4">
-          <Field label="Nome*" value={String(f.nome ?? '')} onChange={(e) => setF((s) => ({ ...s, nome: e.target.value }))} />
-          <Field label="E-mail / usuario*" type="email" value={String(f.email ?? '')} onChange={(e) => setF((s) => ({ ...s, email: e.target.value }))} />
+          <Field label="Nome" required value={String(f.nome ?? '')} onChange={(e) => setF((s) => ({ ...s, nome: e.target.value }))} />
+          <Field label="E-mail / usuario" required type="email" value={String(f.email ?? '')} onChange={(e) => setF((s) => ({ ...s, email: e.target.value }))} />
           <Field label="Telefone" value={String(f.telefone ?? '')} onChange={(e) => setF((s) => ({ ...s, telefone: e.target.value }))} />
           <div className="flex items-end gap-2"><div className="flex-1 min-w-0"><Field label="Senha provisoria" value={String(f.password ?? '')} onChange={(e) => setF((s) => ({ ...s, password: e.target.value }))} /></div><Button variant="secondary" onClick={() => setF((s) => ({ ...s, password: genPass() }))}>Gerar</Button></div>
           <SelectField label="Filtrar obras por cliente" value={String(f.client_id ?? '')} onChange={(e) => setF((s) => ({ ...s, client_id: e.target.value }))}><option value="">Todos</option>{(clients.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectField>

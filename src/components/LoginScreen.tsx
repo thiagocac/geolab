@@ -58,10 +58,10 @@ export function LoginScreen() {
           <div className="kicker">Autenticação</div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: '-.015em', color: 'var(--ink)' }}>Acessar o laboratório</h1>
           <p style={{ margin: '0 0 6px', color: 'var(--ink-faint)', fontSize: 13 }}>Controle tecnológico de materiais para laboratórios</p>
-          <Field label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={onEnter} autoComplete="username" />
+          <Field label="E-mail" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={onEnter} autoComplete="username" />
           {modo === 'login' ? (
             <>
-              <Field label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={onEnter} autoComplete="current-password" />
+              <Field label="Senha" required type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={onEnter} autoComplete="current-password" />
               {error ? <div style={{ color: 'var(--magenta)', fontSize: 13 }}>{error}</div> : null}
               <Button onClick={() => void submit()} disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</Button>
               <button type="button" style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'var(--magenta)', cursor: 'pointer' }} onClick={() => { setModo('reset'); setResetMsg(null); }}>Esqueci minha senha</button>

@@ -53,6 +53,7 @@ const sections: Section[] = [
     { to: '/gestao/emails', label: 'E-mails', icon: FileText, roles: adminRoles, perm: 'email.gerenciar' },
     { to: '/gestao/timeline', label: 'Linha do tempo', icon: Clock, roles: adminRoles, perm: 'auditoria.ver' },
     { to: '/gestao/documentos', label: 'Documentos e gate', icon: ClipboardCheck, roles: adminRoles, perm: 'docgate.ver' },
+    { to: '/gestao/templates-documentos', label: 'Templates de documentos', icon: FileText, roles: labRoles, perm: 'documento_template.ver' },
     { to: '/gestao/rbac', label: 'Permissões', icon: Users, roles: adminRoles, perm: 'rbac.gerenciar' },
     { to: '/gestao/delegacoes', label: 'Delegações', icon: Users, roles: adminRoles, perm: 'workflow.delegar' },
     { to: '/gestao/seguranca-conta', label: 'Segurança da conta', icon: ShieldAlert, roles: labRoles },

@@ -7,9 +7,10 @@ import { MedicaoPage } from './MedicaoPage';
 import { FaturasPage } from './FaturasPage';
 import { ContratosFinanceiroPage } from './ContratosFinanceiroPage';
 import { PropostasPage } from './PropostasPage';
+import { CatalogoServicosPage } from './CatalogoServicosPage';
 
 // C3 — módulo financeiro consolidado em abas. Cada aba é a página existente (papéis por aba).
-type Aba = 'medicao' | 'faturas' | 'contratos' | 'propostas';
+type Aba = 'medicao' | 'faturas' | 'contratos' | 'propostas' | 'catalogo';
 export function FinanceiroPage({ inicial = 'medicao' }: { inicial?: Aba }) {
   const { hasRole, can } = useAuth();
   const abas: { key: Aba; label: string; ok: boolean }[] = [
@@ -17,6 +18,7 @@ export function FinanceiroPage({ inicial = 'medicao' }: { inicial?: Aba }) {
     { key: 'faturas', label: 'Faturas', ok: hasRole('admin', 'admin_consulte', 'financeiro') },
     { key: 'contratos', label: 'Contratos', ok: hasRole('admin', 'admin_consulte') },
     { key: 'propostas', label: 'Propostas', ok: can('proposta.ver') },
+    { key: 'catalogo', label: 'Catálogo', ok: can('servico_catalogo.ver') },
   ];
   const disp = abas.filter((a) => a.ok);
   const [sp, setSp] = useSearchParams();
@@ -28,7 +30,7 @@ export function FinanceiroPage({ inicial = 'medicao' }: { inicial?: Aba }) {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {disp.map((a) => <Button key={a.key} variant={aba === a.key ? 'primary' : 'ghost'} onClick={() => trocar(a.key)}>{a.label}</Button>)}
       </div>
-      {aba === 'medicao' ? <MedicaoPage /> : aba === 'faturas' ? <FaturasPage /> : aba === 'propostas' ? <PropostasPage /> : <ContratosFinanceiroPage />}
+      {aba === 'medicao' ? <MedicaoPage /> : aba === 'faturas' ? <FaturasPage /> : aba === 'propostas' ? <PropostasPage /> : aba === 'catalogo' ? <CatalogoServicosPage /> : <ContratosFinanceiroPage />}
     </div>
   );
 }

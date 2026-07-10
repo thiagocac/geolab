@@ -13,7 +13,7 @@ export function EstruturaEditor({ nome, pecas, onNome, onPecas }: { nome: string
   function addBulk() { const linhas = bulk.split('\n').map((s) => s.trim()).filter(Boolean).map((n) => ({ id: novoId(), nome: n })); if (linhas.length) { onPecas([...pecas, ...linhas]); setBulk(''); } }
   return (
     <div className="space-y-4">
-      <Field label="Nome da estrutura (ex.: Bloco 1, Torre 3, Anexo, Contenções)" value={nome} onChange={(e) => onNome(e.target.value)} />
+      <Field label="Nome da estrutura (ex.: Bloco 1, Torre 3, Anexo, Contenções)" required value={nome} onChange={(e) => onNome(e.target.value)} />
       <div>
         <div className="mb-2 flex items-center justify-between gap-2"><span className="text-xs font-black uppercase tracking-wide text-slate-500">Peças ({pecas.length})</span><Button variant="secondary" onClick={add}>Adicionar peça</Button></div>
         {pecas.length === 0 ? <p className="rounded-xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-500 dark:border-slate-700">Nenhuma peça ainda. Adicione uma a uma ou cole várias abaixo (uma por linha).</p> : (

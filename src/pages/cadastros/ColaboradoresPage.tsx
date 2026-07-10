@@ -149,7 +149,7 @@ export function ColaboradoresPage() {
 
       <Drawer wide open={open} title={editId ? 'Editar colaborador' : 'Novo colaborador'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar dados'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
-          <Field label="Nome*" value={String(f.nome ?? '')} onChange={(e) => setF((s) => ({ ...s, nome: e.target.value }))} />
+          <Field label="Nome" required value={String(f.nome ?? '')} onChange={(e) => setF((s) => ({ ...s, nome: e.target.value }))} />
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
             <Field label="CPF" value={String(f.documento ?? '')} onChange={(e) => setF((s) => ({ ...s, documento: e.target.value }))} />
             <Field label="Registro (CREA/CRQ/TER)" value={String(f.registro_profissional ?? '')} onChange={(e) => setF((s) => ({ ...s, registro_profissional: e.target.value }))} />
@@ -178,7 +178,7 @@ export function ColaboradoresPage() {
                   </div>
                 ); })}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <SelectField label="Tipo" value={String(cf.tipo ?? '')} onChange={(e) => setCf((s) => ({ ...s, tipo: e.target.value }))}><option value="">-</option>{TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}</SelectField>
+                  <SelectField label="Tipo" required value={String(cf.tipo ?? '')} onChange={(e) => setCf((s) => ({ ...s, tipo: e.target.value }))}><option value="">-</option>{TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}</SelectField>
                   <Field label="Número" value={String(cf.numero ?? '')} onChange={(e) => setCf((s) => ({ ...s, numero: e.target.value }))} />
                   <Field label="Validade" type="date" value={String(cf.validade ?? '')} onChange={(e) => setCf((s) => ({ ...s, validade: e.target.value }))} />
                   <div className="block min-w-0 space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (PDF/scan)</span><FilePicker key={fileKey} accept="application/pdf,image/*" onFiles={(fs) => setCertFile(fs[0] ?? null)} /></div>

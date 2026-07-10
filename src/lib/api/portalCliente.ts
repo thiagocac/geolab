@@ -5,7 +5,7 @@ const db = supabase as unknown as { from: (t: string) => any };
 
 type Rec = Record<string, unknown>;
 export type PortalWork = { id: string; nome: string; client_id: string; cliente: string };
-export type PortalProgramacaoInput = { work_id: string; data_programada: string; hora_programada?: string; local_texto?: string; traco_texto?: string; fck_previsto?: number | null; fornecedor_texto?: string; volume_programado_m3?: number | null; observacoes?: string };
+export type PortalProgramacaoInput = { work_id: string; data_programada: string; hora_programada?: string; local_texto?: string; traco_texto?: string; fck_previsto?: number | null; fornecedor_texto?: string; volume_programado_m3?: number | null; observacoes?: string; padrao_moldagem?: Record<string, unknown>[] };
 export type PortalConcretagem = { id: string; codigo: string | null; status: string; data_programada: string | null; data_real: string | null; local_texto: string | null; fck_previsto: number | null; client_works?: { nome: string | null } | null; lab_reports?: { id: string; numero: string; status: string; storage_path: string | null }[] | null; metadata?: Record<string, unknown> | null };
 export type PortalLaudo = { id: string; numero: string; status: string; data_emissao: string | null; storage_path: string | null; concretagem_id: string | null; work_id?: string | null; client_works?: { nome: string | null } | null };
 

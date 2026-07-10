@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { clampNum } from '../../lib/validacao';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Drawer } from '../../components/ui/Drawer';
@@ -149,8 +150,8 @@ ${p.observacoes ? `<div class="box">${esc(p.observacoes)}</div>` : ''}
                         <td><input className="input !min-h-9" value={it.descricao} onChange={(e) => setItem(i, { descricao: e.target.value })} /></td>
                         <td><input className="input !min-h-9 w-16 px-2" value={it.unidade ?? ''} onChange={(e) => setItem(i, { unidade: e.target.value })} /></td>
                         <td><select className="input !min-h-9" value={it.tipo_cobranca ?? ''} onChange={(e) => setItem(i, { tipo_cobranca: e.target.value || null })}><option value="">—</option>{TIPO_COBRANCA_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
-                        <td><input className="input !min-h-9 w-16 px-2 text-right" type="number" value={it.quantidade} onChange={(e) => setItem(i, { quantidade: num(e.target.value) })} /></td>
-                        <td><input className="input !min-h-9 w-24 px-2 text-right" type="number" value={it.preco_unitario} onChange={(e) => setItem(i, { preco_unitario: num(e.target.value) })} /></td>
+                        <td><input className="input !min-h-9 w-16 px-2 text-right" type="number" inputMode="decimal" min={0} max={9999} step="0.01" value={it.quantidade} onChange={(e) => setItem(i, { quantidade: num(e.target.value) })} onBlur={(e) => setItem(i, { quantidade: clampNum(e.target.value, { min: 0, max: 9999, dec: 2 }) ?? 0 })} /></td>
+                        <td><input className="input !min-h-9 w-24 px-2 text-right" type="number" inputMode="decimal" min={0} max={9999999} step="0.01" value={it.preco_unitario} onChange={(e) => setItem(i, { preco_unitario: num(e.target.value) })} onBlur={(e) => setItem(i, { preco_unitario: clampNum(e.target.value, { min: 0, max: 9999999, dec: 2 }) ?? 0 })} /></td>
                         <td style={{ textAlign: 'right', fontWeight: 700 }}>{money(it.quantidade * it.preco_unitario)}</td>
                         <td><button type="button" className="text-xs font-bold" style={{ color: 'var(--magenta)' }} onClick={() => removeItem(i)}>x</button></td>
                       </tr>

@@ -1,29 +1,28 @@
-# GEOLAB — v211 — instruções de aplicação
+# v219 — Validação de campos numéricos (anti-valores-absurdos) — Fases 2 e 3
 
-**Correção do dropdown de Peça (estrutura da obra) + Local/Peça dinâmico no Portal do cliente.** Frontend puro — sem migration, sem Edge Function. Nada a aplicar no banco nem no Supabase: subir os arquivos e deixar o Netlify CI buildar.
+Continuação do v218. Estende os limites a Rompimentos, Diário de cura, Padrão de moldagem
+e Financeiro. Frontend puro — sem migration/EF. Reusa `src/lib/validacao.ts` + `NumField` do v218.
 
-## O que mudou
+## Arquivos (9)
+- `src/pages/concreto/RompimentosPage.tsx` — resultado/carga `maxDec` 4→2; **Diâmetro** 50–300 / **Altura** 50–600 (clamp no blur); **Massa (g)** 0–99999.
+- `src/pages/gestao/DiarioCuraPage.tsx` — **Temperatura (°C)** 0–50 (step 0,1 + clamp). O aviso de faixa NBR 9479 (marca não conforme) segue intacto.
+- `src/components/domain/MoldingStandardEditor.tsx` — **Idade** ≤ 999 e **Qtd CP** ≤ 99 (tetos + clamp; já tinham piso 0). Vale para Programação, Concretagem e Portal.
+- `src/pages/gestao/ContratosFinanceiroPage.tsx` — **Preço unitário (R$)** ≥ 0, 2 casas (NumField).
+- `src/pages/gestao/CatalogoServicosPage.tsx` — **Preço sugerido / Custo estimado (R$)** ≥ 0, 2 casas (NumField).
+- `src/pages/gestao/PropostasPage.tsx` — **Quantidade** 0–9999 e **Preço unitário** ≥ 0, 2 casas (clamp no blur).
+- `src/pages/gestao/MedicaoPage.tsx` — **CP ensaiado/moldado** ≥ 0 inteiro; **Formas/Laudo/Visita/Fixo mensal** e **Adicional (valor)** ≥ 0, 2 casas.
+- `public/sw.js` — `CACHE_NAME = consultegeo-geolab-v219`.
+- `src/lib/telemetry/core.ts` — `APP_VERSION = v219`.
 
-### 1. Bug — a seleção da Peça não fixava (telas do laboratório)
-Em **Concretagens › Nova Programação** (`/programacoes/nova`) e na **Etapa 1 — Concretagem** do detalhe da concretagem, o 2º dropdown do encadeado Estrutura→Peça ("Peça") era um `<select>` controlado com `value=""` fixo: ao escolher a peça o `onChange` disparava (preenchia o campo **Local/peça**), mas o próprio select voltava ao placeholder — a peça "não ficava selecionada". Corrigido no componente compartilhado **`EstruturaPecaSelect`** (usado pelas duas telas): a peça agora é guardada em estado (`pecaId`) e o `value` do select reflete a escolha; trocar a Estrutura reseta a Peça.
+## Estratégia (igual v218)
+Formato (sanitiza) + limite (`min`/`max` nativos + **clamp no `onBlur`**). Impossível → clamp corrige;
+implausível → aviso, não bloqueia. Em Rompimentos os avisos existentes (`mpaForaFaixa`, "80% menor que o esperado") seguem intactos.
 
-### 2. Portal do cliente › Programação — Local/Peça dinâmico
-A célula "Local / peça" da tabela de nova programação do portal (**`PortalLocalCell`**) já buscava a estrutura da obra, mas trazia o **mesmo bug** do `value=""` no dropdown de Peça — corrigido da mesma forma. Comportamento final, por obra escolhida na linha:
-- **Obra sem estrutura cadastrada:** aparece só o campo de texto livre **Local/Peça** (`Ex.: laje torre A`).
-- **Obra com estrutura:** aparecem os dois dropdowns **Estrutura** + **Peça**, que preenchem o texto de Local/Peça — igual às telas do laboratório.
-
-A estrutura criada/editada pelo cliente na aba **Estrutura da Obra** reflete automaticamente aqui: as duas telas compartilham a query `['portal-estruturas', workId]`, invalidada a cada salvar/duplicar/remover; ao voltar para a aba Programação a lista é re-buscada. EF `client-portal-estrutura` já no ar — sem alteração.
-
-## Arquivos (aplicar sobre v210)
-- `src/components/domain/EstruturaPecaSelect.tsx` — fix do dropdown de Peça (laboratório)
-- `src/pages/portal/ClientePortalPage.tsx` — fix do dropdown de Peça no `PortalLocalCell` (portal)
-- `src/lib/telemetry/core.ts` — `APP_VERSION = 'v211'`
-- `public/sw.js` — `CACHE_NAME = 'consultegeo-geolab-v211'`
-
-## Deploy
-Pipeline único GitHub → Netlify (projeto `geo-labs`, domínio https://lab.consultegeo.org). Subir os arquivos deste zip no GitHub; o CI roda o gate (check-source → biome → tsc → vitest → vite build) e publica. Sem passos de banco/EF.
+## Instalação (GitHub → Netlify)
+Copie os 9 arquivos (mantendo os caminhos) para o repo, commit e push. CI: `check-source → tsc → vitest → vite build`. Sem migration/EF.
 
 ## Validação local
-check-source OK · biome lint (arquivos tocados) 0 · esbuild parse OK · vite build OK. tsc/vitest ficam para o Netlify CI.
+`check-source` OK · `biome lint src` EXIT=0 · `vite build` EXIT=0. `tsc` deixado para o CI.
 
-> **Linhagem:** este patch aplica sobre **v210**. Como o vivo está em v189 (v190→v211 pendente de push), na publicação use a árvore acumulada — o `source-completo-v211` é fiel e já contém tudo de v190→v211.
+## Cobertura acumulada (v218 + v219)
+Todas as telas pedidas: Programação, Concretagem, Caminhões, Portal (Programação), Rompimentos (MPa/kN/tf/kgf, massa, dimensões), Financeiro (Contratos/Catálogo/Propostas/Medição) e Diário de cura (temperatura).

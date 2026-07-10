@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ResponsiveContainer, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine } from 'recharts';
 import { useAuth } from '../../lib/auth';
+import { clampNum } from '../../lib/validacao';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
@@ -90,9 +91,9 @@ export function DiarioCuraPage() {
         <>
           <Card className="p-5">
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-              <div style={{ minWidth: 200 }}><SelectField label="Câmara / tanque" value={camaraId} onChange={(e) => setCamaraId(e.target.value)}>{(camarasQ.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.apelido || c.marca_modelo || 'sem nome'}</option>)}</SelectField></div>
+              <div style={{ minWidth: 200 }}><SelectField label="Câmara / tanque" required value={camaraId} onChange={(e) => setCamaraId(e.target.value)}>{(camarasQ.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.apelido || c.marca_modelo || 'sem nome'}</option>)}</SelectField></div>
               <div style={{ minWidth: 150 }}><Field label="Data" type="date" value={data} onChange={(e) => setData(e.target.value)} /></div>
-              <div style={{ maxWidth: 140 }}><Field label="Temperatura (°C)" type="number" value={temp} onChange={(e) => setTemp(e.target.value)} /></div>
+              <div style={{ maxWidth: 140 }}><Field label="Temperatura (°C)" type="number" min={0} max={50} step="0.1" value={temp} onChange={(e) => setTemp(e.target.value)} onBlur={(e) => setTemp(clampNum(e.target.value, { min: 0, max: 50, dec: 1 })?.toString() ?? '')} /></div>
               <label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input type="checkbox" checked={calOk} onChange={(e) => setCalOk(e.target.checked)} /> Água saturada de cal ok</label>
               <div style={{ flex: '1 1 180px', minWidth: 160 }}><Field label="Observação" value={obs} onChange={(e) => setObs(e.target.value)} /></div>
               <Button disabled={busy} onClick={() => void registrar()}>{busy ? 'Salvando...' : 'Registrar dia'}</Button>

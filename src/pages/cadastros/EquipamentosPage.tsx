@@ -172,7 +172,7 @@ export function EquipamentosPage() {
       <Drawer wide open={open} title={editId ? 'Editar equipamento' : 'Novo equipamento'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
-            <SelectField label="Tipo*" value={String(f.tipo ?? 'prensa')} onChange={(e) => setF((s) => ({ ...s, tipo: e.target.value }))}>{TIPOS_EQUIP.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</SelectField>
+            <SelectField label="Tipo" required value={String(f.tipo ?? 'prensa')} onChange={(e) => setF((s) => ({ ...s, tipo: e.target.value }))}>{TIPOS_EQUIP.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</SelectField>
             <Field label="Apelido" hint="Ex.: Prensa 1 (distingue prensas idênticas)" value={String(f.apelido ?? '')} onChange={(e) => setF((s) => ({ ...s, apelido: e.target.value }))} />
           </div>
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
@@ -219,7 +219,7 @@ export function EquipamentosPage() {
                 <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
                   {(() => { const st = verifStatus(num(f.verif_periodicidade_dias), verifQ.data?.[0]?.data_verificacao ?? null); return <span style={{ fontSize: 12, fontWeight: 700, color: st.cor }}>Status: {st.label}{st.proxima ? ' · próxima até ' + st.proxima.split('-').reverse().join('/') : ''}</span>; })()}
                   <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', alignItems: 'end' }}>
-                    <Field label="Data" type="date" value={String(vf.data_verificacao ?? '')} onChange={(e) => setVf((s) => ({ ...s, data_verificacao: e.target.value }))} />
+                    <Field label="Data" required type="date" value={String(vf.data_verificacao ?? '')} onChange={(e) => setVf((s) => ({ ...s, data_verificacao: e.target.value }))} />
                     <Field label="Padrão usado" value={String(vf.padrao_utilizado ?? '')} onChange={(e) => setVf((s) => ({ ...s, padrao_utilizado: e.target.value }))} />
                     <Field label="Desvio (%)" type="number" value={String(vf.desvio_pct ?? '')} onChange={(e) => setVf((s) => ({ ...s, desvio_pct: e.target.value }))} />
                     <Field label="Responsável" value={String(vf.responsavel ?? '')} onChange={(e) => setVf((s) => ({ ...s, responsavel: e.target.value }))} />

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { clampNum } from '../../lib/validacao';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -126,11 +127,11 @@ export function MedicaoPage() {
             <div className="mt-2 overflow-auto">
               <table className="w-full text-left text-sm"><thead><tr className="text-xs uppercase text-slate-500"><th className="py-1">Tipo de ensaio</th><th>CP ensaiado</th><th>CP moldado</th></tr></thead>
                 <tbody>{(tipos.data ?? []).map((t) => <tr key={t.id}><td className="py-1 pr-3 font-medium">{t.nome}</td>
-                  <td className="pr-3"><input className="input" type="number" value={ens[t.id]?.ensaiado ?? ''} onChange={(e) => setEns((s) => ({ ...s, [t.id]: { ensaiado: e.target.value, moldado: s[t.id]?.moldado ?? '' } }))} disabled={!podeEditar} /></td>
-                  <td><input className="input" type="number" value={ens[t.id]?.moldado ?? ''} onChange={(e) => setEns((s) => ({ ...s, [t.id]: { ensaiado: s[t.id]?.ensaiado ?? '', moldado: e.target.value } }))} disabled={!podeEditar} /></td></tr>)}</tbody>
+                  <td className="pr-3"><input className="input" type="number" inputMode="numeric" min={0} max={9999} step="1" value={ens[t.id]?.ensaiado ?? ''} onChange={(e) => setEns((s) => ({ ...s, [t.id]: { ensaiado: e.target.value, moldado: s[t.id]?.moldado ?? '' } }))} onBlur={(e) => setEns((s) => ({ ...s, [t.id]: { ensaiado: clampNum(e.target.value, { min: 0, max: 9999, dec: 0 })?.toString() ?? '', moldado: s[t.id]?.moldado ?? '' } }))} disabled={!podeEditar} /></td>
+                  <td><input className="input" type="number" inputMode="numeric" min={0} max={9999} step="1" value={ens[t.id]?.moldado ?? ''} onChange={(e) => setEns((s) => ({ ...s, [t.id]: { ensaiado: s[t.id]?.ensaiado ?? '', moldado: e.target.value } }))} onBlur={(e) => setEns((s) => ({ ...s, [t.id]: { ensaiado: s[t.id]?.ensaiado ?? '', moldado: clampNum(e.target.value, { min: 0, max: 9999, dec: 0 })?.toString() ?? '' } }))} disabled={!podeEditar} /></td></tr>)}</tbody>
               </table>
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-4">{FLAT.map(([k, l]) => <Field key={k} label={l} type="number" value={flat[k] ?? ''} onChange={(e) => setFlat((s) => ({ ...s, [k]: e.target.value }))} disabled={!podeEditar} />)}</div>
+            <div className="mt-3 grid gap-3 md:grid-cols-4">{FLAT.map(([k, l]) => <Field key={k} label={l} type="number" min={0} step="0.01" value={flat[k] ?? ''} onChange={(e) => setFlat((s) => ({ ...s, [k]: e.target.value }))} onBlur={(e) => setFlat((s) => ({ ...s, [k]: clampNum(e.target.value, { min: 0, max: 999999, dec: 2 })?.toString() ?? '' }))} disabled={!podeEditar} />)}</div>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button variant="secondary" onClick={() => void salvarPrecosFn()} disabled={busy || !podeEditar}>Salvar preços</Button>
               <Button onClick={() => void calcularAuto()} disabled={busy}>Calcular com preços do catálogo</Button><Button variant="secondary" onClick={() => void calcular()} disabled={busy}>Calcular com precos manuais (abaixo)</Button>
@@ -146,7 +147,7 @@ export function MedicaoPage() {
             <thead><tr className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-slate-700"><th className="py-2">Item</th><th>Qtd</th><th>Preço unit.</th><th className="text-right">Subtotal</th></tr></thead>
             <tbody>
               {itens.map((i) => <tr key={i.key} className="border-b border-slate-100 dark:border-slate-800"><td className="py-2 font-medium">{i.label}</td><td>{i.quantidade}</td><td>{BRL(i.preco_unit)}</td><td className="text-right font-bold">{i.subtotal === 0 ? '-' : BRL(i.subtotal)}</td></tr>)}
-              {adicionais.map((a, idx) => <tr key={'a' + idx} className="border-b border-slate-100 dark:border-slate-800"><td className="py-2"><input className="input" placeholder="Descrição do adicional" value={a.descricao} onChange={(e) => setAdicionais((s) => s.map((x, j) => j === idx ? { ...x, descricao: e.target.value } : x))} /></td><td colSpan={2}><input className="input" type="number" placeholder="Valor" value={a.valor || ''} onChange={(e) => setAdicionais((s) => s.map((x, j) => j === idx ? { ...x, valor: Number(e.target.value) } : x))} /></td><td className="text-right">{BRL(a.valor)} <button type="button" className="ml-2 font-bold text-red-600" onClick={() => setAdicionais((s) => s.filter((_, j) => j !== idx))}>x</button></td></tr>)}
+              {adicionais.map((a, idx) => <tr key={'a' + idx} className="border-b border-slate-100 dark:border-slate-800"><td className="py-2"><input className="input" placeholder="Descrição do adicional" value={a.descricao} onChange={(e) => setAdicionais((s) => s.map((x, j) => j === idx ? { ...x, descricao: e.target.value } : x))} /></td><td colSpan={2}><input className="input" type="number" inputMode="decimal" min={0} step="0.01" placeholder="Valor" value={a.valor || ''} onChange={(e) => setAdicionais((s) => s.map((x, j) => j === idx ? { ...x, valor: Number(e.target.value) } : x))} onBlur={(e) => setAdicionais((s) => s.map((x, j) => j === idx ? { ...x, valor: clampNum(e.target.value, { min: 0, max: 9999999, dec: 2 }) ?? 0 } : x))} /></td><td className="text-right">{BRL(a.valor)} <button type="button" className="ml-2 font-bold text-red-600" onClick={() => setAdicionais((s) => s.filter((_, j) => j !== idx))}>x</button></td></tr>)}
             </tbody>
             <tfoot><tr><td colSpan={3} className="pt-3 text-right font-bold">TOTAL</td><td className="pt-3 text-right text-lg font-black" style={{ color: 'var(--magenta)' }}>{BRL(total)}</td></tr></tfoot>
           </table>

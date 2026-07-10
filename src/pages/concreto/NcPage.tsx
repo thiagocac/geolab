@@ -238,16 +238,16 @@ function NovaNcModal({ tenantId, onClose, onSaved }: { tenantId: string; onClose
   return (
     <Modal open title="Nova NC manual" onClose={onClose} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Abrindo...' : 'Abrir NC'}</Button></>}>
       <div style={{ display: 'grid', gap: 12 }}>
-        <SelectField label="Obra" value={work} onChange={(e) => setWork(e.target.value)}>
+        <SelectField label="Obra" required value={work} onChange={(e) => setWork(e.target.value)}>
           <option value="">-</option>{(obras.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
         </SelectField>
-        <SelectField label="Tipo de NC" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+        <SelectField label="Tipo de NC" required value={tipo} onChange={(e) => setTipo(e.target.value)}>
           <option value="">-</option>{(tipos.data ?? []).map((t) => <option key={t.codigo} value={t.codigo}>{t.codigo} — {t.nome}</option>)}
         </SelectField>
         <SelectField label="Severidade" value={sev} onChange={(e) => setSev(e.target.value)}>
           <option value="baixa">Baixa</option><option value="media">Media</option><option value="alta">Alta</option>
         </SelectField>
-        <TextArea label="Descrição" value={desc} onChange={(e) => setDesc(e.target.value)} />
+        <TextArea label="Descrição" required value={desc} onChange={(e) => setDesc(e.target.value)} />
       </div>
     </Modal>
   );

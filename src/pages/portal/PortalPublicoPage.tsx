@@ -96,7 +96,7 @@ export function PortalPublicoPage() {
             {tab === 'concretagens' ? (
               <Card>
                 <CardHeader title="Concretagens">Programações e concretagens registradas para suas obras.</CardHeader>
-                {d.concretagens.length === 0 ? <EmptyState /> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{d.concretagens.map((c) => <div key={c.id} className="p-4 text-sm"><div className="flex flex-wrap items-center gap-2 font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'} <StatusBadge status={c.status} /></div><div className="mt-1 text-slate-500">{c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}{c.fck_previsto ? ' · FCK ' + c.fck_previsto : ''}{c.volume_lancado_m3 ? ' · ' + c.volume_lancado_m3 + ' m³' : ''}</div></div>)}</div>}
+                {d.concretagens.length === 0 ? <EmptyState /> : <div className="divide-y divide-slate-100 dark:divide-slate-800">{d.concretagens.map((c) => <div key={c.id} className="p-4 text-sm"><div className="flex flex-wrap items-center gap-2 font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'} <StatusBadge status={c.status} domain="concretagem" /></div><div className="mt-1 text-slate-500">{c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}{c.fck_previsto ? ' · FCK ' + c.fck_previsto : ''}{c.volume_lancado_m3 ? ' · ' + c.volume_lancado_m3 + ' m³' : ''}</div></div>)}</div>}
               </Card>
             ) : (
               <LaudosResultadosPanel

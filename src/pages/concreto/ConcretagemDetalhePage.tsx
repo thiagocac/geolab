@@ -4,6 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { NumField } from '../../components/ui/NumField';
+import { sanitizeDigits } from '../../lib/validacao';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -49,7 +51,6 @@ function payloadConcretagem(f: Record<string, unknown>, padrao: PadraoMoldagem[]
     hora_fim: str(f.hora_fim) || null,
     local_texto: str(f.local_texto) || null,
     volume_programado_m3: num(f.volume_programado_m3),
-    volume_lancado_m3: num(f.volume_lancado_m3),
     dimensao_cp: str(f.dimensao_cp) || '100x200',
     moldador_id: str(f.moldador_id) || null,
     clima: str(f.clima) || null,
@@ -108,7 +109,7 @@ export function ConcretagemDetalhePage() {
     if (!c) return;
     setForm({
       operational_material_id: c.operational_material_id ?? '', traco_texto: c.traco_texto ?? '', fck_previsto: c.fck_previsto ?? '', fornecedor_texto: c.fornecedor_texto ?? '',
-      data_programada: c.data_programada ?? '', hora_programada: c.hora_programada ?? '', data_real: c.data_real ?? '', hora_inicio: c.hora_inicio ?? '', hora_fim: c.hora_fim ?? '',
+      data_programada: c.data_programada ?? '', hora_programada: c.hora_programada ?? '', data_real: c.data_real ?? c.data_programada ?? '', hora_inicio: c.hora_inicio ?? '', hora_fim: c.hora_fim ?? '',
       local_texto: c.local_texto ?? '', volume_programado_m3: c.volume_programado_m3 ?? '', volume_lancado_m3: c.volume_lancado_m3 ?? '', dimensao_cp: c.dimensao_cp ?? '100x200',
       moldador_id: c.moldador_id ?? '', clima: c.clima ?? '', temperatura_ambiente_c: c.temperatura_ambiente_c ?? '', bombeado: !!c.bombeado, observacoes: c.observacoes ?? '',
     });
@@ -318,7 +319,7 @@ export function ConcretagemDetalhePage() {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setStep(1)} className={'rounded-full px-3 py-1.5 text-sm font-black ' + (step === 1 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200')}>1 · Concretagem</button>
         <button type="button" onClick={() => setStep(2)} className={'rounded-full px-3 py-1.5 text-sm font-black ' + (step === 2 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200')}>2 · Caminhões + CPs</button>
-        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" onClick={() => void ficha()}>Gerar ficha PDF</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('rolo')}>Etiquetas 60×40 (rolo)</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('a4')}>Etiquetas A4</Button>{step === 2 ? <Button variant="secondary" onClick={() => { setFichaRows([]); setFichaConf(null); setFichaFile(null); setFichaOpen(true); }}>Ler ficha preenchida (OCR)</Button> : null}<Button onClick={abrirCaminhao}>Adicionar caminhão</Button></div>
+        <div className="ml-auto flex flex-wrap gap-2"><Button variant="secondary" onClick={() => void ficha()}>Gerar ficha PDF</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('rolo')}>Etiquetas 60×40 (rolo)</Button><Button variant="secondary" disabled={busyEtq} onClick={() => void etiquetas('a4')}>Etiquetas A4</Button><Button variant="secondary" onClick={() => { setStep(2); setFichaRows([]); setFichaConf(null); setFichaFile(null); setFichaOpen(true); }}>Ler ficha preenchida (OCR)</Button><Button onClick={abrirCaminhao}>Adicionar caminhão</Button></div>
       </div>
 
       {step === 1 ? (
@@ -331,16 +332,16 @@ export function ConcretagemDetalhePage() {
               <SelectField label="Traço cadastrado" value={val(form.operational_material_id)} onChange={(e) => { const idv = e.target.value; const t = (tracos.data ?? []).find((x) => x.value === idv); setForm((s) => ({ ...s, operational_material_id: idv, fck_previsto: t?.fck ?? s.fck_previsto, traco_texto: idv ? s.traco_texto : s.traco_texto })); if (t?.padrao_moldagem?.length) setPadrao(normalizePadroes(t.padrao_moldagem, t.fck)); }}><option value="">Manual / texto livre</option><TracoOptions tracos={tracos.data ?? []} workId={conc.data?.work_id ?? null} clientId={conc.data?.client_id ?? null} /></SelectField>
               {conc.data?.work_id ? <button type="button" className="justify-self-start text-xs font-bold text-blue-600" onClick={() => nav('/tracos?work=' + String(conc.data?.work_id))}>Gerenciar traços desta obra</button> : null}
               {!form.operational_material_id ? <Field label="Traço / descrição manual" value={val(form.traco_texto)} onChange={(e) => patch('traco_texto', e.target.value)} /> : null}
-              <Field label="FCK previsto (MPa)" type="number" value={val(form.fck_previsto)} onChange={(e) => patch('fck_previsto', e.target.value)} />
+              <NumField label="FCK previsto (MPa)" value={form.fck_previsto} onCommit={(n) => patch('fck_previsto', n)} min={1} max={150} soft={[10, 100]} />
               {onC('fornecedor') ? <><Field label="Fornecedor / central" list={FORNECEDORES_DL} value={val(form.fornecedor_texto)} onChange={(e) => patch('fornecedor_texto', e.target.value)} /><FornecedorDatalist /></> : null}
               {onC('data_hora') ? <><Field label="Data programada" type="date" value={val(form.data_programada)} onChange={(e) => patch('data_programada', e.target.value)} /><Field label="Hora programada" type="time" value={val(form.hora_programada)} onChange={(e) => patch('hora_programada', e.target.value)} /><Field label="Data real" type="date" value={val(form.data_real)} onChange={(e) => patch('data_real', e.target.value)} /><Field label="Início real" type="time" value={val(form.hora_inicio)} onChange={(e) => patch('hora_inicio', e.target.value)} /><Field label="Fim real" type="time" value={val(form.hora_fim)} onChange={(e) => patch('hora_fim', e.target.value)} /></> : null}
-              {onC('local_peca') && (estruturas.data ?? []).length ? <EstruturaPecaSelect estruturas={estruturas.data ?? []} onPick={(v) => patch('local_texto', v.local)} /> : null}
+              {onC('local_peca') && (estruturas.data ?? []).length ? <EstruturaPecaSelect estruturas={estruturas.data ?? []} initialLocal={val(form.local_texto)} onPick={(v) => patch('local_texto', v.local)} /> : null}
               {onC('local_peca') ? <Field label="Local / peça" value={val(form.local_texto)} onChange={(e) => patch('local_texto', e.target.value)} /> : null}
-              {onC('volume_programado') ? <><Field label="Volume programado (m³)" type="number" value={val(form.volume_programado_m3)} onChange={(e) => patch('volume_programado_m3', e.target.value)} /><Field label="Volume lançado (m³)" type="number" value={val(form.volume_lancado_m3)} onChange={(e) => patch('volume_lancado_m3', e.target.value)} /></> : null}
+              {onC('volume_programado') ? <><NumField label="Volume programado (m³)" value={form.volume_programado_m3} onCommit={(n) => patch('volume_programado_m3', n)} min={0} max={999} dec={2} soft={[0, 500]} /><Field label="Volume lançado (m³)" type="number" value={(cams.data ?? []).length ? String((cams.data ?? []).reduce((t, x) => t + (Number(x.volume_m3) || 0), 0)) : val(form.volume_lancado_m3)} disabled hint="Preenchido automaticamente: soma o volume de todos os caminhões lançados na Etapa 2. Para ajustar, edite o volume no próprio caminhão/NF." /></> : null}
               {onC('moldador') ? <SelectField label="Moldador" value={val(form.moldador_id)} onChange={(e) => patch('moldador_id', e.target.value)}><option value="">-</option>{colaboradores.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</SelectField> : null}
               {onC('dimensao_cp') ? <SelectField label="Dimensão CP" value={val(form.dimensao_cp)} onChange={(e) => patch('dimensao_cp', e.target.value)}><option value="100x200">100 x 200 mm</option><option value="150x300">150 x 300 mm</option><option value="100x100x400">100 x 100 x 400 mm</option><option value="150x150x500">150 x 150 x 500 mm</option></SelectField> : null}
               {onC('clima') ? <Field label="Clima" value={val(form.clima)} onChange={(e) => patch('clima', e.target.value)} /> : null}
-              {onC('temperatura_ambiente') ? <Field label="Temperatura ambiente (°C)" type="number" value={val(form.temperatura_ambiente_c)} onChange={(e) => patch('temperatura_ambiente_c', e.target.value)} /> : null}
+              {onC('temperatura_ambiente') ? <NumField label="Temperatura ambiente (°C)" value={form.temperatura_ambiente_c} onCommit={(n) => patch('temperatura_ambiente_c', n)} min={-5} max={55} dec={1} soft={[0, 45]} /> : null}
               {onC('bombeado') ? <label className="flex items-center gap-2 pt-7 text-sm font-bold"><input type="checkbox" checked={form.bombeado === true} onChange={(e) => patch('bombeado', e.target.checked)} /> Concreto bombeado / lançamento por bomba</label> : null}
             </div>
             {onC('observacoes') ? <TextArea label="Observações gerais" value={val(form.observacoes)} onChange={(e) => patch('observacoes', e.target.value)} /> : null}
@@ -408,16 +409,16 @@ export function ConcretagemDetalhePage() {
             <p className="mt-1 text-xs text-slate-500">Fotografe a DANFE/nota do caminhão para preencher os campos. Requer VISION_API_KEY; confira antes de salvar.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
-            <Field label="Nota fiscal*" value={val(camForm.nota_fiscal)} onChange={(e) => patchCam('nota_fiscal', e.target.value)} />
+            <Field label="Nota fiscal" required inputMode="numeric" maxLength={15} value={val(camForm.nota_fiscal)} onChange={(e) => patchCam('nota_fiscal', sanitizeDigits(e.target.value, true))} />
             {onR('placa') ? <Field label="Placa" value={val(camForm.placa)} onChange={(e) => patchCam('placa', e.target.value)} /> : null}
             {onR('motorista') ? <Field label="Motorista" value={val(camForm.motorista)} onChange={(e) => patchCam('motorista', e.target.value)} /> : null}
-            {onR('volume_m3') ? <Field label="Volume (m³)" type="number" value={val(camForm.volume_m3)} onChange={(e) => patchCam('volume_m3', e.target.value === '' ? null : Number(e.target.value))} /> : null}
-            {onR('slump') ? <Field label="Slump medido (mm)" type="number" value={val(camForm.slump_medido_mm)} onChange={(e) => patchCam('slump_medido_mm', e.target.value === '' ? null : Number(e.target.value))} /> : null}
-            {onR('temperatura_concreto') ? <Field label="Temperatura concreto (°C)" type="number" value={val(camForm.temperatura_concreto_c)} onChange={(e) => patchCam('temperatura_concreto_c', e.target.value === '' ? null : Number(e.target.value))} /> : null}
+            {onR('volume_m3') ? <NumField label="Volume (m³)" value={camForm.volume_m3} onCommit={(n) => patchCam('volume_m3', n)} min={0} max={20} dec={2} soft={[0, 12]} softMsg="Volume acima do usual para um caminhao (<= 12 m³)" /> : null}
+            {onR('slump') ? <NumField label="Slump medido (mm)" value={camForm.slump_medido_mm} onCommit={(n) => patchCam('slump_medido_mm', n)} min={0} max={990} soft={[0, 300]} /> : null}
+            {onR('temperatura_concreto') ? <NumField label="Temperatura concreto (°C)" value={camForm.temperatura_concreto_c} onCommit={(n) => patchCam('temperatura_concreto_c', n)} min={0} max={60} dec={1} soft={[5, 40]} /> : null}
             {onR('horarios_transporte') ? <><Field label="Saída da usina" type="time" value={val(camForm.hora_saida_usina)} onChange={(e) => patchCam('hora_saida_usina', e.target.value)} /><Field label="Chegada à obra" type="time" value={val(camForm.hora_chegada_obra)} onChange={(e) => patchCam('hora_chegada_obra', e.target.value)} /></> : null}
             {onR('horarios_descarga') ? <><Field label="Início descarga" type="time" value={val(camForm.hora_inicio_descarga)} onChange={(e) => patchCam('hora_inicio_descarga', e.target.value)} /><Field label="Fim descarga" type="time" value={val(camForm.hora_fim_descarga)} onChange={(e) => patchCam('hora_fim_descarga', e.target.value)} /></> : null}
             {onR('hora_moldagem') ? <Field label="Hora moldagem" type="time" value={val(camForm.hora_moldagem)} onChange={(e) => patchCam('hora_moldagem', e.target.value)} /> : null}
-            {onR('agua_adicionada') ? <><label className="flex items-center gap-2 pt-7 text-sm font-bold"><input type="checkbox" checked={camForm.houve_adicao_agua === true} onChange={(e) => patchCam('houve_adicao_agua', e.target.checked)} /> Houve adição de água</label><Field label="Água adicionada (L)" type="number" value={val(camForm.agua_litros)} onChange={(e) => patchCam('agua_litros', e.target.value === '' ? null : Number(e.target.value))} /></> : null}
+            {onR('agua_adicionada') ? <><label className="flex items-center gap-2 pt-7 text-sm font-bold"><input type="checkbox" checked={camForm.houve_adicao_agua === true} onChange={(e) => patchCam('houve_adicao_agua', e.target.checked)} /> Houve adição de água</label><NumField label="Água adicionada (L)" value={camForm.agua_litros} onCommit={(n) => patchCam('agua_litros', n)} min={0} max={999} dec={1} soft={[0, 100]} /></> : null}
             {onR('rejeicao') ? <><label className="flex items-center gap-2 pt-7 text-sm font-bold"><input type="checkbox" checked={camForm.rejeitado === true} onChange={(e) => patchCam('rejeitado', e.target.checked)} /> Caminhão rejeitado</label><Field label="Motivo rejeição" value={val(camForm.motivo_rejeicao)} onChange={(e) => patchCam('motivo_rejeicao', e.target.value)} /></> : null}
           </div>
           {onR('elementos_concretados') ? <TextArea label="Elementos concretados" value={val(camForm.elementos_concretados)} onChange={(e) => patchCam('elementos_concretados', e.target.value)} /> : null}

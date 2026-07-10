@@ -625,6 +625,7 @@ export function ObservabilidadePage() {
   const bannerReady = !incidents.isLoading && !incidents.error && !crons.isLoading && !crons.error;
 
   const selectCls = 'rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200';
+  const [tab, setTab] = useState<'geral' | 'ef' | 'email' | 'rum' | 'crons'>('geral');
 
   return (
     <div className="space-y-6">
@@ -670,28 +671,17 @@ export function ObservabilidadePage() {
         </div>
       )}
 
-      {/* Latência p95 por EF (gráfico) */}
-      <Card>
-        <CardHeader kicker="Edge Functions" title="Latência p95 por função (top)">As funções mais lentas na janela recente.</CardHeader>
-        <div className="p-5">
-          {efs.isLoading ? <LoadingState /> : efs.error ? <ErrorState message={(efs.error as Error).message} /> : topEfs.length === 0 ? <EmptyState /> : (
-            <div style={{ height: Math.min(300, 30 + topEfs.length * 26) }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topEfs} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 10 }}>
-                  <CartesianGrid horizontal={false} stroke="var(--line)" />
-                  <XAxis type="number" tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} axisLine={false} tickLine={false} unit="ms" />
-                  <YAxis type="category" dataKey="fn_name" width={160} tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip cursor={{ fill: 'var(--surface-2)' }} contentStyle={tipStyle} />
-                  <Bar dataKey="p95_ms" radius={[0, 5, 5, 0]} maxBarSize={18}>
-                    {topEfs.map((e) => <Cell key={e.fn_name} fill={(e.p95_ms ?? 0) > 1500 ? '#ef4444' : (e.p95_ms ?? 0) > 600 ? '#f59e0b' : '#16a34a'} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </Card>
+      {/* Abas do NOC (Dashboard v2 / DASH-F1): página única virou 5 vistas full-screen */}
+      <div className="flex flex-wrap gap-1.5">
+        {([['geral', 'Visão geral'], ['ef', 'Edge Functions'], ['email', 'E-mail'], ['rum', 'RUM & uso'], ['crons', 'Crons']] as const).map(([id, label]) => (
+          <button key={id} type="button" onClick={() => setTab(id)}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${tab === id ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'border border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
 
+      {tab === 'geral' ? (<>
       {/* Incidentes (abertos / resolvidos) com filtros */}
       <Card>
         <CardHeader kicker="Incidentes" title="Alertas">Abertos resolvem sozinhos quando o sinal normaliza. Filtre por gravidade/família e veja o histórico recente com o tempo até resolver.</CardHeader>
@@ -765,51 +755,32 @@ export function ObservabilidadePage() {
           )}
         </div>
       </Card>
+      </>) : null}
 
-      {/* Plano de controle da telemetria (runners de alarme & notificação) */}
-      {/* Erros agrupados (M4, v177) */}
-      <ErrorGroupsCard />
-      <RecentEfErrorsCard />
-      <ReportGenerationCard />
-      <EmailObservabilityCard />
-
+      {tab === 'ef' ? (<>
+      {/* Latência p95 por EF (gráfico) */}
       <Card>
-        <CardHeader kicker="Telemetria" title="Runners de alarme & notificação">Avaliam sinais e enviam e-mails de incidente. Se um atrasa, alertas podem não disparar — vigie a idade da última execução.</CardHeader>
+        <CardHeader kicker="Edge Functions" title="Latência p95 por função (top)">As funções mais lentas na janela recente.</CardHeader>
         <div className="p-5">
-          {crons.isLoading ? <LoadingState /> : crons.error ? <ErrorState message={(crons.error as Error).message} /> : planeCrons.length === 0 ? <EmptyState /> : (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {planeCrons.map((c) => (
-                <div key={c.job_name} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700">
-                  <div className="min-w-0">
-                    <div className="truncate font-medium text-slate-800 dark:text-slate-100">{c.job_name}</div>
-                    <div className="text-xs text-slate-500">última: {fmtAge(c.last_seen_at)}{c.consecutive_failures > 0 ? ` · ${c.consecutive_failures} falha(s)` : ''}</div>
-                  </div>
-                  <CronPill c={c} />
-                </div>
-              ))}
+          {efs.isLoading ? <LoadingState /> : efs.error ? <ErrorState message={(efs.error as Error).message} /> : topEfs.length === 0 ? <EmptyState /> : (
+            <div style={{ height: Math.min(300, 30 + topEfs.length * 26) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topEfs} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 10 }}>
+                  <CartesianGrid horizontal={false} stroke="var(--line)" />
+                  <XAxis type="number" tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} axisLine={false} tickLine={false} unit="ms" />
+                  <YAxis type="category" dataKey="fn_name" width={160} tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: 'var(--surface-2)' }} contentStyle={tipStyle} />
+                  <Bar dataKey="p95_ms" radius={[0, 5, 5, 0]} maxBarSize={18}>
+                    {topEfs.map((e) => <Cell key={e.fn_name} fill={(e.p95_ms ?? 0) > 1500 ? '#ef4444' : (e.p95_ms ?? 0) > 600 ? '#f59e0b' : '#16a34a'} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           )}
         </div>
       </Card>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Outros jobs (manutenção / backup / canário) */}
-        <Card>
-          <CardHeader kicker="Disponibilidade" title="Outros jobs agendados">Rollup, prune, backups e canário sintético — idade da última execução.</CardHeader>
-          <div className="p-5">
-            {crons.isLoading ? <LoadingState /> : crons.error ? <ErrorState message={(crons.error as Error).message} />
-              : otherCrons.length === 0 ? <EmptyState />
-              : (
-              <div className="table-scroll"><table className="table">
-                <thead><tr><th>Job</th><th>Estado</th><th>Última</th><th>Falhas seg.</th></tr></thead>
-                <tbody>{otherCrons.map((c) => (
-                  <tr key={c.job_name}><td className="font-medium">{c.job_name}</td><td><CronPill c={c} /></td><td className="text-slate-500">{fmtAge(c.last_seen_at)}</td><td className="tabular-nums">{c.consecutive_failures}</td></tr>
-                ))}</tbody>
-              </table></div>
-            )}
-          </div>
-        </Card>
-
+      <RecentEfErrorsCard />
+      <ReportGenerationCard />
         {/* Edge Functions */}
         <Card>
           <CardHeader kicker="Edge Functions" title="Latência e erros (24h)">p95 da última hora, 5xx e tendência de chamadas por hora.</CardHeader>
@@ -832,7 +803,15 @@ export function ObservabilidadePage() {
             )}
           </div>
         </Card>
+      </>) : null}
 
+      {tab === 'email' ? (<>
+      <EmailObservabilityCard />
+      </>) : null}
+
+      {tab === 'rum' ? (<>
+      <ErrorGroupsCard />
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Erro por versão */}
         <Card>
           <CardHeader kicker="RUM" title="Taxa de erro por versão (7d)">Erros sobre eventos, por app_version.</CardHeader>
@@ -849,7 +828,6 @@ export function ObservabilidadePage() {
             )}
           </div>
         </Card>
-
         {/* Crash-free */}
         <Card>
           <CardHeader kicker="Release health" title="Crash-free por versão (30d)">Sessões sem erro, no estilo Sentry.</CardHeader>
@@ -881,10 +859,7 @@ export function ObservabilidadePage() {
           </div>
         </Card>
       </div>
-
-      {/* Uso do produto (M5/v178) */}
       <DomainUsageCard />
-
       {/* Web Vitals */}
       <Card>
         <CardHeader kicker="RUM" title={`Web Vitals (p75, ${vitalWin} dias)`}>Tendência diária por métrica — 90d lê o rollup diário (telemetry_rollup_daily), não o cru.</CardHeader>
@@ -920,6 +895,44 @@ export function ObservabilidadePage() {
           )}
         </div>
       </Card>
+      </>) : null}
+
+      {tab === 'crons' ? (<>
+      <Card>
+        <CardHeader kicker="Telemetria" title="Runners de alarme & notificação">Avaliam sinais e enviam e-mails de incidente. Se um atrasa, alertas podem não disparar — vigie a idade da última execução.</CardHeader>
+        <div className="p-5">
+          {crons.isLoading ? <LoadingState /> : crons.error ? <ErrorState message={(crons.error as Error).message} /> : planeCrons.length === 0 ? <EmptyState /> : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {planeCrons.map((c) => (
+                <div key={c.job_name} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-slate-800 dark:text-slate-100">{c.job_name}</div>
+                    <div className="text-xs text-slate-500">última: {fmtAge(c.last_seen_at)}{c.consecutive_failures > 0 ? ` · ${c.consecutive_failures} falha(s)` : ''}</div>
+                  </div>
+                  <CronPill c={c} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+        {/* Outros jobs (manutenção / backup / canário) */}
+        <Card>
+          <CardHeader kicker="Disponibilidade" title="Outros jobs agendados">Rollup, prune, backups e canário sintético — idade da última execução.</CardHeader>
+          <div className="p-5">
+            {crons.isLoading ? <LoadingState /> : crons.error ? <ErrorState message={(crons.error as Error).message} />
+              : otherCrons.length === 0 ? <EmptyState />
+              : (
+              <div className="table-scroll"><table className="table">
+                <thead><tr><th>Job</th><th>Estado</th><th>Última</th><th>Falhas seg.</th></tr></thead>
+                <tbody>{otherCrons.map((c) => (
+                  <tr key={c.job_name}><td className="font-medium">{c.job_name}</td><td><CronPill c={c} /></td><td className="text-slate-500">{fmtAge(c.last_seen_at)}</td><td className="tabular-nums">{c.consecutive_failures}</td></tr>
+                ))}</tbody>
+              </table></div>
+            )}
+          </div>
+        </Card>
+      </>) : null}
     </div>
   );
 }

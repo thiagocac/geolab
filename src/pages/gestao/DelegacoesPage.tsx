@@ -83,17 +83,17 @@ export function DelegacoesPage() {
       <Card>
         <CardHeader kicker="Nova delegação" title="Delegar alçada técnica">Use janela curta e justificativa objetiva. Sem efeito fora da janela de validade.</CardHeader>
         <div className="grid gap-4 p-5 md:grid-cols-2">
-          <SelectField label="Delegante" value={delegator} onChange={(e) => setDelegator(e.target.value)}>
+          <SelectField label="Delegante" required value={delegator} onChange={(e) => setDelegator(e.target.value)}>
             <option value="">Selecione</option>{memberRows.map((m) => <option key={m.id} value={m.id}>{m.label} · {m.role}</option>)}
           </SelectField>
 
-          <SelectField label="Delegado" value={delegatee} onChange={(e) => setDelegatee(e.target.value)}>
+          <SelectField label="Delegado" required value={delegatee} onChange={(e) => setDelegatee(e.target.value)}>
             <option value="">Selecione</option>{memberRows.map((m) => <option key={m.id} value={m.id}>{m.label} · {m.role}</option>)}
           </SelectField>
-          <SelectField label="Permissão" value={permission} onChange={(e) => setPermission(e.target.value)}>{PERMISSIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</SelectField>
+          <SelectField label="Permissão" required value={permission} onChange={(e) => setPermission(e.target.value)}>{PERMISSIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</SelectField>
           <SelectField label="Obra (opcional)" value={workId} onChange={(e) => setWorkId(e.target.value)}><option value="">Todas as obras</option>{workRows.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}</SelectField>
-          <Field label="Início" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
-          <Field label="Fim" type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+          <Field label="Início" required type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+          <Field label="Fim" required type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
           <div className="md:col-span-2"><TextArea label="Justificativa" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: férias do RT entre DD/MM e DD/MM" /></div>
           <div className="md:col-span-2 flex flex-wrap items-center gap-3"><Button onClick={() => void submit()} disabled={busy}>{busy ? 'Salvando...' : 'Criar delegação'}</Button>{msg ? <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{msg}</span> : null}</div>
         </div>

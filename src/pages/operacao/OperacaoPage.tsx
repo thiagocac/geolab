@@ -190,8 +190,8 @@ export function OperacaoPage() {
 
       <Modal open={inviteOpen} title="Novo usuário" onClose={() => setInviteOpen(false)} footer={<><Button variant="ghost" onClick={() => setInviteOpen(false)}>Cancelar</Button><Button onClick={() => void convidar()} disabled={busy}>{busy ? 'Criando...' : 'Criar'}</Button></>}>
         <div className="space-y-3">
-          <Field label="Nome*" value={String(f.full_name ?? '')} onChange={(e) => setF((s) => ({ ...s, full_name: e.target.value }))} />
-          <Field label="E-mail*" type="email" value={String(f.email ?? '')} onChange={(e) => setF((s) => ({ ...s, email: e.target.value }))} />
+          <Field label="Nome" required value={String(f.full_name ?? '')} onChange={(e) => setF((s) => ({ ...s, full_name: e.target.value }))} />
+          <Field label="E-mail" required type="email" value={String(f.email ?? '')} onChange={(e) => setF((s) => ({ ...s, email: e.target.value }))} />
           <SelectField label="Papel principal" value={String(f.role ?? 'operador_campo')} onChange={(e) => setF((s) => ({ ...s, role: e.target.value }))}>{rolesAtivos.filter((r) => r.key !== 'admin_consulte' && r.key !== 'cliente').map((r) => <option key={r.id} value={r.key}>{r.name}</option>)}</SelectField>
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Cargo" value={String(f.cargo ?? '')} onChange={(e) => setF((s) => ({ ...s, cargo: e.target.value }))} />
@@ -277,13 +277,13 @@ export function OperacaoPage() {
 
       <Modal open={labOpen} title="Novo laboratório" onClose={() => setLabOpen(false)} footer={<><Button variant="ghost" onClick={() => setLabOpen(false)}>Cancelar</Button><Button onClick={() => void criarLab()} disabled={busy}>{busy ? 'Criando...' : 'Criar'}</Button></>}>
         <div className="space-y-3">
-          <Field label="Nome do laboratório*" value={String(f.lab_nome ?? '')} onChange={(e) => setF((s) => ({ ...s, lab_nome: e.target.value }))} />
+          <Field label="Nome do laboratório" required value={String(f.lab_nome ?? '')} onChange={(e) => setF((s) => ({ ...s, lab_nome: e.target.value }))} />
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Slug (opcional)" value={String(f.lab_slug ?? '')} onChange={(e) => setF((s) => ({ ...s, lab_slug: e.target.value }))} />
             <Field label="CNPJ (opcional)" value={String(f.cnpj ?? '')} onChange={(e) => setF((s) => ({ ...s, cnpj: e.target.value }))} />
           </div>
-          <Field label="Nome do admin*" value={String(f.admin_nome ?? '')} onChange={(e) => setF((s) => ({ ...s, admin_nome: e.target.value }))} />
-          <Field label="E-mail do admin*" type="email" value={String(f.admin_email ?? '')} onChange={(e) => setF((s) => ({ ...s, admin_email: e.target.value }))} />
+          <Field label="Nome do admin" required value={String(f.admin_nome ?? '')} onChange={(e) => setF((s) => ({ ...s, admin_nome: e.target.value }))} />
+          <Field label="E-mail do admin" required type="email" value={String(f.admin_email ?? '')} onChange={(e) => setF((s) => ({ ...s, admin_email: e.target.value }))} />
         </div>
       </Modal>
 

@@ -164,14 +164,14 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
 
 function FieldRenderer({ spec, value, onChange, error }: { spec: FieldSpec; value: unknown; onChange: (v: unknown) => void; error?: string }) {
   if (spec.type === 'reference') return <ReferenceField spec={spec} value={value == null ? '' : String(value)} onChange={onChange} error={error} />;
-  if (spec.type === 'select') return <SelectField label={spec.label} error={error} value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value || null)}><option value="">-</option>{(spec.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>;
-  if (spec.type === 'textarea') return <TextArea label={spec.label} error={error} value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value)} />;
+  if (spec.type === 'select') return <SelectField label={spec.label} required={spec.required} error={error} value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value || null)}><option value="">-</option>{(spec.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>;
+  if (spec.type === 'textarea') return <TextArea label={spec.label} required={spec.required} error={error} value={value == null ? '' : String(value)} onChange={(e) => onChange(e.target.value)} />;
   if (spec.type === 'boolean') return <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, fontSize: 14 }}><input type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} /> {spec.label}</label>;
   const t = spec.type === 'number' ? 'number' : spec.type === 'date' ? 'date' : 'text';
-  return <Field label={spec.label} hint={spec.help} error={error} type={t} value={value == null ? '' : String(value)} onChange={(e) => onChange(spec.type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value)} />;
+  return <Field label={spec.label} required={spec.required} hint={spec.help} error={error} type={t} value={value == null ? '' : String(value)} onChange={(e) => onChange(spec.type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value)} />;
 }
 
 function ReferenceField({ spec, value, onChange, error }: { spec: FieldSpec; value: string; onChange: (v: unknown) => void; error?: string }) {
   const q = useQuery({ queryKey: ['ref', spec.refTable, spec.refFilter], staleTime: 5 * 60 * 1000, queryFn: () => listReference(spec.refTable as string, spec.refLabel ?? 'nome', spec.refFilter) });
-  return <SelectField label={spec.label} error={error} value={value} onChange={(e) => onChange(e.target.value || null)}><option value="">-</option>{(q.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>;
+  return <SelectField label={spec.label} required={spec.required} error={error} value={value} onChange={(e) => onChange(e.target.value || null)}><option value="">-</option>{(q.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>;
 }

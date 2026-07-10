@@ -63,7 +63,28 @@ const META: Record<string, { label: string; tone: StatusTone }> = {
   faturada: { label: 'Faturada', tone: 'info' },
 };
 
-export function recordStatusMeta(status?: string | null): { label: string; tone: StatusTone } {
+// ---- Overrides contextuais por domínio (v220) ----
+// Mesmo valor de enum, leitura diferente por fluxo: em concretagem/programação,
+// "registrado" é o estado pós-confirmação do laboratório → "Confirmada";
+// "pendente" é a solicitação (portal/obra) aguardando o lab → "Aguardando confirmação".
+// Não muda enum nem banco — só apresentação. Laudo/NC/financeiro seguem o mapa global.
+export type StatusDomain = 'concretagem';
+const DOMAIN_META: Record<StatusDomain, Record<string, { label: string; tone: StatusTone }>> = {
+  concretagem: {
+    pendente: { label: 'Aguardando confirmação', tone: 'warning' },
+    registrado: { label: 'Confirmada', tone: 'success' },
+  },
+};
+
+export function recordStatusMeta(status?: string | null, domain?: StatusDomain): { label: string; tone: StatusTone } {
   const key = (status ?? '').toLowerCase();
+  if (domain) { const o = DOMAIN_META[domain][key]; if (o) return o; }
   return META[key] ?? { label: status ? String(status) : '—', tone: 'neutral' };
+}
+
+// Origem da concretagem em linguagem clara (antes exibida crua: "portal_cliente").
+const ORIGEM_LABEL: Record<string, string> = { portal_cliente: 'Portal do cliente', programada: 'Interna', retroativa: 'Retroativa' };
+export function origemLabel(origem?: string | null): string {
+  const k = (origem ?? '').toLowerCase();
+  return ORIGEM_LABEL[k] ?? (origem ? String(origem) : '—');
 }

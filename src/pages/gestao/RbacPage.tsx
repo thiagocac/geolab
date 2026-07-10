@@ -155,7 +155,7 @@ export function RbacPage() {
       <Modal open={!!pModal} title={pModal?.mode === 'clonar' ? 'Clonar papel' : pModal?.mode === 'editar' ? 'Editar papel' : 'Novo papel'} onClose={() => setPModal(null)} footer={<><Button variant="ghost" onClick={() => setPModal(null)}>Cancelar</Button><Button onClick={() => void salvarPapel()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         {pModal ? (
           <div className="space-y-3">
-            <Field label="Nome do papel*" value={pModal.nome} onChange={(e) => setPModal({ ...pModal, nome: e.target.value })} />
+            <Field label="Nome do papel" required value={pModal.nome} onChange={(e) => setPModal({ ...pModal, nome: e.target.value })} />
             {pModal.mode !== 'clonar' ? <TextArea label="Descrição" value={pModal.desc} onChange={(e) => setPModal({ ...pModal, desc: e.target.value })} /> : <p className="text-xs text-slate-500">O clone copia todas as permissões do papel de origem; ajuste a matriz depois.</p>}
           </div>
         ) : null}

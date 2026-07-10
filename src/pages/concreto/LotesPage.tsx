@@ -96,11 +96,11 @@ export function LotesPage() {
 
       <Modal open={open} title="Novo lote de aceitacao" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void criar()} disabled={busy}>{busy ? 'Calculando...' : 'Criar e calcular'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
-          <SelectField label="Obra" value={form.work_id} onChange={(e) => setForm((s) => ({ ...s, work_id: e.target.value }))}>
+          <SelectField label="Obra" required value={form.work_id} onChange={(e) => setForm((s) => ({ ...s, work_id: e.target.value }))}>
             <option value="">-</option>
             {(obras.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
           </SelectField>
-          <Field label="fck do lote (MPa)" type="number" step="0.1" value={form.fck_mpa} onChange={(e) => setForm((s) => ({ ...s, fck_mpa: e.target.value }))} hint="Agrupa os exemplares das concretagens da obra com este fck." />
+          <Field label="fck do lote (MPa)" required type="number" step="0.1" value={form.fck_mpa} onChange={(e) => setForm((s) => ({ ...s, fck_mpa: e.target.value }))} hint="Agrupa os exemplares das concretagens da obra com este fck." />
           <SelectField label="Condicao de preparo" value={form.condicao_preparo} onChange={(e) => setForm((s) => ({ ...s, condicao_preparo: e.target.value }))}>
             <option value="A">A</option><option value="B">B</option><option value="C">C</option>
           </SelectField>

@@ -19,7 +19,7 @@ export function EvolucaoExemplares({ rows }: { rows: PortalResultadoRow[] }) {
   });
   const fck = comResultado.find((r) => r.fck_ref != null)?.fck_ref ?? null;
   return (
-    <div className="h-56 w-full px-2 py-3">
+    <div className="h-72 w-full px-2 py-3 md:h-96 xl:h-[28rem]">
       <p className="px-1 pb-1 text-xs font-semibold text-slate-500">Evolução da resistência (MPa) por idade</p>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 5, right: 12, bottom: 0, left: -14 }}>

@@ -282,3 +282,6 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 /* ---- telas muito estreitas: aperta o respiro do conteudo ---- */
 @media (max-width:480px){.page-wrap{padding:14px 12px}.card{border-radius:18px}}
 
+
+/* v220: destaque de linha com CP de rompimento vencido (central de concretagens) */
+.vt-tr.vt-alert{box-shadow:inset 3px 0 0 var(--magenta)}

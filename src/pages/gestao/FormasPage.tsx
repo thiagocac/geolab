@@ -120,7 +120,7 @@ export function FormasPage() {
 
       <Modal open={open} title="Novo movimento de fôrmas" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Lançar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
-          <SelectField label="Obra" value={form.work_id} onChange={(e) => setForm((s) => ({ ...s, work_id: e.target.value }))}>
+          <SelectField label="Obra" required value={form.work_id} onChange={(e) => setForm((s) => ({ ...s, work_id: e.target.value }))}>
             <option value="">-</option>
             {(obras.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}{o.cliente ? ' — ' + o.cliente : ''}</option>)}
           </SelectField>

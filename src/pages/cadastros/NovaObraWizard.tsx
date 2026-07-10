@@ -56,13 +56,13 @@ export function NovaObraWizard() {
       {step === 1 ? (
         <Card>
           <div style={{ display: 'grid', gap: 12 }}>
-            <SelectField label="Cliente*" value={String(f.client_id ?? '')} onChange={(e) => set('client_id', e.target.value)}>
+            <SelectField label="Cliente" required value={String(f.client_id ?? '')} onChange={(e) => set('client_id', e.target.value)}>
               <option value="">Selecione...</option>
               {(clientes.data ?? []).map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </SelectField>
             <div style={{ display: 'flex', gap: 12 }}>
               <Field label="Código da obra" value={String(f.codigo ?? '')} onChange={(e) => set('codigo', e.target.value)} />
-              <Field label="Nome da obra*" value={String(f.nome ?? '')} onChange={(e) => { const v = e.target.value; set('nome', v); if (!str(f.sigla)) set('sigla', sigla4(v)); }} />
+              <Field label="Nome da obra" required value={String(f.nome ?? '')} onChange={(e) => { const v = e.target.value; set('nome', v); if (!str(f.sigla)) set('sigla', sigla4(v)); }} />
             </div>
             <Field label="Sigla (prefixo do Nº de relatório)" hint="Gerada das 4 primeiras letras do nome; editável." value={String(f.sigla ?? '')} onChange={(e) => set('sigla', e.target.value)} />
             <Field label="Endereço" value={String(f.endereco ?? '')} onChange={(e) => set('endereco', e.target.value)} />

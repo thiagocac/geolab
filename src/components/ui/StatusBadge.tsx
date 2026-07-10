@@ -1,7 +1,8 @@
 import { Badge } from './Badge';
-import { recordStatusMeta } from '../../lib/status';
+import { recordStatusMeta, type StatusDomain } from '../../lib/status';
 
-export function StatusBadge({ status }: { status?: string | null }) {
-  const { label, tone } = recordStatusMeta(status);
+// domain: overrides contextuais de label/tom (ex.: concretagem — registrado→Confirmada). Ver lib/status.ts.
+export function StatusBadge({ status, domain }: { status?: string | null; domain?: StatusDomain }) {
+  const { label, tone } = recordStatusMeta(status, domain);
   return <Badge tone={tone}>{label}</Badge>;
 }

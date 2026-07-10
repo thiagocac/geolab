@@ -303,8 +303,8 @@ export function MateriaisPage() {
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
             <SelectField label="Escopo do traço" value={f.escopo} onChange={(e) => { const v = e.target.value as FormState['escopo']; setF((s) => ({ ...s, escopo: v, client_id: v === 'lab' ? '' : s.client_id, work_id: v === 'obra' ? s.work_id : '' })); }}><option value="lab">Catálogo do laboratório (todas as obras)</option><option value="construtora">Construtora (reutilizável nas obras dela)</option><option value="obra">Obra específica</option></SelectField>
-            {f.escopo !== 'lab' ? <SelectField label="Construtora" value={f.client_id} onChange={(e) => setF((s) => ({ ...s, client_id: e.target.value, work_id: '' }))}><option value="">-</option>{(construtoras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField> : null}
-            {f.escopo === 'obra' ? <SelectField label="Obra" value={f.work_id} onChange={(e) => setF((s) => ({ ...s, work_id: e.target.value }))}><option value="">-</option>{(obrasDoEscopo.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField> : null}
+            {f.escopo !== 'lab' ? <SelectField label="Construtora" required value={f.client_id} onChange={(e) => setF((s) => ({ ...s, client_id: e.target.value, work_id: '' }))}><option value="">-</option>{(construtoras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField> : null}
+            {f.escopo === 'obra' ? <SelectField label="Obra" required value={f.work_id} onChange={(e) => setF((s) => ({ ...s, work_id: e.target.value }))}><option value="">-</option>{(obrasDoEscopo.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField> : null}
           </div>
           <div>
             <div className="text-xs font-bold text-slate-500">Traços-padrão:</div>
@@ -319,12 +319,12 @@ export function MateriaisPage() {
               
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Descrição *" value={f.descricao} onChange={(e) => patch('descricao', e.target.value)} />
+              <Field label="Descrição" required value={f.descricao} onChange={(e) => patch('descricao', e.target.value)} />
               <Field label="Aplicação" value={f.aplicacao} onChange={(e) => patch('aplicacao', e.target.value)} />
               {duplicados.length ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">Já existe um traço com esta mesma descrição em: {duplicados.map(escopoLabel).join(' · ')}.</div> : null}
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-4">
-              <Field label="FCK (MPa) *" type="number" value={f.fck_mpa} onChange={(e) => patch('fck_mpa', e.target.value)} />
+              <Field label="FCK (MPa)" required type="number" value={f.fck_mpa} onChange={(e) => patch('fck_mpa', e.target.value)} />
               <Field label="Slump prev. (mm)" type="number" value={f.slump_previsto_mm} onChange={(e) => patch('slump_previsto_mm', e.target.value)} />
               <Field label="Tolerância (±mm)" type="number" value={f.slump_tolerancia_mm} onChange={(e) => patch('slump_tolerancia_mm', e.target.value)} />
               <Field label="Validade (min)" type="number" value={f.validade_concreto_minutos} onChange={(e) => patch('validade_concreto_minutos', e.target.value)} />

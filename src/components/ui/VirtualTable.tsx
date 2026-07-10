@@ -6,10 +6,10 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 // Markup em divs (a virtualização por translateY quebra o layout nativo de <table>).
 // Desktop/tablet (md+): tabela virtualizada. Mobile: cada linha vira um cartão rótulo/valor
 // (espelha o DataTable), evitando rolagem horizontal de tabelas largas no celular.
-const ACTION_IDS = new Set(['acoes', 'ações', 'actions', '__actions']);
+const ACTION_IDS = new Set(['acoes', 'ações', 'actions', '__actions', 'abrir']);
 
-export function VirtualTable<T>({ data, columns, rowId, height = 560, estimateRow = 60, emptyLabel = 'Nenhum registro.' }: {
-  data: T[]; columns: ColumnDef<T, unknown>[]; rowId: (row: T) => string; height?: number; estimateRow?: number; emptyLabel?: string;
+export function VirtualTable<T>({ data, columns, rowId, height = 560, estimateRow = 60, emptyLabel = 'Nenhum registro.', rowClassName }: {
+  data: T[]; columns: ColumnDef<T, unknown>[]; rowId: (row: T) => string; height?: number; estimateRow?: number; emptyLabel?: string; rowClassName?: (row: T) => string;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [mLimit, setMLimit] = useState(40); // T24: mobile rende cartoes sem virtualizacao — limita e pagina
@@ -44,7 +44,7 @@ export function VirtualTable<T>({ data, columns, rowId, height = 560, estimateRo
               {virt.getVirtualItems().map((vi) => {
                 const row = rows[vi.index];
                 return (
-                  <div key={row.id} className="vt-tr" data-index={vi.index} ref={virt.measureElement} style={{ transform: `translateY(${vi.start}px)` }}>
+                  <div key={row.id} className={'vt-tr' + (rowClassName ? ' ' + rowClassName(row.original) : '')} data-index={vi.index} ref={virt.measureElement} style={{ transform: `translateY(${vi.start}px)` }}>
                     {row.getVisibleCells().map((cell) => (
                       <div key={cell.id} className="vt-td" style={{ width: cell.column.getSize() }}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
                     ))}
@@ -62,9 +62,9 @@ export function VirtualTable<T>({ data, columns, rowId, height = 560, estimateRo
           <div className="vt-empty card">{emptyLabel}</div>
         ) : rows.slice(0, mLimit).map((row) => (
           <div key={row.id} className="card space-y-1.5 p-3">
-            {row.getVisibleCells().map((cell) => {
+            {row.getVisibleCells().map((cell, ci) => {
               const content = flexRender(cell.column.columnDef.cell, cell.getContext());
-              if (isActions(cell.column.id)) return <div key={cell.id} className="flex flex-wrap gap-2 border-t border-slate-100 pt-2 dark:border-slate-800">{content}</div>;
+              if (isActions(cell.column.id)) return <div key={cell.id} className={ci > 0 ? 'flex flex-wrap gap-2 border-t border-slate-100 pt-2 dark:border-slate-800' : 'flex flex-wrap gap-2'}>{content}</div>;
               return (
                 <div key={cell.id} className="flex items-start justify-between gap-3 text-sm">
                   <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-slate-400">{headerById.get(cell.column.id)}</span>

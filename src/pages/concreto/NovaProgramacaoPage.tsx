@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../lib/toast';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { NumField } from '../../components/ui/NumField';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
@@ -95,17 +96,17 @@ export function NovaProgramacaoPage() {
       <Card className="p-5">
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-3">
-            <SelectField label="Cliente*" value={val(form.client_id)} onChange={(e) => setForm((s) => ({ ...s, client_id: e.target.value, work_id: '' }))}><option value="">-</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
-            <SelectField label="Obra*" value={val(form.work_id)} onChange={(e) => patch('work_id', e.target.value)}><option value="">-</option>{(obras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
+            <SelectField label="Cliente" required value={val(form.client_id)} onChange={(e) => setForm((s) => ({ ...s, client_id: e.target.value, work_id: '' }))}><option value="">-</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
+            <SelectField label="Obra" required value={val(form.work_id)} onChange={(e) => patch('work_id', e.target.value)}><option value="">-</option>{(obras.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>
             <SelectField label="Traço cadastrado" value={val(form.operational_material_id)} onChange={(e) => { const id = e.target.value; const t = (tracos.data ?? []).find((x) => x.value === id); setForm((s) => ({ ...s, operational_material_id: id, fck_previsto: t?.fck ?? s.fck_previsto })); if (id && t) { setPadrao(normalizePadroes(t.padrao_moldagem ?? [], t.fck ?? null)); setPadraoTouched(true); } else { setPadraoTouched(false); } }}><option value="">Manual</option><TracoOptions tracos={tracos.data ?? []} workId={form.work_id ? String(form.work_id) : null} clientId={form.client_id ? String(form.client_id) : null} /></SelectField>
             {!form.operational_material_id ? <Field label="Traço manual" value={val(form.traco_texto)} onChange={(e) => patch('traco_texto', e.target.value)} /> : null}
             {form.work_id ? <button type="button" className="justify-self-start text-xs font-bold text-blue-600" onClick={() => nav('/tracos?work=' + String(form.work_id))}>Gerenciar traços desta obra</button> : null}
-            <Field label="FCK (MPa)" type="number" value={val(form.fck_previsto)} onChange={(e) => patch('fck_previsto', e.target.value)} />
+            <NumField label="FCK (MPa)" value={form.fck_previsto} onCommit={(n) => patch('fck_previsto', n)} min={1} max={150} soft={[10, 100]} />
             <Field label="Fornecedor / central" list={FORNECEDORES_DL} value={val(form.fornecedor_texto)} onChange={(e) => patch('fornecedor_texto', e.target.value)} />
             <Field label="Data prevista" type="date" value={val(form.data_programada)} onChange={(e) => patch('data_programada', e.target.value)} />
             <Field label="Hora prevista" type="time" value={val(form.hora_programada)} onChange={(e) => patch('hora_programada', e.target.value)} />
-            <Field label="Volume previsto (m³)" type="number" value={val(form.volume_programado_m3)} onChange={(e) => patch('volume_programado_m3', e.target.value)} />
-            {(estruturas.data ?? []).length ? <EstruturaPecaSelect estruturas={estruturas.data ?? []} onPick={(v) => setForm((s) => ({ ...s, local_texto: v.local, estrutura_id: v.estrutura_id, peca_id: v.peca_id, peca_nome: v.peca_nome }))} /> : null}
+            <NumField label="Volume previsto (m³)" value={form.volume_programado_m3} onCommit={(n) => patch('volume_programado_m3', n)} min={0} max={999} dec={2} soft={[0, 500]} />
+            {(estruturas.data ?? []).length ? <EstruturaPecaSelect estruturas={estruturas.data ?? []} initialLocal={form.local_texto ? String(form.local_texto) : undefined} onPick={(v) => setForm((s) => ({ ...s, local_texto: v.local, estrutura_id: v.estrutura_id, peca_id: v.peca_id, peca_nome: v.peca_nome }))} /> : null}
             <Field label={(estruturas.data ?? []).length ? 'Local / peça (ou digite)' : 'Local / peça'} value={val(form.local_texto)} onChange={(e) => patch('local_texto', e.target.value)} />
             <SelectField label="Dimensão CP" value={val(form.dimensao_cp)} onChange={(e) => patch('dimensao_cp', e.target.value)}><option value="100x200">100 x 200 mm</option><option value="150x300">150 x 300 mm</option></SelectField>
             <SelectField label="Moldador" value={val(form.moldador_id)} onChange={(e) => patch('moldador_id', e.target.value)}><option value="">A definir</option>{moldadores.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</SelectField>

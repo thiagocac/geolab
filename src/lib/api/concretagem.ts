@@ -324,14 +324,18 @@ export async function lerFichaImagem(file: File, concId: string): Promise<{ enab
 const rpcLoose = supabase as unknown as { rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
 export type ConcretagemCentralRow = {
   id: string; codigo: string | null; numero_relatorio: string | null; status: string; status_tecnico: string; origem: string;
-  data_programada: string | null; data_real: string | null; fornecedor_texto: string | null; fck_previsto: number | null;
-  cliente: string | null; obra: string | null;
+  data_programada: string | null; data_real: string | null; hora: string | null; fornecedor_texto: string | null; fck_previsto: number | null;
+  cliente: string | null; obra: string | null; local_texto: string | null; traco_nome: string | null;
+  volume_programado_m3: number | null; volume_lancado_m3: number | null;
+  moldador_nome: string | null; laboratorista_nome: string | null; formas_previstas: number | null;
   n_caminhoes: number; n_cps: number; n_cps_rompidos: number; n_cps_atrasados: number; n_laudos: number;
 };
-export async function listConcretagensCentral(opts: { tenantId?: string; clientId?: string; workId?: string; status?: string; search?: string; from?: string; to?: string; page?: number; pageSize?: number }): Promise<{ rows: ConcretagemCentralRow[]; total: number }> {
-  if (!opts.tenantId) return { rows: [], total: 0 };
+// Agregados da central (calculados no RPC ANTES do filtro de status — os KPIs não se auto-zeram).
+export type ConcretagensCentralKpis = { total: number; emAndamento: number; cps: number; cpsRompidos: number; cpsAtrasados: number; laudos: number };
+export async function listConcretagensCentral(opts: { tenantId?: string; clientId?: string; workId?: string; status?: string; search?: string; from?: string; to?: string; page?: number; pageSize?: number }): Promise<{ rows: ConcretagemCentralRow[]; total: number; kpis: ConcretagensCentralKpis | null }> {
+  if (!opts.tenantId) return { rows: [], total: 0, kpis: null };
   const pageSize = opts.pageSize ?? 25; const page = Math.max(0, opts.page ?? 0);
-  const { data, error } = await rpcLoose.rpc('concretagens_central_paged', {
+  const { data, error } = await rpcLoose.rpc('concretagens_central_paged_v2', {
     p_tenant: opts.tenantId, p_client: opts.clientId || null, p_work: opts.workId || null,
     p_status: opts.status || null, p_search: opts.search || null, p_from: opts.from || null, p_to: opts.to || null,
     p_limit: pageSize, p_offset: page * pageSize,
@@ -339,15 +343,25 @@ export async function listConcretagensCentral(opts: { tenantId?: string; clientI
   if (error) throw new Error(error.message);
   const arr = (data ?? []) as Array<Record<string, unknown>>;
   const total = arr.length ? Number(arr[0].total_count ?? 0) : 0;
+  const num = (v: unknown): number | null => (v == null ? null : Number(v));
   const rows: ConcretagemCentralRow[] = arr.map((r) => ({
     id: String(r.id), codigo: (r.codigo as string | null) ?? null, numero_relatorio: (r.numero_relatorio as string | null) ?? null,
     status: String(r.status ?? ''), status_tecnico: String(r.status_tecnico ?? ''), origem: String(r.origem ?? ''),
-    data_programada: (r.data_programada as string | null) ?? null, data_real: (r.data_real as string | null) ?? null,
-    fornecedor_texto: (r.fornecedor_texto as string | null) ?? null, fck_previsto: r.fck_previsto == null ? null : Number(r.fck_previsto),
+    data_programada: (r.data_programada as string | null) ?? null, data_real: (r.data_real as string | null) ?? null, hora: (r.hora as string | null) ?? null,
+    fornecedor_texto: (r.fornecedor_texto as string | null) ?? null, fck_previsto: num(r.fck_previsto),
     cliente: (r.cliente as string | null) ?? null, obra: (r.obra as string | null) ?? null,
+    local_texto: (r.local_texto as string | null) ?? null, traco_nome: (r.traco_nome as string | null) ?? null,
+    volume_programado_m3: num(r.volume_programado_m3), volume_lancado_m3: num(r.volume_lancado_m3),
+    moldador_nome: (r.moldador_nome as string | null) ?? null, laboratorista_nome: (r.laboratorista_nome as string | null) ?? null,
+    formas_previstas: r.formas_previstas == null ? null : Number(r.formas_previstas),
     n_caminhoes: Number(r.n_caminhoes ?? 0), n_cps: Number(r.n_cps ?? 0), n_cps_rompidos: Number(r.n_cps_rompidos ?? 0), n_cps_atrasados: Number(r.n_cps_atrasados ?? 0), n_laudos: Number(r.n_laudos ?? 0),
   }));
-  return { rows, total };
+  const kpis: ConcretagensCentralKpis | null = arr.length ? {
+    total: Number(arr[0].agg_total ?? 0), emAndamento: Number(arr[0].agg_em_andamento ?? 0),
+    cps: Number(arr[0].agg_cps ?? 0), cpsRompidos: Number(arr[0].agg_cps_rompidos ?? 0),
+    cpsAtrasados: Number(arr[0].agg_cps_atrasados ?? 0), laudos: Number(arr[0].agg_laudos ?? 0),
+  } : null;
+  return { rows, total, kpis };
 }
 
 

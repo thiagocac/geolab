@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { openDeferredTab } from '../../lib/pdf';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { clampNum } from '../../lib/validacao';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
@@ -14,9 +15,18 @@ import { listPortalResultados, listPortalLaudosView } from '../../lib/api/portal
 import { submitPortalCorrecao, getPortalCorrecaoConfig, listMeusPedidosCorrecao } from '../../lib/api/portalCorrecao';
 import type { PortalCorrecaoInput } from '../../lib/portal/types';
 import { PortalEstruturaTab } from './PortalEstruturaTab';
+import { Modal } from '../../components/ui/Modal';
+import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
+import { normalizePadroes, padroesToDb, type PadraoMoldagem } from '../../lib/concreto';
 import { listPortalEstruturas } from '../../lib/api/portalEstrutura';
 
-const blank = (): PortalProgramacaoInput & { key: string } => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
+type LinhaProg = PortalProgramacaoInput & { key: string; padrao?: PadraoMoldagem[] };
+const blank = (): LinhaProg => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
+// Resumo curto do padrão de moldagem para o botão da linha (ex.: "2×7d + 4×28d").
+const resumoPadrao = (p?: PadraoMoldagem[]): string => {
+  if (!p || !p.length) return 'Padrão do laboratório';
+  return p.map((i) => `${i.quantidadeCp || 0}×${i.idadeControle}${i.unidadeIdade === 'horas' ? 'h' : 'd'}`).join(' + ');
+};
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown): number | null => { const s = str(v).replace(',', '.'); if (!s) return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
 const anexosDe = (md: unknown): PortalAnexo[] => { const o = md as Record<string, unknown> | null; return o && Array.isArray(o.anexos) ? o.anexos as PortalAnexo[] : []; };
@@ -49,6 +59,8 @@ export function ClientePortalPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>('programacao');
   const [rows, setRows] = useState([blank()]);
+  const [moldKey, setMoldKey] = useState<string | null>(null);
+  const [moldDraft, setMoldDraft] = useState<PadraoMoldagem[]>([]);
   const [busy, setBusy] = useState(false);
   const [anexBusy, setAnexBusy] = useState<string | null>(null);
 
@@ -61,10 +73,24 @@ export function ClientePortalPage() {
   async function solicitarCorrecao(input: PortalCorrecaoInput) { await submitPortalCorrecao(input); await qc.invalidateQueries({ queryKey: ['portal-meus-pedidos'] }); toast('Pedido de correção enviado ao laboratório.', 'success'); }
 
   function patch(key: string, field: keyof PortalProgramacaoInput, value: unknown) { setRows((list) => list.map((r) => r.key === key ? { ...r, [field]: value } : r)); }
+  function abrirMoldagem(r: LinhaProg) {
+    setMoldDraft(r.padrao?.length ? r.padrao : normalizePadroes([], num(r.fck_previsto)));
+    setMoldKey(r.key);
+  }
+  function salvarMoldagem() {
+    if (!moldKey) return;
+    setRows((list) => list.map((r) => (r.key === moldKey ? { ...r, padrao: moldDraft } : r)));
+    setMoldKey(null);
+  }
+  function limparMoldagem() {
+    if (!moldKey) return;
+    setRows((list) => list.map((r) => (r.key === moldKey ? { ...r, padrao: undefined } : r)));
+    setMoldKey(null);
+  }
   async function enviar() {
     setBusy(true);
     try {
-      const payload = rows.filter((r) => r.work_id && r.data_programada).map((r) => ({ ...r, fck_previsto: num(r.fck_previsto), volume_programado_m3: num(r.volume_programado_m3) }));
+      const payload = rows.filter((r) => r.work_id && r.data_programada).map(({ key: _k, padrao, ...r }) => ({ ...r, fck_previsto: num(r.fck_previsto), volume_programado_m3: num(r.volume_programado_m3), padrao_moldagem: padrao?.length ? padroesToDb(padrao) : undefined }));
       if (!payload.length) throw new Error('Preencha ao menos obra e data prevista em uma linha.');
       const inserted = await submitPortalProgramacoes(payload);
       setRows([blank()]);
@@ -96,8 +122,8 @@ export function ClientePortalPage() {
           <Card>
             <CardHeader title="Nova programação de concretagem">Preencha uma linha por concretagem e envie tudo para confirmação do laboratório.</CardHeader>
             <div className="overflow-x-auto p-4">
-              <table className="w-full min-w-[1120px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300"><tr><th className="px-2 py-2">Obra*</th><th>Data*</th><th>Hora</th><th>Local / peça</th><th>Traço / concreto</th><th>FCK</th><th>Fornecedor</th><th>Volume</th><th>Obs.</th><th /></tr></thead>
+              <table className="w-full min-w-[1260px] text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300"><tr><th className="px-2 py-2">Obra*</th><th>Data*</th><th>Hora</th><th>Local / peça</th><th>Traço / concreto</th><th>FCK</th><th>Moldagem</th><th>Fornecedor</th><th>Volume</th><th>Obs.</th><th /></tr></thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.key} className="border-t border-slate-100 dark:border-slate-800">
@@ -106,9 +132,10 @@ export function ClientePortalPage() {
                       <td><input className="input min-w-[100px]" type="time" value={r.hora_programada ?? ''} onChange={(e) => patch(r.key, 'hora_programada', e.target.value)} /></td>
                       <td><PortalLocalCell workId={r.work_id} value={r.local_texto ?? ''} onChange={(v) => patch(r.key, 'local_texto', v)} /></td>
                       <td><input className="input min-w-[220px]" value={r.traco_texto ?? ''} onChange={(e) => patch(r.key, 'traco_texto', e.target.value)} placeholder="FCK 30 | BRITA 1 | SLUMP 10±2" /></td>
-                      <td><input className="input w-24" type="number" value={r.fck_previsto ?? ''} onChange={(e) => patch(r.key, 'fck_previsto', e.target.value)} /></td>
+                      <td><input className="input w-24" type="number" inputMode="numeric" min={1} max={150} step="1" value={r.fck_previsto ?? ''} onChange={(e) => patch(r.key, 'fck_previsto', e.target.value)} onBlur={(e) => patch(r.key, 'fck_previsto', clampNum(e.target.value, { min: 1, max: 150, dec: 0 })?.toString() ?? '')} /></td>
+                      <td><button type="button" onClick={() => abrirMoldagem(r)} title="Corpos de prova por idade desta concretagem" className={'min-h-9 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ' + (r.padrao?.length ? 'border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800' : 'border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800')}>{resumoPadrao(r.padrao)}</button></td>
                       <td><input className="input min-w-[160px]" value={r.fornecedor_texto ?? ''} onChange={(e) => patch(r.key, 'fornecedor_texto', e.target.value)} /></td>
-                      <td><input className="input w-24" type="number" value={r.volume_programado_m3 ?? ''} onChange={(e) => patch(r.key, 'volume_programado_m3', e.target.value)} /></td>
+                      <td><input className="input w-24" type="number" inputMode="decimal" min={0} max={999} step="0.01" value={r.volume_programado_m3 ?? ''} onChange={(e) => patch(r.key, 'volume_programado_m3', e.target.value)} onBlur={(e) => patch(r.key, 'volume_programado_m3', clampNum(e.target.value, { min: 0, max: 999, dec: 2 })?.toString() ?? '')} /></td>
                       <td><input className="input min-w-[180px]" value={r.observacoes ?? ''} onChange={(e) => patch(r.key, 'observacoes', e.target.value)} /></td>
                       <td className="p-2"><button type="button" className="text-slate-400 hover:text-red-600" onClick={() => setRows((list) => list.length === 1 ? [blank()] : list.filter((x) => x.key !== r.key))}>×</button></td>
                     </tr>
@@ -117,6 +144,13 @@ export function ClientePortalPage() {
               </table>
             </div>
             <div className="flex flex-wrap justify-between gap-2 border-t border-slate-100 p-4 dark:border-slate-800"><Button variant="secondary" onClick={() => setRows((r) => [...r, blank()])}>+ Adicionar linha</Button><Button onClick={() => void enviar()} disabled={busy}>{busy ? 'Enviando...' : 'Enviar programações ao laboratório'}</Button></div>
+          <Modal open={!!moldKey} title="Padrão de moldagem da concretagem" onClose={() => setMoldKey(null)}
+            footer={<><Button variant="ghost" onClick={limparMoldagem}>Usar padrão do laboratório</Button><Button variant="ghost" onClick={() => setMoldKey(null)}>Cancelar</Button><Button onClick={salvarMoldagem}>Aplicar à linha</Button></>}>
+            <div className="grid gap-3">
+              <p className="text-sm text-slate-600 dark:text-slate-300">Informe quantos corpos de prova moldar por idade nesta concretagem (ex.: 2×7d + 4×28d). Se não informar, o laboratório aplica o padrão do traço.</p>
+              <MoldingStandardEditor value={moldDraft} onChange={setMoldDraft} fck={moldKey ? num(rows.find((r) => r.key === moldKey)?.fck_previsto) : null} />
+            </div>
+          </Modal>
           </Card>
 
           <Card>
@@ -127,7 +161,7 @@ export function ClientePortalPage() {
                 return (
                   <div key={c.id} className="p-4 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'}</span><StatusBadge status={c.status} /></div><div className="mt-1 text-slate-500">{c.client_works?.nome ?? '-'} · {c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}</div></div>
+                      <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-black text-slate-950 dark:text-slate-50">{c.codigo ?? '(sem código)'}</span><StatusBadge status={c.status} domain="concretagem" /></div><div className="mt-1 text-slate-500">{c.client_works?.nome ?? '-'} · {c.data_real ?? c.data_programada ?? '-'} · {c.local_texto ?? '-'}</div></div>
                       <label className="btn btn-secondary cursor-pointer whitespace-nowrap">{anexBusy === c.id ? 'Enviando...' : '+ Anexar arquivo'}<input type="file" className="hidden" disabled={anexBusy === c.id} onChange={(e) => void anexar(c.id, e.target.files?.[0] ?? null)} /></label>
                     </div>
                     {anexos.length ? <div className="mt-2 flex flex-wrap gap-2">{anexos.map((a, i) => <button key={a.path || i} type="button" className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200" onClick={() => void baixarAnexo(a.path)}><FileText size={13} /> {a.filename}</button>)}</div> : null}

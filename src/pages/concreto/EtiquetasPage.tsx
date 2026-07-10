@@ -93,13 +93,13 @@ export function EtiquetasPage() {
 
           {modo === 'avulsa' ? (
             <div style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
-              <Field label="Quantidade de etiquetas" type="number" min={1} step={1} value={qtd} onChange={(e) => setQtd(e.target.value)} hint="Uma grande sequência sem vinculo a obra/concretagem." />
+              <Field label="Quantidade de etiquetas" required type="number" min={1} step={1} value={qtd} onChange={(e) => setQtd(e.target.value)} hint="Uma grande sequência sem vinculo a obra/concretagem." />
               <TextArea label="Observação (opcional)" value={obs} onChange={(e) => setObs(e.target.value)} />
               <div><Button onClick={() => void gerar()} disabled={busy}>{busy ? 'Gerando...' : 'Gerar ' + totalAvulsa + ' etiqueta(s)'}</Button></div>
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 12, maxWidth: 640 }}>
-              <SelectField label="Concretagem" value={concId} onChange={(e) => selecionarConc((concs.data ?? []).find((c) => c.id === e.target.value) ?? null)}>
+              <SelectField label="Concretagem" required value={concId} onChange={(e) => selecionarConc((concs.data ?? []).find((c) => c.id === e.target.value) ?? null)}>
                 <option value="">Selecione...</option>
                 {(concs.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.codigo}{c.obra ? ' - ' + c.obra : ''}{c.data ? ' - ' + dataBR(c.data) : ''}</option>)}
               </SelectField>
