@@ -1,36 +1,20 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { MedicaoPage } from './MedicaoPage';
+import { TabShell } from '../../components/patterns/TabShell';
+import { MedicaoV2Page } from './MedicaoV2Page';
 import { FaturasPage } from './FaturasPage';
-import { ContratosFinanceiroPage } from './ContratosFinanceiroPage';
-import { PropostasPage } from './PropostasPage';
-import { CatalogoServicosPage } from './CatalogoServicosPage';
+import { CashflowPage } from './CashflowPage';
+import { BankReconciliationPage } from './BankReconciliationPage';
 
-// C3 — módulo financeiro consolidado em abas. Cada aba é a página existente (papéis por aba).
-type Aba = 'medicao' | 'faturas' | 'contratos' | 'propostas' | 'catalogo';
-export function FinanceiroPage({ inicial = 'medicao' }: { inicial?: Aba }) {
+// [v228] Financeiro consolidado (reescrita do C3/v168): Medições = v2 (canonico; MedicaoPage v1
+// preservada no repo, sem rota). Propostas/Contratos/Catálogo migraram para o hub Comercial.
+export function FinanceiroPage({ inicial = 'medicoes' }: { inicial?: 'medicoes' | 'faturas' | 'fluxo' | 'conciliacao' }) {
   const { hasRole, can } = useAuth();
-  const abas: { key: Aba; label: string; ok: boolean }[] = [
-    { key: 'medicao', label: 'Medição', ok: hasRole('admin', 'admin_consulte') },
-    { key: 'faturas', label: 'Faturas', ok: hasRole('admin', 'admin_consulte', 'financeiro') },
-    { key: 'contratos', label: 'Contratos', ok: hasRole('admin', 'admin_consulte') },
-    { key: 'propostas', label: 'Propostas', ok: can('proposta.ver') },
-    { key: 'catalogo', label: 'Catálogo', ok: can('servico_catalogo.ver') },
-  ];
-  const disp = abas.filter((a) => a.ok);
-  const [sp, setSp] = useSearchParams();
-  const [aba, setAba] = useState<Aba>(() => { const t = sp.get('tab') as Aba | null; if (t && disp.some((a) => a.key === t)) return t; return disp.some((a) => a.key === inicial) ? inicial : (disp[0]?.key ?? 'medicao'); });
-  function trocar(k: Aba) { setAba(k); setSp({ tab: k }, { replace: true }); }
-  if (!disp.length) return <Card className="p-8 text-center text-sm text-slate-600 dark:text-slate-300">Sem acesso ao financeiro.</Card>;
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {disp.map((a) => <Button key={a.key} variant={aba === a.key ? 'primary' : 'ghost'} onClick={() => trocar(a.key)}>{a.label}</Button>)}
-      </div>
-      {aba === 'medicao' ? <MedicaoPage /> : aba === 'faturas' ? <FaturasPage /> : aba === 'propostas' ? <PropostasPage /> : aba === 'catalogo' ? <CatalogoServicosPage /> : <ContratosFinanceiroPage />}
-    </div>
+    <TabShell inicial={inicial} vazio="Sem acesso ao financeiro." tabs={[
+      { key: 'medicoes', label: 'Medições', ok: can('medicao.ver'), render: () => <MedicaoV2Page /> },
+      { key: 'faturas', label: 'Faturas', ok: hasRole('admin', 'admin_consulte', 'financeiro'), render: () => <FaturasPage /> },
+      { key: 'fluxo', label: 'Fluxo de caixa', ok: can('financeiro.ver'), render: () => <CashflowPage /> },
+      { key: 'conciliacao', label: 'Conciliação', ok: can('conciliacao.ver'), render: () => <BankReconciliationPage /> },
+    ]} />
   );
 }

@@ -136,7 +136,7 @@ function Panel({ id, snapshot, qualidade, nav }: { id: DashId; snapshot: LabDash
     <div className="xl:col-span-2"><ChartPanel title="Pendências por tipo" action={{ label: 'Abrir pendências', onClick: () => nav('/gestao/pendencias') }} empty={!series(snapshot, 'pendencias_tipo').length}><Bars data={series(snapshot, 'pendencias_tipo') as never} /></ChartPanel></div>
     <Card><CardHeader title="Fila crítica" kicker="Operação" /><div className="p-4"><Ranking data={rank(snapshot, 'pendencias_criticas')} /></div></Card>
   </div>;
-  if (id === 'financeiro') return <ChartPanel title="Medição × faturamento × aberto" action={{ label: 'Abrir financeiro', onClick: () => nav('/financeiro?tab=contratos') }} empty={!snapshot.finance.length}><Lines data={snapshot.finance as never} keys={['previsto', 'realizado', 'aberto']} /></ChartPanel>;
+  if (id === 'financeiro') return <ChartPanel title="Medição × faturamento × aberto" action={{ label: 'Abrir financeiro', onClick: () => nav('/financeiro?tab=medicoes') }} empty={!snapshot.finance.length}><Lines data={snapshot.finance as never} keys={['previsto', 'realizado', 'aberto']} /></ChartPanel>;
   return <PanelPlaceholder title={String(id)}>Painel em preparação.</PanelPlaceholder>;
 }
 

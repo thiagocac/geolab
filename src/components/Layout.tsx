@@ -10,70 +10,91 @@ import { Modal } from './ui/Modal';
 import { useToast } from '../lib/toast';
 import { getPendenciasResumo } from '../lib/api/pendencias';
 import { PEND_SECOES } from '../lib/pendenciasNav';
-import { Home, MixerTruck, Compress, FileText, Import, Bell, Gauge, Boxes, Layers, Beaker, ClipboardCheck, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Download, Tag, Truck, Thermometer, CalendarDays } from './ui/icons';
+import { Home, MixerTruck, Compress, FileText, Import, Gauge, Boxes, Layers, Beaker, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Tag, CalendarDays } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[]; perm?: string };
 type Section = { title?: string; items: Item[] };
 const labRoles = ['admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro'];
 const adminRoles = ['admin', 'admin_consulte'];
+// [v228] Menu agrupado em hubs de abas (TabShell): 50 itens → 21. Cada hub agrega as paginas do
+// dominio; as rotas legadas seguem vivas no App.tsx apontando para o hub com a aba inicial certa.
 const sections: Section[] = [
-  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/hoje', label: 'Hoje no lab', icon: CalendarDays, roles: labRoles }, { to: '/planejamento-semanal', label: 'Planejamento semanal', icon: CalendarDays, roles: labRoles, perm: 'planejamento.ver' }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles, perm: 'dashboard.ver' }, { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles }] },
+  { items: [
+    { to: '/', label: 'Painel', icon: Home, end: true },
+    { to: '/agenda', label: 'Agenda', icon: CalendarDays, roles: labRoles },
+    { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles, perm: 'dashboard.ver' },
+    { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles },
+  ] },
   { title: 'Concreto', items: [
     { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
     { to: '/concretagens', label: 'Concretagens', icon: MixerTruck, roles: labRoles },
-    { to: '/etiquetas', label: 'Etiquetas', icon: Tag, roles: labRoles, perm: 'etiqueta.ver' },
-    { to: '/recebimento-cps', label: 'Recebimento de CPs', icon: Import, roles: labRoles },
+    { to: '/cps', label: 'CPs', icon: Tag, roles: labRoles },
     { to: '/rompimentos', label: 'Rompimentos', icon: Compress, roles: labRoles },
-    { to: '/descarte-cps', label: 'Descarte de CPs', icon: Tag, roles: labRoles },
     { to: '/laudos', label: 'Laudos', icon: FileText, roles: labRoles },
     // [v202] Aceitacao de lotes retirada do menu (pagina/logica preservadas). Reative descomentando: { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
-    { to: '/nao-conformidades', label: 'Não-conformidades', icon: AlertTriangle, roles: labRoles },
+    { to: '/qualidade', label: 'Qualidade', icon: CheckCircle, roles: labRoles },
     { to: '/importacoes', label: 'Importações', icon: Import, roles: labRoles },
     { to: '/tracos', label: 'Traços', icon: Beaker, roles: labRoles },
   ] },
   { title: 'Cadastros', items: [
     { to: '/cadastros', label: 'Cadastros', icon: Boxes, roles: labRoles },
     { to: '/estrutura', label: 'Estrutura', icon: Layers, roles: labRoles },
-    { to: '/portal/usuarios-clientes', label: 'Usuários de clientes', icon: Users, roles: adminRoles, perm: 'portal.gerenciar' },
+  ] },
+  { title: 'Gestão', items: [
+    { to: '/comercial', label: 'Comercial', icon: Users, roles: ['admin', 'admin_consulte', 'financeiro'] },
+    { to: '/financeiro', label: 'Financeiro', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
+    { to: '/suprimentos', label: 'Suprimentos', icon: Boxes, roles: labRoles },
+    { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles },
+    { to: '/equipe', label: 'Equipe', icon: Users, roles: labRoles },
+    { to: '/configuracoes', label: 'Configurações', icon: Settings, roles: labRoles },
   ] },
   { title: 'Portal', items: [
     { to: '/portal-cliente', label: 'Portal do cliente', icon: Building2, roles: ['cliente', 'admin', 'admin_consulte'] },
   ] },
-  { title: 'Gestão', items: [
-    { to: '/financeiro', label: 'Financeiro', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
-    { to: '/propostas', label: 'Propostas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'], perm: 'proposta.ver' },
-    { to: '/crm', label: 'CRM', icon: Users, roles: ['admin', 'admin_consulte', 'financeiro'], perm: 'crm.ver' },
-    { to: '/gestao/compras', label: 'Compras e reposição', icon: Boxes, roles: labRoles, perm: 'compras.ver' },
-    { to: '/gestao/conciliacao', label: 'Conciliação bancária', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'], perm: 'conciliacao.ver' },
-    { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
-    { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles, perm: 'forma.ver' },
-    { to: '/coleta-formas', label: 'Coleta de fôrmas', icon: Truck, roles: labRoles, perm: 'coleta.executar' },
-    { to: '/diario-cura', label: 'Diário de cura', icon: Thermometer, roles: labRoles, perm: 'cura.ver' },
-    { to: '/rota-dia', label: 'Rota do dia', icon: Truck, roles: labRoles },
-    { to: '/configuracoes', label: 'Configurações', icon: Settings, roles: labRoles },
-    { to: '/gestao/onboarding', label: 'Onboarding do laboratório', icon: Settings, roles: adminRoles, perm: 'onboarding.ver' },
-  ] },
   { title: 'Operação interna', items: [
-    { to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles, perm: 'operacao.interna' },
-    { to: '/gestao/backups', label: 'Backups', icon: Download, roles: adminRoles, perm: 'backup.executar' },
-    { to: '/gestao/emails', label: 'E-mails', icon: FileText, roles: adminRoles, perm: 'email.gerenciar' },
-    { to: '/gestao/timeline', label: 'Linha do tempo', icon: Clock, roles: adminRoles, perm: 'auditoria.ver' },
-    { to: '/gestao/documentos', label: 'Documentos e gate', icon: ClipboardCheck, roles: adminRoles, perm: 'docgate.ver' },
-    { to: '/gestao/templates-documentos', label: 'Templates de documentos', icon: FileText, roles: labRoles, perm: 'documento_template.ver' },
-    { to: '/gestao/contratos-v2', label: 'Contratos v2', icon: FileText, roles: labRoles, perm: 'contrato.gerenciar' },
-    { to: '/gestao/medicoes-v2', label: 'Medições v2', icon: FileText, roles: labRoles, perm: 'medicao.ver' },
-    { to: '/gestao/fluxo-caixa', label: 'Fluxo de caixa', icon: FileText, roles: labRoles, perm: 'financeiro.ver' },
-    { to: '/gestao/capacidade', label: 'Capacidade', icon: CalendarDays, roles: labRoles, perm: 'capacidade.ver' },
-    { to: '/gestao/estoque', label: 'Estoque', icon: ClipboardCheck, roles: labRoles, perm: 'estoque.ver' },
-    { to: '/gestao/iso-17025', label: 'ISO 17025', icon: ShieldAlert, roles: labRoles, perm: 'iso17025.ver' },
-    { to: '/gestao/premiacao', label: 'Premiação', icon: Users, roles: labRoles, perm: 'premiacao.ver' },
-    { to: '/gestao/rbac', label: 'Permissões', icon: Users, roles: adminRoles, perm: 'rbac.gerenciar' },
-    { to: '/gestao/delegacoes', label: 'Delegações', icon: Users, roles: adminRoles, perm: 'workflow.delegar' },
-    { to: '/gestao/seguranca-conta', label: 'Segurança da conta', icon: ShieldAlert, roles: labRoles },
-    { to: '/gestao/comunicados', label: 'Comunicados', icon: Bell, roles: adminRoles, perm: 'comunicado.gerenciar' },
-    { to: '/gestao/backlog', label: 'Backlog interno', icon: ClipboardCheck, roles: adminRoles, perm: 'operacao.interna' },
-    { to: '/gestao/webhooks', label: 'Webhooks/API', icon: Settings, roles: adminRoles, perm: 'api.gerenciar' },
+    { to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles },
   ] },
+];
+
+// [v228] Atalhos das abas dos hubs para a paleta (Ctrl+K) — o menu enxuto tirou os deep-links da
+// navegacao; a paleta os preserva. Filtrados por perm/roles como os itens do menu.
+const atalhos: { to: string; label: string; grupo: string; roles?: string[]; perm?: string }[] = [
+  { to: '/hoje', label: 'Hoje no lab', grupo: 'Agenda', roles: labRoles },
+  { to: '/planejamento-semanal', label: 'Planejamento semanal', grupo: 'Agenda', perm: 'planejamento.ver' },
+  { to: '/gestao/capacidade', label: 'Capacidade', grupo: 'Agenda', perm: 'capacidade.ver' },
+  { to: '/rota-dia', label: 'Rota do dia', grupo: 'Agenda', roles: labRoles },
+  { to: '/recebimento-cps', label: 'Recebimento de CPs', grupo: 'CPs', roles: labRoles },
+  { to: '/etiquetas', label: 'Etiquetas', grupo: 'CPs', perm: 'etiqueta.ver' },
+  { to: '/descarte-cps', label: 'Descarte de CPs', grupo: 'CPs', roles: labRoles },
+  { to: '/nao-conformidades', label: 'Não-conformidades', grupo: 'Qualidade', roles: labRoles },
+  { to: '/diario-cura', label: 'Diário de cura', grupo: 'Qualidade', perm: 'cura.ver' },
+  { to: '/gestao/iso-17025', label: 'ISO 17025', grupo: 'Qualidade', perm: 'iso17025.ver' },
+  { to: '/crm', label: 'CRM', grupo: 'Comercial', perm: 'crm.ver' },
+  { to: '/propostas', label: 'Propostas', grupo: 'Comercial', perm: 'proposta.ver' },
+  { to: '/gestao/contratos-v2', label: 'Contratos', grupo: 'Comercial', perm: 'contrato.gerenciar' },
+  { to: '/gestao/templates-documentos', label: 'Templates de documentos', grupo: 'Comercial', perm: 'documento_template.ver' },
+  { to: '/medicoes', label: 'Medições', grupo: 'Financeiro', perm: 'medicao.ver' },
+  { to: '/faturas', label: 'Faturas', grupo: 'Financeiro', roles: ['admin', 'admin_consulte', 'financeiro'] },
+  { to: '/gestao/fluxo-caixa', label: 'Fluxo de caixa', grupo: 'Financeiro', perm: 'financeiro.ver' },
+  { to: '/gestao/conciliacao', label: 'Conciliação bancária', grupo: 'Financeiro', perm: 'conciliacao.ver' },
+  { to: '/gestao/estoque', label: 'Estoque', grupo: 'Suprimentos', perm: 'estoque.ver' },
+  { to: '/gestao/compras', label: 'Compras e reposição', grupo: 'Suprimentos', perm: 'compras.ver' },
+  { to: '/coleta-formas', label: 'Coleta de fôrmas', grupo: 'Fôrmas', perm: 'coleta.executar' },
+  { to: '/produtividade', label: 'Produtividade', grupo: 'Equipe', roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
+  { to: '/gestao/premiacao', label: 'Premiação', grupo: 'Equipe', perm: 'premiacao.ver' },
+  { to: '/portal/usuarios-clientes', label: 'Usuários de clientes', grupo: 'Portal', perm: 'portal.gerenciar' },
+  { to: '/gestao/onboarding', label: 'Onboarding do laboratório', grupo: 'Configurações', perm: 'onboarding.ver' },
+  { to: '/gestao/seguranca-conta', label: 'Segurança da conta', grupo: 'Configurações', roles: labRoles },
+  { to: '/gestao/rbac', label: 'Permissões', grupo: 'Operação', perm: 'rbac.gerenciar' },
+  { to: '/gestao/delegacoes', label: 'Delegações', grupo: 'Operação', perm: 'workflow.delegar' },
+  { to: '/gestao/backups', label: 'Backups', grupo: 'Operação', perm: 'backup.executar' },
+  { to: '/gestao/emails', label: 'E-mails', grupo: 'Operação', perm: 'email.gerenciar' },
+  { to: '/gestao/timeline', label: 'Linha do tempo', grupo: 'Operação', perm: 'auditoria.ver' },
+  { to: '/gestao/documentos', label: 'Documentos e gate', grupo: 'Operação', perm: 'docgate.ver' },
+  { to: '/gestao/comunicados', label: 'Comunicados', grupo: 'Operação', perm: 'comunicado.gerenciar' },
+  { to: '/gestao/backlog', label: 'Backlog interno', grupo: 'Operação', perm: 'operacao.interna' },
+  { to: '/gestao/webhooks', label: 'Webhooks/API', grupo: 'Operação', perm: 'api.gerenciar' },
+  { to: '/observabilidade', label: 'Observabilidade', grupo: 'Operação', perm: 'observabilidade.ver' },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -107,6 +128,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { id: 'a-prog', label: 'Nova programação', group: 'Ações', run: () => nav('/programacoes/nova', { viewTransition: true }) },
     { id: 'a-obra', label: 'Nova obra', group: 'Ações', run: () => nav('/nova-obra', { viewTransition: true }) },
     ...sections.flatMap((sec) => sec.items.filter(canSee).map((it) => ({ id: 'n-' + it.to, label: it.label, group: sec.title ?? 'Geral', run: () => nav(it.to, { viewTransition: true }) }))),
+    ...atalhos.filter((a) => a.perm ? can(a.perm) : (!a.roles || hasRole(...a.roles))).map((a) => ({ id: 's-' + a.to, label: a.label, group: a.grupo, run: () => nav(a.to, { viewTransition: true }) })),
   ];
   return (
     <div className="app-shell">

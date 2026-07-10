@@ -8,6 +8,11 @@ import { Layout } from './components/Layout';
 import { LoadingState } from './components/ui/State';
 
 // Páginas carregadas sob demanda (code-splitting por rota) — exports nomeados.
+// [v228] Menu agrupado em hubs de abas: as paginas de cada dominio passam a ser importadas pelos
+// hubs (AgendaPage, CpsHubPage, QualidadePage, ComercialPage, FinanceiroPage, SuprimentosPage,
+// FormasHubPage, EquipePage, PortalHubPage, ConfiguracoesPage, OperacaoHubPage) — o App importa
+// so os hubs e as paginas com rota propria. Rotas legadas apontam para o hub com a aba inicial.
+// Medições/Contratos = v2 canonico (MedicaoPage/ContratosFinanceiroPage v1 preservadas, sem rota).
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const CadastrosPage = lazy(() => import('./pages/cadastros/CadastrosPage').then((m) => ({ default: m.CadastrosPage })));
 const NovaObraWizard = lazy(() => import('./pages/cadastros/NovaObraWizard').then((m) => ({ default: m.NovaObraWizard })));
@@ -18,53 +23,26 @@ const NovaProgramacaoPage = lazy(() => import('./pages/concreto/NovaProgramacaoP
 const ConcretagensPage = lazy(() => import('./pages/concreto/ConcretagensPage').then((m) => ({ default: m.ConcretagensPage })));
 const ConcretagemDetalhePage = lazy(() => import('./pages/concreto/ConcretagemDetalhePage').then((m) => ({ default: m.ConcretagemDetalhePage })));
 const RompimentosPage = lazy(() => import('./pages/concreto/RompimentosPage').then((m) => ({ default: m.RompimentosPage })));
-const RecebimentoCpsPage = lazy(() => import('./pages/concreto/RecebimentoCpsPage').then((m) => ({ default: m.RecebimentoCpsPage })));
-const DescarteCpsPage = lazy(() => import('./pages/concreto/DescarteCpsPage').then((m) => ({ default: m.DescarteCpsPage })));
-const ColetaFormasPage = lazy(() => import('./pages/concreto/ColetaFormasPage').then((m) => ({ default: m.ColetaFormasPage })));
-const ImportacoesShell = lazy(() => import('./pages/concreto/ImportacoesShell').then((m) => ({ default: m.ImportacoesShell })));
-const FinanceiroPage = lazy(() => import('./pages/gestao/FinanceiroPage').then((m) => ({ default: m.FinanceiroPage })));
-const ConfiguracoesPage = lazy(() => import('./pages/gestao/ConfiguracoesPage').then((m) => ({ default: m.ConfiguracoesPage })));
-const EtiquetasPage = lazy(() => import('./pages/concreto/EtiquetasPage').then((m) => ({ default: m.EtiquetasPage })));
 const LaudosPage = lazy(() => import('./pages/concreto/LaudosPage').then((m) => ({ default: m.LaudosPage })));
+const ImportacoesShell = lazy(() => import('./pages/concreto/ImportacoesShell').then((m) => ({ default: m.ImportacoesShell })));
 const LabDashboardsPage = lazy(() => import('./pages/dashboards/LabDashboardsPage').then((m) => ({ default: m.LabDashboardsPage })));
-const TemplatesDocumentosPage = lazy(() => import('./pages/gestao/TemplatesDocumentosPage').then((m) => ({ default: m.TemplatesDocumentosPage })));
-const CommercialPublicPage = lazy(() => import('./pages/CommercialPublicPage').then((m) => ({ default: m.CommercialPublicPage })));
-const ContractsV2Page = lazy(() => import('./pages/gestao/ContractsV2Page').then((m) => ({ default: m.ContractsV2Page })));
-const MedicaoV2Page = lazy(() => import('./pages/gestao/MedicaoV2Page').then((m) => ({ default: m.MedicaoV2Page })));
-const CashflowPage = lazy(() => import('./pages/gestao/CashflowPage').then((m) => ({ default: m.CashflowPage })));
-const CapacityPage = lazy(() => import('./pages/gestao/CapacityPage').then((m) => ({ default: m.CapacityPage })));
-const InventoryPage = lazy(() => import('./pages/gestao/InventoryPage').then((m) => ({ default: m.InventoryPage })));
-const Iso17025Page = lazy(() => import('./pages/gestao/Iso17025Page').then((m) => ({ default: m.Iso17025Page })));
-const TeamBonusPage = lazy(() => import('./pages/gestao/TeamBonusPage').then((m) => ({ default: m.TeamBonusPage })));
+const PendenciasPage = lazy(() => import('./pages/gestao/PendenciasPage').then((m) => ({ default: m.PendenciasPage })));
 const ProductOverviewPage = lazy(() => import('./pages/gestao/ProductOverviewPage').then((m) => ({ default: m.ProductOverviewPage })));
-const LabOnboardingPage = lazy(() => import('./pages/gestao/LabOnboardingPage').then((m) => ({ default: m.LabOnboardingPage })));
-const WeeklyPlanningPage = lazy(() => import('./pages/gestao/WeeklyPlanningPage').then((m) => ({ default: m.WeeklyPlanningPage })));
-const CrmPage = lazy(() => import('./pages/gestao/CrmPage').then((m) => ({ default: m.CrmPage })));
-const ProcurementPage = lazy(() => import('./pages/gestao/ProcurementPage').then((m) => ({ default: m.ProcurementPage })));
-const BankReconciliationPage = lazy(() => import('./pages/gestao/BankReconciliationPage').then((m) => ({ default: m.BankReconciliationPage })));
+const CommercialPublicPage = lazy(() => import('./pages/CommercialPublicPage').then((m) => ({ default: m.CommercialPublicPage })));
 // [v202] Aceitacao de lotes retirada do sistema (mantida implementada p/ religar). Reative: descomente este import, a Route /lotes (App.tsx) e o item de menu (Layout.tsx).
 // const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
-const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
-const PendenciasPage = lazy(() => import('./pages/gestao/PendenciasPage').then((m) => ({ default: m.PendenciasPage })));
-const ProdutividadePage = lazy(() => import('./pages/gestao/ProdutividadePage').then((m) => ({ default: m.ProdutividadePage })));
-const DiarioCuraPage = lazy(() => import('./pages/gestao/DiarioCuraPage').then((m) => ({ default: m.DiarioCuraPage })));
-const HojePage = lazy(() => import('./pages/gestao/HojePage').then((m) => ({ default: m.HojePage })));
-const RotaDiaPage = lazy(() => import('./pages/gestao/RotaDiaPage').then((m) => ({ default: m.RotaDiaPage })));
-const FormasPage = lazy(() => import('./pages/gestao/FormasPage').then((m) => ({ default: m.FormasPage })));
-const ClientePortalPage = lazy(() => import('./pages/portal/ClientePortalPage').then((m) => ({ default: m.ClientePortalPage })));
-const ClienteUsuariosPage = lazy(() => import('./pages/portal/ClienteUsuariosPage').then((m) => ({ default: m.ClienteUsuariosPage })));
-const OperacaoPage = lazy(() => import('./pages/operacao/OperacaoPage').then((m) => ({ default: m.OperacaoPage })));
-const ObservabilidadePage = lazy(() => import('./pages/gestao/ObservabilidadePage').then((m) => ({ default: m.ObservabilidadePage })));
-const BackupsPage = lazy(() => import('./pages/gestao/BackupsPage').then((m) => ({ default: m.BackupsPage })));
-const EmailLogPage = lazy(() => import('./pages/gestao/EmailLogPage').then((m) => ({ default: m.EmailLogPage })));
-const TimelinePage = lazy(() => import('./pages/gestao/TimelinePage').then((m) => ({ default: m.TimelinePage })));
-const DocGatePage = lazy(() => import('./pages/gestao/DocGatePage').then((m) => ({ default: m.DocGatePage })));
-const RbacPage = lazy(() => import('./pages/gestao/RbacPage').then((m) => ({ default: m.RbacPage })));
-const DelegacoesPage = lazy(() => import('./pages/gestao/DelegacoesPage').then((m) => ({ default: m.DelegacoesPage })));
-const SegurancaContaPage = lazy(() => import('./pages/gestao/SegurancaContaPage').then((m) => ({ default: m.SegurancaContaPage })));
-const BroadcastsPage = lazy(() => import('./pages/gestao/BroadcastsPage').then((m) => ({ default: m.BroadcastsPage })));
-const AdminBacklogPage = lazy(() => import('./pages/gestao/AdminBacklogPage').then((m) => ({ default: m.AdminBacklogPage })));
-const WebhooksPage = lazy(() => import('./pages/gestao/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
+// Hubs de abas (v228):
+const AgendaPage = lazy(() => import('./pages/gestao/AgendaPage').then((m) => ({ default: m.AgendaPage })));
+const CpsHubPage = lazy(() => import('./pages/concreto/CpsHubPage').then((m) => ({ default: m.CpsHubPage })));
+const QualidadePage = lazy(() => import('./pages/concreto/QualidadePage').then((m) => ({ default: m.QualidadePage })));
+const ComercialPage = lazy(() => import('./pages/gestao/ComercialPage').then((m) => ({ default: m.ComercialPage })));
+const FinanceiroPage = lazy(() => import('./pages/gestao/FinanceiroPage').then((m) => ({ default: m.FinanceiroPage })));
+const ConfiguracoesPage = lazy(() => import('./pages/gestao/ConfiguracoesPage').then((m) => ({ default: m.ConfiguracoesPage })));
+const SuprimentosPage = lazy(() => import('./pages/gestao/SuprimentosPage').then((m) => ({ default: m.SuprimentosPage })));
+const FormasHubPage = lazy(() => import('./pages/gestao/FormasHubPage').then((m) => ({ default: m.FormasHubPage })));
+const EquipePage = lazy(() => import('./pages/gestao/EquipePage').then((m) => ({ default: m.EquipePage })));
+const PortalHubPage = lazy(() => import('./pages/portal/PortalHubPage').then((m) => ({ default: m.PortalHubPage })));
+const OperacaoHubPage = lazy(() => import('./pages/operacao/OperacaoHubPage').then((m) => ({ default: m.OperacaoHubPage })));
 const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
 const LaudoAprovarPage = lazy(() => import('./pages/LaudoAprovarPage').then((m) => ({ default: m.LaudoAprovarPage })));
 const PortalPublicoPage = lazy(() => import('./pages/portal/PortalPublicoPage').then((m) => ({ default: m.PortalPublicoPage })));
@@ -81,7 +59,7 @@ function RouteTelemetryMount() {
 }
 
 export function App() {
-  const { ready, session, needsTenantSelection, hasRole, can, recovery } = useAuth();
+  const { ready, session, needsTenantSelection, can, recovery } = useAuth();
 
   // Rota PUBLICA de validacao (fora do gate de auth) — alvo do QR do laudo.
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/validar')) {
@@ -157,7 +135,6 @@ export function App() {
 
   if (!session) return <LoginScreen />;
   if (needsTenantSelection) return <TenantSelectionPage />;
-  const podeLab = hasRole('admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro');
   return (
     <BrowserRouter>
       <RouteTelemetryMount />
@@ -174,60 +151,77 @@ export function App() {
             <Route path="/concretagens" element={<ConcretagensPage />} />
             <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
             <Route path="/rompimentos" element={<RompimentosPage />} />
-            <Route path="/recebimento-cps" element={<RecebimentoCpsPage />} />
-            <Route path="/descarte-cps" element={<DescarteCpsPage />} />
-            <Route path="/etiquetas" element={<EtiquetasPage />} />
             <Route path="/laudos" element={<LaudosPage />} />
             {/* [v202] Aceitacao de lotes retirada. Reative descomentando: <Route path="/lotes" element={<LotesPage />} /> */}
-            <Route path="/nao-conformidades" element={<NcPage />} />
-            <Route path="/gestao/nc-config" element={<ConfiguracoesPage inicial="nc" />} />
+            {/* Hub Agenda (v228) */}
+            <Route path="/agenda" element={<AgendaPage />} />
+            <Route path="/hoje" element={<AgendaPage inicial="hoje" />} />
+            <Route path="/planejamento-semanal" element={<AgendaPage inicial="semana" />} />
+            <Route path="/gestao/capacidade" element={<AgendaPage inicial="capacidade" />} />
+            <Route path="/rota-dia" element={<AgendaPage inicial="rota" />} />
+            {/* Hub CPs (v228) — cadeia fisica do CP (Grupo A/v227) */}
+            <Route path="/cps" element={<CpsHubPage />} />
+            <Route path="/recebimento-cps" element={<CpsHubPage inicial="recebimento" />} />
+            <Route path="/etiquetas" element={<CpsHubPage inicial="etiquetas" />} />
+            <Route path="/descarte-cps" element={<CpsHubPage inicial="descarte" />} />
+            {/* Hub Qualidade (v228) */}
+            <Route path="/qualidade" element={<QualidadePage />} />
+            <Route path="/nao-conformidades" element={<QualidadePage inicial="nc" />} />
+            <Route path="/diario-cura" element={<QualidadePage inicial="cura" />} />
+            <Route path="/gestao/iso-17025" element={<QualidadePage inicial="iso" />} />
             <Route path="/importacoes" element={<ImportacoesShell />} />
             <Route path="/importacoes/excel" element={can('importacao.executar') ? <ImportacoesShell inicial="excel" /> : <Navigate to="/" replace />} />
             <Route path="/dashboards" element={can('dashboard.ver') ? <LabDashboardsPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/contratos-financeiro" element={<FinanceiroPage inicial="contratos" />} />
-            <Route path="/notificacoes" element={<ConfiguracoesPage inicial="notificacoes" />} />
-            <Route path="/gestao/pendencias" element={<PendenciasPage />} />
-            <Route path="/gestao/templates-documentos" element={can('documento_template.ver') ? <TemplatesDocumentosPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/contratos-v2" element={can('contrato.gerenciar') ? <ContractsV2Page /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/medicoes-v2" element={can('medicao.ver') ? <MedicaoV2Page /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/fluxo-caixa" element={can('financeiro.ver') ? <CashflowPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/capacidade" element={can('capacidade.ver') ? <CapacityPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/estoque" element={can('estoque.ver') ? <InventoryPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/iso-17025" element={can('iso17025.ver') ? <Iso17025Page /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/premiacao" element={can('premiacao.ver') ? <TeamBonusPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/produto" element={<ProductOverviewPage />} />
-            <Route path="/gestao/onboarding" element={can('onboarding.ver') ? <LabOnboardingPage /> : <Navigate to="/" replace />} />
-            <Route path="/planejamento-semanal" element={can('planejamento.ver') ? <WeeklyPlanningPage /> : <Navigate to="/" replace />} />
-            <Route path="/crm" element={can('crm.ver') ? <CrmPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/compras" element={can('compras.ver') ? <ProcurementPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/conciliacao" element={can('conciliacao.ver') ? <BankReconciliationPage /> : <Navigate to="/" replace />} />
-            <Route path="/preferencias" element={<ConfiguracoesPage inicial="preferencias" />} />
-            <Route path="/medicoes" element={<FinanceiroPage inicial="medicao" />} />
-            <Route path="/produtividade" element={<ProdutividadePage />} />
-            <Route path="/diario-cura" element={<DiarioCuraPage />} />
-            <Route path="/hoje" element={<HojePage />} />
-            <Route path="/rota-dia" element={<RotaDiaPage />} />
-            <Route path="/propostas" element={<FinanceiroPage inicial="propostas" />} />
-            <Route path="/faturas" element={<FinanceiroPage inicial="faturas" />} />
-            <Route path="/formas" element={<FormasPage />} />
-            <Route path="/coleta-formas" element={<ColetaFormasPage />} />
-            <Route path="/gestao/config-campos" element={<ConfiguracoesPage inicial="campos" />} />
-            <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+            {/* Hub Comercial (v228) — Contratos v2 canonico */}
+            <Route path="/comercial" element={<ComercialPage />} />
+            <Route path="/crm" element={<ComercialPage inicial="crm" />} />
+            <Route path="/propostas" element={<ComercialPage inicial="propostas" />} />
+            <Route path="/gestao/contratos-v2" element={<ComercialPage inicial="contratos" />} />
+            <Route path="/gestao/contratos-financeiro" element={<ComercialPage inicial="contratos" />} />
+            <Route path="/gestao/templates-documentos" element={<ComercialPage inicial="templates" />} />
+            {/* Hub Financeiro (v228) — Medições v2 canonico */}
             <Route path="/financeiro" element={<FinanceiroPage />} />
-            <Route path="/portal-cliente" element={<ClientePortalPage />} />
-            <Route path="/portal/usuarios-clientes" element={can('portal.gerenciar') ? <ClienteUsuariosPage /> : <Navigate to="/portal-cliente" replace />} />
-            <Route path="/operacao" element={can('operacao.interna') ? <OperacaoPage /> : <Navigate to="/" replace />} />
-            <Route path="/observabilidade" element={can('observabilidade.ver') ? <ObservabilidadePage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/backups" element={can('backup.executar') ? <BackupsPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/emails" element={can('email.gerenciar') ? <EmailLogPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/timeline" element={can('auditoria.ver') ? <TimelinePage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/documentos" element={can('docgate.ver') ? <DocGatePage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/rbac" element={can('rbac.gerenciar') ? <RbacPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/delegacoes" element={can('workflow.delegar') ? <DelegacoesPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/seguranca-conta" element={podeLab ? <SegurancaContaPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/comunicados" element={can('comunicado.gerenciar') ? <BroadcastsPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/backlog" element={can('operacao.interna') ? <AdminBacklogPage /> : <Navigate to="/" replace />} />
-            <Route path="/gestao/webhooks" element={can('api.gerenciar') ? <WebhooksPage /> : <Navigate to="/" replace />} />
+            <Route path="/medicoes" element={<FinanceiroPage inicial="medicoes" />} />
+            <Route path="/gestao/medicoes-v2" element={<FinanceiroPage inicial="medicoes" />} />
+            <Route path="/faturas" element={<FinanceiroPage inicial="faturas" />} />
+            <Route path="/gestao/fluxo-caixa" element={<FinanceiroPage inicial="fluxo" />} />
+            <Route path="/gestao/conciliacao" element={<FinanceiroPage inicial="conciliacao" />} />
+            {/* Hub Suprimentos (v228) */}
+            <Route path="/suprimentos" element={<SuprimentosPage />} />
+            <Route path="/gestao/estoque" element={<SuprimentosPage inicial="estoque" />} />
+            <Route path="/gestao/compras" element={<SuprimentosPage inicial="compras" />} />
+            {/* Hub Fôrmas (v228) */}
+            <Route path="/formas" element={<FormasHubPage />} />
+            <Route path="/coleta-formas" element={<FormasHubPage inicial="coleta" />} />
+            {/* Hub Equipe (v228) */}
+            <Route path="/equipe" element={<EquipePage />} />
+            <Route path="/produtividade" element={<EquipePage inicial="produtividade" />} />
+            <Route path="/gestao/premiacao" element={<EquipePage inicial="premiacao" />} />
+            {/* Hub Portal (v228) */}
+            <Route path="/portal-cliente" element={<PortalHubPage />} />
+            <Route path="/portal/usuarios-clientes" element={<PortalHubPage inicial="usuarios" />} />
+            {/* Configurações (v228: + onboarding e segurança da conta) */}
+            <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+            <Route path="/preferencias" element={<ConfiguracoesPage inicial="preferencias" />} />
+            <Route path="/gestao/config-campos" element={<ConfiguracoesPage inicial="campos" />} />
+            <Route path="/gestao/nc-config" element={<ConfiguracoesPage inicial="nc" />} />
+            <Route path="/notificacoes" element={<ConfiguracoesPage inicial="notificacoes" />} />
+            <Route path="/gestao/onboarding" element={<ConfiguracoesPage inicial="onboarding" />} />
+            <Route path="/gestao/seguranca-conta" element={<ConfiguracoesPage inicial="seguranca" />} />
+            {/* Hub Operação interna (v228) — shell unico */}
+            <Route path="/operacao" element={<OperacaoHubPage />} />
+            <Route path="/gestao/rbac" element={<OperacaoHubPage inicial="rbac" />} />
+            <Route path="/gestao/delegacoes" element={<OperacaoHubPage inicial="delegacoes" />} />
+            <Route path="/gestao/backups" element={<OperacaoHubPage inicial="backups" />} />
+            <Route path="/gestao/emails" element={<OperacaoHubPage inicial="emails" />} />
+            <Route path="/gestao/timeline" element={<OperacaoHubPage inicial="timeline" />} />
+            <Route path="/gestao/documentos" element={<OperacaoHubPage inicial="docgate" />} />
+            <Route path="/gestao/comunicados" element={<OperacaoHubPage inicial="comunicados" />} />
+            <Route path="/gestao/backlog" element={<OperacaoHubPage inicial="backlog" />} />
+            <Route path="/gestao/webhooks" element={<OperacaoHubPage inicial="webhooks" />} />
+            <Route path="/observabilidade" element={<OperacaoHubPage inicial="observabilidade" />} />
+            <Route path="/gestao/pendencias" element={<PendenciasPage />} />
+            <Route path="/gestao/produto" element={<ProductOverviewPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
