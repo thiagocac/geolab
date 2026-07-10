@@ -30,6 +30,11 @@ const CommercialPublicPage = lazy(() => import('./pages/CommercialPublicPage').t
 const ContractsV2Page = lazy(() => import('./pages/gestao/ContractsV2Page').then((m) => ({ default: m.ContractsV2Page })));
 const MedicaoV2Page = lazy(() => import('./pages/gestao/MedicaoV2Page').then((m) => ({ default: m.MedicaoV2Page })));
 const CashflowPage = lazy(() => import('./pages/gestao/CashflowPage').then((m) => ({ default: m.CashflowPage })));
+const CapacityPage = lazy(() => import('./pages/gestao/CapacityPage').then((m) => ({ default: m.CapacityPage })));
+const InventoryPage = lazy(() => import('./pages/gestao/InventoryPage').then((m) => ({ default: m.InventoryPage })));
+const Iso17025Page = lazy(() => import('./pages/gestao/Iso17025Page').then((m) => ({ default: m.Iso17025Page })));
+const TeamBonusPage = lazy(() => import('./pages/gestao/TeamBonusPage').then((m) => ({ default: m.TeamBonusPage })));
+const ProductOverviewPage = lazy(() => import('./pages/gestao/ProductOverviewPage').then((m) => ({ default: m.ProductOverviewPage })));
 // [v202] Aceitacao de lotes retirada do sistema (mantida implementada p/ religar). Reative: descomente este import, a Route /lotes (App.tsx) e o item de menu (Layout.tsx).
 // const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
 const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
@@ -177,6 +182,11 @@ export function App() {
             <Route path="/gestao/contratos-v2" element={can('contrato.gerenciar') ? <ContractsV2Page /> : <Navigate to="/" replace />} />
             <Route path="/gestao/medicoes-v2" element={can('medicao.ver') ? <MedicaoV2Page /> : <Navigate to="/" replace />} />
             <Route path="/gestao/fluxo-caixa" element={can('financeiro.ver') ? <CashflowPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/capacidade" element={can('capacidade.ver') ? <CapacityPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/estoque" element={can('estoque.ver') ? <InventoryPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/iso-17025" element={can('iso17025.ver') ? <Iso17025Page /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/premiacao" element={can('premiacao.ver') ? <TeamBonusPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/produto" element={<ProductOverviewPage />} />
             <Route path="/preferencias" element={<ConfiguracoesPage inicial="preferencias" />} />
             <Route path="/medicoes" element={<FinanceiroPage inicial="medicao" />} />
             <Route path="/produtividade" element={<ProdutividadePage />} />
