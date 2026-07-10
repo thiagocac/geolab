@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Drawer } from '../../components/ui/Drawer';
+import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/State';
@@ -11,7 +11,6 @@ import { useAuth } from '../../lib/auth';
 import { openDeferredTab } from '../../lib/pdf';
 import { listClientesRef } from '../../lib/api/obras';
 import {
-  converterPropostaContrato,
   gerarRevisaoProposta,
   getProposta,
   listPropostas,
@@ -26,6 +25,7 @@ import {
   listServiceCatalog,
   sendCommercialDocument,
 } from '../../lib/api/productEvolution';
+import { convertProposalToContractWork } from '../../lib/api/proposalConversion';
 import { useToast } from '../../lib/toast';
 import { dateBr, money, Pill, TableShell, Td, Th } from './product/ProductUi';
 
@@ -39,7 +39,6 @@ export function PropostasPage() {
   const { member, can } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
-  const nav = useNavigate();
   const queryClient = useQueryClient();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -49,6 +48,17 @@ export function PropostasPage() {
     recipient_name: '', recipient_email: '', template_version_id: '', followup_at: '',
   });
   const [items, setItems] = useState<PropostaItem[]>([]);
+  const [conversion, setConversion] = useState<{
+    proposalId: string;
+    existingWorkId: string | null;
+    contractNumber: string;
+    workName: string;
+    workCode: string;
+    address: string;
+    city: string;
+    uf: string;
+    structureName: string;
+  } | null>(null);
 
   const proposals = useQuery({ queryKey: ['propostas', member?.tenant_id], enabled: !!member, queryFn: listPropostas });
   const clients = useQuery({ queryKey: ['clientes-ref', member?.tenant_id], enabled: !!member, queryFn: listClientesRef });
@@ -161,15 +171,48 @@ export function PropostasPage() {
     }
   }
 
-  async function convert(id: string) {
-    const accepted = await confirm({ title: 'Converter em contrato', message: 'A proposta aceita será transformada em contrato estruturado.', confirmLabel: 'Converter' });
-    if (!accepted) return;
-    setBusy(`convert:${id}`);
+  function openConversion(proposal: { id: string; work_id: string | null; numero: string | null; titulo: string | null }) {
+    setConversion({
+      proposalId: proposal.id,
+      existingWorkId: proposal.work_id,
+      contractNumber: proposal.numero ?? '',
+      workName: proposal.work_id ? '' : (proposal.titulo ?? ''),
+      workCode: '',
+      address: '',
+      city: '',
+      uf: '',
+      structureName: '',
+    });
+  }
+
+  async function convertNow() {
+    if (!conversion) return;
+    if (!conversion.existingWorkId && !conversion.workName.trim()) {
+      toast('Informe o nome da obra que será criada.', 'warning');
+      return;
+    }
+    setBusy(`convert:${conversion.proposalId}`);
     try {
-      await converterPropostaContrato(id);
-      await queryClient.invalidateQueries({ queryKey: ['propostas'] });
-      toast('Contrato criado.', 'success');
-      nav('/financeiro?tab=contratos', { viewTransition: true });
+      const result = await convertProposalToContractWork({
+        proposalId: conversion.proposalId,
+        contractNumber: conversion.contractNumber.trim() || undefined,
+        work: conversion.existingWorkId ? { id: conversion.existingWorkId } : {
+          nome: conversion.workName.trim(),
+          codigo: conversion.workCode.trim() || undefined,
+          endereco: conversion.address.trim() || undefined,
+          cidade: conversion.city.trim() || undefined,
+          uf: conversion.uf.trim().toUpperCase() || undefined,
+          estrutura_habilitada: !!conversion.structureName.trim(),
+        },
+        structures: conversion.structureName.trim() ? [{ nome: conversion.structureName.trim(), ordem: 1, pecas: [] }] : [],
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['propostas'] }),
+        queryClient.invalidateQueries({ queryKey: ['contracts-v2'] }),
+        queryClient.invalidateQueries({ queryKey: ['refs-works'] }),
+      ]);
+      setConversion(null);
+      toast(result.idempotent ? 'A proposta já estava convertida.' : 'Contrato e obra criados com rastreabilidade.', 'success');
     } catch (error) {
       toast((error as Error).message, 'error');
     } finally {
@@ -213,7 +256,7 @@ export function PropostasPage() {
                     {proposal.status === 'rascunho' || proposal.status === 'enviada' ? <Button variant="ghost" onClick={() => startEdit(proposal.id)}>Editar</Button> : null}
                     <Button variant="secondary" disabled={busy !== null} onClick={() => void generate(proposal.id)}>{busy === `pdf:${proposal.id}` ? 'Gerando...' : 'PDF'}</Button>
                     {can('proposta.enviar') && ['rascunho', 'enviada'].includes(proposal.status) ? <Button variant="secondary" disabled={busy !== null} onClick={() => void send(proposal.id, proposal.recipient_email)}>{busy === `send:${proposal.id}` ? 'Enviando...' : 'Enviar'}</Button> : null}
-                    {can('proposta.converter') && proposal.status === 'aceita' && !proposal.contrato_id ? <Button disabled={busy !== null} onClick={() => void convert(proposal.id)}>{busy === `convert:${proposal.id}` ? 'Convertendo...' : 'Criar contrato'}</Button> : null}
+                    {can('proposta.converter') && proposal.status === 'aceita' && !proposal.contrato_id ? <Button disabled={busy !== null} onClick={() => openConversion(proposal)}>{busy === `convert:${proposal.id}` ? 'Convertendo...' : 'Criar contrato'}</Button> : null}
                     {proposal.status === 'rascunho' ? <Button variant="danger" onClick={() => void archive(proposal.id)}>Arquivar</Button> : null}
                   </div>
                 </Td>
@@ -274,6 +317,27 @@ export function PropostasPage() {
           </div>
         )}
       </Drawer>
+
+      <Modal
+        open={!!conversion}
+        wide
+        title="Converter proposta em contrato e obra"
+        onClose={() => setConversion(null)}
+        footer={<><Button variant="ghost" onClick={() => setConversion(null)}>Cancelar</Button><Button disabled={busy?.startsWith('convert:')} onClick={() => void convertNow()}>{busy?.startsWith('convert:') ? 'Convertendo...' : 'Criar contrato e obra'}</Button></>}
+      >
+        {conversion ? <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Número do contrato" value={conversion.contractNumber} onChange={(event) => setConversion({ ...conversion, contractNumber: event.target.value })} />
+          {conversion.existingWorkId ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">A proposta já está vinculada a uma obra. O contrato será associado à obra existente.</div> : <>
+            <Field label="Nome da obra" required value={conversion.workName} onChange={(event) => setConversion({ ...conversion, workName: event.target.value })} />
+            <Field label="Código da obra" value={conversion.workCode} onChange={(event) => setConversion({ ...conversion, workCode: event.target.value })} />
+            <Field label="Endereço" value={conversion.address} onChange={(event) => setConversion({ ...conversion, address: event.target.value })} />
+            <Field label="Cidade" value={conversion.city} onChange={(event) => setConversion({ ...conversion, city: event.target.value })} />
+            <Field label="UF" maxLength={2} value={conversion.uf} onChange={(event) => setConversion({ ...conversion, uf: event.target.value })} />
+            <Field label="Estrutura inicial" value={conversion.structureName} onChange={(event) => setConversion({ ...conversion, structureName: event.target.value })} placeholder="Ex.: Torre A" />
+          </>}
+          <div className="md:col-span-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">A operação é transacional e idempotente: cria ou vincula a obra, converte os itens da proposta em contrato e registra a trilha de eventos.</div>
+        </div> : null}
+      </Modal>
     </div>
   );
 }

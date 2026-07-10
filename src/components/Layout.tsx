@@ -17,7 +17,7 @@ type Section = { title?: string; items: Item[] };
 const labRoles = ['admin', 'admin_consulte', 'gestor_qualidade', 'laboratorista', 'operador_campo', 'financeiro'];
 const adminRoles = ['admin', 'admin_consulte'];
 const sections: Section[] = [
-  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/hoje', label: 'Hoje no lab', icon: CalendarDays, roles: labRoles }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles, perm: 'dashboard.ver' }, { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles }] },
+  { items: [{ to: '/', label: 'Painel', icon: Home, end: true }, { to: '/hoje', label: 'Hoje no lab', icon: CalendarDays, roles: labRoles }, { to: '/planejamento-semanal', label: 'Planejamento semanal', icon: CalendarDays, roles: labRoles, perm: 'planejamento.ver' }, { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles, perm: 'dashboard.ver' }, { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles }] },
   { title: 'Concreto', items: [
     { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
     { to: '/concretagens', label: 'Concretagens', icon: MixerTruck, roles: labRoles },
@@ -40,12 +40,16 @@ const sections: Section[] = [
   { title: 'Gestão', items: [
     { to: '/financeiro', label: 'Financeiro', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'] },
     { to: '/propostas', label: 'Propostas', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'], perm: 'proposta.ver' },
+    { to: '/crm', label: 'CRM', icon: Users, roles: ['admin', 'admin_consulte', 'financeiro'], perm: 'crm.ver' },
+    { to: '/gestao/compras', label: 'Compras e reposição', icon: Boxes, roles: labRoles, perm: 'compras.ver' },
+    { to: '/gestao/conciliacao', label: 'Conciliação bancária', icon: Receipt, roles: ['admin', 'admin_consulte', 'financeiro'], perm: 'conciliacao.ver' },
     { to: '/produtividade', label: 'Produtividade', icon: Gauge, roles: ['admin', 'admin_consulte', 'gestor_qualidade'] },
     { to: '/formas', label: 'Fôrmas', icon: Mold, roles: labRoles, perm: 'forma.ver' },
     { to: '/coleta-formas', label: 'Coleta de fôrmas', icon: Truck, roles: labRoles, perm: 'coleta.executar' },
     { to: '/diario-cura', label: 'Diário de cura', icon: Thermometer, roles: labRoles, perm: 'cura.ver' },
     { to: '/rota-dia', label: 'Rota do dia', icon: Truck, roles: labRoles },
     { to: '/configuracoes', label: 'Configurações', icon: Settings, roles: labRoles },
+    { to: '/gestao/onboarding', label: 'Onboarding do laboratório', icon: Settings, roles: adminRoles, perm: 'onboarding.ver' },
   ] },
   { title: 'Operação interna', items: [
     { to: '/operacao', label: 'Operação', icon: ShieldAlert, roles: adminRoles, perm: 'operacao.interna' },

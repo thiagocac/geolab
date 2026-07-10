@@ -12,6 +12,7 @@ import { LoadingState, ErrorState } from '../../components/ui/State';
 import { exportExcel } from '../../lib/export/xlsx';
 import { getLabDashboardSnapshot, emptySnapshot, cartaControleOpcoes, getCartaControle, type LabDashboardSnapshot, type SeriePoint, type RankingRow, type CartaScope } from '../../lib/api/dashboards';
 import { getDashboardQualidadeV2, emptyQualidadeV2, type QualidadeV2 } from '../../lib/api/dashboardV2';
+import { getDashboardBusiness, type DashboardBusiness } from '../../lib/api/dashboardBusiness';
 import { useDashboardFilters } from '../../lib/dashboard/filters';
 import { DashboardShell, DashboardFilterBar } from '../../components/dashboard/DashboardShell';
 import { ChartPanel } from '../../components/dashboard/ChartPanel';
@@ -33,11 +34,12 @@ const palette = ['#182863', '#C5117E', '#3E2D71', '#2563eb', '#16a34a', '#f59e0b
 
 type DashId =
   | 'exec' | 'qualidade' | 'rompimentos' | 'resistencia' | 'insatisfatorios' | 'altas' | 'variacao' | 'carta_controle'
-  | 'slump' | 'fornecedores' | 'obras' | 'logistica' | 'sla' | 'pendencias' | 'financeiro';
+  | 'slump' | 'fornecedores' | 'obras' | 'logistica' | 'sla' | 'pendencias' | 'financeiro' | 'negocio';
 
 type Dash = { id: DashId; titulo: string; grupo: string; desc: string; exportavel?: boolean };
 const dashboards: Dash[] = [
   { id: 'exec', titulo: 'Executivo do laboratório', grupo: 'Direção', desc: 'Volume, conformidade, laudos, receita e riscos operacionais.', exportavel: true },
+  { id: 'negocio', titulo: 'Negócio e caixa', grupo: 'Direção', desc: 'Funil comercial, contratos, medições, caixa, compras, estoque e conciliação.', exportavel: true },
   { id: 'qualidade', titulo: 'Qualidade e aceitação', grupo: 'Qualidade', desc: 'Conformidade na idade de controle e obras com insatisfatórios.', exportavel: true },
   { id: 'insatisfatorios', titulo: 'Resultados insatisfatórios', grupo: 'Qualidade', desc: 'Exemplares abaixo do fck apenas na idade de controle.', exportavel: true },
   { id: 'altas', titulo: 'Altas resistências', grupo: 'Qualidade', desc: 'Resultados muito acima do fck — possível traço conservador.', exportavel: true },
@@ -130,6 +132,38 @@ function Panel({ id, snapshot, qualidade, nav }: { id: DashId; snapshot: LabDash
   return <PanelPlaceholder title="Logística do caminhão">Este painel depende dos horários preenchidos na ficha de cada caminhão (saída da usina, chegada, início e fim de descarga). O dado já é coletado quando informado — a agregação de tempos por etapa entra na próxima fase dos dashboards. Sem horários preenchidos não é erro: é dado que ainda não existe.</PanelPlaceholder>;
 }
 
+function BusinessPanel({ data, nav }: { data: DashboardBusiness; nav: (to: string) => void }) {
+  const k = data.kpis;
+  return <>
+    <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <StatButton label="Pipeline ponderado" value={money(k.crm_weighted ?? 0)} detail={`${k.crm_open ?? 0} oportunidade(s)`} onClick={() => nav('/crm')} />
+      <StatButton label="Contratos ativos" value={k.contracts_active ?? 0} detail={`${k.proposals_sent ?? 0} proposta(s) no período`} onClick={() => nav('/gestao/contratos-v2')} />
+      <StatButton label="Valor medido" value={money(k.measured ?? 0)} detail="no período" onClick={() => nav('/gestao/medicoes-v2')} />
+      <StatButton label="A receber" value={money(k.receivable_open ?? 0)} detail={`${k.overdue_receivables ?? 0} vencido(s)`} onClick={() => nav('/gestao/fluxo-caixa')} />
+      <StatButton label="A pagar" value={money(k.payable_open ?? 0)} detail={`${k.purchase_open ?? 0} pedido(s) aberto(s)`} onClick={() => nav('/gestao/compras')} />
+      <StatButton label="Conciliação pendente" value={k.bank_pending ?? 0} detail={`${k.stock_low ?? 0} item(ns) abaixo do mínimo`} onClick={() => nav('/gestao/conciliacao')} />
+    </div>
+    <div className="grid gap-4 xl:grid-cols-2">
+      <ChartPanel title="Funil comercial" action={{ label: 'Abrir CRM', onClick: () => nav('/crm') }} empty={!data.crm_by_stage.length}><Bars data={data.crm_by_stage as never} dataKey="amount" /></ChartPanel>
+      <ChartPanel title="Fluxo de caixa realizado" action={{ label: 'Abrir fluxo de caixa', onClick: () => nav('/gestao/fluxo-caixa') }} empty={!data.cashflow_monthly.length}><Lines data={data.cashflow_monthly as never} keys={['receitas', 'despesas', 'saldo']} /></ChartPanel>
+      <ChartPanel title="Carga operacional — próximos 7 dias" action={{ label: 'Abrir planejamento', onClick: () => nav('/planejamento-semanal') }} empty={!data.operations_week.length}><Lines data={data.operations_week as never} keys={['programacoes', 'rupturas']} /></ChartPanel>
+      <ChartPanel title="Compras por status" action={{ label: 'Abrir compras', onClick: () => nav('/gestao/compras') }} empty={!data.purchases_by_status.length}><Bars data={data.purchases_by_status as never} /></ChartPanel>
+    </div>
+    <Card>
+      <CardHeader kicker="Financeiro" title="Maiores valores em aberto" />
+      <div className="grid gap-2 p-4 md:grid-cols-2 xl:grid-cols-3">
+        {data.top_receivables.length ? data.top_receivables.map((row) => <button key={row.id} type="button" onClick={() => nav('/gestao/fluxo-caixa')} className="rounded-xl border border-slate-100 p-3 text-left transition hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-900 dark:text-slate-50">{row.descricao}</p><p className="mt-1 text-xs text-slate-500">{row.client_name ?? 'Cliente não vinculado'} · venc. {row.data_vencimento ?? '—'}</p></div><strong className="whitespace-nowrap tabular-nums">{money(row.open_amount)}</strong></div></button>) : <p className="text-sm text-emerald-700 dark:text-emerald-400">Nenhum recebível em aberto.</p>}
+      </div>
+    </Card>
+    <div className="grid gap-3 md:grid-cols-4">
+      <Stat label="Onboarding" value={`${k.onboarding_progress ?? 0}%`} detail="configuração do laboratório" />
+      <Stat label="Programações na semana" value={k.week_programacoes ?? 0} />
+      <Stat label="Rompimentos na semana" value={k.week_rupturas ?? 0} />
+      <Stat label="Estoque abaixo do mínimo" value={k.stock_low ?? 0} />
+    </div>
+  </>;
+}
+
 function CartaControlePanel({ from, to }: { from: string; to: string }) {
   const [scope, setScope] = useState<CartaScope>('traco');
   const [tracoId, setTracoId] = useState('');
@@ -216,16 +250,22 @@ export function LabDashboardsPage() {
     enabled: !!member && QUALITY_PANELS.has(active),
     queryFn: () => getDashboardQualidadeV2({ from: f.from, to: f.to, clientId: f.clientId || undefined, workId: f.workId || undefined }),
   });
+  const businessQ = useQuery({
+    queryKey: ['dashboard-business-v2', member?.tenant_id, f.from, f.to, f.clientId, f.workId],
+    enabled: !!member && active === 'negocio',
+    queryFn: () => getDashboardBusiness({ from: f.from, to: f.to, clientId: f.clientId || undefined, workId: f.workId || undefined }),
+  });
   const snapshot = snapshotQ.data ?? emptySnapshot({ from: f.from, to: f.to });
   const qualidade = qualidadeQ.data ?? emptyQualidadeV2;
+  const business = businessQ.data;
   const busca = f.q.toLowerCase().trim();
   const visibles = busca ? dashboards.filter((d) => (d.titulo + d.grupo + d.desc).toLowerCase().includes(busca)) : dashboards;
   const grupos = [...new Set(visibles.map((d) => d.grupo))];
   const current = dashboards.find((d) => d.id === active) ?? dashboards[0];
   const grupoAtivo = visibles.some((d) => d.id === active) ? current.grupo : (grupos[0] ?? current.grupo);
   const doGrupo = visibles.filter((d) => d.grupo === grupoAtivo);
-  const carregando = snapshotQ.isLoading || (QUALITY_PANELS.has(active) && qualidadeQ.isLoading);
-  const erro = (snapshotQ.error ?? (QUALITY_PANELS.has(active) ? qualidadeQ.error : null)) as Error | null;
+  const carregando = snapshotQ.isLoading || (QUALITY_PANELS.has(active) && qualidadeQ.isLoading) || (active === 'negocio' && businessQ.isLoading);
+  const erro = (snapshotQ.error ?? (QUALITY_PANELS.has(active) ? qualidadeQ.error : null) ?? (active === 'negocio' ? businessQ.error : null)) as Error | null;
 
   async function exportar() {
     const extras: Record<string, Array<Record<string, unknown>>> = {
@@ -235,10 +275,16 @@ export function LabDashboardsPage() {
       variacao: qualidade.heatmap_fck_obra as never,
       resistencia: qualidade.dispersao_tracos as never,
     };
+    const businessRows = current.id === 'negocio' && business ? [
+      ...business.crm_by_stage.map((row) => ({ grupo: 'CRM', indicador: row.label, quantidade: row.value ?? 0, valor: row.amount ?? 0 })),
+      ...business.proposals_by_status.map((row) => ({ grupo: 'Propostas', indicador: row.label, quantidade: row.value ?? 0, valor: row.amount ?? 0 })),
+      ...business.purchases_by_status.map((row) => ({ grupo: 'Compras', indicador: row.label, quantidade: row.value ?? 0, valor: row.amount ?? 0 })),
+    ] : [];
     const rows = [
       ...(snapshot.lists[current.id] ?? []),
       ...rank(snapshot, current.id).map((r) => ({ nome: r.nome, valor: r.valor, detalhe: r.detalhe ?? '', taxa: r.taxa ?? null })),
       ...(extras[current.id] ?? []),
+      ...businessRows,
     ];
     await exportExcel(
       { title: 'Dashboard - ' + current.titulo, subtitle: member?.tenant_name, filename: 'dashboard-' + current.id + '.xlsx', fields: [{ label: 'Período', value: `${f.from} a ${f.to}` }] },
@@ -285,6 +331,7 @@ export function LabDashboardsPage() {
           ? <CartaControlePanel from={f.from} to={f.to} />
           : carregando ? <LoadingState />
           : erro ? <ErrorState message={erro.message} />
+          : active === 'negocio' && business ? <BusinessPanel data={business} nav={(to) => navigate(to)} />
           : <Panel id={active} snapshot={snapshot} qualidade={qualidade} nav={(to) => navigate(to)} />}
       </DashboardShell>
     </div>

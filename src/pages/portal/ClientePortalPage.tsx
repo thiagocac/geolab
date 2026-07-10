@@ -19,19 +19,20 @@ import { Modal } from '../../components/ui/Modal';
 import { MoldingStandardEditor } from '../../components/domain/MoldingStandardEditor';
 import { normalizePadroes, padroesToDb, type PadraoMoldagem } from '../../lib/concreto';
 import { listPortalEstruturas } from '../../lib/api/portalEstrutura';
+import { PortalFinancePanel } from '../../components/portal/PortalFinancePanel';
 
 type LinhaProg = PortalProgramacaoInput & { key: string; padrao?: PadraoMoldagem[] };
 const blank = (): LinhaProg => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
 // Resumo curto do padrão de moldagem para o botão da linha (ex.: "2×7d + 4×28d").
 const resumoPadrao = (p?: PadraoMoldagem[]): string => {
-  if (!p || !p.length) return 'Padrão do laboratório';
+  if (!p?.length) return 'Padrão do laboratório';
   return p.map((i) => `${i.quantidadeCp || 0}×${i.idadeControle}${i.unidadeIdade === 'horas' ? 'h' : 'd'}`).join(' + ');
 };
 const str = (v: unknown) => String(v ?? '').trim();
 const num = (v: unknown): number | null => { const s = str(v).replace(',', '.'); if (!s) return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
 const anexosDe = (md: unknown): PortalAnexo[] => { const o = md as Record<string, unknown> | null; return o && Array.isArray(o.anexos) ? o.anexos as PortalAnexo[] : []; };
 
-type Tab = 'programacao' | 'resultados' | 'estrutura';
+type Tab = 'programacao' | 'resultados' | 'estrutura' | 'financeiro';
 
 // Célula "Local / peça" da tabela de programação: se a obra tem estrutura, mostra Estrutura + Peça
 // (preenchem o texto); senão, texto livre.
@@ -115,6 +116,7 @@ export function ClientePortalPage() {
         <button role="tab" type="button" aria-selected={tab === 'programacao'} onClick={() => setTab('programacao')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'programacao' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Programação</button>
         <button role="tab" type="button" aria-selected={tab === 'resultados'} onClick={() => setTab('resultados')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'resultados' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Resultados &amp; Laudos</button>
         <button role="tab" type="button" aria-selected={tab === 'estrutura'} onClick={() => setTab('estrutura')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'estrutura' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Estrutura da Obra</button>
+        <button role="tab" type="button" aria-selected={tab === 'financeiro'} onClick={() => setTab('financeiro')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (tab === 'financeiro' ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'text-slate-600 dark:text-slate-300')}>Financeiro</button>
       </div>
 
       {tab === 'programacao' ? (
@@ -173,6 +175,8 @@ export function ClientePortalPage() {
         </>
       ) : tab === 'estrutura' ? (
         <PortalEstruturaTab works={(works.data ?? []).map((w) => ({ id: w.id, nome: w.nome }))} />
+      ) : tab === 'financeiro' ? (
+        <PortalFinancePanel />
       ) : (
         <LaudosResultadosPanel
           works={(works.data ?? []).map((w) => ({ id: w.id, nome: w.nome }))}

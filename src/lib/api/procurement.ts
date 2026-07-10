@@ -1,0 +1,27 @@
+import { supabase } from '../supabase';
+
+type Json = Record<string, unknown>;
+const rpcClient = supabase as unknown as { rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
+const text=(v:unknown)=>String(v??'');const nullable=(v:unknown):string|null=>v==null||v===''?null:String(v);const num=(v:unknown)=>Number(v)||0;
+async function rpc<T>(name:string,args?:Record<string,unknown>):Promise<T>{const {data,error}=await rpcClient.rpc(name,args);if(error)throw new Error(error.message);return data as T;}
+
+export type Supplier={id:string;name:string;trade_name:string|null;document:string|null;email:string|null;phone:string|null;contact_name:string|null;payment_terms:string|null;status:string};
+export type LowStock={stock_item_id:string;code:string;nome:string;categoria:string;unidade:string;saldo:number;saldo_minimo:number;custo_medio:number};
+export type PurchaseRequestItem={id:string;stock_item_id:string|null;description:string;unit:string;requested_quantity:number;approved_quantity:number|null;estimated_unit_cost:number;work_id:string|null};
+export type PurchaseRequest={id:string;number:string;supplier_id:string|null;required_by:string|null;priority:string;status:string;notes:string|null;estimated_total:number;created_at:string;items:PurchaseRequestItem[]};
+export type PurchaseOrderItem={id:string;stock_item_id:string|null;description:string;unit:string;ordered_quantity:number;received_quantity:number;unit_cost:number;work_id:string|null};
+export type PurchaseOrder={id:string;number:string;request_id:string|null;supplier_id:string;supplier:string;status:string;issue_date:string;expected_date:string|null;received_at:string|null;total:number;payable_entry_id:string|null;items:PurchaseOrderItem[]};
+export type ProcurementSnapshot={suppliers:Supplier[];low_stock:LowStock[];requests:PurchaseRequest[];orders:PurchaseOrder[];kpis:{low_stock:number;requests_open:number;orders_open:number;orders_value:number}};
+
+export async function getProcurementSnapshot():Promise<ProcurementSnapshot>{const raw=await rpc<Json>('procurement_snapshot');const k=(raw.kpis??{})as Json;return{
+ suppliers:((raw.suppliers??[])as Json[]).map(r=>({id:text(r.id),name:text(r.name),trade_name:nullable(r.trade_name),document:nullable(r.document),email:nullable(r.email),phone:nullable(r.phone),contact_name:nullable(r.contact_name),payment_terms:nullable(r.payment_terms),status:text(r.status)})),
+ low_stock:((raw.low_stock??[])as Json[]).map(r=>({stock_item_id:text(r.stock_item_id),code:text(r.code),nome:text(r.nome),categoria:text(r.categoria),unidade:text(r.unidade),saldo:num(r.saldo),saldo_minimo:num(r.saldo_minimo),custo_medio:num(r.custo_medio)})),
+ requests:((raw.requests??[])as Json[]).map(r=>({id:text(r.id),number:text(r.number),supplier_id:nullable(r.supplier_id),required_by:nullable(r.required_by),priority:text(r.priority),status:text(r.status),notes:nullable(r.notes),estimated_total:num(r.estimated_total),created_at:text(r.created_at),items:((r.items??[])as Json[]).map(i=>({id:text(i.id),stock_item_id:nullable(i.stock_item_id),description:text(i.description),unit:text(i.unit),requested_quantity:num(i.requested_quantity),approved_quantity:i.approved_quantity==null?null:num(i.approved_quantity),estimated_unit_cost:num(i.estimated_unit_cost),work_id:nullable(i.work_id)}))})),
+ orders:((raw.orders??[])as Json[]).map(r=>({id:text(r.id),number:text(r.number),request_id:nullable(r.request_id),supplier_id:text(r.supplier_id),supplier:text(r.supplier),status:text(r.status),issue_date:text(r.issue_date),expected_date:nullable(r.expected_date),received_at:nullable(r.received_at),total:num(r.total),payable_entry_id:nullable(r.payable_entry_id),items:((r.items??[])as Json[]).map(i=>({id:text(i.id),stock_item_id:nullable(i.stock_item_id),description:text(i.description),unit:text(i.unit),ordered_quantity:num(i.ordered_quantity),received_quantity:num(i.received_quantity),unit_cost:num(i.unit_cost),work_id:nullable(i.work_id)}))})),
+ kpis:{low_stock:num(k.low_stock),requests_open:num(k.requests_open),orders_open:num(k.orders_open),orders_value:num(k.orders_value)}};}
+export async function saveSupplier(payload:Json):Promise<string>{return String(await rpc('save_supplier',{p_payload:payload}));}
+export async function savePurchaseRequest(payload:Json):Promise<string>{return String(await rpc('save_purchase_request',{p_payload:payload}));}
+export async function generateReplenishmentRequest(stockItemIds?:string[],requiredBy?:string):Promise<string>{return String(await rpc('generate_replenishment_request',{p_stock_item_ids:stockItemIds?.length?stockItemIds:null,p_required_by:requiredBy||null}));}
+export async function approvePurchaseRequest(id:string,approved:boolean,reason?:string):Promise<string>{return String(await rpc('approve_purchase_request',{p_request_id:id,p_approved:approved,p_reason:reason||null}));}
+export async function createPurchaseOrderFromRequest(requestId:string,supplierId:string,expectedDate?:string):Promise<string>{return String(await rpc('create_purchase_order_from_request',{p_request_id:requestId,p_supplier_id:supplierId,p_expected_date:expectedDate||null}));}
+export async function receivePurchaseOrder(orderId:string,generatePayable=true,dueDate?:string):Promise<Json>{return rpc('receive_purchase_order',{p_order_id:orderId,p_generate_payable:generatePayable,p_due_date:dueDate||null});}

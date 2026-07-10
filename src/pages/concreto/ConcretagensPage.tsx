@@ -49,6 +49,9 @@ function dmy(d?: string | null): string {
 function fmtVol(n: number | null): string | null {
   return n == null ? null : String(Math.round(n * 10) / 10).replace('.', ',');
 }
+function numericValue(value: unknown): number | string | null {
+  return typeof value === 'number' || typeof value === 'string' ? value : null;
+}
 
 export function ConcretagensPage() {
   const { member } = useAuth();
@@ -219,7 +222,7 @@ export function ConcretagensPage() {
           {(pecas.data ?? []).length ? <SelectField label="Peça (estrutura)" value={String(form.unit_id ?? '')} onChange={(e) => { const id = e.target.value || null; const pc = (pecas.data ?? []).find((x) => x.id === id); setForm((s) => ({ ...s, unit_id: id, local_texto: pc ? pc.label : s.local_texto })); }}><option value="">- (ou digite o local abaixo)</option>{(pecas.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</SelectField> : null}
           <Field label="Fornecedor (concreteira)" list={FORNECEDORES_DL} value={String(form.fornecedor_texto ?? '')} onChange={(e) => setForm((s) => ({ ...s, fornecedor_texto: e.target.value }))} />
           <Field label="Data programada" type="date" value={String(form.data_programada ?? '')} onChange={(e) => setForm((s) => ({ ...s, data_programada: e.target.value || null }))} />
-          <NumField label="fck previsto (MPa)" value={form.fck_previsto} onCommit={(n) => setForm((s) => ({ ...s, fck_previsto: n }))} min={1} max={150} soft={[10, 100]} />
+          <NumField label="fck previsto (MPa)" value={numericValue(form.fck_previsto)} onCommit={(n) => setForm((s) => ({ ...s, fck_previsto: n }))} min={1} max={150} soft={[10, 100]} />
           <Field label="Local/peça" value={String(form.local_texto ?? '')} onChange={(e) => setForm((s) => ({ ...s, local_texto: e.target.value }))} />
           {form.origem === 'retroativa' ? <Field label="Justificativa (retroativa)" value={String(form.retroativa_justificativa ?? '')} onChange={(e) => setForm((s) => ({ ...s, retroativa_justificativa: e.target.value }))} /> : null}
         </div>

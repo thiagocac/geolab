@@ -35,6 +35,11 @@ const InventoryPage = lazy(() => import('./pages/gestao/InventoryPage').then((m)
 const Iso17025Page = lazy(() => import('./pages/gestao/Iso17025Page').then((m) => ({ default: m.Iso17025Page })));
 const TeamBonusPage = lazy(() => import('./pages/gestao/TeamBonusPage').then((m) => ({ default: m.TeamBonusPage })));
 const ProductOverviewPage = lazy(() => import('./pages/gestao/ProductOverviewPage').then((m) => ({ default: m.ProductOverviewPage })));
+const LabOnboardingPage = lazy(() => import('./pages/gestao/LabOnboardingPage').then((m) => ({ default: m.LabOnboardingPage })));
+const WeeklyPlanningPage = lazy(() => import('./pages/gestao/WeeklyPlanningPage').then((m) => ({ default: m.WeeklyPlanningPage })));
+const CrmPage = lazy(() => import('./pages/gestao/CrmPage').then((m) => ({ default: m.CrmPage })));
+const ProcurementPage = lazy(() => import('./pages/gestao/ProcurementPage').then((m) => ({ default: m.ProcurementPage })));
+const BankReconciliationPage = lazy(() => import('./pages/gestao/BankReconciliationPage').then((m) => ({ default: m.BankReconciliationPage })));
 // [v202] Aceitacao de lotes retirada do sistema (mantida implementada p/ religar). Reative: descomente este import, a Route /lotes (App.tsx) e o item de menu (Layout.tsx).
 // const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
 const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
@@ -187,6 +192,11 @@ export function App() {
             <Route path="/gestao/iso-17025" element={can('iso17025.ver') ? <Iso17025Page /> : <Navigate to="/" replace />} />
             <Route path="/gestao/premiacao" element={can('premiacao.ver') ? <TeamBonusPage /> : <Navigate to="/" replace />} />
             <Route path="/gestao/produto" element={<ProductOverviewPage />} />
+            <Route path="/gestao/onboarding" element={can('onboarding.ver') ? <LabOnboardingPage /> : <Navigate to="/" replace />} />
+            <Route path="/planejamento-semanal" element={can('planejamento.ver') ? <WeeklyPlanningPage /> : <Navigate to="/" replace />} />
+            <Route path="/crm" element={can('crm.ver') ? <CrmPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/compras" element={can('compras.ver') ? <ProcurementPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/conciliacao" element={can('conciliacao.ver') ? <BankReconciliationPage /> : <Navigate to="/" replace />} />
             <Route path="/preferencias" element={<ConfiguracoesPage inicial="preferencias" />} />
             <Route path="/medicoes" element={<FinanceiroPage inicial="medicao" />} />
             <Route path="/produtividade" element={<ProdutividadePage />} />
