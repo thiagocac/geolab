@@ -13,6 +13,7 @@ import { exportExcel } from '../../lib/export/xlsx';
 import { getLabDashboardSnapshot, emptySnapshot, cartaControleOpcoes, getCartaControle, type LabDashboardSnapshot, type SeriePoint, type RankingRow, type CartaScope } from '../../lib/api/dashboards';
 import { getDashboardQualidadeV2, emptyQualidadeV2, type QualidadeV2 } from '../../lib/api/dashboardV2';
 import { getDashboardBusiness, type DashboardBusiness } from '../../lib/api/dashboardBusiness';
+import { getDashboardOps, type DashboardOps, type OpsPoint } from '../../lib/api/dashboardOps';
 import { useDashboardFilters } from '../../lib/dashboard/filters';
 import { DashboardShell, DashboardFilterBar } from '../../components/dashboard/DashboardShell';
 import { ChartPanel } from '../../components/dashboard/ChartPanel';
@@ -34,28 +35,36 @@ const palette = ['#182863', '#C5117E', '#3E2D71', '#2563eb', '#16a34a', '#f59e0b
 
 type DashId =
   | 'exec' | 'qualidade' | 'rompimentos' | 'resistencia' | 'insatisfatorios' | 'altas' | 'variacao' | 'carta_controle'
-  | 'slump' | 'fornecedores' | 'obras' | 'logistica' | 'sla' | 'pendencias' | 'financeiro' | 'negocio';
+  | 'slump' | 'fornecedores' | 'obras' | 'logistica' | 'sla' | 'pendencias' | 'financeiro' | 'negocio'
+  | 'risco' | 'nc' | 'equipamentos' | 'produtividade' | 'docgate' | 'contratos';
 
 type Dash = { id: DashId; titulo: string; grupo: string; desc: string; exportavel?: boolean };
 const dashboards: Dash[] = [
   { id: 'exec', titulo: 'Executivo do laboratório', grupo: 'Direção', desc: 'Volume, conformidade, laudos, receita e riscos operacionais.', exportavel: true },
   { id: 'negocio', titulo: 'Negócio e caixa', grupo: 'Direção', desc: 'Funil comercial, contratos, medições, caixa, compras, estoque e conciliação.', exportavel: true },
+  { id: 'risco', titulo: 'Radar de riscos', grupo: 'Direção', desc: 'Calibração, certificações, NCs, atrasos, documentos e títulos vencidos em um só lugar.', exportavel: true },
   { id: 'qualidade', titulo: 'Qualidade e aceitação', grupo: 'Qualidade', desc: 'Conformidade na idade de controle e obras com insatisfatórios.', exportavel: true },
   { id: 'insatisfatorios', titulo: 'Resultados insatisfatórios', grupo: 'Qualidade', desc: 'Exemplares abaixo do fck apenas na idade de controle.', exportavel: true },
   { id: 'altas', titulo: 'Altas resistências', grupo: 'Qualidade', desc: 'Resultados muito acima do fck — possível traço conservador.', exportavel: true },
   { id: 'variacao', titulo: 'Variação e dispersão', grupo: 'Qualidade', desc: 'Coeficiente de variação mensal e mapa fck × obra.', exportavel: true },
   { id: 'carta_controle', titulo: 'Carta de controle (X̄-R)', grupo: 'Qualidade', desc: 'Média e amplitude do par na idade de controle, limites 3σ (Shewhart n=2).' },
+  { id: 'nc', titulo: 'Não conformidades', grupo: 'Qualidade', desc: 'NCs abertas por severidade, evolução mensal e ocorrências recentes.', exportavel: true },
   { id: 'resistencia', titulo: 'Curva de resistência', grupo: 'Técnico', desc: 'Evolução 7d/28d contra o fck e dispersão por traço.', exportavel: true },
+  { id: 'equipamentos', titulo: 'Equipamentos e calibração', grupo: 'Técnico', desc: 'Vencimento de calibrações e verificações intermediárias da prensa.', exportavel: true },
   { id: 'rompimentos', titulo: 'Agenda de rompimentos', grupo: 'Operação', desc: 'Atrasados, hoje, próximos 7 dias e backlog por idade.', exportavel: true },
   { id: 'pendencias', titulo: 'Pendências e lançamentos', grupo: 'Operação', desc: 'CPs sem resultado, laudos sem emissão e fila crítica.', exportavel: true },
-  { id: 'sla', titulo: 'SLA do laboratório', grupo: 'Operação', desc: 'Prazos de recebimento, rompimento e emissão (agregação em preparação).' },
+  { id: 'produtividade', titulo: 'Produtividade da equipe', grupo: 'Operação', desc: 'CPs moldados, rompimentos, laudos e retrabalho por colaborador.', exportavel: true },
+  { id: 'docgate', titulo: 'Documentos e gate', grupo: 'Operação', desc: 'Documentos obrigatórios: pendentes, vencidos e próximos vencimentos.', exportavel: true },
+  { id: 'sla', titulo: 'SLA do laboratório', grupo: 'Operação', desc: 'Prazos reais: moldagem → recebimento, rompimento no dia e emissão do laudo.', exportavel: true },
   { id: 'slump', titulo: 'Slump e recebimento', grupo: 'Campo', desc: 'Abatimento medido (mm) contra o previsto do traço.', exportavel: true },
-  { id: 'logistica', titulo: 'Logística do caminhão', grupo: 'Campo', desc: 'Tempos de transporte/descarga (depende dos horários da ficha).' },
+  { id: 'logistica', titulo: 'Logística do caminhão', grupo: 'Campo', desc: 'Tempo médio de transporte e descarga a partir dos horários da ficha.', exportavel: true },
   { id: 'fornecedores', titulo: 'Fornecedores / concreteiras', grupo: 'Fornecedor', desc: 'Ranking por volume e conformidade.', exportavel: true },
   { id: 'obras', titulo: 'Scorecard por obra', grupo: 'Cliente', desc: 'Ranking de obras com volume e conformidade.', exportavel: true },
   { id: 'financeiro', titulo: 'Financeiro do laboratório', grupo: 'Financeiro', desc: 'Medição × faturamento × aberto no período.', exportavel: true },
+  { id: 'contratos', titulo: 'Contratos e consumo', grupo: 'Financeiro', desc: 'Consumo do limite contratado, saldo a medir e vigências.', exportavel: true },
 ];
 const QUALITY_PANELS = new Set<DashId>(['qualidade', 'resistencia', 'insatisfatorios', 'altas', 'variacao']);
+const OPS_PANELS = new Set<DashId>(['risco', 'nc', 'equipamentos', 'produtividade', 'docgate', 'contratos', 'sla', 'logistica']);
 
 function n(snapshot: LabDashboardSnapshot, key: string) { return Number(snapshot.kpis[key] ?? 0); }
 function money(v: number) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
@@ -128,8 +137,122 @@ function Panel({ id, snapshot, qualidade, nav }: { id: DashId; snapshot: LabDash
     <Card><CardHeader title="Fila crítica" kicker="Operação" /><div className="p-4"><Ranking data={rank(snapshot, 'pendencias_criticas')} /></div></Card>
   </div>;
   if (id === 'financeiro') return <ChartPanel title="Medição × faturamento × aberto" action={{ label: 'Abrir financeiro', onClick: () => nav('/financeiro?tab=contratos') }} empty={!snapshot.finance.length}><Lines data={snapshot.finance as never} keys={['previsto', 'realizado', 'aberto']} /></ChartPanel>;
-  if (id === 'sla') return <PanelPlaceholder title="SLA do laboratório">Os prazos (moldagem → recebimento → rompimento → laudo) já ficam registrados nas fichas e nos laudos, mas a agregação mensal com metas configuráveis entra na próxima fase dos dashboards. Enquanto isso, acompanhe atrasos em <button type="button" className="font-bold underline" onClick={() => nav('/rompimentos?janela=atrasados')}>Rompimentos atrasados</button> e a fila em <button type="button" className="font-bold underline" onClick={() => nav('/gestao/pendencias')}>Pendências</button>.</PanelPlaceholder>;
-  return <PanelPlaceholder title="Logística do caminhão">Este painel depende dos horários preenchidos na ficha de cada caminhão (saída da usina, chegada, início e fim de descarga). O dado já é coletado quando informado — a agregação de tempos por etapa entra na próxima fase dos dashboards. Sem horários preenchidos não é erro: é dado que ainda não existe.</PanelPlaceholder>;
+  return <PanelPlaceholder title={String(id)}>Painel em preparação.</PanelPlaceholder>;
+}
+
+const sevTone: Record<string, string> = {
+  alto: 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200',
+  medio: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+  baixo: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+};
+function diasBadge(dias: number | null) {
+  if (dias == null) return <span className="text-xs text-slate-400">sem validade</span>;
+  if (dias < 0) return <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700 dark:bg-red-950/40 dark:text-red-300">vencido há {Math.abs(dias)}d</span>;
+  if (dias <= 30) return <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{dias}d</span>;
+  return <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{dias}d</span>;
+}
+
+function OpsPanel({ id, ops, nav }: { id: DashId; ops: DashboardOps; nav: (to: string) => void }) {
+  if (id === 'risco') {
+    const itens = [...ops.risco.itens].sort((a, b) => (b.value > 0 ? 1 : 0) - (a.value > 0 ? 1 : 0) || (a.severity === 'alto' ? -1 : 1) - (b.severity === 'alto' ? -1 : 1) || b.value - a.value);
+    return <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {itens.map((r) => <button key={r.key} type="button" onClick={() => nav(r.route)} className={'rounded-2xl border p-4 text-left transition hover:opacity-90 ' + (r.value > 0 ? sevTone[r.severity] : sevTone.baixo)}>
+        <div className="flex items-start justify-between gap-3"><p className="text-sm font-bold">{r.label}</p><span className="text-2xl font-black tabular-nums">{r.value}</span></div>
+        <p className="mt-1 text-xs opacity-80">{r.value === 0 ? 'Nenhuma ocorrência ✓' : r.amount != null ? money(r.amount) + ' em aberto' : r.severity === 'alto' ? 'Ação imediata recomendada' : 'Acompanhar'}</p>
+      </button>)}
+    </div>;
+  }
+  if (id === 'nc') return <>
+    <div className="grid gap-3 md:grid-cols-4">
+      <StatButton label="Abertas" value={ops.nc.kpis.abertas ?? 0} detail="todas as NCs em aberto" onClick={() => nav('/nc')} />
+      <Stat label="Severidade alta" value={ops.nc.kpis.criticas ?? 0} />
+      <Stat label="Abertas no período" value={ops.nc.kpis.abertas_periodo ?? 0} />
+      <Stat label="Resolvidas no período" value={ops.nc.kpis.resolvidas_periodo ?? 0} />
+    </div>
+    <div className="grid gap-4 xl:grid-cols-2">
+      <ChartPanel title="NCs abertas por mês" action={{ label: 'Abrir NCs', onClick: () => nav('/nc') }} empty={!ops.nc.mensal.length}><Bars data={ops.nc.mensal as never} dataKey="value" /></ChartPanel>
+      <ChartPanel title="Por classificação (período)" empty={!ops.nc.por_classificacao.length}><Bars data={ops.nc.por_classificacao as never} dataKey="value" /></ChartPanel>
+    </div>
+    <Card><CardHeader kicker="Qualidade" title="Ocorrências recentes" /><div className="grid gap-2 p-4 md:grid-cols-2">
+      {ops.nc.recentes.length ? ops.nc.recentes.map((r) => <button key={r.id} type="button" onClick={() => nav('/nc')} className="rounded-xl border border-slate-100 p-3 text-left transition hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-900 dark:text-slate-50">{r.numero ?? 'NC'} · {r.tipo ?? 'sem tipo'}</p><p className="mt-1 text-xs text-slate-500">{r.obra ?? 'Sem obra'} · {r.data_abertura ?? ''}</p></div><span className={'rounded-full px-2 py-0.5 text-xs font-bold ' + (r.severidade === 'alta' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300')}>{r.severidade ?? '—'}</span></div></button>) : <p className="text-sm text-emerald-700 dark:text-emerald-400">Nenhuma NC registrada. ✓</p>}
+    </div></Card>
+  </>;
+  if (id === 'equipamentos') return <>
+    <div className="grid gap-3 md:grid-cols-4">
+      <StatButton label="Equipamentos ativos" value={ops.equipamentos.kpis.ativos ?? 0} detail="abrir cadastro" onClick={() => nav('/equipamentos')} />
+      <Stat label="Calibração vencida" value={ops.equipamentos.kpis.calibracao_vencida ?? 0} />
+      <Stat label="Vencendo em 30 dias" value={ops.equipamentos.kpis.calibracao_30d ?? 0} />
+      <Stat label="Verificação em atraso" value={ops.equipamentos.kpis.verificacao_atrasada ?? 0} />
+    </div>
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Card><CardHeader kicker="Calibração" title="Próximos vencimentos" /><div className="grid gap-2 p-4">
+        {ops.equipamentos.calibracoes.length ? ops.equipamentos.calibracoes.map((c) => <button key={c.id} type="button" onClick={() => nav('/equipamentos')} className="rounded-xl border border-slate-100 p-3 text-left transition hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"><div className="flex items-center justify-between gap-3"><div><p className="font-bold text-slate-900 dark:text-slate-50">{c.label}</p><p className="mt-0.5 text-xs text-slate-500">{c.tipo ?? ''} · validade {c.validade ?? '—'}</p></div>{diasBadge(c.dias)}</div></button>) : <p className="text-sm text-slate-500">Nenhum equipamento ativo.</p>}
+      </div></Card>
+      <ChartPanel title="Verificações intermediárias por mês" empty={!ops.equipamentos.verificacoes_mensal.length}><Lines data={ops.equipamentos.verificacoes_mensal as never} keys={['conformes', 'nao_conformes']} /></ChartPanel>
+    </div>
+  </>;
+  if (id === 'produtividade') return <>
+    <div className="grid gap-3 md:grid-cols-4">
+      <Stat label="CPs moldados" value={(ops.produtividade.kpis.cps_moldados ?? 0).toLocaleString('pt-BR')} detail="no período" />
+      <Stat label="Rompimentos" value={(ops.produtividade.kpis.rompimentos ?? 0).toLocaleString('pt-BR')} />
+      <StatButton label="Laudos emitidos" value={ops.produtividade.kpis.laudos_emitidos ?? 0} detail="abrir laudos" onClick={() => nav('/laudos')} />
+      <Stat label="Retrabalho" value={pct(ops.produtividade.kpis.retrabalho_pct ?? 0)} detail="resultados corrigidos (R>1)" />
+    </div>
+    <ChartPanel title="Produção mensal" empty={!ops.produtividade.mensal.length}><Lines data={ops.produtividade.mensal as never} keys={['moldados', 'rompidos', 'laudos']} /></ChartPanel>
+    <div className="grid gap-4 xl:grid-cols-2">
+      <ChartPanel title="CPs moldados por moldador" empty={!ops.produtividade.moldadores.length}><Bars data={ops.produtividade.moldadores as never} dataKey="value" /></ChartPanel>
+      <ChartPanel title="Rompimentos por operador" empty={!ops.produtividade.operadores.length}><Bars data={ops.produtividade.operadores as never} dataKey="value" /></ChartPanel>
+    </div>
+  </>;
+  if (id === 'docgate') return <>
+    <div className="grid gap-3 md:grid-cols-4">
+      <StatButton label="Pendentes de análise" value={ops.docgate.kpis.pendentes ?? 0} detail="abrir documentos" onClick={() => nav('/gestao/documentos')} />
+      <Stat label="Vencidos" value={ops.docgate.kpis.vencidos ?? 0} />
+      <Stat label="Vencendo em 30 dias" value={ops.docgate.kpis.vencendo_30d ?? 0} />
+      <Stat label="Aprovados" value={ops.docgate.kpis.aprovados ?? 0} />
+    </div>
+    <div className="grid gap-4 xl:grid-cols-2">
+      <ChartPanel title="Documentos por status" empty={!ops.docgate.por_status.length}><Bars data={ops.docgate.por_status as never} dataKey="value" /></ChartPanel>
+      <Card><CardHeader kicker="Gate documental" title="Próximos vencimentos" /><div className="grid gap-2 p-4">
+        {ops.docgate.vencimentos.length ? ops.docgate.vencimentos.map((d) => <button key={d.id} type="button" onClick={() => nav('/gestao/documentos')} className="rounded-xl border border-slate-100 p-3 text-left transition hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"><div className="flex items-center justify-between gap-3"><div><p className="font-bold text-slate-900 dark:text-slate-50">{d.titulo}</p><p className="mt-0.5 text-xs text-slate-500">{d.status} · validade {d.data_validade ?? '—'}</p></div>{diasBadge(d.dias)}</div></button>) : <p className="text-sm text-slate-500">Nenhum documento com validade cadastrada.</p>}
+      </div></Card>
+    </div>
+  </>;
+  if (id === 'contratos') return <>
+    <div className="grid gap-3 md:grid-cols-4">
+      <StatButton label="Contratos ativos" value={ops.contratos.kpis.ativos ?? 0} detail="abrir contratos" onClick={() => nav('/gestao/contratos-v2')} />
+      <Stat label="Consumo médio" value={pct(ops.contratos.kpis.consumo_medio_pct ?? 0)} detail="dos limites contratados" />
+      <Stat label="Saldo a medir" value={money(ops.contratos.kpis.saldo_total ?? 0)} />
+      <Stat label="Vencendo em 90 dias" value={ops.contratos.kpis.vencendo_90d ?? 0} />
+    </div>
+    <ChartPanel title="Consumo do limite por contrato (%)" action={{ label: 'Abrir contratos', onClick: () => nav('/gestao/contratos-v2') }} empty={!ops.contratos.consumo.length}><Bars data={ops.contratos.consumo as never} dataKey="value" /></ChartPanel>
+    <Card><CardHeader kicker="Financeiro" title="Balanço contratado × medido × faturado" /><div className="grid gap-2 p-4 md:grid-cols-2">
+      {ops.contratos.balanco.length ? ops.contratos.balanco.map((c) => { const cons = Math.max(0, Math.min(100, c.consumo_pct ?? 0)); return <button key={c.id} type="button" onClick={() => nav('/gestao/contratos-v2')} className="rounded-xl border border-slate-100 p-3 text-left transition hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600">
+        <div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-900 dark:text-slate-50">{c.numero ?? 'Contrato'}</p><p className="mt-0.5 text-xs text-slate-500">{c.cliente ?? 'Sem cliente'} · vigência até {c.vigencia_fim ?? '—'}</p></div><span className="font-black tabular-nums">{c.consumo_pct != null ? pct(c.consumo_pct) : '—'}</span></div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={'h-full rounded-full ' + (cons >= 90 ? 'bg-red-500' : cons >= 70 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: cons + '%' }} /></div>
+        <p className="mt-1.5 text-xs text-slate-500">Limite {money(c.valor_limite)} · medido {money(c.valor_medido)} · faturado {money(c.valor_faturado)} · saldo {money(c.saldo_a_medir)}</p>
+      </button>; }) : <p className="text-sm text-slate-500">Nenhum contrato com valores cadastrados.</p>}
+    </div></Card>
+  </>;
+  if (id === 'sla') return <>
+    <div className="grid gap-3 md:grid-cols-4">
+      <Stat label="Moldagem → recebimento" value={(ops.sla.kpis.media_dias_recebimento ?? 0) + 'd'} detail="média no período" />
+      <Stat label="Rompimento no dia" value={pct(ops.sla.kpis.pct_rompimento_no_dia ?? 0)} detail="real = previsto" />
+      <Stat label="Desvio do rompimento" value={(ops.sla.kpis.media_desvio_rompimento ?? 0) + 'd'} detail="média real − previsto" />
+      <Stat label="Rompimento → laudo" value={(ops.sla.kpis.media_dias_emissao_laudo ?? 0) + 'd'} detail="média até a emissão" />
+    </div>
+    <ChartPanel title="Prazos médios por mês (dias)" note="Recebimento no lab, desvio do rompimento e emissão do laudo — quanto menor, melhor." empty={!ops.sla.mensal.length}><Lines data={ops.sla.mensal as never} keys={['recebimento', 'desvio_rompimento', 'emissao_laudo']} /></ChartPanel>
+  </>;
+  const cobertura = (ops.logistica.kpis.total_caminhoes ?? 0) > 0 ? Math.round(100 * (ops.logistica.kpis.caminhoes_com_horario ?? 0) / (ops.logistica.kpis.total_caminhoes ?? 1)) : 0;
+  return <>
+    <div className="grid gap-3 md:grid-cols-4">
+      <Stat label="Transporte médio" value={(ops.logistica.kpis.media_transporte_min ?? 0) + ' min'} detail="usina → obra" />
+      <Stat label="Descarga média" value={(ops.logistica.kpis.media_descarga_min ?? 0) + ' min'} detail="início → fim" />
+      <Stat label="Caminhões no período" value={ops.logistica.kpis.total_caminhoes ?? 0} />
+      <Stat label="Com horários preenchidos" value={pct(cobertura)} detail={(ops.logistica.kpis.caminhoes_com_horario ?? 0) + ' de ' + (ops.logistica.kpis.total_caminhoes ?? 0)} />
+    </div>
+    <ChartPanel title="Tempos médios por mês (min)" note="Calculado dos horários preenchidos na ficha de cada caminhão. Preencha os horários para ampliar a cobertura." empty={!ops.logistica.mensal.length}><Lines data={ops.logistica.mensal as never} keys={['transporte', 'descarga']} /></ChartPanel>
+  </>;
 }
 
 function BusinessPanel({ data, nav }: { data: DashboardBusiness; nav: (to: string) => void }) {
@@ -255,17 +378,23 @@ export function LabDashboardsPage() {
     enabled: !!member && active === 'negocio',
     queryFn: () => getDashboardBusiness({ from: f.from, to: f.to, clientId: f.clientId || undefined, workId: f.workId || undefined }),
   });
+  const opsQ = useQuery({
+    queryKey: ['dashboard-ops-v2', member?.tenant_id, f.from, f.to, f.clientId, f.workId],
+    enabled: !!member && OPS_PANELS.has(active),
+    queryFn: () => getDashboardOps({ from: f.from, to: f.to, clientId: f.clientId || undefined, workId: f.workId || undefined }),
+  });
   const snapshot = snapshotQ.data ?? emptySnapshot({ from: f.from, to: f.to });
   const qualidade = qualidadeQ.data ?? emptyQualidadeV2;
   const business = businessQ.data;
+  const ops = opsQ.data;
   const busca = f.q.toLowerCase().trim();
   const visibles = busca ? dashboards.filter((d) => (d.titulo + d.grupo + d.desc).toLowerCase().includes(busca)) : dashboards;
   const grupos = [...new Set(visibles.map((d) => d.grupo))];
   const current = dashboards.find((d) => d.id === active) ?? dashboards[0];
   const grupoAtivo = visibles.some((d) => d.id === active) ? current.grupo : (grupos[0] ?? current.grupo);
   const doGrupo = visibles.filter((d) => d.grupo === grupoAtivo);
-  const carregando = snapshotQ.isLoading || (QUALITY_PANELS.has(active) && qualidadeQ.isLoading) || (active === 'negocio' && businessQ.isLoading);
-  const erro = (snapshotQ.error ?? (QUALITY_PANELS.has(active) ? qualidadeQ.error : null) ?? (active === 'negocio' ? businessQ.error : null)) as Error | null;
+  const carregando = snapshotQ.isLoading || (QUALITY_PANELS.has(active) && qualidadeQ.isLoading) || (active === 'negocio' && businessQ.isLoading) || (OPS_PANELS.has(active) && opsQ.isLoading);
+  const erro = (snapshotQ.error ?? (QUALITY_PANELS.has(active) ? qualidadeQ.error : null) ?? (active === 'negocio' ? businessQ.error : null) ?? (OPS_PANELS.has(active) ? opsQ.error : null)) as Error | null;
 
   async function exportar() {
     const extras: Record<string, Array<Record<string, unknown>>> = {
@@ -275,6 +404,14 @@ export function LabDashboardsPage() {
       variacao: qualidade.heatmap_fck_obra as never,
       resistencia: qualidade.dispersao_tracos as never,
     };
+    const opsSeries: Record<string, OpsPoint[]> = current.id !== 'negocio' && OPS_PANELS.has(current.id) && ops ? {
+      risco: ops.risco.itens.map((r) => ({ label: r.label, value: r.value, severidade: r.severity })),
+      nc: ops.nc.mensal, equipamentos: ops.equipamentos.calibracoes.map((c) => ({ label: c.label, validade: c.validade ?? '', dias: c.dias ?? '' })),
+      produtividade: ops.produtividade.mensal, docgate: ops.docgate.vencimentos.map((d) => ({ label: d.titulo, status: d.status, validade: d.data_validade ?? '', dias: d.dias ?? '' })),
+      contratos: ops.contratos.balanco.map((c) => ({ label: c.numero ?? 'contrato', cliente: c.cliente ?? '', limite: c.valor_limite, medido: c.valor_medido, faturado: c.valor_faturado, saldo: c.saldo_a_medir, consumo_pct: c.consumo_pct ?? '' })),
+      sla: ops.sla.mensal, logistica: ops.logistica.mensal,
+    } : {};
+    const opsRows = (opsSeries[current.id] ?? []) as Array<Record<string, unknown>>;
     const businessRows = current.id === 'negocio' && business ? [
       ...business.crm_by_stage.map((row) => ({ grupo: 'CRM', indicador: row.label, quantidade: row.value ?? 0, valor: row.amount ?? 0 })),
       ...business.proposals_by_status.map((row) => ({ grupo: 'Propostas', indicador: row.label, quantidade: row.value ?? 0, valor: row.amount ?? 0 })),
@@ -285,6 +422,7 @@ export function LabDashboardsPage() {
       ...rank(snapshot, current.id).map((r) => ({ nome: r.nome, valor: r.valor, detalhe: r.detalhe ?? '', taxa: r.taxa ?? null })),
       ...(extras[current.id] ?? []),
       ...businessRows,
+      ...opsRows,
     ];
     await exportExcel(
       { title: 'Dashboard - ' + current.titulo, subtitle: member?.tenant_name, filename: 'dashboard-' + current.id + '.xlsx', fields: [{ label: 'Período', value: `${f.from} a ${f.to}` }] },
@@ -332,6 +470,7 @@ export function LabDashboardsPage() {
           : carregando ? <LoadingState />
           : erro ? <ErrorState message={erro.message} />
           : active === 'negocio' && business ? <BusinessPanel data={business} nav={(to) => navigate(to)} />
+          : OPS_PANELS.has(active) && ops ? <OpsPanel id={active} ops={ops} nav={(to) => navigate(to)} />
           : <Panel id={active} snapshot={snapshot} qualidade={qualidade} nav={(to) => navigate(to)} />}
       </DashboardShell>
     </div>
