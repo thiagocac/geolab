@@ -16,6 +16,7 @@ import {
   type LabMemberRow,
 } from '../../lib/api/operacao';
 import { listRoles, listPermissionsCatalog } from '../../lib/api/rbac';
+import { getPortalPermissoes, setPortalFinancePermission } from '../../lib/api/portalFinance';
 
 function fmtLogin(v: string | null): string {
   if (!v) return 'nunca';
@@ -54,6 +55,18 @@ export function OperacaoPage() {
   const scopeQ = useQuery({ queryKey: ['member-obras', edit?.member_id], queryFn: () => getMemberObras(edit!.member_id), enabled: !!edit });
   const overQ = useQuery({ queryKey: ['member-over', edit?.member_id], queryFn: () => getMemberOverrides(edit!.member_id), enabled: !!edit });
   const effQ = useQuery({ queryKey: ['member-eff', edit?.member_id], queryFn: () => getMemberEffectivePermissions(edit!.member_id), enabled: !!edit });
+  const editEhCliente = !!edit && (edit.role === 'cliente' || edit.role_keys.includes('cliente'));
+  const portalQ = useQuery({ queryKey: ['member-portal', edit?.member_id], queryFn: () => getPortalPermissoes(edit!.member_id), enabled: editEhCliente });
+  async function togglePortalFinanceiro() {
+    if (!edit) return;
+    const atual = portalQ.data?.financeiro === true;
+    setBusy(true);
+    try {
+      await setPortalFinancePermission(edit.member_id, !atual);
+      await qc.invalidateQueries({ queryKey: ['member-portal', edit.member_id] });
+      toast(!atual ? 'Financeiro liberado no portal.' : 'Financeiro ocultado do portal.', 'success');
+    } catch (error) { toast((error as Error).message, 'error'); } finally { setBusy(false); }
+  }
 
   const roles = rolesQ.data ?? [];
   const rolesAtivos = roles.filter((r) => r.active);
@@ -259,6 +272,17 @@ export function OperacaoPage() {
                 </div>
               </div>
             </details>
+
+            {editEhCliente ? (
+              <div>
+                <div className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-200">Portal do cliente</div>
+                <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
+                  <input type="checkbox" disabled={busy || portalQ.isLoading} checked={portalQ.data?.financeiro === true} onChange={() => void togglePortalFinanceiro()} />
+                  <span className="font-bold">Financeiro visível no portal</span>
+                  <span className="text-xs text-slate-500">— medições, faturas e saldos das obras autorizadas (aba Financeiro)</span>
+                </label>
+              </div>
+            ) : null}
 
             <div>
               <div className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-200">Conta</div>

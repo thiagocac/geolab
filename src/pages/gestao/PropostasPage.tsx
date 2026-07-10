@@ -5,6 +5,7 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { Drawer } from '../../components/ui/Drawer';
 import { Modal } from '../../components/ui/Modal';
 import { Field, SelectField, TextArea } from '../../components/ui/Field';
+import { NumField } from '../../components/ui/NumField';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/State';
 import { useAuth } from '../../lib/auth';
@@ -29,10 +30,6 @@ import { convertProposalToContractWork } from '../../lib/api/proposalConversion'
 import { useToast } from '../../lib/toast';
 import { dateBr, money, Pill, TableShell, Td, Th } from './product/ProductUi';
 
-const numberValue = (input: unknown) => {
-  const parsed = Number(String(input ?? '').replace(',', '.'));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
 const blankItem = (): PropostaItem => ({ descricao: '', unidade: 'un', tipo_cobranca: 'avulso', quantidade: 1, preco_unitario: 0 });
 
 export function PropostasPage() {
@@ -307,8 +304,8 @@ export function PropostasPage() {
                   <div key={`${item.id ?? 'new'}-${index}`} className="grid gap-3 rounded-lg bg-slate-50 p-3 md:grid-cols-12 dark:bg-slate-900/40">
                     <div className="md:col-span-4"><Field label="Descrição" value={item.descricao} onChange={(event) => patchItem(index, { descricao: event.target.value })} /></div>
                     <div className="md:col-span-2"><Field label="Unidade" value={item.unidade ?? ''} onChange={(event) => patchItem(index, { unidade: event.target.value })} /></div>
-                    <div className="md:col-span-2"><Field label="Quantidade" type="number" step="0.001" value={item.quantidade} onChange={(event) => patchItem(index, { quantidade: numberValue(event.target.value) })} /></div>
-                    <div className="md:col-span-2"><Field label="Preço unitário" type="number" step="0.01" value={item.preco_unitario} onChange={(event) => patchItem(index, { preco_unitario: numberValue(event.target.value) })} /></div>
+                    <div className="md:col-span-2"><NumField label="Quantidade" value={item.quantidade} onCommit={(n) => patchItem(index, { quantidade: n ?? 0 })} min={0} max={99999} dec={3} soft={[0, 10000]} /></div>
+                    <div className="md:col-span-2"><NumField label="Preço unitário" value={item.preco_unitario} onCommit={(n) => patchItem(index, { preco_unitario: n ?? 0 })} min={0} max={9999999} dec={2} soft={[0, 100000]} /></div>
                     <div className="flex items-end md:col-span-2"><Button variant="danger" onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remover</Button></div>
                   </div>
                 ))}
