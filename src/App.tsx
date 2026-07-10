@@ -18,6 +18,8 @@ const NovaProgramacaoPage = lazy(() => import('./pages/concreto/NovaProgramacaoP
 const ConcretagensPage = lazy(() => import('./pages/concreto/ConcretagensPage').then((m) => ({ default: m.ConcretagensPage })));
 const ConcretagemDetalhePage = lazy(() => import('./pages/concreto/ConcretagemDetalhePage').then((m) => ({ default: m.ConcretagemDetalhePage })));
 const RompimentosPage = lazy(() => import('./pages/concreto/RompimentosPage').then((m) => ({ default: m.RompimentosPage })));
+const RecebimentoCpsPage = lazy(() => import('./pages/concreto/RecebimentoCpsPage').then((m) => ({ default: m.RecebimentoCpsPage })));
+const DescarteCpsPage = lazy(() => import('./pages/concreto/DescarteCpsPage').then((m) => ({ default: m.DescarteCpsPage })));
 const ColetaFormasPage = lazy(() => import('./pages/concreto/ColetaFormasPage').then((m) => ({ default: m.ColetaFormasPage })));
 const ImportacoesShell = lazy(() => import('./pages/concreto/ImportacoesShell').then((m) => ({ default: m.ImportacoesShell })));
 const FinanceiroPage = lazy(() => import('./pages/gestao/FinanceiroPage').then((m) => ({ default: m.FinanceiroPage })));
@@ -172,6 +174,8 @@ export function App() {
             <Route path="/concretagens" element={<ConcretagensPage />} />
             <Route path="/concretagens/:id" element={<ConcretagemDetalhePage />} />
             <Route path="/rompimentos" element={<RompimentosPage />} />
+            <Route path="/recebimento-cps" element={<RecebimentoCpsPage />} />
+            <Route path="/descarte-cps" element={<DescarteCpsPage />} />
             <Route path="/etiquetas" element={<EtiquetasPage />} />
             <Route path="/laudos" element={<LaudosPage />} />
             {/* [v202] Aceitacao de lotes retirada. Reative descomentando: <Route path="/lotes" element={<LotesPage />} /> */}
