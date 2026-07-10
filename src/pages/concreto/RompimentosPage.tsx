@@ -33,6 +33,7 @@ import {
 } from '../../lib/api/rompimento';
 import { TimelineList } from '../../components/TimelineList';
 import { listCpTimeline, type TimelineEvent } from '../../lib/api/timeline';
+import { captureException, trackDomainEvent } from '../../lib/telemetry';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const ontem = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10); // deep-link 'atrasados': ate ontem = so vencidos
@@ -558,27 +559,40 @@ export function RompimentosPage() {
     setBusy(true);
     try {
       let ok = 0;
-      for (const l of importLines.filter((x) => x.ok && x.cp)) {
-        const temResultado = !!l.resultado && Number.isFinite(Number(String(l.resultado).replace(',', '.')));
-        await lancarRompimentoCp(member.tenant_id, l.cp as CpRompimento, {
-          resultado_valor: temResultado ? Number(String(l.resultado).replace(',', '.')) : null,
-          carga_ruptura: l.carga ? Number(String(l.carga).replace(',', '.')) : null,
-          carga_unidade: (l.unidade as UnidadeCarga) || 'kn',
-          massa_cp_g: l.massa ? Number(String(l.massa).replace(',', '.')) : null,
-          cp_diametro_mm: diametro,
-          cp_altura_mm: altura,
-          tipo_ruptura: l.tipo || null,
-          data_rompimento: l.data || dataRef,
-          hora_rompimento: l.hora || null,
-          equipamento_id: campoPrensa ? (prensaId || (l.cp as CpRompimento) && resultadoAtual(l.cp as CpRompimento)?.equipamento_id || null) : null,
-          origem_log: l.origem || 'importacao_planilha_rompimento',
-        });
-        ok++;
+      const erros: string[] = [];
+      const linhas = importLines.filter((x) => x.ok && x.cp);
+      for (const [idx, l] of linhas.entries()) {
+        try {
+          const temResultado = !!l.resultado && Number.isFinite(Number(String(l.resultado).replace(',', '.')));
+          await lancarRompimentoCp(member.tenant_id, l.cp as CpRompimento, {
+            resultado_valor: temResultado ? Number(String(l.resultado).replace(',', '.')) : null,
+            carga_ruptura: l.carga ? Number(String(l.carga).replace(',', '.')) : null,
+            carga_unidade: (l.unidade as UnidadeCarga) || 'kn',
+            massa_cp_g: l.massa ? Number(String(l.massa).replace(',', '.')) : null,
+            cp_diametro_mm: diametro,
+            cp_altura_mm: altura,
+            tipo_ruptura: l.tipo || null,
+            data_rompimento: l.data || dataRef,
+            hora_rompimento: l.hora || null,
+            equipamento_id: campoPrensa ? (prensaId || (l.cp as CpRompimento) && resultadoAtual(l.cp as CpRompimento)?.equipamento_id || null) : null,
+            origem_log: l.origem || 'importacao_planilha_rompimento',
+          });
+          ok++;
+        } catch (e) {
+          const reason = e instanceof Error ? e.message : String(e);
+          erros.push(`${l.numero || idx + 1}: ${reason}`);
+          captureException(e, { category: 'domain', metadata: { action: 'rompimento.importacao_linha', linha_numero: idx + 1, numeracao: l.numero, corpo_prova_id: l.cp?.id, concretagem_id: l.cp?.concretagem_id, origem: l.origem || 'importacao_planilha_rompimento' } });
+          trackDomainEvent('rompimento.importacao_linha_falhou', { linha_numero: idx + 1, numeracao: l.numero, corpo_prova_id: l.cp?.id, reason });
+        }
       }
       await qc.invalidateQueries({ queryKey: ['rompimentos'] });
-      toast(`${ok} linha(s) importada(s).`, 'success');
-      setImportOpen(false); setImportLines([]);
-    } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
+      if (ok > 0) {
+        toast(`${ok} linha(s) importada(s)` + (erros.length ? ` · ${erros.length} com erro.` : '.'), erros.length ? 'warning' : 'success');
+        if (!erros.length) { setImportOpen(false); setImportLines([]); }
+      } else {
+        toast('Falha ao importar todas as linhas: ' + (erros[0] ?? 'erro'), 'error');
+      }
+    } finally { setBusy(false); }
   }
 
   function toggleSelecionado(id: string) {

@@ -1,7 +1,7 @@
 import { supabase } from '../supabase';
-import { trackDomainEvent } from '../telemetry';
+import { captureException, trackDomainEvent } from '../telemetry';
+import { invokeEdgeFunction } from '../telemetry/edge';
 import type { Database } from '../database.types';
-import { env } from '../env';
 import { esperadoMpaPorIdade, normalizePadroes, padroesToDb, toNumber, type PadraoMoldagem } from '../concreto';
 import { assertImagem, assertUploadSize } from '../upload';
 
@@ -19,7 +19,7 @@ export type ConcretagemRow = {
   client_id: string; work_id: string;
   lab_clients?: { razao_social: string; nome_fantasia?: string | null } | null;
   client_works?: { nome: string; cidade?: string | null; uf?: string | null } | null;
-  operational_materials?: { nome: string; padrao_moldagem?: PadraoItem[]; fck_mpa?: number; slump_previsto_mm?: number | null; slump_tolerancia_mm?: number | null; validade_concreto_minutos?: number | null } | null;
+  operational_materials?: { nome: string; padrao_moldagem?: PadraoItem[]; fck_mpa?: number; slump_previsto_cm?: number | null; slump_tolerancia_cm?: number | null; validade_concreto_minutos?: number | null } | null;
   moldador?: { nome: string } | null;
   laboratorista?: { nome: string } | null;
 };
@@ -28,7 +28,7 @@ export type CaminhaoRow = {
   slump_medido_mm: number | null; temperatura_concreto_c: number | null; hora_saida_usina?: string | null; hora_chegada_obra?: string | null; hora_inicio_descarga?: string | null; hora_fim_descarga?: string | null; hora_moldagem?: string | null; houve_adicao_agua?: boolean | null; agua_litros?: number | null; rejeitado?: boolean | null; motivo_rejeicao?: string | null; elementos_concretados?: string | null; observacoes?: string | null;
 };
 
-const SEL = 'id, codigo, numero_relatorio, status, origem, data_programada, data_real, hora_programada, hora_inicio, hora_fim, fornecedor_texto, fck_previsto, traco_texto, dimensao_cp, local_texto, operational_material_id, volume_programado_m3, volume_lancado_m3, bombeado, clima, temperatura_ambiente_c, moldador_id, laboratorista_id, formas_previstas, observacoes, metadata, client_id, work_id, lab_clients(razao_social, nome_fantasia), client_works(nome, cidade, uf), operational_materials(nome, padrao_moldagem, fck_mpa, slump_previsto_mm, slump_tolerancia_mm, validade_concreto_minutos), moldador:colaboradores!moldador_id(nome), laboratorista:colaboradores!laboratorista_id(nome)';
+const SEL = 'id, codigo, numero_relatorio, status, origem, data_programada, data_real, hora_programada, hora_inicio, hora_fim, fornecedor_texto, fck_previsto, traco_texto, dimensao_cp, local_texto, operational_material_id, volume_programado_m3, volume_lancado_m3, bombeado, clima, temperatura_ambiente_c, moldador_id, laboratorista_id, formas_previstas, observacoes, metadata, client_id, work_id, lab_clients(razao_social, nome_fantasia), client_works(nome, cidade, uf), operational_materials(nome, padrao_moldagem, fck_mpa, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos), moldador:colaboradores!moldador_id(nome), laboratorista:colaboradores!laboratorista_id(nome)';
 
 export async function listConcretagens(workId?: string, tenantId?: string): Promise<ConcretagemRow[]> {
   let q = db.from('concretagens').select(SEL).is('deleted_at', null);
@@ -72,10 +72,16 @@ export async function getConcretagem(id: string): Promise<ConcretagemRow | null>
 export async function createConcretagem(tenantId: string, values: Record<string, unknown>): Promise<{ id: string }> {
   const status = String(values.status ?? 'rascunho');
   const origem = String(values.origem ?? 'programada');
-  const { data, error } = await db.from('concretagens').insert({ ...values, tenant_id: tenantId, status, origem } as unknown as Database['public']['Tables']['concretagens']['Insert']).select('id').single();
-  if (error) throw new Error(error.message);
-  trackDomainEvent('concretagem.criada', { origem, status_inicial: status });
-  return data as { id: string };
+  try {
+    const { data, error } = await db.from('concretagens').insert({ ...values, tenant_id: tenantId, status, origem } as unknown as Database['public']['Tables']['concretagens']['Insert']).select('id').single();
+    if (error) throw new Error(error.message);
+    trackDomainEvent('concretagem.criada', { origem, status_inicial: status });
+    return data as { id: string };
+  } catch (e) {
+    captureException(e, { category: 'domain', metadata: { action: 'concretagem.criar', tenant_id: tenantId, origem, status } });
+    trackDomainEvent('concretagem.criar_falhou', { origem, status_inicial: status, reason: e instanceof Error ? e.message : String(e) });
+    throw e;
+  }
 }
 
 export async function updateConcretagem(id: string, values: Record<string, unknown>): Promise<void> {
@@ -165,60 +171,69 @@ function padraoFromValues(values: Record<string, unknown>, conc: ConcretagemRow)
 
 // Cria caminhão + amostra + CPs pelo padrão de moldagem do caminhão, da concretagem ou do traço.
 export async function addCaminhao(tenantId: string, conc: ConcretagemRow, serie: number, values: Record<string, unknown>): Promise<void> {
-  const receiptPayload = sanitizeCaminhaoValues(values);
-  const { data: rec, error: e1 } = await db.from('material_receipts').insert({ ...receiptPayload, tenant_id: tenantId, concretagem_id: conc.id, serie } as unknown as Database['public']['Tables']['material_receipts']['Insert']).select('id').single();
-  if (e1) throw new Error(e1.message);
-  const receiptId = (rec as { id: string }).id;
-  const hoje = (conc.data_real ?? conc.data_programada ?? new Date().toISOString().slice(0, 10));
-  const hora = typeof values.hora_moldagem === 'string' && values.hora_moldagem ? String(values.hora_moldagem) : null;
-  const base = conc.codigo ?? conc.id.slice(0, 6);
-  const { data: am, error: e2 } = await db.from('amostras').insert({ tenant_id: tenantId, receipt_id: receiptId, concretagem_id: conc.id, codigo: 'AM-' + base + '-' + serie, data_moldagem: hoje, hora_moldagem: hora, status: 'moldada' }).select('id').single();
-  if (e2) throw new Error(e2.message);
-  const amostraId = (am as { id: string }).id;
-  const padrao = padraoFromValues(values, conc);
-  // Numeração interna do lab por CP (v132): alinhada à ordem de criação dos CPs (índice n-1).
-  const numeracoes = Array.isArray(values.numeracoes) ? (values.numeracoes as (string | null | undefined)[]) : [];
-  const cps: Record<string, unknown>[] = [];
-  let n = 1;
-  for (const item of padrao) {
-    const idade = toNumber(item.idade ?? item.idadeControle) ?? 28;
-    const qtd = toNumber(item.quantidade ?? item.quantidadeCp) ?? 2;
-    const unidade = String(item.unidade ?? item.unidadeIdade ?? 'dia').startsWith('hora') ? 'hora' : 'dia';
-    const fckRef = conc.fck_previsto ?? conc.operational_materials?.fck_mpa ?? null;
-    // Valor esperado SEMPRE calculado do FCK previsto + idade (curva/interpolacao); nao mais lancado.
-    const valorEsperado = esperadoMpaPorIdade(idade, unidade === 'hora' ? 'horas' : 'dias', fckRef) ?? toNumber(item.valor_esperado ?? item.valorEsperado) ?? fckRef ?? null;
-    for (let i = 0; i < qtd; i++) {
-      const rawNum = numeracoes[n - 1];
-      const numeracaoLab = typeof rawNum === 'string' && rawNum.trim() ? rawNum.trim() : null;
-      cps.push({ tenant_id: tenantId, amostra_id: amostraId, concretagem_id: conc.id, receipt_id: receiptId, material_test_type_id: null, codigo: 'CP-' + base + '-' + serie + '-' + String(n).padStart(2, '0'), numeracao_lab: numeracaoLab, idade_dias: idade, idade_unidade: unidade, data_moldagem: hoje, data_prevista_rompimento: addAge(hoje, idade, unidade), valor_esperado: valorEsperado, situacao: 'pendente', ordem: n });
-      n++;
+  let step: 'receipt' | 'amostra' | 'cp' = 'receipt';
+  let receiptId: string | null = null;
+  let amostraId: string | null = null;
+  try {
+    const receiptPayload = sanitizeCaminhaoValues(values);
+    const { data: rec, error: e1 } = await db.from('material_receipts').insert({ ...receiptPayload, tenant_id: tenantId, concretagem_id: conc.id, serie } as unknown as Database['public']['Tables']['material_receipts']['Insert']).select('id').single();
+    if (e1) throw new Error(e1.message);
+    receiptId = (rec as { id: string }).id;
+    step = 'amostra';
+    const hoje = (conc.data_real ?? conc.data_programada ?? new Date().toISOString().slice(0, 10));
+    const hora = typeof values.hora_moldagem === 'string' && values.hora_moldagem ? String(values.hora_moldagem) : null;
+    const base = conc.codigo ?? conc.id.slice(0, 6);
+    const { data: am, error: e2 } = await db.from('amostras').insert({ tenant_id: tenantId, receipt_id: receiptId, concretagem_id: conc.id, codigo: 'AM-' + base + '-' + serie, data_moldagem: hoje, hora_moldagem: hora, status: 'moldada' }).select('id').single();
+    if (e2) throw new Error(e2.message);
+    amostraId = (am as { id: string }).id;
+    step = 'cp';
+    const padrao = padraoFromValues(values, conc);
+    // Numeração interna do lab por CP (v132): alinhada à ordem de criação dos CPs (índice n-1).
+    const numeracoes = Array.isArray(values.numeracoes) ? (values.numeracoes as (string | null | undefined)[]) : [];
+    const cps: Record<string, unknown>[] = [];
+    let n = 1;
+    for (const item of padrao) {
+      const idade = toNumber(item.idade ?? item.idadeControle) ?? 28;
+      const qtd = toNumber(item.quantidade ?? item.quantidadeCp) ?? 2;
+      const unidade = String(item.unidade ?? item.unidadeIdade ?? 'dia').startsWith('hora') ? 'hora' : 'dia';
+      const fckRef = conc.fck_previsto ?? conc.operational_materials?.fck_mpa ?? null;
+      // Valor esperado SEMPRE calculado do FCK previsto + idade (curva/interpolacao); nao mais lancado.
+      const valorEsperado = esperadoMpaPorIdade(idade, unidade === 'hora' ? 'horas' : 'dias', fckRef) ?? toNumber(item.valor_esperado ?? item.valorEsperado) ?? fckRef ?? null;
+      for (let i = 0; i < qtd; i++) {
+        const rawNum = numeracoes[n - 1];
+        const numeracaoLab = typeof rawNum === 'string' && rawNum.trim() ? rawNum.trim() : null;
+        cps.push({ tenant_id: tenantId, amostra_id: amostraId, concretagem_id: conc.id, receipt_id: receiptId, material_test_type_id: null, codigo: 'CP-' + base + '-' + serie + '-' + String(n).padStart(2, '0'), numeracao_lab: numeracaoLab, idade_dias: idade, idade_unidade: unidade, data_moldagem: hoje, data_prevista_rompimento: addAge(hoje, idade, unidade), valor_esperado: valorEsperado, situacao: 'pendente', ordem: n });
+        n++;
+      }
     }
+    if (cps.length) { const { error: e3 } = await db.from('corpos_prova').insert(cps as unknown as Database['public']['Tables']['corpos_prova']['Insert'][]); if (e3) throw new Error(e3.message); }
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    const metadata = { action: 'caminhao.add', tenant_id: tenantId, concretagem_id: conc.id, material_receipt_id: receiptId, amostra_id: amostraId, serie, step, nota_fiscal: values.nota_fiscal ?? null };
+    captureException(e, { category: 'domain', metadata });
+    trackDomainEvent('caminhao.add_falhou', { ...metadata, reason });
+    throw e;
   }
-  if (cps.length) { const { error: e3 } = await db.from('corpos_prova').insert(cps as unknown as Database['public']['Tables']['corpos_prova']['Insert'][]); if (e3) throw new Error(e3.message); }
 }
 
 export async function invokeFichaBranco(): Promise<Blob> {
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token ?? '';
-  const resp = await fetch(env.supabaseUrl + '/functions/v1/generate-ficha-moldagem-pdf', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ mode: 'blank' }),
+  const { data } = await invokeEdgeFunction<Blob>('generate-ficha-moldagem-pdf', { mode: 'blank' }, {
+    responseType: 'blob',
+    action: 'relatorio.pdf:generate-ficha-moldagem-pdf',
+    ids: { mode: 'blank' },
+    failureEvent: 'relatorio.pdf_falhou',
   });
-  if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
-  return resp.blob();
+  return data;
 }
 
 export async function invokeFicha(concId: string): Promise<Blob> {
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token ?? '';
-  const resp = await fetch(env.supabaseUrl + '/functions/v1/generate-ficha-moldagem-pdf', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ concretagem_id: concId }),
+  const { data } = await invokeEdgeFunction<Blob>('generate-ficha-moldagem-pdf', { concretagem_id: concId }, {
+    responseType: 'blob',
+    action: 'relatorio.pdf:generate-ficha-moldagem-pdf',
+    ids: { concretagem_id: concId },
+    failureEvent: 'relatorio.pdf_falhou',
   });
-  if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
-  return resp.blob();
+  return data;
 }
 
 export type CpDetalhe = { id: string; codigo: string | null; numeracao_lab: string | null; idade_dias: number | null; idade_unidade: string; situacao: string; receipt_id: string | null; data_prevista_rompimento: string | null; resultado: number | null };
@@ -238,13 +253,13 @@ export async function listCpsDaConcretagem(concId: string): Promise<CpDetalhe[]>
 export type TracoFckOpt = { value: string; label: string; fck: number | null; idade_controle_dias?: number | null; padrao_moldagem?: PadraoItem[]; slump?: number | null; tolerancia?: number | null; validade?: number | null; work_id?: string | null; client_id?: string | null };
 // Cadeia de escopo: traco da obra (work_id) > traco da construtora (client_id, work_id null) > catalogo do lab (ambos null).
 export async function listTracosComFck(workId?: string | null, clientId?: string | null): Promise<TracoFckOpt[]> {
-  let qy = db.from('operational_materials').select('id, nome, fck_mpa, idade_controle_dias, padrao_moldagem, slump_previsto_mm, slump_tolerancia_mm, validade_concreto_minutos, work_id, client_id').eq('material_kind', 'concreto').is('deleted_at', null);
+  let qy = db.from('operational_materials').select('id, nome, fck_mpa, idade_controle_dias, padrao_moldagem, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos, work_id, client_id').eq('material_kind', 'concreto').is('deleted_at', null);
   if (workId && clientId) qy = qy.or(`work_id.eq.${workId},client_id.eq.${clientId},and(work_id.is.null,client_id.is.null)`);
   else if (clientId) qy = qy.or(`client_id.eq.${clientId},and(work_id.is.null,client_id.is.null)`);
   else if (workId) qy = qy.or(`work_id.eq.${workId},and(work_id.is.null,client_id.is.null)`);
   const { data, error } = await qy.order('nome', { ascending: true });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Record<string, any>[]).map((r) => ({ value: String(r.id), label: String(r.nome ?? r.id), fck: r.fck_mpa != null ? Number(r.fck_mpa) : null, idade_controle_dias: r.idade_controle_dias != null ? Number(r.idade_controle_dias) : null, padrao_moldagem: Array.isArray(r.padrao_moldagem) ? r.padrao_moldagem : [], slump: r.slump_previsto_mm == null ? null : Number(r.slump_previsto_mm), tolerancia: r.slump_tolerancia_mm == null ? null : Number(r.slump_tolerancia_mm), validade: r.validade_concreto_minutos == null ? null : Number(r.validade_concreto_minutos), work_id: r.work_id ?? null, client_id: r.client_id ?? null }));
+  return ((data ?? []) as Record<string, any>[]).map((r) => ({ value: String(r.id), label: String(r.nome ?? r.id), fck: r.fck_mpa != null ? Number(r.fck_mpa) : null, idade_controle_dias: r.idade_controle_dias != null ? Number(r.idade_controle_dias) : null, padrao_moldagem: Array.isArray(r.padrao_moldagem) ? r.padrao_moldagem : [], slump: r.slump_previsto_cm == null ? null : Number(r.slump_previsto_cm), tolerancia: r.slump_tolerancia_cm == null ? null : Number(r.slump_tolerancia_cm), validade: r.validade_concreto_minutos == null ? null : Number(r.validade_concreto_minutos), work_id: r.work_id ?? null, client_id: r.client_id ?? null }));
 }
 
 // OCR da NF/DANFE do caminhão (EF extract-nf-vision). Retorna campos ja nomeados p/ o recebimento.
@@ -256,15 +271,11 @@ async function fileToBase64(file: File): Promise<{ base64: string; mime: string 
 }
 export async function lerNfImagem(file: File): Promise<{ enabled: boolean; dados: Record<string, unknown>; reason?: string }> {
   const { base64, mime } = await fileToBase64(file);
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token ?? '';
-  const resp = await fetch(env.supabaseUrl + '/functions/v1/extract-nf-vision', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ image_base64: base64, mime }),
+  const { data: out } = await invokeEdgeFunction<{ ok?: boolean; enabled?: boolean; dados?: Record<string, unknown>; reason?: string; error?: string }>('extract-nf-vision', { image_base64: base64, mime }, {
+    action: 'ocr.nf',
+    ids: { filename: file.name, mime },
   });
-  const out = (await resp.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; dados?: Record<string, unknown>; reason?: string; error?: string };
-  if (!resp.ok || out.ok === false) throw new Error(out.error ?? out.reason ?? 'Falha ao ler a NF.');
+  if (out.ok === false) throw new Error(out.error ?? out.reason ?? 'Falha ao ler a NF.');
   return { enabled: out.enabled !== false, dados: out.dados ?? {}, reason: out.reason };
 }
 
@@ -299,19 +310,12 @@ export async function excluirEvidencia(id: string): Promise<void> {
 export type FichaCaminhaoOCR = { serie?: number | null; nota_fiscal?: string | null; qtde_cps?: number | null; placa?: string | null; motorista?: string | null; volume_m3?: number | null; slump_medido_mm?: number | null; temperatura_concreto_c?: number | null; hora_moldagem?: string | null; hora_saida_usina?: string | null; hora_chegada_obra?: string | null; hora_inicio_descarga?: string | null; hora_fim_descarga?: string | null; elementos_concretados?: string | null; conf?: number | null };
 export async function lerFichaImagem(file: File, concId: string): Promise<{ enabled: boolean; caminhoes: FichaCaminhaoOCR[]; confianca: number | null; reason?: string }> {
   const { base64, mime } = await fileToBase64(file);
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token ?? '';
-  const resp = await fetch(env.supabaseUrl + '/functions/v1/extract-ficha-vision', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ image_base64: base64, mime, concretagem_id: concId }),
+  const { data: out } = await invokeEdgeFunction<{ ok?: boolean; enabled?: boolean; dados?: { caminhoes?: FichaCaminhaoOCR[]; confianca?: number | null }; reason?: string; error?: string }>('extract-ficha-vision', { image_base64: base64, mime, concretagem_id: concId }, {
+    action: 'ocr.ficha_moldagem',
+    ids: { concretagem_id: concId, filename: file.name, mime },
   });
-  const out = (await resp.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; dados?: { caminhoes?: FichaCaminhaoOCR[]; confianca?: number | null }; reason?: string; error?: string };
-  if (!resp.ok || out.ok === false) throw new Error(out.error ?? out.reason ?? 'Falha ao ler a ficha.');
-  // A EF extract-ficha-vision emite a coluna 'Abat.(mm)' na chave legada slump_medido_cm (valor cru em mm);
-  // mapeia para slump_medido_mm (unidade canonica). Sem conversao: o numero escrito ja e mm.
-  const caminhoes = (out.dados?.caminhoes ?? []).map((c) => ({ ...c, slump_medido_mm: (c as { slump_medido_cm?: number | null }).slump_medido_cm ?? c.slump_medido_mm ?? null }));
-  return { enabled: out.enabled !== false, caminhoes, confianca: out.dados?.confianca ?? null, reason: out.reason };
+  if (out.ok === false) throw new Error(out.error ?? out.reason ?? 'Falha ao ler a ficha.');
+  return { enabled: out.enabled !== false, caminhoes: out.dados?.caminhoes ?? [], confianca: out.dados?.confianca ?? null, reason: out.reason };
 }
 
 // P1-4 (cockpit da Central): RPC concretagens_central_paged (contadores + status_tecnico + nomes +

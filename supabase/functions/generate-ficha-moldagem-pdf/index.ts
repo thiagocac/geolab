@@ -6,6 +6,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
+import { serverError } from '../_shared/response.ts';
 
 const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'access-control-allow-methods': 'GET,POST,OPTIONS' };
 const fail = (m: string, st = 400) => new Response(JSON.stringify({ ok: false, error: m }), { status: st, headers: { 'content-type': 'application/json; charset=utf-8', ...cors } });
@@ -117,7 +118,7 @@ export async function buildFichaPdf(input: {
   const v_lanc = blank ? '' : (conc?.bombeado ? 'Bombeado' : conc?.bombeado === false ? 'Convencional' : '');
   const v_fck = blank ? '' : (s(om.fck_mpa) || '');
   const v_vol = blank ? '' : s(conc?.volume_programado_m3);
-  const v_slump = (om.slump_previsto_mm != null) ? (s(om.slump_previsto_mm) + ' ' + String.fromCharCode(177) + ' ' + s(om.slump_tolerancia_mm ?? 0)) : ('________  ' + String.fromCharCode(177) + '  ________');
+  const v_slump = (om.slump_previsto_cm != null) ? (s(om.slump_previsto_cm) + ' ' + String.fromCharCode(177) + ' ' + s(om.slump_tolerancia_cm ?? 0)) : ('________  ' + String.fromCharCode(177) + '  ________');
 
   const rh = 24;
   if (showContatoEquipe) rowCells(x0, y, Wu, rh, [['Interessado (cliente)', 3.0, v_interessado], ['Contato', 1.5], ['Equipe', 1.0], ['Ref.', 1.0], ['Data da moldagem', 1.5, v_data]]);
@@ -193,7 +194,7 @@ export async function buildFichaPdf(input: {
     const qtde = cps.length ? String(cps.length) : '';
     const cppi = cps.length ? cpPorIdade(cps) : '';
     const vol = cm.volume_m3 != null ? Number(cm.volume_m3) : null; if (vol != null) accVol += vol;
-    rowVals.push([s(cm.serie), qtde, s(cm.slump_medido_mm), s(cm.nota_fiscal), s(cm.hora_moldagem), s(cm.hora_saida_usina), s(cm.hora_chegada_obra), s(cm.hora_inicio_descarga), s(cm.hora_fim_descarga), '', vol != null ? String(vol) : '', vol != null ? accVol.toFixed(1) : '', s(cm.serie), s(cm.elementos_concretados), cppi]);
+    rowVals.push([s(cm.serie), qtde, s(cm.slump_medido_cm), s(cm.nota_fiscal), s(cm.hora_moldagem), s(cm.hora_saida_usina), s(cm.hora_chegada_obra), s(cm.hora_inicio_descarga), s(cm.hora_fim_descarga), '', vol != null ? String(vol) : '', vol != null ? accVol.toFixed(1) : '', s(cm.serie), s(cm.elementos_concretados), cppi]);
   }
   let yb = yRows;
   for (let i = 0; i < rows; i++) { rect(x0, yb, Wu, rowh); const rv = rowVals[i]; if (rv) for (let k = 0; k < allLeaves.length; k++) { const v = rv[k]; if (v) txt(leafX[k] + 2.5, yb - rowh + 5.5, v, 7, F, ink); } yb -= rowh; }
@@ -230,7 +231,7 @@ async function logEf(req: Request, o: { startedAt: string; durationMs: number; s
 async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const startedAt = new Date().toISOString(); const t0 = performance.now();
-  const done = (res: Response) => { const p = logEf(req, { startedAt, durationMs: performance.now() - t0, statusCode: res.status, err: null }); try { (globalThis as Record<string, unknown>).EdgeRuntime && ((globalThis as Record<string, unknown>).EdgeRuntime as { waitUntil?: (x: Promise<unknown>) => void }).waitUntil?.(p); } catch { p.catch(() => {}); } return res; };
+  const done = (res: Response, err: string | null = null) => { const p = logEf(req, { startedAt, durationMs: performance.now() - t0, statusCode: res.status, err }); try { (globalThis as Record<string, unknown>).EdgeRuntime && ((globalThis as Record<string, unknown>).EdgeRuntime as { waitUntil?: (x: Promise<unknown>) => void }).waitUntil?.(p); } catch { p.catch(() => {}); } return res; };
   try {
     const body = await req.json().catch(() => ({})) as Row;
     const concId = s(body.concretagem_id);
@@ -249,13 +250,13 @@ async function handler(req: Request): Promise<Response> {
 
     if (!blank) {
       const { data: c, error } = await db.from('concretagens')
-        .select('id, tenant_id, codigo, numero_relatorio, data_real, data_programada, hora_programada, fornecedor_texto, traco_texto, local_texto, bombeado, volume_programado_m3, dimensao_cp, tenants(name), client_works(nome, codigo), lab_clients(razao_social, nome_fantasia), operational_materials(nome, fck_mpa, padrao_moldagem, cimento_tipo, consumo_cimento_kg_m3, fator_ac, brita, dmax_agregado_mm, aditivo_tipo, slump_previsto_mm, slump_tolerancia_mm)')
+        .select('id, tenant_id, codigo, numero_relatorio, data_real, data_programada, hora_programada, fornecedor_texto, traco_texto, local_texto, bombeado, volume_programado_m3, dimensao_cp, tenants(name), client_works(nome, codigo), lab_clients(razao_social, nome_fantasia), operational_materials(nome, fck_mpa, padrao_moldagem, cimento_tipo, consumo_cimento_kg_m3, fator_ac, brita, dmax_agregado_mm, aditivo_tipo, slump_previsto_cm, slump_tolerancia_cm)')
         .eq('id', concId).is('deleted_at', null).maybeSingle();
       if (error) return done(fail(error.message, 500));
       if (!c) return done(fail('Concretagem nao encontrada (ou sem acesso).', 404));
       conc = c as Row; labName = s(emb(conc.tenants).name) || labName; qrData = s(conc.id); om = emb(conc.operational_materials);
       await loadCfg(s(conc.tenant_id));
-      const { data: mr } = await db.from('material_receipts').select('id, serie, nota_fiscal, slump_medido_mm, volume_m3, hora_moldagem, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, elementos_concretados').eq('concretagem_id', concId).is('deleted_at', null).order('serie');
+      const { data: mr } = await db.from('material_receipts').select('id, serie, nota_fiscal, slump_medido_cm, volume_m3, hora_moldagem, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, elementos_concretados').eq('concretagem_id', concId).is('deleted_at', null).order('serie');
       cams = (mr ?? []) as Row[];
       const { data: cps } = await db.from('corpos_prova').select('receipt_id, idade_dias, idade_unidade').eq('concretagem_id', concId).is('deleted_at', null);
       for (const cp of (cps ?? []) as Row[]) { const k = s(cp.receipt_id); const a = cpsByReceipt.get(k) ?? []; a.push(cp); cpsByReceipt.set(k, a); }
@@ -271,7 +272,7 @@ async function handler(req: Request): Promise<Response> {
     });
     return done(new Response(bytes, { headers: { 'access-control-allow-origin': '*', 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="ficha-moldagem.pdf"' } }));
   } catch (e) {
-    return done(fail(e instanceof Error ? e.message : 'erro desconhecido', 500));
+    return done(serverError(e, { req, fnName: 'generate-ficha-moldagem-pdf', action: 'relatorio.pdf:generate-ficha-moldagem-pdf' }), e instanceof Error ? e.message : 'erro desconhecido');
   }
 }
 

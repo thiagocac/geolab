@@ -12,6 +12,7 @@
 // Uso: await exportExcel({ title, subtitle, fields }, { name, columns, rows, totals }).
 
 import type { WorkBook, WorkSheet } from 'xlsx-js-style';
+import { captureException, trackDomainEvent } from '../telemetry';
 
 export type XlsxFormat = 'text' | 'int' | 'dec1' | 'dec2' | 'money' | 'percent' | 'date' | 'datetime';
 export type XlsxAlign = 'left' | 'center' | 'right';
@@ -233,9 +234,36 @@ function triggerDownload(bytes: ArrayBuffer, filename: string): void {
 // Ponto de entrada público: monta e baixa o .xlsx no navegador.
 // biome-ignore lint/suspicious/noExplicitAny: lista de abas com tipos de linha distintos
 export async function exportExcel(meta: XlsxMeta, sheets: XlsxSheet<any> | XlsxSheet<any>[]): Promise<void> {
-  const XLSX = (await import('xlsx-js-style')) as unknown as XlsxModule;
-  const wb = composeWorkbook(XLSX, meta, sheets);
-  const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
-  const fname = (meta.filename && meta.filename.trim()) || `${slug(meta.title)}-${fmtDate(meta.generatedAt ?? new Date()).split('/').reverse().join('-')}.xlsx`;
-  triggerDownload(out, fname.endsWith('.xlsx') ? fname : `${fname}.xlsx`);
+  const sheetList = Array.isArray(sheets) ? sheets : [sheets];
+  const rowsTotal = sheetList.reduce((acc, sh) => acc + sh.rows.length, 0);
+  const fname = meta.filename?.trim() || `${slug(meta.title)}-${fmtDate(meta.generatedAt ?? new Date()).split('/').reverse().join('-')}.xlsx`;
+  const filename = fname.endsWith('.xlsx') ? fname : `${fname}.xlsx`;
+  try {
+    const XLSX = (await import('xlsx-js-style')) as unknown as XlsxModule;
+    const wb = composeWorkbook(XLSX, meta, sheetList);
+    const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+    triggerDownload(out, filename);
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    const eventName = `export.excel:${slug(meta.title)}`;
+    captureException(e, {
+      category: 'export',
+      metadata: {
+        action: eventName,
+        title: meta.title,
+        filename,
+        sheet_count: sheetList.length,
+        rows_total: rowsTotal,
+        sheet_names: sheetList.map((sh) => sh.name),
+      },
+    });
+    trackDomainEvent('relatorio.excel_falhou', {
+      action: eventName,
+      filename,
+      sheet_count: sheetList.length,
+      rows_total: rowsTotal,
+      reason,
+    });
+    throw e;
+  }
 }

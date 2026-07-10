@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
-import { trackDomainEvent } from '../telemetry';
+import { captureException, trackDomainEvent } from '../telemetry';
+import { invokeEdgeFunction } from '../telemetry/edge';
 import { env } from '../env';
 
 // Camada de laudos. Emissão/persistencia ficam na EF generate-laudo-ensaio-pdf
@@ -72,24 +73,32 @@ export async function conformidadeControle(ids: string[]): Promise<Record<string
 }
 
 export async function gerarLaudo(concId: string, persist = true): Promise<{ blob: Blob; labReportId: string }> {
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token ?? '';
-  const resp = await fetch(env.supabaseUrl + '/functions/v1/generate-laudo-ensaio-pdf', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ concretagem_id: concId, persist }),
-  });
-  if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
-  const blob = await resp.blob();
-  let labReportId = resp.headers.get('x-lab-report-id') ?? '';
-  if (persist && !labReportId) {
-    // Fallback: o header x-lab-report-id pode nao estar exposto via CORS no browser.
-    // Sem ele, busca o laudo recem-persistido da concretagem para disparar o laudo_pronto.
-    const { data } = await db.from('lab_reports').select('id').eq('concretagem_id', concId).is('deleted_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle();
-    labReportId = data?.id ? String(data.id) : '';
+  try {
+    const { data: blob, response } = await invokeEdgeFunction<Blob>('generate-laudo-ensaio-pdf', { concretagem_id: concId, persist }, {
+      responseType: 'blob',
+      action: 'relatorio.pdf:generate-laudo-ensaio-pdf',
+      ids: { concretagem_id: concId },
+      failureEvent: 'relatorio.pdf_falhou',
+    });
+    let labReportId = response.headers.get('x-lab-report-id') ?? '';
+    const persistWarning = response.headers.get('x-persist-warning') ?? '';
+    if (persistWarning) {
+      captureException(new Error(persistWarning), { category: 'edge_function', severity: 'warn', metadata: { action: 'laudo.gerar.persistencia', concretagem_id: concId, warning: persistWarning } });
+      trackDomainEvent('relatorio.pdf_falhou', { concretagem_id: concId, action: 'laudo.gerar.persistencia', reason: persistWarning });
+    }
+    if (persist && !labReportId) {
+      // Fallback: o header x-lab-report-id pode nao estar exposto via CORS no browser.
+      // Sem ele, busca o laudo recem-persistido da concretagem para disparar o laudo_pronto.
+      const { data } = await db.from('lab_reports').select('id').eq('concretagem_id', concId).is('deleted_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      labReportId = data?.id ? String(data.id) : '';
+    }
+    if (persist) trackDomainEvent('laudo.gerado', { concretagem_id: concId });
+    return { blob, labReportId };
+  } catch (e) {
+    captureException(e, { category: 'domain', metadata: { action: 'laudo.gerar', concretagem_id: concId, persist } });
+    trackDomainEvent('laudo.gerar_falhou', { concretagem_id: concId, persist, reason: e instanceof Error ? e.message : String(e) });
+    throw e;
   }
-  if (persist) trackDomainEvent('laudo.gerado', { concretagem_id: concId });
-  return { blob, labReportId };
 }
 
 export async function downloadUrl(path: string): Promise<string> {
@@ -110,9 +119,14 @@ export async function baixarLaudoUrl(labReportId: string, fallbackPath: string |
 }
 
 export async function aprovarLaudo(id: string): Promise<void> {
-  const { error } = await rpc.rpc('aprovar_laudo', { p_lab_report_id: id });
-  if (error) throw new Error(error.message);
-  trackDomainEvent('laudo.aprovado', { lab_report_id: id });
+  try {
+    const { error } = await rpc.rpc('aprovar_laudo', { p_lab_report_id: id });
+    if (error) throw new Error(error.message);
+    trackDomainEvent('laudo.aprovado', { lab_report_id: id });
+  } catch (e) {
+    captureException(e, { category: 'domain', metadata: { action: 'laudo.aprovar', lab_report_id: id } });
+    throw e;
+  }
 }
 export async function reabrirLaudo(id: string): Promise<void> {
   const { error } = await rpc.rpc('reabrir_laudo', { p_lab_report_id: id });
@@ -156,32 +170,37 @@ export async function decidirLaudoLink(token: string, decision: 'aprovar' | 'dev
 
 // Envia o laudo emitido ao contato do cliente (EF enviar-laudo-cliente). sent=false quando dry-run/desabilitado/sem config.
 export async function enviarLaudoCliente(labReportId: string): Promise<{ sent: boolean; reason?: string; to?: string }> {
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token ?? '';
-  const resp = await fetch(env.supabaseUrl + '/functions/v1/enviar-laudo-cliente', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ lab_report_id: labReportId }),
-  });
-  const out = (await resp.json().catch(() => ({}))) as { ok?: boolean; sent?: boolean; reason?: string; to?: string; error?: string };
-  if (!resp.ok || out.ok === false) throw new Error(out.error ?? ('Erro ' + resp.status));
-  if (out.sent === true) trackDomainEvent('laudo.enviado_cliente', { lab_report_id: labReportId });
-  return { sent: out.sent === true, reason: out.reason, to: out.to };
+  try {
+    const { data: out } = await invokeEdgeFunction<{ ok?: boolean; sent?: boolean; reason?: string; to?: string; error?: string }>('enviar-laudo-cliente', { lab_report_id: labReportId }, {
+      action: 'laudo.enviar_cliente',
+      ids: { lab_report_id: labReportId },
+      failureEvent: 'laudo.enviar_falhou',
+    });
+    if (out.ok === false) throw new Error(out.error ?? 'Falha ao enviar laudo ao cliente.');
+    if (out.sent === true) trackDomainEvent('laudo.enviado_cliente', { lab_report_id: labReportId });
+    return { sent: out.sent === true, reason: out.reason, to: out.to };
+  } catch (e) {
+    captureException(e, { category: 'domain', metadata: { action: 'laudo.enviar_cliente', lab_report_id: labReportId } });
+    trackDomainEvent('laudo.enviar_falhou', { lab_report_id: labReportId, reason: e instanceof Error ? e.message : String(e) });
+    throw e;
+  }
 }
 
 
 // Aplica a assinatura configurada (lab_signature_settings.modo) ao laudo emitido (EF sign-laudo-pdf).
 export async function assinarLaudo(labReportId: string): Promise<{ status: string; modo: string }> {
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token ?? '';
-  const resp = await fetch(env.supabaseUrl + '/functions/v1/sign-laudo-pdf', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ lab_report_id: labReportId }),
-  });
-  const out = (await resp.json().catch(() => ({}))) as { status?: string; modo?: string; error?: string };
-  if (!resp.ok) throw new Error(out.error ?? ('Erro ' + resp.status));
-  return { status: String(out.status ?? ''), modo: String(out.modo ?? '') };
+  try {
+    const { data: out } = await invokeEdgeFunction<{ status?: string; modo?: string; error?: string }>('sign-laudo-pdf', { lab_report_id: labReportId }, {
+      action: 'laudo.assinar',
+      ids: { lab_report_id: labReportId },
+      failureEvent: 'laudo.assinar_falhou',
+    });
+    return { status: String(out.status ?? ''), modo: String(out.modo ?? '') };
+  } catch (e) {
+    captureException(e, { category: 'domain', metadata: { action: 'laudo.assinar', lab_report_id: labReportId } });
+    trackDomainEvent('laudo.assinar_falhou', { lab_report_id: labReportId, reason: e instanceof Error ? e.message : String(e) });
+    throw e;
+  }
 }
 
 // Classificacao Parcial/Final dos laudos do tenant (badge + auto-envio ao emitir Final). RPC laudos_parcial_final (064).

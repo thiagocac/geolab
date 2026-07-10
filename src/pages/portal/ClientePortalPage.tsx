@@ -28,14 +28,15 @@ type Tab = 'programacao' | 'resultados' | 'estrutura';
 function PortalLocalCell({ workId, value, onChange }: { workId: string; value: string; onChange: (v: string) => void }) {
   const est = useQuery({ queryKey: ['portal-estruturas', workId], queryFn: () => listPortalEstruturas(workId), enabled: !!workId });
   const [estId, setEstId] = useState('');
+  const [pecaId, setPecaId] = useState('');
   const lista = est.data ?? [];
   const cur = lista.find((e) => e.id === estId) ?? null;
   return (
     <div className="min-w-[200px] space-y-1">
       {lista.length ? (
         <div className="flex gap-1">
-          <select className="input !min-h-9 w-1/2 px-1 text-xs" value={estId} onChange={(e) => setEstId(e.target.value)} aria-label="Estrutura"><option value="">Estrutura</option>{lista.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}</select>
-          <select className="input !min-h-9 w-1/2 px-1 text-xs" value="" disabled={!cur} onChange={(e) => { const p = cur?.pecas.find((x) => x.id === e.target.value); if (p && cur) onChange(cur.nome + ' · ' + p.nome); }} aria-label="Peça"><option value="">Peça</option>{(cur?.pecas ?? []).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select>
+          <select className="input !min-h-9 w-1/2 px-1 text-xs" value={estId} onChange={(e) => { setEstId(e.target.value); setPecaId(''); }} aria-label="Estrutura"><option value="">Estrutura</option>{lista.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}</select>
+          <select className="input !min-h-9 w-1/2 px-1 text-xs" value={pecaId} disabled={!cur} onChange={(e) => { const id = e.target.value; setPecaId(id); const p = cur?.pecas.find((x) => x.id === id); if (p && cur) onChange(cur.nome + ' · ' + p.nome); }} aria-label="Peça"><option value="">Peça</option>{(cur?.pecas ?? []).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select>
         </div>
       ) : null}
       <input className="input min-w-[180px]" value={value} onChange={(e) => onChange(e.target.value)} placeholder="Ex.: laje torre A" />

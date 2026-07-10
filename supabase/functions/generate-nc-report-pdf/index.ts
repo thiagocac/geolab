@@ -3,6 +3,7 @@
 // Padrao re-derivado da generate-medicao-pdf viva (self-contained, sem _shared; verify_jwt + RLS do solicitante).
 import { PDFDocument, StandardFonts, rgb, PDFImage } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
+import { serverError } from '../_shared/response.ts';
 
 // --- Observabilidade (M1, auditoria 2026-07-07): registra cada invocacao em ef_invocation_log ---
 // (alimenta v_ef_metrics_hourly e o alarme de 5xx/p95 do telemetry-alarm). Best-effort: nunca
@@ -184,6 +185,6 @@ serveWithTelemetry('generate-nc-report-pdf', async (req) => {
     const fname = 'rac-' + san(numero).replace(/[^A-Za-z0-9_-]/g, '_') + '.pdf';
     return new Response(bytes, { headers: { ...cors, 'content-type': 'application/pdf', 'content-disposition': `inline; filename="${fname}"`, 'x-nc-id': String(nc.id) } });
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    return serverError(e, { req, fnName: 'generate-nc-report-pdf', action: 'relatorio.pdf:generate-nc-report-pdf' });
   }
 });

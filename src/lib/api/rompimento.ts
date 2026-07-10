@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
-import { trackDomainEvent } from '../telemetry';
+import { captureException, trackDomainEvent } from '../telemetry';
+import { invokeEdgeFunction } from '../telemetry/edge';
 import { env } from '../env';
 import { cargaParaMpa, fatorHD as fatorHDCore, type UnidadeCarga } from '../concreto/cp';
 
@@ -44,7 +45,7 @@ export type CpRompimento = {
   contraprova: boolean | null;
   contraprova_de_id: string | null;
   material_tests?: MaterialTestResult[] | null;
-  material_receipts?: { id: string; nota_fiscal: string | null; serie: number | null; external_key: string | null; volume_m3: number | null; slump_medido_mm: number | null; temperatura_concreto_c: number | null; elementos_concretados: string | null } | null;
+  material_receipts?: { id: string; nota_fiscal: string | null; serie: number | null; external_key: string | null; volume_m3: number | null; slump_medido_cm: number | null; temperatura_concreto_c: number | null; elementos_concretados: string | null } | null;
   material_test_types?: { id: string; codigo: string | null; nome: string | null; unidade_resultado: string | null; idade_controle: number | null; idade_controle_unidade: string | null; cp_diametro_padrao_mm: number | null; cp_altura_padrao_mm: number | null } | null;
   concretagens?: { id: string; codigo: string | null; numero_relatorio: string | null; work_id: string | null; fck_previsto: number | null; fornecedor_texto: string | null; operational_materials?: { idade_controle_dias: number | null } | null; client_works?: { nome: string | null } | null; lab_clients?: { razao_social: string | null; nome_fantasia?: string | null } | null } | null;
 };
@@ -57,7 +58,7 @@ export function resultadoAtual(cp: CpRompimento): MaterialTestResult | null {
   return [...arr].sort((a, b) => String(a.created_at ?? a.id).localeCompare(String(b.created_at ?? b.id))).at(-1) ?? null;
 }
 
-const SELECT_CP = 'id, codigo, numeracao_lab, external_key, amostra_id, idade_dias, idade_unidade, data_prevista_rompimento, data_real_rompimento, data_moldagem, situacao, motivo_descarte, valor_esperado, metadata, concretagem_id, receipt_id, material_test_type_id, contraprova, contraprova_de_id, material_tests(id, resultado_valor, carga_ruptura_kn, data_rompimento, hora_rompimento, cp_diametro_mm, cp_altura_mm, tipo_ruptura, capeamento, massa_cp_g, equipamento_id, operador_id, created_at), material_receipts(id, nota_fiscal, serie, external_key, volume_m3, slump_medido_mm, temperatura_concreto_c, elementos_concretados), material_test_types(id, codigo, nome, unidade_resultado, idade_controle, idade_controle_unidade, cp_diametro_padrao_mm, cp_altura_padrao_mm), concretagens(id, codigo, numero_relatorio, work_id, fck_previsto, fornecedor_texto, operational_materials(idade_controle_dias), client_works(nome), lab_clients(razao_social, nome_fantasia))';
+const SELECT_CP = 'id, codigo, numeracao_lab, external_key, amostra_id, idade_dias, idade_unidade, data_prevista_rompimento, data_real_rompimento, data_moldagem, situacao, motivo_descarte, valor_esperado, metadata, concretagem_id, receipt_id, material_test_type_id, contraprova, contraprova_de_id, material_tests(id, resultado_valor, carga_ruptura_kn, data_rompimento, hora_rompimento, cp_diametro_mm, cp_altura_mm, tipo_ruptura, capeamento, massa_cp_g, equipamento_id, operador_id, created_at), material_receipts(id, nota_fiscal, serie, external_key, volume_m3, slump_medido_cm, temperatura_concreto_c, elementos_concretados), material_test_types(id, codigo, nome, unidade_resultado, idade_controle, idade_controle_unidade, cp_diametro_padrao_mm, cp_altura_padrao_mm), concretagens(id, codigo, numero_relatorio, work_id, fck_previsto, fornecedor_texto, operational_materials(idade_controle_dias), client_works(nome), lab_clients(razao_social, nome_fantasia))';
 const SELECT_CP_SEM_NUM = SELECT_CP.replace('numeracao_lab, ', '');
 
 // Teto explicito da worklist: sem isto o PostgREST corta em 1000 SILENCIOSAMENTE.
@@ -131,39 +132,53 @@ function mpaFromInput(v: LancamentoInput): { mpa: number; kn: number | null } {
 }
 
 async function directLancamento(tenantId: string, cp: CpRompimento, v: LancamentoInput): Promise<number> {
+  let step: 'soft_delete_previous' | 'insert_result' | 'update_cp' = 'soft_delete_previous';
   const { mpa, kn } = mpaFromInput(v);
-  const previous = resultadoAtual(cp);
-  if (previous?.id) await db.from('material_tests').update({ deleted_at: new Date().toISOString() }).eq('id', previous.id);
-  const { error: e1 } = await db.from('material_tests').insert({
-    tenant_id: tenantId,
-    corpo_prova_id: cp.id,
-    concretagem_id: cp.concretagem_id,
-    receipt_id: cp.receipt_id,
-    material_test_type_id: cp.material_test_type_id,
-    idade_dias: cp.idade_dias,
-    idade_unidade: cp.idade_unidade,
-    data_rompimento: v.data_rompimento,
-    hora_rompimento: v.hora_rompimento || null,
-    carga_ruptura_kn: kn,
-    cp_diametro_mm: v.cp_diametro_mm || 100,
-    cp_altura_mm: v.cp_altura_mm || 200,
-    resultado_valor: mpa,
-    unidade_resultado: 'MPa',
-    fck_referencia_mpa: cp.valor_esperado ?? cp.concretagens?.fck_previsto ?? null,
-    tipo_ruptura: v.tipo_ruptura || null,
-    capeamento: v.capeamento || null,
-    massa_cp_g: v.massa_cp_g ?? null,
-    equipamento_id: v.equipamento_id || null,
-    operador_id: v.operador_id || null,
-    origem: v.origem_log || 'manual',
-    justificativa_alteracao: previous ? (v.justificativa || 'Alteração manual pela tela de resultados') : null,
-  });
-  if (e1) throw new Error(e1.message);
-  const log = Array.isArray(cp.metadata?.rompimento_log) ? cp.metadata?.rompimento_log as unknown[] : [];
-  const metadata = { ...(cp.metadata ?? {}), rompimento_log: previous ? [...log, { at: new Date().toISOString(), before: previous, after: { resultado_valor: mpa, data_rompimento: v.data_rompimento, hora_rompimento: v.hora_rompimento ?? null }, origem: v.origem_log ?? 'manual' }] : log };
-  const { error: e2 } = await db.from('corpos_prova').update({ situacao: 'rompido', data_real_rompimento: v.data_rompimento, metadata }).eq('id', cp.id);
-  if (e2) throw new Error(e2.message);
-  return mpa;
+  try {
+    const previous = resultadoAtual(cp);
+    if (previous?.id) {
+      const soft = await db.from('material_tests').update({ deleted_at: new Date().toISOString() }).eq('id', previous.id);
+      if (soft.error) throw new Error(soft.error.message);
+    }
+    step = 'insert_result';
+    const { error: e1 } = await db.from('material_tests').insert({
+      tenant_id: tenantId,
+      corpo_prova_id: cp.id,
+      concretagem_id: cp.concretagem_id,
+      receipt_id: cp.receipt_id,
+      material_test_type_id: cp.material_test_type_id,
+      idade_dias: cp.idade_dias,
+      idade_unidade: cp.idade_unidade,
+      data_rompimento: v.data_rompimento,
+      hora_rompimento: v.hora_rompimento || null,
+      carga_ruptura_kn: kn,
+      cp_diametro_mm: v.cp_diametro_mm || 100,
+      cp_altura_mm: v.cp_altura_mm || 200,
+      resultado_valor: mpa,
+      unidade_resultado: 'MPa',
+      fck_referencia_mpa: cp.valor_esperado ?? cp.concretagens?.fck_previsto ?? null,
+      tipo_ruptura: v.tipo_ruptura || null,
+      capeamento: v.capeamento || null,
+      massa_cp_g: v.massa_cp_g ?? null,
+      equipamento_id: v.equipamento_id || null,
+      operador_id: v.operador_id || null,
+      origem: v.origem_log || 'manual',
+      justificativa_alteracao: previous ? (v.justificativa || 'Alteração manual pela tela de resultados') : null,
+    });
+    if (e1) throw new Error(e1.message);
+    step = 'update_cp';
+    const log = Array.isArray(cp.metadata?.rompimento_log) ? cp.metadata?.rompimento_log as unknown[] : [];
+    const metadata = { ...(cp.metadata ?? {}), rompimento_log: previous ? [...log, { at: new Date().toISOString(), before: previous, after: { resultado_valor: mpa, data_rompimento: v.data_rompimento, hora_rompimento: v.hora_rompimento ?? null }, origem: v.origem_log ?? 'manual' }] : log };
+    const { error: e2 } = await db.from('corpos_prova').update({ situacao: 'rompido', data_real_rompimento: v.data_rompimento, metadata }).eq('id', cp.id);
+    if (e2) throw new Error(e2.message);
+    return mpa;
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    const metadata = { action: 'rompimento.lancar', tenant_id: tenantId, corpo_prova_id: cp.id, concretagem_id: cp.concretagem_id, receipt_id: cp.receipt_id, idade_dias: cp.idade_dias, fallback_direct: true, partial_step: step };
+    captureException(e, { category: 'domain', metadata });
+    trackDomainEvent('rompimento.lancar_falhou', { ...metadata, reason });
+    throw e;
+  }
 }
 
 export async function lancarRompimentoCp(tenantId: string, cp: CpRompimento, v: LancamentoInput): Promise<number> {
@@ -174,7 +189,13 @@ export async function lancarRompimentoCp(tenantId: string, cp: CpRompimento, v: 
     if (data && Number.isFinite(Number(data.resultado_valor))) return Number(data.resultado_valor);
     return mpaFromInput(v).mpa;
   }
-  if (!missingRpc(rpc.error)) throw new Error(rpc.error.message);
+  if (!missingRpc(rpc.error)) {
+    const reason = rpc.error.message;
+    const metadata = { action: 'rompimento.lancar', tenant_id: tenantId, corpo_prova_id: cp.id, concretagem_id: cp.concretagem_id, idade_dias: cp.idade_dias, rpc_code: rpc.error.code ?? null, fallback_direct: false };
+    captureException(new Error(reason), { category: 'domain', metadata });
+    trackDomainEvent('rompimento.lancar_falhou', { ...metadata, reason });
+    throw new Error(reason);
+  }
   return directLancamento(tenantId, cp, v);
 }
 
@@ -229,15 +250,13 @@ export async function listRompimentoAudit(cpId: string): Promise<AuditItem[]> {
 }
 
 export async function gerarAgendaPdf(payload: Record<string, unknown>): Promise<Blob> {
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token ?? '';
-  const resp = await fetch(env.supabaseUrl + '/functions/v1/generate-agenda-rompimento-pdf', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify(payload),
+  const { data } = await invokeEdgeFunction<Blob>('generate-agenda-rompimento-pdf', payload, {
+    responseType: 'blob',
+    action: 'relatorio.pdf:generate-agenda-rompimento-pdf',
+    ids: { tipo_ensaio: payload.tipo_ensaio, data_ref: payload.data_ref, idade: payload.idade },
+    failureEvent: 'relatorio.pdf_falhou',
   });
-  if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
-  return resp.blob();
+  return data;
 }
 
 // E1 — aceitação por exemplar na idade de controle (default 28d, configurável por lab/traço).
@@ -278,14 +297,21 @@ export type LoteAbaixoFck = { amostra_id: string; codigo: string | null; exempla
 // Item D: 1 chamada (transacao server-side) em vez de N. O servidor calcula as amostras
 // abaixo do fck na idade de controle e devolve a lista para notificar 1x por amostra.
 export async function lancarRompimentosLote(itens: Array<Record<string, unknown>>, idadeControle = 28): Promise<{ ok: number; abaixoFck: LoteAbaixoFck[] }> {
-  const res = await db.rpc('lancar_rompimentos_lote', { payload: { itens, idade_controle: idadeControle } });
-  if (res.error) throw new Error(res.error.message);
-  const d = (res.data ?? {}) as Rec;
-  const abaixo = Array.isArray(d.abaixo_fck)
-    ? (d.abaixo_fck as Rec[]).map((a) => ({ amostra_id: String(a.amostra_id), codigo: a.codigo == null ? null : String(a.codigo), exemplar: Number(a.exemplar), fck: Number(a.fck) }))
-    : [];
-  trackDomainEvent('rompimento.lote_lancado', { itens: itens.length, ok: Number(d.ok ?? 0) });
-  return { ok: Number(d.ok ?? 0), abaixoFck: abaixo };
+  try {
+    const res = await db.rpc('lancar_rompimentos_lote', { payload: { itens, idade_controle: idadeControle } });
+    if (res.error) throw new Error(res.error.message);
+    const d = (res.data ?? {}) as Rec;
+    const abaixo = Array.isArray(d.abaixo_fck)
+      ? (d.abaixo_fck as Rec[]).map((a) => ({ amostra_id: String(a.amostra_id), codigo: a.codigo == null ? null : String(a.codigo), exemplar: Number(a.exemplar), fck: Number(a.fck) }))
+      : [];
+    trackDomainEvent('rompimento.lote_lancado', { itens: itens.length, ok: Number(d.ok ?? 0) });
+    return { ok: Number(d.ok ?? 0), abaixoFck: abaixo };
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    captureException(e, { category: 'domain', metadata: { action: 'rompimento.lote_lancar', itens: itens.length, idade_controle: idadeControle } });
+    trackDomainEvent('rompimento.lancar_falhou', { action: 'rompimento.lote_lancar', itens: itens.length, idade_controle: idadeControle, reason });
+    throw e;
+  }
 }
 
 export async function notifyAbaixoFck(tenantId: string, a: LoteAbaixoFck): Promise<void> {
@@ -303,15 +329,10 @@ export async function notifyAbaixoFck(tenantId: string, a: LoteAbaixoFck): Promi
 // OCR da AGENDA de rompimentos preenchida à caneta (EF extract-agenda-vision). Casa CP pela numeração.
 export type AgendaOcrLinha = { numeracao: string; data_rompimento: string | null; hora: string | null; resultado_mpa: number | null; carga: number | null; tipo_ruptura: string | null; conf: number | null };
 export async function ocrAgendaRompimento(imageBase64: string, mime: string): Promise<{ enabled: boolean; reason?: string; linhas: AgendaOcrLinha[]; confianca: number | null }> {
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess.session?.access_token ?? '';
-  const resp = await fetch(env.supabaseUrl + '/functions/v1/extract-agenda-vision', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: env.supabaseAnonKey, Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ image_base64: imageBase64, mime }),
+  const { data: j } = await invokeEdgeFunction<Rec>('extract-agenda-vision', { image_base64: imageBase64, mime }, {
+    action: 'ocr.agenda_rompimento',
+    ids: { mime },
   });
-  if (!resp.ok) { const t = await resp.text(); throw new Error(t || ('Erro ' + resp.status)); }
-  const j = (await resp.json()) as Rec;
   const d = (j?.dados ?? {}) as Rec;
   const linhas: AgendaOcrLinha[] = (Array.isArray(d.linhas) ? d.linhas as Rec[] : []).map((l) => ({
     numeracao: String(l.numeracao ?? '').trim(), data_rompimento: (l.data_rompimento as string) ?? null, hora: (l.hora as string) ?? null,

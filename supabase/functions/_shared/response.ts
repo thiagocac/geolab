@@ -1,7 +1,7 @@
 // _shared/response.ts — helpers de resposta HTTP das Edge Functions.
-// EXTENSÃO ADITIVA: somados ok() e serverError() (usados pelas EFs portadas do GEOCON:
-// client-telemetry e telemetry-alarm). json() e fail() preservados sem mudança de comportamento.
+// v210: serverError() cria correlation_id, persiste stack no ef_log e devolve mensagem genérica.
 import { json as baseJson } from './core.ts';
+import { errorShape, logEf } from './telemetry.ts';
 
 export function json(body: unknown, init: ResponseInit = {}) {
   return baseJson(body, init);
@@ -19,8 +19,31 @@ export function ok(body: unknown = {}, init: ResponseInit = {}) {
   return baseJson(payload, { status: 200, ...init });
 }
 
-/** Erro 500 a partir de uma exceção (mensagem segura; nunca vaza stack ao cliente). */
-export function serverError(e: unknown, status = 500) {
-  const message = e instanceof Error ? e.message : String(e);
-  return baseJson({ ok: false, error: message }, { status });
+type ServerErrorOptions = {
+  req?: Request;
+  fnName?: string;
+  action?: string;
+  status?: number;
+  publicMessage?: string;
+  metadata?: Record<string, unknown>;
+  headers?: HeadersInit;
+};
+
+/** Erro seguro: stack completo fica no servidor; cliente recebe só correlation_id. */
+export function serverError(e: unknown, opts: ServerErrorOptions | number = {}) {
+  const o: ServerErrorOptions = typeof opts === 'number' ? { status: opts } : opts;
+  const correlationId = crypto.randomUUID();
+  const err = errorShape(e);
+  if (o.req && o.fnName) {
+    void logEf(o.req, 'error', o.fnName, err.message, {
+      action: o.action ?? 'edge.server_error',
+      correlation_id: correlationId,
+      error_class: err.name,
+      stack: err.stack,
+      ...(o.metadata ?? {}),
+    });
+  }
+  const headers = new Headers(o.headers ?? {});
+  headers.set('x-correlation-id', correlationId);
+  return baseJson({ ok: false, error: o.publicMessage ?? 'Erro interno ao processar a solicitação. Informe o código de correlação ao suporte.', correlation_id: correlationId }, { status: o.status ?? 500, headers });
 }

@@ -372,6 +372,157 @@ function DomainUsageCard() {
   );
 }
 
+
+type EfErrorRecent = {
+  id: string; occurred_at: string; level: string; fn_name: string; action: string | null;
+  tenant_id: string | null; actor_id: string | null; trace_id: string | null; correlation_id: string | null;
+  error_class: string | null; message: string | null; stack: string | null; domain_context: Record<string, unknown> | null;
+  request_body: Record<string, unknown> | null; http_status: number | null; app_version: string | null; metadata: Record<string, unknown> | null;
+};
+type ReportAttempt = {
+  occurred_at: string; fn_name: string; report_kind: string; status: string; duration_ms: number | null;
+  tenant_id: string | null; actor_id: string | null; trace_id: string | null; correlation_id: string | null;
+  entity_type: string | null; entity_id: string | null; message: string | null; domain_context: Record<string, unknown> | null;
+};
+type EmailDaily = { day: string; event_type: string | null; sent: number; failed: number; bounced: number; complained: number; opened: number; clicked: number };
+
+function jsonPretty(v: unknown): string {
+  try { return JSON.stringify(v ?? {}, null, 2); } catch { return '{}'; }
+}
+function aiContext(row: EfErrorRecent): string {
+  return [
+    '# Contexto AI-debuggable GEOLAB',
+    `erro_id: ${row.id}`,
+    `quando: ${row.occurred_at}`,
+    `origem: edge_function`,
+    `fn_name: ${row.fn_name}`,
+    `action: ${row.action ?? '-'}`,
+    `tenant_id: ${row.tenant_id ?? '-'}`,
+    `actor_id: ${row.actor_id ?? '-'}`,
+    `trace_id: ${row.trace_id ?? '-'}`,
+    `correlation_id: ${row.correlation_id ?? '-'}`,
+    `http_status: ${row.http_status ?? '-'}`,
+    `classe: ${row.error_class ?? '-'}`,
+    `mensagem: ${row.message ?? '-'}`,
+    '',
+    '## Domain context',
+    jsonPretty(row.domain_context),
+    '',
+    '## Request body scrubbed',
+    jsonPretty(row.request_body),
+    '',
+    '## Metadata',
+    jsonPretty(row.metadata),
+    '',
+    '## Stack',
+    row.stack ?? '-',
+  ].join('\n');
+}
+
+function RecentEfErrorsCard() {
+  const [selected, setSelected] = useState<EfErrorRecent | null>(null);
+  const [copied, setCopied] = useState(false);
+  const q = useQuery({ queryKey: ['obs', 'ef-errors-recent'], refetchInterval: 15_000,
+    queryFn: () => rows<EfErrorRecent>(supabase.from('v_ef_error_recent' as any).select('*').order('occurred_at', { ascending: false }).limit(50)) });
+  async function copy(row: EfErrorRecent) {
+    await navigator.clipboard.writeText(aiContext(row));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <Card>
+      <CardHeader kicker="NOC" title="Erros recentes AI-debuggable">Feed quase em tempo real do log estruturado de Edge Functions. Clique em um erro para montar o bloco pronto para colar na IA.</CardHeader>
+      <div className="p-5">
+        {q.isLoading ? <LoadingState /> : q.error ? <ErrorState message={(q.error as Error).message} /> : (q.data?.length ?? 0) === 0 ? <EmptyState /> : (
+          <div className="space-y-4">
+            <div className="table-scroll">
+              <table className="table">
+                <thead><tr><th>Quando</th><th>Função</th><th>Ação</th><th>Erro</th><th>Correlation</th><th>Trace</th><th></th></tr></thead>
+                <tbody>{q.data!.map((r) => (
+                  <tr key={r.id}>
+                    <td className="whitespace-nowrap text-slate-500">{new Date(r.occurred_at).toLocaleString('pt-BR')}</td>
+                    <td className="font-medium">{r.fn_name}</td>
+                    <td>{r.action ?? '—'}</td>
+                    <td><div className="max-w-xl truncate" title={r.message ?? ''}>{r.error_class ? `${r.error_class}: ` : ''}{r.message ?? 'erro sem mensagem'}</div></td>
+                    <td className="font-mono text-xs">{r.correlation_id ?? '—'}</td>
+                    <td className="font-mono text-xs">{r.trace_id ?? '—'}</td>
+                    <td><button type="button" className="text-sm font-semibold text-[#182863] underline" onClick={() => setSelected(r)}>detalhar</button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            {selected ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div><p className="kicker">Registro completo</p><h3 className="font-semibold text-slate-900 dark:text-slate-100">{selected.fn_name} · {selected.correlation_id ?? selected.id}</h3></div>
+                  <button type="button" className="rounded-lg bg-[#182863] px-3 py-2 text-sm font-semibold text-white" onClick={() => void copy(selected)}>{copied ? 'Copiado' : 'Copiar contexto para a IA'}</button>
+                </div>
+                <pre className="max-h-96 overflow-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">{aiContext(selected)}</pre>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function ReportGenerationCard() {
+  const q = useQuery({ queryKey: ['obs', 'report-generation'], refetchInterval: 15_000,
+    queryFn: () => rows<ReportAttempt>(supabase.from('v_report_generation_events' as any).select('*').order('occurred_at', { ascending: false }).limit(100)) });
+  return (
+    <Card>
+      <CardHeader kicker="Relatórios" title="Geração de PDF/Excel">Tentativas recentes de geração, incluindo falhas e casos de persistência parcial.</CardHeader>
+      <div className="p-5">
+        {q.isLoading ? <LoadingState /> : q.error ? <ErrorState message={(q.error as Error).message} /> : (q.data?.length ?? 0) === 0 ? <EmptyState /> : (
+          <div className="table-scroll"><table className="table">
+            <thead><tr><th>Quando</th><th>Tipo</th><th>Função</th><th>Status</th><th>Entidade</th><th>Duração</th><th>Correlation</th><th>Mensagem</th></tr></thead>
+            <tbody>{q.data!.map((r, idx) => {
+              const fail = r.status !== 'ok';
+              return (
+                <tr key={`${r.occurred_at}-${r.fn_name}-${idx}`}>
+                  <td className="whitespace-nowrap text-slate-500">{new Date(r.occurred_at).toLocaleString('pt-BR')}</td>
+                  <td>{r.report_kind}</td>
+                  <td className="font-medium">{r.fn_name}</td>
+                  <td><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${fail ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>{r.status}</span></td>
+                  <td className="font-mono text-xs">{r.entity_type ?? '—'} {r.entity_id ?? ''}</td>
+                  <td className="tabular-nums">{r.duration_ms == null ? '—' : `${r.duration_ms} ms`}</td>
+                  <td className="font-mono text-xs">{r.correlation_id ?? '—'}</td>
+                  <td><div className="max-w-md truncate" title={r.message ?? ''}>{r.message ?? '—'}</div></td>
+                </tr>
+              );
+            })}</tbody>
+          </table></div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function EmailObservabilityCard() {
+  const q = useQuery({ queryKey: ['obs', 'email-daily'], refetchInterval: REFRESH_MS,
+    queryFn: () => rows<EmailDaily>(supabase.from('v_email_dispatch_daily' as any).select('*').order('day', { ascending: false }).limit(30)) });
+  return (
+    <Card>
+      <CardHeader kicker="E-mail" title="Entrega Resend por evento">Visibilidade de enviados, falhas, bounce, complaint, aberturas e cliques a partir do funil existente.</CardHeader>
+      <div className="p-5">
+        {q.isLoading ? <LoadingState /> : q.error ? <ErrorState message={(q.error as Error).message} /> : (q.data?.length ?? 0) === 0 ? <EmptyState /> : (
+          <div className="table-scroll"><table className="table">
+            <thead><tr><th>Dia</th><th>Evento</th><th>Enviados</th><th>Falhas</th><th>Bounces</th><th>Complaints</th><th>Aberturas</th><th>Cliques</th></tr></thead>
+            <tbody>{q.data!.map((r, i) => (
+              <tr key={`${r.day}-${r.event_type ?? 'all'}-${i}`}>
+                <td>{String(r.day).slice(0, 10).split('-').reverse().join('/')}</td>
+                <td className="font-medium">{r.event_type ?? 'todos'}</td>
+                <td className="tabular-nums">{r.sent}</td><td className="tabular-nums">{r.failed}</td><td className="tabular-nums">{r.bounced}</td><td className="tabular-nums">{r.complained}</td><td className="tabular-nums">{r.opened}</td><td className="tabular-nums">{r.clicked}</td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 type SevFilter = 'all' | 'critical' | 'warning';
 
 export function ObservabilidadePage() {
@@ -618,6 +769,9 @@ export function ObservabilidadePage() {
       {/* Plano de controle da telemetria (runners de alarme & notificação) */}
       {/* Erros agrupados (M4, v177) */}
       <ErrorGroupsCard />
+      <RecentEfErrorsCard />
+      <ReportGenerationCard />
+      <EmailObservabilityCard />
 
       <Card>
         <CardHeader kicker="Telemetria" title="Runners de alarme & notificação">Avaliam sinais e enviam e-mails de incidente. Se um atrasa, alertas podem não disparar — vigie a idade da última execução.</CardHeader>

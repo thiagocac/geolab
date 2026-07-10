@@ -7,6 +7,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
+import { serverError } from '../_shared/response.ts';
 
 // --- Observabilidade (M1, auditoria 2026-07-07): registra cada invocacao em ef_invocation_log ---
 // (alimenta v_ef_metrics_hourly e o alarme de 5xx/p95 do telemetry-alarm). Best-effort: nunca
@@ -147,6 +148,6 @@ serveWithTelemetry('generate-etiquetas-cp-pdf', async (req) => {
     const bytes = await doc.save();
     return new Response(bytes, { headers: { 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="etiquetas-' + rel.replace(/[^\w.-]+/g, '_') + '-' + layout + '.pdf"', ...cors } });
   } catch (e) {
-    return json({ error: String((e as Error)?.message ?? e) }, 500);
+    return serverError(e, { req, fnName: 'generate-etiquetas-cp-pdf', action: 'relatorio.pdf:generate-etiquetas-cp-pdf' });
   }
 });

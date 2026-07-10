@@ -18,6 +18,7 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
 import { CorrecoesStaffPanel } from '../../components/portal/CorrecoesStaffPanel';
 import type { ParcialFinal } from '../../lib/portal/types';
+import { captureException, trackDomainEvent } from '../../lib/telemetry';
 
 export function LaudosPage() {
   const { can, member } = useAuth();
@@ -99,11 +100,24 @@ export function LaudosPage() {
     if (!(await confirm({ title: 'Emitir laudo', message: ehFinal ? 'Emitir este laudo Final? Ele será enviado automaticamente ao cliente por e-mail (conforme a configuração de despacho).' : 'Emitir este laudo? Após a emissão ele fica disponível para download e envio ao cliente.', confirmLabel: 'Emitir' }))) return;
     try {
       await aprovarLaudo(id);
-      try { await assinarLaudo(id); } catch { /* assinatura best-effort conforme o modo do lab */ }
+      try {
+        await assinarLaudo(id);
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : String(e);
+        captureException(e, { category: 'domain', metadata: { action: 'laudo.assinar.best_effort', lab_report_id: id, reason } });
+        trackDomainEvent('laudo.assinar_falhou', { lab_report_id: id, reason, best_effort: true });
+      }
       await Promise.all([qc.invalidateQueries({ queryKey: ['laudos'] }), qc.invalidateQueries({ queryKey: ['laudos-cls'] })]);
       if (cls.data?.[id] === 'final') {
-        try { const r = await enviarLaudoCliente(id); toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configurações de e-mail.')), r.sent ? 'success' : 'info'); }
-        catch { toast('Laudo Final emitido. Falha ao enviar ao cliente.', 'warning'); }
+        try {
+          const r = await enviarLaudoCliente(id);
+          toast(r.sent ? ('Laudo Final emitido e enviado ao cliente (' + (r.to ?? '') + ').') : ('Laudo Final emitido. Envio ao cliente: ' + (r.reason ?? 'verifique as configurações de e-mail.')), r.sent ? 'success' : 'info');
+        } catch (e) {
+          const reason = e instanceof Error ? e.message : String(e);
+          captureException(e, { category: 'domain', metadata: { action: 'laudo.enviar_final', lab_report_id: id, reason } });
+          trackDomainEvent('laudo.enviar_falhou', { lab_report_id: id, reason, automatico_final: true });
+          toast('Laudo Final emitido. Falha ao enviar ao cliente.', 'warning');
+        }
       } else { toast('Laudo emitido.', 'success'); }
     } catch (e) { toast((e as Error).message, 'error'); }
   }
@@ -123,7 +137,12 @@ export function LaudosPage() {
       const r = await enviarLaudoCliente(id);
       if (r.sent) toast('Laudo enviado ao cliente (' + (r.to ?? '') + ').', 'success');
       else toast('Nao enviado: ' + (r.reason ?? 'verifique as configurações de e-mail.'), 'info');
-    } catch (e) { toast((e as Error).message, 'error'); }
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      captureException(e, { category: 'domain', metadata: { action: 'laudo.enviar_manual', lab_report_id: id, reason } });
+      trackDomainEvent('laudo.enviar_falhou', { lab_report_id: id, reason, automatico_final: false });
+      toast(reason, 'error');
+    }
   }
 
   const rows = q.data?.rows ?? [];

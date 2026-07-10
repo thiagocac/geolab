@@ -6,6 +6,7 @@
 // CP pendente herda a prensa da obra; multiplas prensas -> secao "Varias prensas"; nenhuma -> "Sem prensa".
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
+import { serverError } from '../_shared/response.ts';
 
 // --- Observabilidade (M1, auditoria 2026-07-07): registra cada invocacao em ef_invocation_log ---
 // (alimenta v_ef_metrics_hourly e o alarme de 5xx/p95 do telemetry-alarm). Best-effort: nunca
@@ -219,6 +220,6 @@ serveWithTelemetry('generate-agenda-rompimento-pdf', async (req) => {
     const bytes = await doc.save();
     return new Response(bytes, { headers: { ...cors, 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="agenda-rompimentos-' + ref + '.pdf"' } });
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    return serverError(e, { req, fnName: 'generate-agenda-rompimento-pdf', action: 'relatorio.pdf:generate-agenda-rompimento-pdf' });
   }
 });

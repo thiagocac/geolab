@@ -1,28 +1,20 @@
-// _shared/telemetry.ts — instrumentação de Edge Functions (NOVO no GEOLAB).
-// Portado do GEOCON e APARADO: removidos logEf()/log_ef_event/ef_log (logs estruturados de EF,
-// fora do escopo da spec). Mantém o essencial: serveWithTelemetry registra cada invocação em
-// ef_invocation_log via RPC log_ef_invocation (criada na 049), best-effort, sem nunca quebrar a EF.
+// _shared/telemetry.ts — instrumentação de Edge Functions do GEOLAB.
+// v210: reintroduz log estruturado de erros de EF (ef_log/log_ef_event), mantendo
+// ef_invocation_log como métrica agregada. Todos os caminhos são best-effort.
 import { getServiceClient } from './client.ts';
 
 declare const EdgeRuntime: { waitUntil?: (promise: Promise<unknown>) => void } | undefined;
 
 function waitUntil(promise: Promise<unknown>) {
   try {
-    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
-      EdgeRuntime.waitUntil(promise);
-    } else {
-      promise.catch(() => undefined);
-    }
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(promise);
+    else promise.catch(() => undefined);
   } catch {
     promise.catch(() => undefined);
   }
 }
 
-/**
- * trace_id ponta-a-ponta. O cliente NÃO envia header custom (dispararia preflight CORS e exigiria
- * x-trace-id no Access-Control-Allow-Headers de TODA EF). O trace_id viaja como query param
- * (?trace_id=...), inócuo para EFs antigas e sem preflight.
- */
+/** trace_id ponta-a-ponta via query param (?trace_id=...), sem preflight CORS. */
 export function readTraceId(req: Request): string | null {
   try {
     const t = new URL(req.url).searchParams.get('trace_id');
@@ -55,6 +47,43 @@ async function resolveActor(req: Request): Promise<{ actor_id: string | null; te
   }
 }
 
+function safeUrl(req: Request) {
+  try { return new URL(req.url); } catch { return null; }
+}
+
+export function errorShape(e: unknown) {
+  if (e instanceof Error) return { name: e.name || 'Error', message: e.message, stack: e.stack ?? null };
+  return { name: typeof e, message: String(e), stack: null };
+}
+
+/**
+ * Log estruturado AI-debuggable de evento de Edge Function.
+ * Usa RPC public.log_ef_event criada na migration v210. Nunca pode quebrar a EF principal.
+ */
+export async function logEf(req: Request, level: 'debug' | 'info' | 'warn' | 'error' | 'fatal', fnName: string, message: string, metadata: Record<string, unknown> = {}) {
+  try {
+    const svc = getServiceClient();
+    const actor = await resolveActor(req);
+    const url = safeUrl(req);
+    await svc.rpc('log_ef_event', {
+      p_level: level,
+      p_fn_name: fnName,
+      p_message: String(message).slice(0, 4000),
+      p_trace_id: readTraceId(req),
+      p_actor_id: actor.actor_id,
+      p_tenant_id: actor.tenant_id,
+      p_metadata: {
+        method: req.method,
+        path: url?.pathname ?? null,
+        request_id: req.headers.get('x-request-id') || req.headers.get('cf-ray') || null,
+        ...metadata,
+      },
+    });
+  } catch {
+    // O logger nunca bloqueia o fluxo principal.
+  }
+}
+
 async function finalizeTelemetry(req: Request, o: {
   fnName: string;
   startedAt: string;
@@ -66,8 +95,7 @@ async function finalizeTelemetry(req: Request, o: {
   try {
     const svc = getServiceClient();
     const actor = await resolveActor(req);
-    // Log de invocação (alimenta v_ef_metrics_hourly). OPTIONS é descartado dentro da RPC.
-    // O erro (se houver) fica em ef_invocation_log.error_message — sem ef_log estruturado (aparado).
+    const url = safeUrl(req);
     await svc.rpc('log_ef_invocation', {
       p_fn_name: o.fnName,
       p_started_at: o.startedAt,
@@ -79,7 +107,7 @@ async function finalizeTelemetry(req: Request, o: {
       p_request_id: req.headers.get('x-request-id') || req.headers.get('cf-ray') || crypto.randomUUID(),
       p_metadata: {
         method: req.method,
-        path: new URL(req.url).pathname,
+        path: url?.pathname ?? null,
         ...(o.traceId ? { trace_id: o.traceId } : {}),
       },
     });
@@ -106,7 +134,7 @@ export async function logEfInvocation(req: Request, opts: {
   });
 }
 
-/** Envelopa o handler: cronometra, captura status/erro e grava a invocação (best-effort, pós-resposta). */
+/** Envelopa o handler: cronometra, captura status/erro e grava métricas + erro estruturado. */
 export function serveWithTelemetry(fnName: string, handler: (req: Request) => Promise<Response> | Response) {
   Deno.serve(async (req: Request) => {
     const startedAt = new Date().toISOString();
@@ -119,8 +147,10 @@ export function serveWithTelemetry(fnName: string, handler: (req: Request) => Pr
       statusCode = res.status;
       return res;
     } catch (e) {
-      errorMessage = e instanceof Error ? e.message : String(e);
+      const err = errorShape(e);
+      errorMessage = err.message;
       statusCode = 500;
+      waitUntil(logEf(req, 'error', fnName, err.message, { action: 'edge.unhandled', error_class: err.name, stack: err.stack }));
       throw e;
     } finally {
       const durationMs = performance.now() - started;
