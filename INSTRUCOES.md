@@ -1,28 +1,35 @@
-# v219 — Validação de campos numéricos (anti-valores-absurdos) — Fases 2 e 3
+# GEOLAB / Concresoft — Patch v222 (Onda A comercial: frontend + espelhos das EFs)
 
-Continuação do v218. Estende os limites a Rompimentos, Diário de cura, Padrão de moldagem
-e Financeiro. Frontend puro — sem migration/EF. Reusa `src/lib/validacao.ts` + `NumField` do v218.
+**Base:** v221 → **v222**.
+**Bump:** `CACHE_NAME consultegeo-geolab-v222` + `APP_VERSION v222` já aplicados.
+**Migrations 213–218 JÁ APLICADAS no vivo via MCP** (templates-hardening, catálogo v2, propostas v2, contratos v2, medição v2, financeiro AP/AR). Repo não versiona migrations.
+**EFs novas JÁ DEPLOYADAS via MCP:** `commercial-public-action` v1 (sha aa7c0ef1…, verify_jwt=FALSE — token opaco + rate limit) e `send-commercial-document` v1 (sha ddcbde75…). **Os espelhos estão neste patch e DEVEM ser commitados** (regra espelho=vivo).
 
-## Arquivos (9)
-- `src/pages/concreto/RompimentosPage.tsx` — resultado/carga `maxDec` 4→2; **Diâmetro** 50–300 / **Altura** 50–600 (clamp no blur); **Massa (g)** 0–99999.
-- `src/pages/gestao/DiarioCuraPage.tsx` — **Temperatura (°C)** 0–50 (step 0,1 + clamp). O aviso de faixa NBR 9479 (marca não conforme) segue intacto.
-- `src/components/domain/MoldingStandardEditor.tsx` — **Idade** ≤ 999 e **Qtd CP** ≤ 99 (tetos + clamp; já tinham piso 0). Vale para Programação, Concretagem e Portal.
-- `src/pages/gestao/ContratosFinanceiroPage.tsx` — **Preço unitário (R$)** ≥ 0, 2 casas (NumField).
-- `src/pages/gestao/CatalogoServicosPage.tsx` — **Preço sugerido / Custo estimado (R$)** ≥ 0, 2 casas (NumField).
-- `src/pages/gestao/PropostasPage.tsx` — **Quantidade** 0–9999 e **Preço unitário** ≥ 0, 2 casas (clamp no blur).
-- `src/pages/gestao/MedicaoPage.tsx` — **CP ensaiado/moldado** ≥ 0 inteiro; **Formas/Laudo/Visita/Fixo mensal** e **Adicional (valor)** ≥ 0, 2 casas.
-- `public/sw.js` — `CACHE_NAME = consultegeo-geolab-v219`.
-- `src/lib/telemetry/core.ts` — `APP_VERSION = v219`.
+## Arquivos deste patch
 
-## Estratégia (igual v218)
-Formato (sanitiza) + limite (`min`/`max` nativos + **clamp no `onBlur`**). Impossível → clamp corrige;
-implausível → aviso, não bloqueia. Em Rompimentos os avisos existentes (`mpaForaFaixa`, "80% menor que o esperado") seguem intactos.
+- SOURCE_VERSION.md · public/sw.js · src/lib/telemetry/core.ts (bump)
+- src/lib/api/productEvolution.ts (NOVO — API comercial unificada; generateDocumentPdf adaptado ao motor de blocos)
+- src/lib/api/propostas.ts (estendida: save_proposal_v2, revisões, work_id/desconto/catálogo)
+- src/pages/gestao/PropostasPage.tsx (v2: drawer, PDF, envio com link, conversão)
+- src/pages/CommercialPublicPage.tsx (NOVO — página pública de aceite/aprovação)
+- src/pages/gestao/ContractsV2Page.tsx · MedicaoV2Page.tsx · CashflowPage.tsx (NOVAS)
+- src/pages/gestao/product/ProductUi.tsx (NOVO — helpers de UI)
+- src/components/ui/State.tsx (EmptyState com título/descrição opcionais)
+- src/App.tsx (rotas públicas /proposta/:token e /medicao/:token + 3 rotas de gestão)
+- src/components/Layout.tsx (menu: Contratos v2, Medições v2, Fluxo de caixa)
+- supabase/functions/commercial-public-action/index.ts (ESPELHO)
+- supabase/functions/send-commercial-document/index.ts (ESPELHO)
 
-## Instalação (GitHub → Netlify)
-Copie os 9 arquivos (mantendo os caminhos) para o repo, commit e push. CI: `check-source → tsc → vitest → vite build`. Sem migration/EF.
+## Fluxo ponta a ponta (teste após o push)
 
-## Validação local
-`check-source` OK · `biome lint src` EXIT=0 · `vite build` EXIT=0. `tsc` deixado para o CI.
+1. Financeiro → Catálogo: itens com preço sugerido (Criar itens padrão, se vazio).
+2. Gestão → Templates de documentos: publicar o modelo de proposta (botão "Novo a partir do modelo de proposta" → Publicar).
+3. Financeiro → Propostas: nova proposta com itens → Gerar PDF → Enviar (e-mail com anexo + link seguro de 30 dias).
+4. Cliente abre /proposta/:token → Aceita → status muda, evento auditado, notificação interna.
+5. Converter proposta aceita em contrato → Gestão → Contratos v2 (aditivos, saldo).
+6. Medições v2: materializar itens → enviar para aprovação (/medicao/:token) → fatura → AR automático em Fluxo de caixa.
 
-## Cobertura acumulada (v218 + v219)
-Todas as telas pedidas: Programação, Concretagem, Caminhões, Portal (Programação), Rompimentos (MPa/kN/tf/kgf, massa, dimensões), Financeiro (Contratos/Catálogo/Propostas/Medição) e Diário de cura (temperatura).
+## Notas
+
+- PropostasPage v2 substitui a anterior; a validação numérica v219 (clampNum) dos itens antigos não foi portada 1:1 — os campos novos têm min/max nativos; reforço do clamp fica para follow-up.
+- Ondas B (capacidade+estoque) e C (ISO+premiação) do pacote GPT ficam para as próximas releases (SQL auditado guardado).

@@ -26,6 +26,10 @@ const EtiquetasPage = lazy(() => import('./pages/concreto/EtiquetasPage').then((
 const LaudosPage = lazy(() => import('./pages/concreto/LaudosPage').then((m) => ({ default: m.LaudosPage })));
 const LabDashboardsPage = lazy(() => import('./pages/dashboards/LabDashboardsPage').then((m) => ({ default: m.LabDashboardsPage })));
 const TemplatesDocumentosPage = lazy(() => import('./pages/gestao/TemplatesDocumentosPage').then((m) => ({ default: m.TemplatesDocumentosPage })));
+const CommercialPublicPage = lazy(() => import('./pages/CommercialPublicPage').then((m) => ({ default: m.CommercialPublicPage })));
+const ContractsV2Page = lazy(() => import('./pages/gestao/ContractsV2Page').then((m) => ({ default: m.ContractsV2Page })));
+const MedicaoV2Page = lazy(() => import('./pages/gestao/MedicaoV2Page').then((m) => ({ default: m.MedicaoV2Page })));
+const CashflowPage = lazy(() => import('./pages/gestao/CashflowPage').then((m) => ({ default: m.CashflowPage })));
 // [v202] Aceitacao de lotes retirada do sistema (mantida implementada p/ religar). Reative: descomente este import, a Route /lotes (App.tsx) e o item de menu (Layout.tsx).
 // const LotesPage = lazy(() => import('./pages/concreto/LotesPage').then((m) => ({ default: m.LotesPage })));
 const NcPage = lazy(() => import('./pages/concreto/NcPage').then((m) => ({ default: m.NcPage })));
@@ -95,6 +99,22 @@ export function App() {
     );
   }
 
+  // Rotas PUBLICAS comerciais (Onda A v222): aceite de proposta e aprovacao de medicao por token opaco.
+  if (typeof window !== 'undefined' && (window.location.pathname.startsWith('/proposta/') || window.location.pathname.startsWith('/medicao/'))) {
+    const kind = window.location.pathname.startsWith('/proposta/') ? 'proposal' as const : 'measurement' as const;
+    return (
+      <BrowserRouter>
+        <Suspense fallback={<LoadingState />}>
+          <Routes>
+            <Route path="/proposta/:token" element={<CommercialPublicPage kind="proposal" />} />
+            <Route path="/medicao/:token" element={<CommercialPublicPage kind="measurement" />} />
+            <Route path="*" element={<CommercialPublicPage kind={kind} />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    );
+  }
+
   // Rota PUBLICA do portal do cliente por magic link (fora do gate de auth).
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/portal/acesso')) {
     return (
@@ -154,6 +174,9 @@ export function App() {
             <Route path="/notificacoes" element={<ConfiguracoesPage inicial="notificacoes" />} />
             <Route path="/gestao/pendencias" element={<PendenciasPage />} />
             <Route path="/gestao/templates-documentos" element={can('documento_template.ver') ? <TemplatesDocumentosPage /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/contratos-v2" element={can('contrato.gerenciar') ? <ContractsV2Page /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/medicoes-v2" element={can('medicao.ver') ? <MedicaoV2Page /> : <Navigate to="/" replace />} />
+            <Route path="/gestao/fluxo-caixa" element={can('financeiro.ver') ? <CashflowPage /> : <Navigate to="/" replace />} />
             <Route path="/preferencias" element={<ConfiguracoesPage inicial="preferencias" />} />
             <Route path="/medicoes" element={<FinanceiroPage inicial="medicao" />} />
             <Route path="/produtividade" element={<ProdutividadePage />} />
