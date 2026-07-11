@@ -98,7 +98,7 @@ export async function atribuirEquipe(id: string, moldadorId: string | null, labo
 }
 
 // Provisionamento de formas: grava a quantidade prevista (formas_previstas) + o detalhe do cálculo em metadata.formas.
-export type FormasDetalhe = { n_amostras: number; cps_por_amostra: number; capacidade_m3: number; volume_m3: number | null };
+export type FormasDetalhe = { n_amostras: number; cps_por_amostra: number; capacidade_m3: number; volume_m3: number | null; extra_pct?: number };
 export async function provisionarFormas(id: string, formasPrevistas: number, detalhe: FormasDetalhe, metadataBase?: Rec | null, padraoMoldagem?: Rec[] | null): Promise<void> {
   const md = (metadataBase && typeof metadataBase === 'object') ? metadataBase : {};
   const meta: Rec = { ...md, formas: detalhe };

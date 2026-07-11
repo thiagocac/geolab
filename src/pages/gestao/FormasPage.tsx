@@ -10,6 +10,7 @@ import { Field, SelectField, TextArea } from '../../components/ui/Field';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State';
 import { listObrasFormas, listColaboradoresRef, listSaldo, listMovimentos, addMovimento, removeMovimento } from '../../lib/api/formas';
+import { getConfigLab } from '../../lib/api/preferencias';
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const VERDE = '#16a34a';
@@ -26,6 +27,8 @@ export function FormasPage() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ work_id: '', tipo: 'entrega', quantidade: '', data: hoje(), colaborador_id: '', observacoes: '' });
 
+  const cfgQ = useQuery({ queryKey: ['config-lab', member?.tenant_id], queryFn: () => getConfigLab(member!.tenant_id), enabled: !!member?.tenant_id });
+  const cobrancaOn = cfgQ.data?.formas_cobranca_habilitada ?? true;
   const obras = useQuery({ queryKey: ['formas-obras'], queryFn: listObrasFormas });
   const colabs = useQuery({ queryKey: ['formas-colabs'], queryFn: listColaboradoresRef });
   const saldo = useQuery({ queryKey: ['formas-saldo', obras.data?.length ?? 0], queryFn: () => listSaldo(obras.data ?? []), enabled: !!obras.data });
@@ -38,6 +41,14 @@ export function FormasPage() {
     const qtd = Number(form.quantidade);
     if (!form.work_id) { toast('Selecione a obra.', 'error'); return; }
     if (!qtd || qtd <= 0) { toast('Quantidade deve ser maior que zero.', 'error'); return; }
+    // Baixas (descarte/cobrança) acima do saldo em campo: avisa, mas não bloqueia.
+    if (form.tipo !== 'entrega') {
+      const atual = (saldo.data ?? []).find((r) => r.work_id === form.work_id)?.saldo ?? 0;
+      if (qtd > atual) {
+        const ok = await confirm({ title: 'Saldo ficará negativo', message: 'A obra tem ' + atual + ' fôrma(s) em campo e este lançamento baixa ' + qtd + '. O saldo ficará negativo. Continuar?', danger: true, confirmLabel: 'Lançar mesmo assim' });
+        if (!ok) return;
+      }
+    }
     setBusy(true);
     try {
       await addMovimento(member.tenant_id, { work_id: form.work_id, tipo: form.tipo, quantidade: qtd, data: form.data, colaborador_id: form.colaborador_id || null, observacoes: form.observacoes || null });
@@ -62,7 +73,7 @@ export function FormasPage() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <PageHeader kicker="Gestão" title="Fôrmas" description="Saldo de moldes em campo por obra. A entrega entra automaticamente pela concretagem e a coleta é feita na tela Coleta de fôrmas (roteiro). Aqui você registra entregas avulsas e cobrança (fôrma não devolvida)." />
+      <PageHeader kicker="Gestão" title="Fôrmas" description={'Saldo de moldes em campo por obra. A entrega entra automaticamente pela concretagem e a coleta é feita na aba Coleta de fôrmas (roteiro) — os totais das duas abas fecham. Aqui você registra entregas avulsas e descartes' + (cobrancaOn ? ' e a cobrança de fôrma não devolvida (vira item de medição)' : '') + '.'} />
 
       <Card className="p-5">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
@@ -100,7 +111,7 @@ export function FormasPage() {
             <table className="table">
               <thead><tr><th>Data</th><th>Obra</th><th>Tipo</th><th style={{ textAlign: 'right' }}>Qtd</th><th>Colaborador</th><th>Observações</th><th></th></tr></thead>
               <tbody>{(movs.data ?? []).map((m) => {
-                const meta = m.tipo === 'entrega' ? { lbl: 'Entrega', cor: VERDE, sinal: '+' } : m.tipo === 'cobranca' ? { lbl: 'Cobrança', cor: 'var(--magenta)', sinal: '−' } : { lbl: 'Coleta', cor: 'var(--ink-faint)', sinal: '−' };
+                const meta = m.tipo === 'entrega' ? { lbl: 'Entrega', cor: VERDE, sinal: '+' } : m.tipo === 'cobranca' ? { lbl: 'Cobrança', cor: 'var(--magenta)', sinal: '−' } : m.tipo === 'descarte' ? { lbl: 'Descarte', cor: 'var(--warning)', sinal: '−' } : { lbl: 'Coleta', cor: 'var(--ink-faint)', sinal: '−' };
                 return (
                   <tr key={m.id}>
                     <td>{dataBR(m.data)}</td>
@@ -124,9 +135,10 @@ export function FormasPage() {
             <option value="">-</option>
             {(obras.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}{o.cliente ? ' — ' + o.cliente : ''}</option>)}
           </SelectField>
-          <SelectField label="Tipo" hint="A coleta é registrada na tela Coleta de fôrmas (roteiro)." value={form.tipo} onChange={(e) => setForm((s) => ({ ...s, tipo: e.target.value }))}>
-            <option value="entrega">Entrega (formas para a obra)</option>
-            <option value="cobranca">Cobrança (forma faturada / nao devolvida)</option>
+          <SelectField label="Tipo" hint={'A coleta é registrada na tela Coleta de fôrmas (roteiro).' + (cobrancaOn && form.tipo === 'cobranca' ? ' A cobrança entra como item na medição do cliente.' : '')} value={form.tipo} onChange={(e) => setForm((s) => ({ ...s, tipo: e.target.value }))}>
+            <option value="entrega">Entrega (fôrmas para a obra)</option>
+            <option value="descarte">Descarte (baixa sem cobrança — perda/dano)</option>
+            {cobrancaOn ? <option value="cobranca">Cobrança (fôrma não devolvida — vira item de medição)</option> : null}
           </SelectField>
           <Field label="Quantidade" type="number" min={1} step={1} value={form.quantidade} onChange={(e) => setForm((s) => ({ ...s, quantidade: e.target.value }))} />
           <Field label="Data" type="date" value={form.data} onChange={(e) => setForm((s) => ({ ...s, data: e.target.value }))} />

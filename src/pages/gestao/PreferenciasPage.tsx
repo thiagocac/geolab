@@ -40,7 +40,7 @@ export function PreferenciasPage() {
   useEffect(() => {
     const c = q.data;
     if (c === undefined) return;
-    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, dispersao_par_limite_pct: c?.dispersao_par_limite_pct ?? 6, camara_temp_min_c: c?.camara_temp_min_c ?? 21, camara_temp_max_c: c?.camara_temp_max_c ?? 25, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '', endereco: c?.endereco ?? '', numero: c?.numero ?? '', bairro: c?.bairro ?? '', cidade: c?.cidade ?? '', uf: c?.uf ?? '', cep: c?.cep ?? '', certificacoes: Array.isArray(c?.certificacoes) ? c?.certificacoes : [] });
+    setF({ responsavel_tecnico: c?.responsavel_tecnico ?? '', crea_rt: c?.crea_rt ?? '', acreditacao_inmetro: c?.acreditacao_inmetro ?? '', validade_acreditacao: c?.validade_acreditacao ?? '', idade_controle_default: c?.idade_controle_default ?? 28, cp_overdue_days: c?.cp_overdue_days ?? 2, dispersao_par_limite_pct: c?.dispersao_par_limite_pct ?? 6, camara_temp_min_c: c?.camara_temp_min_c ?? 21, camara_temp_max_c: c?.camara_temp_max_c ?? 25, nota_rodape: c?.nota_rodape ?? '', local_ensaio: c?.local_ensaio ?? '', art_numero: c?.art_numero ?? '', gerente_qualidade: c?.gerente_qualidade ?? '', crea_gq: c?.crea_gq ?? '', endereco: c?.endereco ?? '', numero: c?.numero ?? '', bairro: c?.bairro ?? '', cidade: c?.cidade ?? '', uf: c?.uf ?? '', cep: c?.cep ?? '', certificacoes: Array.isArray(c?.certificacoes) ? c?.certificacoes : [], formas_cobranca_habilitada: c?.formas_cobranca_habilitada ?? true });
   }, [q.data]);
 
   function set(k: string, v: unknown) { setF((s) => ({ ...s, [k]: v })); }
@@ -73,6 +73,7 @@ export function PreferenciasPage() {
         nota_rodape: str(f.nota_rodape) || null, local_ensaio: str(f.local_ensaio) || null, art_numero: str(f.art_numero) || null, gerente_qualidade: str(f.gerente_qualidade) || null, crea_gq: str(f.crea_gq) || null,
         endereco: str(f.endereco) || null, numero: str(f.numero) || null, bairro: str(f.bairro) || null, cidade: str(f.cidade) || null, uf: str(f.uf) || null, cep: str(f.cep) || null,
         certificacoes: certs,
+        formas_cobranca_habilitada: f.formas_cobranca_habilitada !== false,
       };
       if (composto !== str(q.data?.endereco_origem)) { payload.endereco_origem = composto || null; payload.origem_lat = null; payload.origem_lng = null; }
       await saveConfigLab(member.tenant_id, payload);
@@ -146,6 +147,18 @@ export function PreferenciasPage() {
             </div>
           ))}
           {podeEditar ? <div><Button variant="secondary" onClick={addCert}>Adicionar certificação</Button></div> : null}
+        </div>
+      </Card>
+      <Card>
+        <CardHeader kicker="Fôrmas" title="Cobrança de fôrmas" />
+        <div style={{ display: 'grid', gap: 12, padding: 16 }}>
+          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: podeEditar ? 'pointer' : 'default' }}>
+            <input type="checkbox" checked={f.formas_cobranca_habilitada !== false} onChange={(e) => set('formas_cobranca_habilitada', e.target.checked)} disabled={!podeEditar} style={{ marginTop: 3 }} />
+            <span>
+              <span style={{ fontWeight: 700, display: 'block' }}>Habilitar cobrança de fôrmas</span>
+              <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Ligado: fôrma não devolvida pode ser lançada como Cobrança na tela Fôrmas e entra como item na medição do cliente. Desligado: a opção some da tela Fôrmas e o item sai da medição — use Descarte para baixas sem cobrança.</span>
+            </span>
+          </label>
         </div>
       </Card>
       <Card>

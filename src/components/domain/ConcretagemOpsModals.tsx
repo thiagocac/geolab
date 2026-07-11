@@ -56,6 +56,9 @@ export function FormasModal({ row, onClose }: { row: ConcretagemRow; onClose: ()
   const qc = useQueryClient();
   const [cap, setCap] = useState('8');
   const [nAmostrasManual, setNAmostrasManual] = useState('');
+  // Margem extra (%) de segurança — semeia do provisionamento anterior (metadata.formas.extra_pct).
+  const metaFormas = ((row.metadata as Record<string, unknown> | null | undefined)?.formas ?? null) as { extra_pct?: number } | null;
+  const [margem, setMargem] = useState(metaFormas?.extra_pct != null ? String(metaFormas.extra_pct) : '0');
   // Traço cadastrado: padrão vem do traço (read-only). Não cadastrado: padrão editável.
   const [padraoEdit, setPadraoEdit] = useState<PadraoMoldagem[]>(() => padraoMoldagemDaConcretagem(row));
   const [busy, setBusy] = useState(false);
@@ -67,14 +70,16 @@ export function FormasModal({ row, onClose }: { row: ConcretagemRow; onClose: ()
   const tracoRegistrado = !!row.operational_material_id;
   const padraoAtivo = tracoRegistrado ? padraoMoldagemDaConcretagem(row) : padraoEdit;
   const cpsAmostra = padraoAtivo.reduce((s, p) => s + (toNumber(p.quantidadeCp) ?? 0), 0);
-  const formasNecessarias = cpsAmostra * nAmostras;
+  const margemPct = Math.min(100, Math.max(0, toNumber(margem) ?? 0));
+  const formasBase = cpsAmostra * nAmostras;
+  const formasNecessarias = Math.ceil(formasBase * (1 + margemPct / 100));
 
   async function salvar() {
     setBusy(true);
     try {
-      await provisionarFormas(row.id, formasNecessarias, { n_amostras: nAmostras, cps_por_amostra: cpsAmostra, capacidade_m3: capNum, volume_m3: volume }, row.metadata ?? null, tracoRegistrado ? null : padroesToDb(padraoEdit));
+      await provisionarFormas(row.id, formasNecessarias, { n_amostras: nAmostras, cps_por_amostra: cpsAmostra, capacidade_m3: capNum, volume_m3: volume, extra_pct: margemPct }, row.metadata ?? null, tracoRegistrado ? null : padroesToDb(padraoEdit));
       await Promise.all([qc.invalidateQueries({ queryKey: ['programacoes'] }), qc.invalidateQueries({ queryKey: ['concretagens'] })]);
-      toast('Formas provisionadas: ' + formasNecessarias + '.', 'success');
+      toast(formasNecessarias + ' fôrma(s) provisionada(s) — entrega lançada automaticamente para a obra.', 'success');
       onClose();
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
@@ -102,11 +107,14 @@ export function FormasModal({ row, onClose }: { row: ConcretagemRow; onClose: ()
           <Field label="Volume programado (m³)" value={volume ?? '—'} readOnly />
           <Field label="Capacidade/caminhão (m³)" type="number" min={1} max={20} step="0.01" value={cap} onChange={(e) => setCap(e.target.value)} onBlur={(e) => setCap(clampNum(e.target.value, { min: 1, max: 20, dec: 2 })?.toString() ?? '')} hint="Base da estimativa de caminhões." />
         </div>
-        <Field label="Nº de amostras / caminhões" type="number" min={1} max={99} step="1" value={nAmostrasManual.trim() !== '' ? nAmostrasManual : String(estAmostras)} onChange={(e) => setNAmostrasManual(e.target.value)} onBlur={(e) => setNAmostrasManual(clampNum(e.target.value, { min: 1, max: 99, dec: 0 })?.toString() ?? '')} hint={volume ? ('Estimado: ' + volume + ' m³ ÷ ' + capNum + ' = ' + estAmostras + ' caminhão(ões). Edite se necessário.') : 'Informe o nº de amostras.'} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Nº de amostras / caminhões" type="number" min={1} max={99} step="1" value={nAmostrasManual.trim() !== '' ? nAmostrasManual : String(estAmostras)} onChange={(e) => setNAmostrasManual(e.target.value)} onBlur={(e) => setNAmostrasManual(clampNum(e.target.value, { min: 1, max: 99, dec: 0 })?.toString() ?? '')} hint={volume ? ('Estimado: ' + volume + ' m³ ÷ ' + capNum + ' = ' + estAmostras + ' caminhão(ões). Edite se necessário.') : 'Informe o nº de amostras.'} />
+          <Field label="Margem extra (%)" type="number" min={0} max={100} step="1" value={margem} onChange={(e) => setMargem(e.target.value)} onBlur={(e) => setMargem(clampNum(e.target.value, { min: 0, max: 100, dec: 0 })?.toString() ?? '0')} hint="Fôrmas a mais, por segurança (arredonda para cima)." />
+        </div>
         <div className="rounded-xl p-4 text-center" style={{ background: 'var(--surface-2)' }}>
           <p className="kicker">Fôrmas necessárias</p>
           <strong className="mt-1 block text-3xl font-extrabold tabular-nums" style={{ color: 'var(--magenta)' }}>{formasNecessarias}</strong>
-          <p className="mt-1 text-xs text-slate-500">{cpsAmostra} CP × {nAmostras} amostra(s)</p>
+          <p className="mt-1 text-xs text-slate-500">{cpsAmostra} CP × {nAmostras} amostra(s){margemPct > 0 ? ' + ' + margemPct + '% de margem' : ''}</p>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">A entrega no estoque de fôrmas em campo é registrada automaticamente ao salvar a provisão (movimento automático por concretagem).</p>
       </div>

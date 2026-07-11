@@ -18,6 +18,8 @@ const hoje = () => new Date().toISOString().slice(0, 10);
 const dataBR = (s: string | null) => (s && s.length >= 10 ? s.slice(0, 10).split('-').reverse().join('/') : '—');
 const STATUS_COR: Record<string, string> = { pendente: 'var(--ink-faint)', parcial: '#d97706', coletado: '#16a34a', pulado: 'var(--magenta)', aberto: 'var(--ink-faint)', em_rota: '#d97706', concluido: '#16a34a', cancelado: 'var(--magenta)' };
 const STATUS_ROTULO: Record<string, string> = { pendente: 'pendente', parcial: 'parcial', coletado: 'coletado', pulado: 'pulado', aberto: 'aberto', em_rota: 'em rota', concluido: 'concluído', cancelado: 'cancelado' };
+// M6: roteiro aberto/em rota com data antiga = provavelmente esquecido — destaca na lista.
+const diasDesde = (iso: string): number => { const t = new Date(iso + 'T00:00:00').getTime(); return Number.isFinite(t) ? Math.floor((Date.now() - t) / 86400000) : 0; };
 
 export function ColetaFormasPage() {
   const { member, can } = useAuth();
@@ -228,7 +230,7 @@ export function ColetaFormasPage() {
                     <td>{r.motorista ?? '—'}</td>
                     <td style={{ textAlign: 'right' }}>{r.n_paradas}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700 }}>{r.total}</td>
-                    <td><span style={{ color: STATUS_COR[r.status], fontWeight: 700 }}>{STATUS_ROTULO[r.status] ?? r.status}</span></td>
+                    <td><span style={{ color: STATUS_COR[r.status], fontWeight: 700 }}>{STATUS_ROTULO[r.status] ?? r.status}</span>{(r.status === 'aberto' || r.status === 'em_rota') && diasDesde(r.data) >= 2 ? <span className="ml-2 text-[11px] font-bold" style={{ color: 'var(--warning)' }}>parado há {diasDesde(r.data)}d</span> : null}</td>
                     <td style={{ textAlign: 'right' }}><Button variant="ghost" onClick={() => setAberto(r.id)}>Abrir</Button></td>
                   </tr>
                 ))}</tbody>

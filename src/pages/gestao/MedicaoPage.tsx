@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/State';
 import { listEscopo, listTestTypes, salvarPrecos, computarMedicao, computarMedicaoAuto, salvarMedicao, listMedicoes, pdfMedicaoUrl, type EscopoTipo, type MedicaoItem, type Adicional } from '../../lib/api/medicao';
+import { getConfigLab } from '../../lib/api/preferencias';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 
 const BRL = (n: number) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -26,6 +27,8 @@ export function MedicaoPage() {
   const [escopo, setEscopo] = useState<EscopoTipo>('contrato');
   const [escopoId, setEscopoId] = useState('');
   const opcoes = useQuery({ queryKey: ['escopo-medicao', escopo], queryFn: () => listEscopo(escopo) });
+  const cfgQ = useQuery({ queryKey: ['config-lab', member?.tenant_id], queryFn: () => getConfigLab(member!.tenant_id), enabled: !!member?.tenant_id });
+  const cobrancaFormasOn = cfgQ.data?.formas_cobranca_habilitada ?? true;
   const tipos = useQuery({ queryKey: ['test-types-medicao'], queryFn: listTestTypes });
   const [flat, setFlat] = useState<Record<string, string>>({});
   const [ens, setEns] = useState<Record<string, { ensaiado: string; moldado: string }>>({});
@@ -131,7 +134,7 @@ export function MedicaoPage() {
                   <td><input className="input" type="number" inputMode="numeric" min={0} max={9999} step="1" value={ens[t.id]?.moldado ?? ''} onChange={(e) => setEns((s) => ({ ...s, [t.id]: { ensaiado: s[t.id]?.ensaiado ?? '', moldado: e.target.value } }))} onBlur={(e) => setEns((s) => ({ ...s, [t.id]: { ensaiado: s[t.id]?.ensaiado ?? '', moldado: clampNum(e.target.value, { min: 0, max: 9999, dec: 0 })?.toString() ?? '' } }))} disabled={!podeEditar} /></td></tr>)}</tbody>
               </table>
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-4">{FLAT.map(([k, l]) => <Field key={k} label={l} type="number" min={0} step="0.01" value={flat[k] ?? ''} onChange={(e) => setFlat((s) => ({ ...s, [k]: e.target.value }))} onBlur={(e) => setFlat((s) => ({ ...s, [k]: clampNum(e.target.value, { min: 0, max: 999999, dec: 2 })?.toString() ?? '' }))} disabled={!podeEditar} />)}</div>
+            <div className="mt-3 grid gap-3 md:grid-cols-4">{FLAT.filter(([k]) => k !== 'forma' || cobrancaFormasOn).map(([k, l]) => <Field key={k} label={l} type="number" min={0} step="0.01" value={flat[k] ?? ''} onChange={(e) => setFlat((s) => ({ ...s, [k]: e.target.value }))} onBlur={(e) => setFlat((s) => ({ ...s, [k]: clampNum(e.target.value, { min: 0, max: 999999, dec: 2 })?.toString() ?? '' }))} disabled={!podeEditar} />)}</div>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button variant="secondary" onClick={() => void salvarPrecosFn()} disabled={busy || !podeEditar}>Salvar preços</Button>
               <Button onClick={() => void calcularAuto()} disabled={busy}>Calcular com preços do catálogo</Button><Button variant="secondary" onClick={() => void calcular()} disabled={busy}>Calcular com precos manuais (abaixo)</Button>

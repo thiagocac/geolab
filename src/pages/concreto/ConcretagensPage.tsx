@@ -17,7 +17,8 @@ import { VirtualTable } from '../../components/ui/VirtualTable';
 import { Users, Mold } from '../../components/ui/icons';
 import { EquipeModal, FormasModal } from '../../components/domain/ConcretagemOpsModals';
 import { recordStatusMeta, origemLabel } from '../../lib/status';
-import { listConcretagensCentral, createConcretagem, invokeFicha, listTracosComFck, invokeFichaBranco, getConcretagem, type ConcretagemCentralRow, type ConcretagemRow } from '../../lib/api/concretagem';
+import { useConfirm } from '../../components/ui/ConfirmDialog';
+import { listConcretagensCentral, createConcretagem, invokeFicha, listTracosComFck, invokeFichaBranco, getConcretagem, updateConcretagem, type ConcretagemCentralRow, type ConcretagemRow } from '../../lib/api/concretagem';
 import { TracoOptions } from '../../components/TracoOptions';
 import { listPecasObra } from '../../lib/api/estrutura';
 import { listReference } from '../../lib/api/client';
@@ -58,6 +59,17 @@ export function ConcretagensPage() {
   const toast = useToast();
   const qc = useQueryClient();
   const nav = useNavigate();
+  const confirm = useConfirm();
+
+  // M5: provisão de fôrmas difere dos CPs vivos — ajuste de 1 clique (a trigger re-sincroniza o ledger).
+  async function usarCpsComoFormas(id: string, n: number) {
+    if (!(await confirm({ title: 'Ajustar fôrmas', message: 'Usar o nº de CPs moldados (' + n + ') como fôrmas desta concretagem? A entrega automática no controle de fôrmas é atualizada.', confirmLabel: 'Ajustar' }))) return;
+    try {
+      await updateConcretagem(id, { formas_previstas: n });
+      await qc.invalidateQueries({ queryKey: ['concretagens'] });
+      toast('Fôrmas ajustadas para ' + n + '.', 'success');
+    } catch (e) { toast((e as Error).message, 'error'); }
+  }
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState(false);
@@ -163,7 +175,10 @@ export function ConcretagensPage() {
       return (
         <div className="space-y-1">
           <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300"><Users size={12} className="shrink-0 text-slate-400" />{team ? <span className="truncate">{team}</span> : <span className="text-slate-400">Sem equipe</span>}</div>
-          <div className="text-xs">{r.formas_previstas ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200"><Mold size={11} />{r.formas_previstas} formas</span> : <span className="text-slate-400">Sem formas</span>}</div>
+          <div className="text-xs">{r.formas_previstas ? <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 font-bold text-slate-700 dark:border-slate-700 dark:text-slate-200"><Mold size={11} />{r.formas_previstas} formas</span> : <span className="text-slate-400">Sem formas</span>}
+            {(r.formas_previstas ?? 0) > 0 && r.n_cps > 0 && r.formas_previstas !== r.n_cps ? (
+              <button type="button" className="ml-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold" style={{ borderColor: 'var(--warning)', color: 'var(--warning)' }} title={'Provisão (' + r.formas_previstas + ') difere dos CPs moldados (' + r.n_cps + '). Clique para usar o nº de CPs.'} onClick={() => void usarCpsComoFormas(r.id, r.n_cps)}>≠ {r.n_cps} CP</button>
+            ) : null}</div>
         </div>
       );
     } },

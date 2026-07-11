@@ -8,7 +8,8 @@ const db = supabase as unknown as {
   from: (t: string) => any;
 };
 
-export type WorklistConc = { concretagem_id: string; codigo: string | null; data: string | null; dias: number; previsto: number; coletado: number; saldo: number };
+// concretagem_id null = linha "Avulsos/ajustes" da obra (entregas avulsas − coletas avulsas − cobranças − descartes).
+export type WorklistConc = { concretagem_id: string | null; codigo: string | null; data: string | null; dias: number; previsto: number | null; coletado: number | null; saldo: number };
 export type WorklistObra = { work_id: string; obra: string; cliente: string | null; endereco: string | null; bairro: string | null; cidade: string | null; uf: string | null; cep: string | null; contato: string | null; telefone: string | null; total: number; concretagens: WorklistConc[] };
 
 // p_ate tem default current_date no SQL; passar null zeraria a lista -> só enviar args definidos.
