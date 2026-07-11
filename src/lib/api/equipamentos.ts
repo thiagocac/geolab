@@ -20,12 +20,12 @@ export type EquipamentoRow = {
   capacidade_kn: number | null; classe: string | null; numero_certificado: string | null;
   data_calibracao: string | null; validade_calibracao: string | null; lab_calibrador: string | null;
   incerteza_mpa: number | null; anexo_certificado_path: string | null; observacao: string | null; ativo: boolean;
-  verif_periodicidade_dias: number | null;
+  verif_periodicidade_dias: number | null; unidade_carga: string | null;
 };
-export type EquipamentoRef = { id: string; tipo: string; apelido: string | null; marca_modelo: string | null; validade_calibracao: string | null; incerteza_mpa: number | null; ativo: boolean };
+export type EquipamentoRef = { id: string; tipo: string; apelido: string | null; marca_modelo: string | null; validade_calibracao: string | null; incerteza_mpa: number | null; ativo: boolean; unidade_carga: string | null };
 export type UsoEquipamento = { rompimentos: number };
 
-const SEL = 'id, tipo, apelido, marca_modelo, numero_serie, capacidade_kn, classe, numero_certificado, data_calibracao, validade_calibracao, lab_calibrador, incerteza_mpa, anexo_certificado_path, observacao, ativo, verif_periodicidade_dias';
+const SEL = 'id, tipo, apelido, marca_modelo, numero_serie, capacidade_kn, classe, numero_certificado, data_calibracao, validade_calibracao, lab_calibrador, incerteza_mpa, anexo_certificado_path, observacao, ativo, verif_periodicidade_dias, unidade_carga';
 
 export function rotuloEquip(e: { apelido?: string | null; marca_modelo?: string | null }): string {
   return (e.apelido || e.marca_modelo || '(sem nome)').trim();
@@ -40,6 +40,7 @@ export async function listEquipamentos(): Promise<EquipamentoRow[]> {
     data_calibracao: r.data_calibracao ?? null, validade_calibracao: r.validade_calibracao ?? null, lab_calibrador: r.lab_calibrador ?? null,
     incerteza_mpa: r.incerteza_mpa ?? null, anexo_certificado_path: r.anexo_certificado_path ?? null, observacao: r.observacao ?? null, ativo: r.ativo !== false,
     verif_periodicidade_dias: r.verif_periodicidade_dias == null ? null : Number(r.verif_periodicidade_dias),
+    unidade_carga: r.unidade_carga ?? null,
   }));
 }
 
@@ -88,9 +89,9 @@ export function verifStatus(periodicidadeDias: number | null, ultima: string | n
 
 // Fonte leve para os seletores de prensa (Pacote 2). Cacheada em ['equipamentos-ref'].
 export async function listEquipamentosRef(): Promise<EquipamentoRef[]> {
-  const { data, error } = await db.from('equipamentos').select('id, tipo, apelido, marca_modelo, validade_calibracao, incerteza_mpa, ativo').is('deleted_at', null).order('apelido', { ascending: true, nullsFirst: false });
+  const { data, error } = await db.from('equipamentos').select('id, tipo, apelido, marca_modelo, validade_calibracao, incerteza_mpa, ativo, unidade_carga').is('deleted_at', null).order('apelido', { ascending: true, nullsFirst: false });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Record<string, any>[]).map((r) => ({ id: String(r.id), tipo: String(r.tipo ?? 'outro'), apelido: r.apelido ?? null, marca_modelo: r.marca_modelo ?? null, validade_calibracao: r.validade_calibracao ?? null, incerteza_mpa: r.incerteza_mpa ?? null, ativo: r.ativo !== false }));
+  return ((data ?? []) as Record<string, any>[]).map((r) => ({ id: String(r.id), tipo: String(r.tipo ?? 'outro'), apelido: r.apelido ?? null, marca_modelo: r.marca_modelo ?? null, validade_calibracao: r.validade_calibracao ?? null, incerteza_mpa: r.incerteza_mpa ?? null, ativo: r.ativo !== false, unidade_carga: r.unidade_carga ?? null }));
 }
 
 export async function saveEquipamento(tenantId: string, id: string | null, values: Record<string, unknown>): Promise<string> {

@@ -84,7 +84,7 @@ export function EquipamentosPage() {
   function novo() { setEditId(null); setF({ tipo: 'prensa', ativo: true }); setCertFile(null); setObrasAloc(new Set()); setVf({}); setOpen(true); }
   function editar(e: EquipamentoRow) {
     setEditId(e.id);
-    setF({ tipo: e.tipo, apelido: e.apelido ?? '', marca_modelo: e.marca_modelo ?? '', numero_serie: e.numero_serie ?? '', capacidade_kn: e.capacidade_kn ?? '', classe: e.classe ?? '', numero_certificado: e.numero_certificado ?? '', data_calibracao: e.data_calibracao ?? '', validade_calibracao: e.validade_calibracao ?? '', lab_calibrador: e.lab_calibrador ?? '', incerteza_mpa: e.incerteza_mpa ?? '', verif_periodicidade_dias: e.verif_periodicidade_dias ?? '', observacao: e.observacao ?? '', ativo: e.ativo });
+    setF({ tipo: e.tipo, apelido: e.apelido ?? '', marca_modelo: e.marca_modelo ?? '', numero_serie: e.numero_serie ?? '', capacidade_kn: e.capacidade_kn ?? '', classe: e.classe ?? '', numero_certificado: e.numero_certificado ?? '', data_calibracao: e.data_calibracao ?? '', validade_calibracao: e.validade_calibracao ?? '', lab_calibrador: e.lab_calibrador ?? '', incerteza_mpa: e.incerteza_mpa ?? '', verif_periodicidade_dias: e.verif_periodicidade_dias ?? '', observacao: e.observacao ?? '', ativo: e.ativo, unidade_carga: e.unidade_carga ?? '' });
     setCertFile(null); setObrasAloc(new Set()); setVf({}); setOpen(true);
   }
 
@@ -98,6 +98,7 @@ export function EquipamentosPage() {
         capacidade_kn: num(f.capacidade_kn), classe: str(f.classe) || null, numero_certificado: str(f.numero_certificado) || null,
         data_calibracao: str(f.data_calibracao) || null, validade_calibracao: str(f.validade_calibracao) || null, lab_calibrador: str(f.lab_calibrador) || null,
         incerteza_mpa: num(f.incerteza_mpa), verif_periodicidade_dias: num(f.verif_periodicidade_dias), observacao: str(f.observacao) || null, ativo: f.ativo !== false,
+        unidade_carga: str(f.tipo) === 'prensa' ? (str(f.unidade_carga) || null) : null,
       };
       // 1) grava o equipamento (id resolvido). Anexo novo: no cadastro novo re-sobe com o id real.
       let id: string;
@@ -180,6 +181,14 @@ export function EquipamentosPage() {
             <Field label="Nº de série" value={String(f.numero_serie ?? '')} onChange={(e) => setF((s) => ({ ...s, numero_serie: e.target.value }))} />
             <Field label="Capacidade (kN)" type="number" value={String(f.capacidade_kn ?? '')} onChange={(e) => setF((s) => ({ ...s, capacidade_kn: e.target.value }))} />
             <Field label="Classe" value={String(f.classe ?? '')} onChange={(e) => setF((s) => ({ ...s, classe: e.target.value }))} />
+            {isPrensa ? (
+              <SelectField label="Unidade da carga" hint="No rompimento, selecionar esta prensa já liga a entrada por carga nesta unidade." value={String(f.unidade_carga ?? '')} onChange={(e) => setF((s) => ({ ...s, unidade_carga: e.target.value }))}>
+                <option value="">— (lança MPa direto)</option>
+                <option value="kn">kN</option>
+                <option value="tf">tf</option>
+                <option value="kgf">kgf</option>
+              </SelectField>
+            ) : null}
           </div>
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
             <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Calibração</strong>

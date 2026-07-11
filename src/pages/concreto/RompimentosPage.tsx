@@ -138,6 +138,12 @@ export function RompimentosPage() {
   const cfgQ = useQuery({ queryKey: ['config_controle_laudo', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
   const equipRef = useQuery({ queryKey: ['equipamentos-ref'], queryFn: listEquipamentosRef });
   const prensas = useMemo(() => (equipRef.data ?? []).filter((e) => e.tipo === 'prensa' && e.ativo), [equipRef.data]);
+  // Prensa com unidade de carga cadastrada: pré-marca "Entrar carga" com a unidade dela.
+  // Só liga (nunca desliga) — o usuário continua podendo desmarcar/trocar a unidade na sessão.
+  useEffect(() => {
+    const u = prensas.find((pp) => pp.id === prensaId)?.unidade_carga;
+    if (u === 'kn' || u === 'tf' || u === 'kgf') { setEntrarCarga(true); setCargaUnidade(u); }
+  }, [prensaId, prensas]);
   // Mapa id -> rótulo para a coluna "Prensa" na fila (inclui prensas inativas/apagadas usadas no passado).
   const equipById = useMemo(() => { const m = new Map<string, string>(); for (const e of equipRef.data ?? []) m.set(e.id, rotuloEquip(e)); return m; }, [equipRef.data]);
   const alocQ = useQuery({ queryKey: ['alocacao-obras'], queryFn: mapAlocacaoObras });
