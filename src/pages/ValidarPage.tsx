@@ -33,7 +33,7 @@ export function ValidarPage() {
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 99, background: v.status === 'emitido' ? '#16a34a' : '#d97706' }} />
+                  <span style={{ width: 10, height: 10, borderRadius: 99, background: v.status === 'emitido' ? 'var(--success)' : 'var(--warning)' }} />
                   <strong style={{ color: 'var(--ink)' }}>{v.status === 'emitido' ? 'Laudo emitido e autêntico' : 'Laudo registrado (' + v.status + ')'}</strong>
                 </div>
                 <Row k="Número do laudo" val={v.numero} />

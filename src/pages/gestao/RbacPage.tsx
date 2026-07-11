@@ -134,7 +134,7 @@ export function RbacPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-black text-slate-950 dark:text-slate-50">{r.name}</span>
                     <span className={'rounded px-1.5 py-0.5 text-[11px] font-bold ' + (r.built_in ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300')}>{r.built_in ? 'built-in' : 'custom'}</span>
-                    {!r.active ? <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-700">inativo</span> : null}
+                    {!r.active ? <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">inativo</span> : null}
                     <span className="text-xs text-slate-400">{enabled.get(r.id)?.size ?? 0} permissões</span>
                   </div>
                   {r.description ? <div className="mt-0.5 text-xs text-slate-500">{r.description}</div> : null}

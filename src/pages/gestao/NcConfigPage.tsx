@@ -111,7 +111,7 @@ function FluxoClassificacao({ cls, tenantId, podeEditar }: { cls: string; tenant
               <td>{t.situacao_destino ?? '—'}</td>
               <td>{t.conclui_nc ? 'Sim' : '—'}</td>
               <td>{t.permite_multipla_acao ? 'Sim' : '—'}</td>
-              <td style={{ color: t.ativo ? '#16a34a' : 'var(--ink-faint)', fontWeight: 700 }}>{t.ativo ? 'Ativo' : 'Inativo'}</td>
+              <td style={{ color: t.ativo ? 'var(--success)' : 'var(--ink-faint)', fontWeight: 700 }}>{t.ativo ? 'Ativo' : 'Inativo'}</td>
               <td style={{ textAlign: 'right' }}>{podeEditar ? <Button variant="ghost" onClick={() => setEdit(t)}>Editar</Button> : null}</td>
             </tr>
           ))}</tbody>

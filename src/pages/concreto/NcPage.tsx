@@ -207,7 +207,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
             <div className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (opcional)</span><FilePicker onFiles={(fs) => setFile(fs[0] ?? null)} /></div>
             <div><Button onClick={() => void registrar()} disabled={busy || !tmpl}>{busy ? 'Registrando...' : 'Registrar acao'}</Button></div>
           </div>
-        ) : concluida ? <p className="text-sm" style={{ color: '#16a34a', fontWeight: 700 }}>NC concluida.</p> : null}
+        ) : concluida ? <p className="text-sm" style={{ color: 'var(--success)', fontWeight: 700 }}>NC concluida.</p> : null}
       </div>
     </Modal>
   );

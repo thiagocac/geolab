@@ -31,7 +31,7 @@ import { HeatmapMatrix } from '../../components/dashboard/HeatmapMatrix';
  */
 
 const tipStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, color: 'var(--ink)', fontSize: 12 } as const;
-const palette = ['#182863', '#C5117E', '#3E2D71', '#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#64748b'];
+const palette = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)', 'var(--chart-7)', 'var(--chart-8)'];
 
 type DashId =
   | 'exec' | 'qualidade' | 'rompimentos' | 'resistencia' | 'insatisfatorios' | 'altas' | 'variacao' | 'carta_controle'
@@ -330,10 +330,10 @@ function CartaControlePanel({ from, to }: { from: string; to: string }) {
                 <XAxis dataKey="label" tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'var(--line)' }} />
                 <YAxis domain={['auto', 'auto']} tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={tipStyle} />
-                <ReferenceLine y={c.ucl_x} stroke="#dc2626" strokeDasharray="5 4" label={{ value: 'LSC', position: 'right', fontSize: 10, fill: '#dc2626' }} />
-                <ReferenceLine y={c.cl_x} stroke="#16a34a" label={{ value: 'LC', position: 'right', fontSize: 10, fill: '#16a34a' }} />
-                <ReferenceLine y={c.lcl_x} stroke="#dc2626" strokeDasharray="5 4" label={{ value: 'LIC', position: 'right', fontSize: 10, fill: '#dc2626' }} />
-                {c.fck != null ? <ReferenceLine y={c.fck} stroke="#182863" strokeDasharray="2 3" label={{ value: 'fck', position: 'right', fontSize: 10, fill: '#182863' }} /> : null}
+                <ReferenceLine y={c.ucl_x} stroke="var(--danger)" strokeDasharray="5 4" label={{ value: 'LSC', position: 'right', fontSize: 10, fill: '#dc2626' }} />
+                <ReferenceLine y={c.cl_x} stroke="var(--success)" label={{ value: 'LC', position: 'right', fontSize: 10, fill: '#16a34a' }} />
+                <ReferenceLine y={c.lcl_x} stroke="var(--danger)" strokeDasharray="5 4" label={{ value: 'LIC', position: 'right', fontSize: 10, fill: '#dc2626' }} />
+                {c.fck != null ? <ReferenceLine y={c.fck} stroke="var(--chart-1)" strokeDasharray="2 3" label={{ value: 'fck', position: 'right', fontSize: 10, fill: '#182863' }} /> : null}
                 <Line type="monotone" dataKey="x" stroke="#C5117E" strokeWidth={2} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -345,9 +345,9 @@ function CartaControlePanel({ from, to }: { from: string; to: string }) {
                 <XAxis dataKey="label" tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'var(--line)' }} />
                 <YAxis tick={{ fill: 'var(--ink-faint)', fontSize: 11 }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={tipStyle} />
-                <ReferenceLine y={c.ucl_r} stroke="#dc2626" strokeDasharray="5 4" label={{ value: 'LSC_R', position: 'right', fontSize: 10, fill: '#dc2626' }} />
-                <ReferenceLine y={c.rbar} stroke="#16a34a" label={{ value: 'R̄', position: 'right', fontSize: 10, fill: '#16a34a' }} />
-                <Line type="monotone" dataKey="r" stroke="#182863" strokeWidth={2} dot={{ r: 3 }} />
+                <ReferenceLine y={c.ucl_r} stroke="var(--danger)" strokeDasharray="5 4" label={{ value: 'LSC_R', position: 'right', fontSize: 10, fill: '#dc2626' }} />
+                <ReferenceLine y={c.rbar} stroke="var(--success)" label={{ value: 'R̄', position: 'right', fontSize: 10, fill: '#16a34a' }} />
+                <Line type="monotone" dataKey="r" stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </ChartPanel>

@@ -42,8 +42,8 @@ export function FaturasPage() {
       <PageHeader kicker="Financeiro" title="Faturas" description="Faturamento das medições fechadas: emissão, baixa (pagamento) e cancelamento." />
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <Card className="p-4" ><div className="text-sm" style={{ color: 'var(--ink-faint)' }}>A receber (emitidas)</div><div style={{ fontSize: 20, fontWeight: 800, color: '#d97706' }}>{BRL(aReceber)}</div></Card>
-        <Card className="p-4"><div className="text-sm" style={{ color: 'var(--ink-faint)' }}>Pago no filtro</div><div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a' }}>{BRL(pago)}</div></Card>
+        <Card className="p-4" ><div className="text-sm" style={{ color: 'var(--ink-faint)' }}>A receber (emitidas)</div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--warning)' }}>{BRL(aReceber)}</div></Card>
+        <Card className="p-4"><div className="text-sm" style={{ color: 'var(--ink-faint)' }}>Pago no filtro</div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--success)' }}>{BRL(pago)}</div></Card>
       </div>
 
       <Card className="p-5">

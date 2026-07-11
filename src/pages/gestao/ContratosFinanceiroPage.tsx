@@ -17,7 +17,7 @@ import { listEscopo } from '../../lib/api/medicao';
 import { useAuth } from '../../lib/auth';
 
 const tipStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, color: 'var(--ink)', fontSize: 12 } as const;
-const colors = ['#182863', '#C5117E', '#3E2D71', '#16a34a', '#f59e0b', '#dc2626'];
+const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-5)', 'var(--chart-6)', 'var(--chart-7)'];
 const startOfMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
 const today = () => new Date().toISOString().slice(0, 10);
 const money = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

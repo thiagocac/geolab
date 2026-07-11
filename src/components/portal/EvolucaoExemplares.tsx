@@ -1,7 +1,7 @@
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from 'recharts';
 import type { PortalResultadoRow } from '../../lib/portal/types';
 
-const COLORS = ['#182863', '#C5117E', '#0ea5e9', '#16a34a', '#f59e0b', '#7c3aed', '#dc2626', '#0d9488'];
+const COLORS = ['var(--chart-1)', '#C5117E', '#0ea5e9', '#16a34a', '#f59e0b', '#7c3aed', '#dc2626', '#0d9488'];
 
 // Curva de evolucao (idade x resistencia) por exemplar, com a linha de referencia do fck.
 export function EvolucaoExemplares({ rows }: { rows: PortalResultadoRow[] }) {

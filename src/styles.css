@@ -76,6 +76,12 @@
   --shadow-pop:0 14px 40px oklch(20.8% 0.04 262 / .16);
   --dur-1:80ms;--dur-2:140ms;--dur-3:220ms;--dur-4:320ms;--dur-5:480ms;
   --ease-out:cubic-bezier(.2,0,0,1);--ease-emph:cubic-bezier(.3,0,0,1);
+  /* v229 — semanticos tematizados (claro). Fonte unica p/ status/valores; o escuro clareia p/ contraste. */
+  --success:#16a34a;--warning:#d97706;--danger:#dc2626;--info:#2563eb;
+  --success-bg:oklch(72% 0.17 152 / .12);--warning-bg:oklch(76% 0.15 70 / .14);--danger-bg:oklch(64% 0.22 25 / .10);--info-bg:oklch(62% 0.19 256 / .10);
+  /* v229 — paleta de series de grafico (claro) + cromo do grafico tematizado */
+  --chart-1:#182863;--chart-2:#C5117E;--chart-3:#3E2D71;--chart-4:#2563eb;--chart-5:#16a34a;--chart-6:#f59e0b;--chart-7:#dc2626;--chart-8:#64748b;
+  --chart-grid:var(--line);--chart-axis:var(--ink-faint);
 }
 html.dark{
   color-scheme:dark;
@@ -87,6 +93,11 @@ html.dark{
   --nav-active-bg:oklch(54.6% 0.219 352 / .24);--nav-active-fg:oklch(100% 0 0);
   --shadow-card:0 10px 30px oklch(0% 0 0 / .35);
   --shadow-pop:0 16px 44px oklch(0% 0 0 / .5);
+  /* v229 — semanticos no escuro: tons mais claros p/ vencer o fundo escuro (WCAG) */
+  --success:#4ade80;--warning:#fbbf24;--danger:#f87171;--info:#60a5fa;
+  --success-bg:oklch(72% 0.17 152 / .16);--warning-bg:oklch(80% 0.15 75 / .18);--danger-bg:oklch(70% 0.19 20 / .18);--info-bg:oklch(70% 0.17 256 / .18);
+  /* v229 — series no escuro: navy/roxo clareados p/ nao sumir; magenta usa o light */
+  --chart-1:#6b8cce;--chart-2:#E8459E;--chart-3:#9d8bd8;--chart-4:#60a5fa;--chart-5:#4ade80;--chart-6:#fbbf24;--chart-7:#f87171;--chart-8:#94a3b8;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -244,16 +255,16 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 
 /* ---- toasts ---- */
 .toast-wrap{position:fixed;right:18px;bottom:18px;z-index:80;display:flex;flex-direction:column;gap:10px;max-width:min(380px,calc(100vw - 36px))}
-.toast{display:flex;align-items:flex-start;gap:11px;background:var(--surface);border:1px solid var(--line);border-left:3px solid #94a3b8;border-radius:12px;box-shadow:var(--shadow-pop);padding:13px 14px;animation:toastin .26s ease}
-.toast-success{border-left-color:#10b981}
-.toast-error{border-left-color:#ef4444}
-.toast-warning{border-left-color:#f59e0b}
-.toast-info{border-left-color:#3b82f6}
-.toast-ic{flex-shrink:0;margin-top:1px;color:#94a3b8}
-.toast-success .toast-ic{color:#10b981}
-.toast-error .toast-ic{color:#ef4444}
-.toast-warning .toast-ic{color:#f59e0b}
-.toast-info .toast-ic{color:#3b82f6}
+.toast{display:flex;align-items:flex-start;gap:11px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--ink-faint);border-radius:12px;box-shadow:var(--shadow-pop);padding:13px 14px;animation:toastin .26s ease}
+.toast-success{border-left-color:var(--success)}
+.toast-error{border-left-color:var(--danger)}
+.toast-warning{border-left-color:var(--warning)}
+.toast-info{border-left-color:var(--info)}
+.toast-ic{flex-shrink:0;margin-top:1px;color:var(--ink-faint)}
+.toast-success .toast-ic{color:var(--success)}
+.toast-error .toast-ic{color:var(--danger)}
+.toast-warning .toast-ic{color:var(--warning)}
+.toast-info .toast-ic{color:var(--info)}
 .toast-msg{font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.4}
 .toast-x{margin-left:auto;background:transparent;border:none;color:var(--ink-faint);cursor:pointer;display:flex;flex-shrink:0}
 @keyframes toastin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -285,3 +296,20 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 
 /* v220: destaque de linha com CP de rompimento vencido (central de concretagens) */
 .vt-tr.vt-alert{box-shadow:inset 3px 0 0 var(--magenta)}
+
+
+/* ---- v229: cromo dos graficos (recharts) segue o tema. So cromo (grade/eixo/legenda/tooltip);
+   as cores de serie continuam vindo da paleta --chart-*. !important vence os atributos de apresentacao. ---- */
+.recharts-cartesian-grid line{stroke:var(--chart-grid) !important}
+.recharts-cartesian-axis-line,.recharts-cartesian-axis-tick-line{stroke:var(--line-strong) !important}
+.recharts-cartesian-axis-tick-value,.recharts-cartesian-axis-tick-value tspan{fill:var(--chart-axis) !important}
+.recharts-label,.recharts-legend-item-text,.recharts-polar-angle-axis-tick-value tspan{fill:var(--ink-soft);color:var(--ink-soft) !important}
+.recharts-default-tooltip{background:var(--surface) !important;border:1px solid var(--line) !important;border-radius:12px !important;box-shadow:var(--shadow-pop);color:var(--ink) !important}
+.recharts-tooltip-item,.recharts-tooltip-label{color:var(--ink) !important}
+.recharts-reference-line line{stroke:var(--ink-faint)}
+
+/* ---- v229: chips semanticos tokenizados (dot + bg suave + texto; nunca cor sozinha) ---- */
+.chip-ok{background:var(--success-bg);color:var(--success)}
+.chip-warn{background:var(--warning-bg);color:var(--warning)}
+.chip-danger{background:var(--danger-bg);color:var(--danger)}
+.chip-info{background:var(--info-bg);color:var(--info)}

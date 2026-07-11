@@ -139,7 +139,7 @@ export function DiarioCuraPage() {
                         <td style={{ fontWeight: 700 }}>{br(r.data)}</td>
                         <td style={{ textAlign: 'right' }}>{r.temperatura_c ?? '—'}</td>
                         <td>{r.cal_ok ? 'ok' : 'não'}</td>
-                        <td style={{ fontWeight: 700, color: r.conforme ? '#16a34a' : 'var(--magenta)' }}>{r.conforme ? 'conforme' : 'fora de faixa'}</td>
+                        <td style={{ fontWeight: 700, color: r.conforme ? 'var(--success)' : 'var(--magenta)' }}>{r.conforme ? 'conforme' : 'fora de faixa'}</td>
                         <td style={{ color: 'var(--ink-faint)' }}>{r.observacao ?? '—'}</td>
                       </tr>
                     ))}

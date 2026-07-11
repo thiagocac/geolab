@@ -44,7 +44,7 @@ export function LaudoAprovarPage() {
         <div className="card" style={{ padding: 20, display: 'grid', gap: 14 }}>
           {done?.ok ? (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#16a34a' }}>Decisão registrada</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--success)' }}>Decisão registrada</div>
               <p style={{ fontSize: 13, color: 'var(--ink-faint)', margin: '6px 0 0' }}>{done.msg}</p>
             </div>
           ) : !token ? (

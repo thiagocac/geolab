@@ -26,7 +26,7 @@ function calibStatus(validade: string | null): { label: string; cor: string } {
   if (!validade) return { label: 'sem calibração', cor: 'var(--ink-faint)' };
   const hoje = ymd(Date.now()), in30 = ymd(Date.now() + 30 * 86400000);
   if (validade < hoje) return { label: 'vencida', cor: 'var(--magenta)' };
-  if (validade <= in30) return { label: 'vence em breve', cor: '#d97706' };
+  if (validade <= in30) return { label: 'vence em breve', cor: 'var(--warning)' };
   return { label: 'em dia', cor: '#16a34a' };
 }
 
@@ -151,7 +151,7 @@ export function EquipamentosPage() {
     { key: 'nome', header: 'Equipamento', sortable: true, render: (e) => <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, color: 'var(--ink)' }}>{rotuloEquip(e)}</div><div style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{[e.apelido ? e.marca_modelo : null, e.numero_serie ? 'sér. ' + e.numero_serie : null].filter(Boolean).join(' · ') || '—'}</div></div> },
     { key: 'tipo', header: 'Tipo', sortable: true, render: (e) => <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)', border: '1px solid var(--line)', borderRadius: 999, padding: '2px 8px' }}>{tipoLabel(e.tipo)}</span> },
     { key: 'validade', header: 'Calibração', sortable: true, render: (e) => { const s = calibStatus(e.validade_calibracao); return <span style={{ fontSize: 12, fontWeight: 700, color: s.cor }}>{s.label}{e.validade_calibracao ? ' · ' + e.validade_calibracao : ''}</span>; } },
-    { key: 'situacao', header: 'Situação', render: (e) => <span style={{ fontSize: 12, fontWeight: 700, color: e.ativo ? '#16a34a' : 'var(--ink-faint)' }}>{e.ativo ? 'Ativo' : 'Inativo'}</span> },
+    { key: 'situacao', header: 'Situação', render: (e) => <span style={{ fontSize: 12, fontWeight: 700, color: e.ativo ? 'var(--success)' : 'var(--ink-faint)' }}>{e.ativo ? 'Ativo' : 'Inativo'}</span> },
     { key: '__actions', header: '', render: (e) => <span style={{ display: 'inline-flex', gap: 6 }}>{e.anexo_certificado_path ? <Button variant="ghost" onClick={() => abrirAnexo(e.anexo_certificado_path as string)}>certificado</Button> : null}<Button variant="ghost" onClick={() => editar(e)}>Editar</Button><Button variant="ghost" onClick={() => void excluir(e)}>Excluir</Button></span> },
   ];
 

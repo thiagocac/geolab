@@ -44,7 +44,7 @@ export function RedefinirSenhaPage() {
             </>
           ) : okMsg ? (
             <>
-              <strong style={{ color: '#16a34a' }}>Senha alterada</strong>
+              <strong style={{ color: 'var(--success)' }}>Senha alterada</strong>
               <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>Entrando no sistema…</p>
             </>
           ) : (

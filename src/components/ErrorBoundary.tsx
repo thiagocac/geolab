@@ -36,10 +36,10 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.hasError) return this.props.children;
     return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, fontFamily: 'Inter, system-ui, sans-serif', background: 'var(--paper, #fff)', color: 'var(--ink, #1c1917)' }}>
         <div style={{ maxWidth: 420, textAlign: 'center' }}>
-          <div style={{ fontSize: 18, fontWeight: 600, color: '#182863', marginBottom: 8 }}>Algo deu errado</div>
-          <p style={{ fontSize: 14, color: '#57534e', margin: '0 0 16px' }}>
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink, #182863)', marginBottom: 8 }}>Algo deu errado</div>
+          <p style={{ fontSize: 14, color: 'var(--ink-faint, #57534e)', margin: '0 0 16px' }}>
             O erro foi registrado e a equipe será notificada. Recarregue a página para continuar.
           </p>
           <button

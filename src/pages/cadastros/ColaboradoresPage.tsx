@@ -24,7 +24,7 @@ function certStatus(validade: string | null): { label: string; cor: string } {
   if (!validade) return { label: 'sem validade', cor: 'var(--ink-faint)' };
   const hoje = ymd(Date.now()), in30 = ymd(Date.now() + 30 * 86400000);
   if (validade < hoje) return { label: 'vencida', cor: 'var(--magenta)' };
-  if (validade <= in30) return { label: 'vence em breve', cor: '#d97706' };
+  if (validade <= in30) return { label: 'vence em breve', cor: 'var(--warning)' };
   return { label: 'válida', cor: '#16a34a' };
 }
 const temVencida = (c: ColaboradorRow) => c.certs.some((ct) => ct.validade !== null && ct.validade < ymd(Date.now()));
@@ -128,7 +128,7 @@ export function ColaboradoresPage() {
     { key: 'nome', header: 'Nome', sortable: true, render: (c) => <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, color: 'var(--ink)' }}>{c.nome}</div>{c.registro_profissional ? <div style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{c.registro_profissional}</div> : null}</div> },
     { key: 'funcoes', header: 'Funções', render: (c) => c.funcoes.length === 0 ? <span style={{ color: 'var(--ink-faint)' }}>—</span> : <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>{c.funcoes.map((fn) => <span key={fn} style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', border: '1px solid var(--line)', borderRadius: 999, padding: '2px 8px' }}>{fn}</span>)}</span> },
     { key: 'certs', header: 'Certificações', render: (c) => c.certs.length === 0 ? <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>sem certificacoes</span> : <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>{c.certs.map((ct) => { const s = certStatus(ct.validade); return <span key={ct.id} style={{ fontSize: 11, fontWeight: 700, color: s.cor, border: '1px solid var(--line)', borderRadius: 999, padding: '2px 8px' }}>{ct.tipo.split(' ')[0]} · {s.label}</span>; })}</span> },
-    { key: 'situacao', header: 'Situação', sortable: true, render: (c) => <span style={{ fontSize: 12, fontWeight: 700, color: c.ativo ? '#16a34a' : 'var(--ink-faint)' }}>{c.ativo ? 'Ativo' : 'Inativo'}</span> },
+    { key: 'situacao', header: 'Situação', sortable: true, render: (c) => <span style={{ fontSize: 12, fontWeight: 700, color: c.ativo ? 'var(--success)' : 'var(--ink-faint)' }}>{c.ativo ? 'Ativo' : 'Inativo'}</span> },
     { key: '__actions', header: '', render: (c) => <span style={{ display: 'inline-flex', gap: 6 }}><Button variant="ghost" onClick={() => editar(c)}>Editar</Button><Button variant="ghost" onClick={() => void excluir(c)}>Excluir</Button></span> },
   ];
 
