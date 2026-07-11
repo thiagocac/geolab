@@ -10,7 +10,7 @@ import { Modal } from './ui/Modal';
 import { useToast } from '../lib/toast';
 import { getPendenciasResumo } from '../lib/api/pendencias';
 import { PEND_SECOES } from '../lib/pendenciasNav';
-import { Home, MixerTruck, Compress, FileText, Import, Gauge, Boxes, Layers, Beaker, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, Tag, CalendarDays } from './ui/icons';
+import { Home, MixerTruck, Compress, FileText, Import, Gauge, Boxes, Layers, Beaker, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, CalendarDays } from './ui/icons';
 
 type Item = { to: string; label: string; icon: typeof Home; end?: boolean; roles?: string[]; perm?: string };
 type Section = { title?: string; items: Item[] };
@@ -28,7 +28,7 @@ const sections: Section[] = [
   { title: 'Concreto', items: [
     { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
     { to: '/concretagens', label: 'Concretagens', icon: MixerTruck, roles: labRoles },
-    { to: '/cps', label: 'CPs', icon: Tag, roles: labRoles },
+    { to: '/cps', label: 'CPs', icon: Mold, roles: labRoles },
     { to: '/rompimentos', label: 'Rompimentos', icon: Compress, roles: labRoles },
     { to: '/laudos', label: 'Laudos', icon: FileText, roles: labRoles },
     // [v202] Aceitacao de lotes retirada do menu (pagina/logica preservadas). Reative descomentando: { to: '/lotes', label: 'Aceitação de lotes', icon: CheckCircle, roles: labRoles },
