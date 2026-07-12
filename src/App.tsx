@@ -38,6 +38,7 @@ const QualidadePage = lazy(() => import('./pages/concreto/QualidadePage').then((
 const ComercialPage = lazy(() => import('./pages/gestao/ComercialPage').then((m) => ({ default: m.ComercialPage })));
 const FinanceiroPage = lazy(() => import('./pages/gestao/FinanceiroPage').then((m) => ({ default: m.FinanceiroPage })));
 const ConfiguracoesPage = lazy(() => import('./pages/gestao/ConfiguracoesPage').then((m) => ({ default: m.ConfiguracoesPage })));
+const ImplantacaoPage = lazy(() => import('./pages/implantacao/ImplantacaoPage').then((m) => ({ default: m.ImplantacaoPage })));
 const SuprimentosPage = lazy(() => import('./pages/gestao/SuprimentosPage').then((m) => ({ default: m.SuprimentosPage })));
 const FormasHubPage = lazy(() => import('./pages/gestao/FormasHubPage').then((m) => ({ default: m.FormasHubPage })));
 const EquipePage = lazy(() => import('./pages/gestao/EquipePage').then((m) => ({ default: m.EquipePage })));
@@ -207,6 +208,8 @@ export function App() {
             <Route path="/gestao/nc-config" element={<ConfiguracoesPage inicial="nc" />} />
             <Route path="/notificacoes" element={<ConfiguracoesPage inicial="notificacoes" />} />
             <Route path="/gestao/onboarding" element={<ConfiguracoesPage inicial="onboarding" />} />
+            {/* [v238] Wizard de implantação self-service (gate de 1ª entrada no Layout) */}
+            <Route path="/implantacao" element={<ImplantacaoPage />} />
             <Route path="/gestao/seguranca-conta" element={<ConfiguracoesPage inicial="seguranca" />} />
             {/* Hub Operação interna (v228) — shell unico */}
             <Route path="/operacao" element={<OperacaoHubPage />} />

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -9,6 +9,7 @@ import { CommandPalette, type Command } from './ui/CommandPalette';
 import { Modal } from './ui/Modal';
 import { useToast } from '../lib/toast';
 import { getPendenciasResumo } from '../lib/api/pendencias';
+import { getOnboardingSnapshot } from '../lib/api/onboarding';
 import { PEND_SECOES } from '../lib/pendenciasNav';
 import { Home, MixerTruck, Compress, FileText, Import, Gauge, Boxes, Layers, Beaker, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, CalendarDays } from './ui/icons';
 
@@ -84,6 +85,7 @@ const atalhos: { to: string; label: string; grupo: string; roles?: string[]; per
   { to: '/gestao/premiacao', label: 'Premiação', grupo: 'Equipe', perm: 'premiacao.ver' },
   { to: '/portal/usuarios-clientes', label: 'Usuários de clientes', grupo: 'Portal', perm: 'portal.gerenciar' },
   { to: '/gestao/onboarding', label: 'Onboarding do laboratório', grupo: 'Configurações', perm: 'onboarding.ver' },
+  { to: '/implantacao', label: 'Implantação do laboratório', grupo: 'Configurações', perm: 'onboarding.ver' },
   { to: '/gestao/seguranca-conta', label: 'Segurança da conta', grupo: 'Configurações', roles: labRoles },
   { to: '/gestao/rbac', label: 'Permissões', grupo: 'Operação', perm: 'rbac.gerenciar' },
   { to: '/gestao/delegacoes', label: 'Delegações', grupo: 'Operação', perm: 'workflow.delegar' },
@@ -96,6 +98,11 @@ const atalhos: { to: string; label: string; grupo: string; roles?: string[]; per
   { to: '/gestao/webhooks', label: 'Webhooks/API', grupo: 'Operação', perm: 'api.gerenciar' },
   { to: '/observabilidade', label: 'Observabilidade', grupo: 'Operação', perm: 'observabilidade.ver' },
 ];
+
+// [v238] Gate de implantação: quem gerencia o onboarding cai em /implantacao a cada carga do app
+// enquanto houver etapa obrigatória pendente. Flag de módulo = 1 redirect por carga ("Ir para o
+// sistema" navega livre depois); novo login/reload volta a cair na implantação.
+let implantacaoChecada = false;
 
 export function Layout({ children }: { children: ReactNode }) {
   const { member, signOut, hasRole, can, tenants, selectTenant } = useAuth();
@@ -111,6 +118,14 @@ export function Layout({ children }: { children: ReactNode }) {
   const [labBusy, setLabBusy] = useState(false);
   // T13: badge de pendencias no menu (mesma RPC da tela; contagem filtrada pelo papel).
   const pendQ = useQuery({ queryKey: ['pendencias-badge', member?.tenant_id ?? 'none'], enabled: !!member, staleTime: 5 * 60 * 1000, refetchInterval: 5 * 60 * 1000, queryFn: () => getPendenciasResumo(member!.tenant_id) });
+  // [v238] Gate de implantação (uma consulta por carga; snapshot roda seed+auto-detecção no banco).
+  const implQ = useQuery({ queryKey: ['implantacao-gate', member?.tenant_id ?? 'none'], enabled: !!member && can('onboarding.gerenciar') && !implantacaoChecada, staleTime: Infinity, queryFn: getOnboardingSnapshot });
+  useEffect(() => {
+    if (implantacaoChecada || !implQ.data) return;
+    implantacaoChecada = true;
+    const pendente = implQ.data.run.status !== 'concluido' && implQ.data.steps.some((s) => s.required && s.status === 'pendente');
+    if (pendente && window.location.pathname !== '/implantacao') nav('/implantacao', { viewTransition: true });
+  }, [implQ.data, nav]);
   const pendTotal = useMemo(() => {
     const d = pendQ.data; if (!d) return 0;
     let t = 0;
