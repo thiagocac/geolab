@@ -1,2 +1,18 @@
 [build.environment]
   NODE_VERSION = "22"
+
+# Auditoria 12/07/2026 (v233): security headers.
+# - X-Frame-Options DENY: o app nao e embedado em iframe -> bloqueia clickjacking.
+# - nosniff: impede MIME sniffing de uploads/assets.
+# - Referrer-Policy: nao vaza URLs internas (ids de laudo/obra) para sites de terceiros.
+# - Permissions-Policy: o app nao usa camera/microfone/geolocalizacao (conferido no source v232).
+# - HSTS: dominio e HTTPS-only no Netlify.
+# CSP fica para v1.1: exige inventario de origens (Supabase, tiles do Leaflet, blob:/data: dos PDFs).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
