@@ -29,7 +29,7 @@ const tipStyle = { background: 'var(--surface)', border: '1px solid var(--line)'
 
 // Runners do "plano de controle" da telemetria: avaliam sinais e/ou enviam e-mail de incidente.
 // Se algum atrasa, alertas podem não disparar (ou e-mails não sair) de forma silenciosa.
-const CONTROL_PLANE = /^telemetry-(alarm|pg-alarm|email-alarm|release-alarm|ops-alarm|notify)$/;
+const CONTROL_PLANE = /^telemetry-(alarm|pg-alarm|email-alarm|release-alarm|ops-alarm|notify|report-alarm)$/;
 
 type Mttr = {
   open_incidents: number; incidents_30d: number; resolved_30d: number; critical_30d: number;
@@ -372,6 +372,78 @@ function DomainUsageCard() {
   );
 }
 
+
+// Falhas de domínio (auditoria de telemetria 12/07/2026) — os eventos *_falhou (v212) ficavam
+// afogados no card de Uso; foi exatamente o sinal do P0 das RPCs de rompimento que ninguém viu.
+// Falha aqui é fluxo de negócio quebrando (lançamento, laudo, importação) — não é ruído.
+function DomainFailuresCard() {
+  const uso = useQuery({ queryKey: ['obs', 'domainuse'], refetchInterval: REFRESH_MS,
+    queryFn: () => rows<DomainRow>(supabase.from('v_domain_events_daily').select('day,event,area,total,sessions,last_seen').order('day', { ascending: false })) });
+  const desde7 = Date.now() - 7 * 24 * 3600_000;
+  const porEvento = new Map<string, { area: string; total: number; last: string }>();
+  for (const r of uso.data ?? []) {
+    if (!r.event.endsWith('_falhou') || new Date(r.day).getTime() < desde7) continue;
+    const cur = porEvento.get(r.event);
+    if (cur) { cur.total += Number(r.total); if (r.last_seen > cur.last) cur.last = r.last_seen; }
+    else porEvento.set(r.event, { area: r.area, total: Number(r.total), last: r.last_seen });
+  }
+  const falhas = Array.from(porEvento.entries()).map(([event, v]) => ({ event, ...v })).sort((a, b) => b.total - a.total);
+  return (
+    <Card>
+      <CardHeader kicker="Domínio" title="Falhas de operação (7d)">Eventos *_falhou emitidos pelo app — lançamento de rompimento, geração de laudo/PDF, importação. Qualquer linha aqui merece investigação.</CardHeader>
+      <div className="p-5">
+        {uso.isLoading ? <LoadingState /> : uso.error ? <ErrorState message={(uso.error as Error).message} /> : falhas.length === 0 ? (
+          <p className="text-sm text-emerald-700 dark:text-emerald-400">Nenhuma falha de operação de domínio nos últimos 7 dias. ✓</p>
+        ) : (
+          <div className="table-scroll"><table className="table">
+            <thead><tr><th>Evento</th><th>Área</th><th>Falhas (7d)</th><th>Última</th></tr></thead>
+            <tbody>{falhas.map((f) => (
+              <tr key={f.event}>
+                <td className="font-medium text-red-700 dark:text-red-400">{f.event}</td>
+                <td><span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{f.area}</span></td>
+                <td className="tabular-nums font-semibold text-red-700 dark:text-red-400">{f.total}</td>
+                <td className="text-slate-500">{fmtAge(f.last)}</td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+type AlarmCfg = {
+  alerting_enabled: boolean; alert_notify_email: boolean; alert_error_rate_pct: number | string; alert_min_events: number;
+  alert_ef_p95_ms: number; alert_ef_p95_min_calls: number | null; alert_ef_5xx_min: number; alert_ef_5xx_window_hours: number;
+  alert_ef_latency_exempt: string[] | null; alert_lcp_p75_ms: number; updated_at: string;
+};
+
+// Config vigente do alarme (auditoria 12/07/2026) — responde "por que (não) alarmou?" sem execute_sql.
+// Leitura direta de telemetry_settings (RLS admin-only). Edição continua via banco.
+function AlarmConfigCard() {
+  const cfg = useQuery({ queryKey: ['obs', 'alarmcfg'], refetchInterval: REFRESH_MS,
+    queryFn: () => rows<AlarmCfg>(supabase.from('telemetry_settings' as any).select('alerting_enabled,alert_notify_email,alert_error_rate_pct,alert_min_events,alert_ef_p95_ms,alert_ef_p95_min_calls,alert_ef_5xx_min,alert_ef_5xx_window_hours,alert_ef_latency_exempt,alert_lcp_p75_ms,updated_at').eq('id', 1)) });
+  const c = cfg.data?.[0];
+  const chip = 'inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+  return (
+    <Card>
+      <CardHeader kicker="Telemetria" title="Config vigente do alarme">Limiar de cada checagem do telemetry-alarm — a resposta rápida para "por que (não) alarmou?".</CardHeader>
+      <div className="p-5">
+        {cfg.isLoading ? <LoadingState /> : cfg.error ? <ErrorState message={(cfg.error as Error).message} /> : !c ? <EmptyState /> : (
+          <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-2">
+            <div>Alerting <strong>{c.alerting_enabled ? 'ligado' : 'DESLIGADO'}</strong> · e-mail de crítico <strong>{c.alert_notify_email ? 'ligado' : 'desligado'}</strong></div>
+            <div>Error rate: ≥ <strong>{c.alert_error_rate_pct}%</strong> com ≥ <strong>{c.alert_min_events}</strong> eventos (só a versão viva e mais novas)</div>
+            <div>EF p95: acima de <strong>{c.alert_ef_p95_ms} ms</strong> com ≥ <strong>{c.alert_ef_p95_min_calls ?? 3}</strong> chamadas na última hora</div>
+            <div>EF 5xx: ≥ <strong>{c.alert_ef_5xx_min}</strong> em <strong>{c.alert_ef_5xx_window_hours}h</strong> (vale também para as isentas de latência)</div>
+            <div>LCP p75: acima de <strong>{c.alert_lcp_p75_ms} ms</strong></div>
+            <div className="flex flex-wrap items-center gap-1.5">Isentas de p95: {(c.alert_ef_latency_exempt ?? []).length === 0 ? <span className={chip}>nenhuma</span> : (c.alert_ef_latency_exempt ?? []).map((p) => <span key={p} className={chip}>{p}</span>)}</div>
+            <div className="text-xs text-slate-500 sm:col-span-2">Ajustes via telemetry_settings (id=1) · última alteração {fmtAge(c.updated_at)}</div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
 
 type EfErrorRecent = {
   id: string; occurred_at: string; level: string; fn_name: string; action: string | null;
@@ -755,6 +827,7 @@ export function ObservabilidadePage() {
           )}
         </div>
       </Card>
+      <DomainFailuresCard />
       </>) : null}
 
       {tab === 'ef' ? (<>
@@ -932,6 +1005,7 @@ export function ObservabilidadePage() {
             )}
           </div>
         </Card>
+        <AlarmConfigCard />
       </>) : null}
     </div>
   );

@@ -21,8 +21,8 @@ const SITE_URL = Deno.env.get('SITE_URL') || 'https://app.concresoft.io';
 const SITE_PATH = '/observabilidade';
 
 type CriticalAlert = { key: string; title: string; detail: string; instanceTag: string };
-type Settings = { alerting_enabled: boolean; alert_error_rate_pct: number; alert_min_events: number; alert_lcp_p75_ms: number; alert_inp_p75_ms: number; alert_notify_inapp: boolean; alert_cron_enabled: boolean; alert_webhook_dead_letter: number; alert_ef_p95_ms: number; alert_ef_5xx_min: number; alert_cls_p75: number; alert_fcp_p75_ms: number; alert_ttfb_p75_ms: number; alert_ef_latency_exempt: string[]; alert_ef_5xx_window_hours: number; alert_notify_email: boolean; alert_notify_webhook_url: string | null; };
-const DEFAULTS: Settings = { alerting_enabled: true, alert_error_rate_pct: 5, alert_min_events: 20, alert_lcp_p75_ms: 4000, alert_inp_p75_ms: 500, alert_notify_inapp: true, alert_cron_enabled: true, alert_webhook_dead_letter: 5, alert_ef_p95_ms: 3000, alert_ef_5xx_min: 3, alert_cls_p75: 0.25, alert_fcp_p75_ms: 3000, alert_ttfb_p75_ms: 1800, alert_ef_latency_exempt: ['backup-'], alert_ef_5xx_window_hours: 6, alert_notify_email: false, alert_notify_webhook_url: null };
+type Settings = { alerting_enabled: boolean; alert_error_rate_pct: number; alert_min_events: number; alert_lcp_p75_ms: number; alert_inp_p75_ms: number; alert_notify_inapp: boolean; alert_cron_enabled: boolean; alert_webhook_dead_letter: number; alert_ef_p95_ms: number; alert_ef_5xx_min: number; alert_cls_p75: number; alert_fcp_p75_ms: number; alert_ttfb_p75_ms: number; alert_ef_latency_exempt: string[]; alert_ef_5xx_window_hours: number; alert_ef_p95_min_calls: number; alert_notify_email: boolean; alert_notify_webhook_url: string | null; };
+const DEFAULTS: Settings = { alerting_enabled: true, alert_error_rate_pct: 5, alert_min_events: 20, alert_lcp_p75_ms: 4000, alert_inp_p75_ms: 500, alert_notify_inapp: true, alert_cron_enabled: true, alert_webhook_dead_letter: 5, alert_ef_p95_ms: 3000, alert_ef_5xx_min: 3, alert_cls_p75: 0.25, alert_fcp_p75_ms: 3000, alert_ttfb_p75_ms: 1800, alert_ef_latency_exempt: ['backup-'], alert_ef_5xx_window_hours: 6, alert_ef_p95_min_calls: 3, alert_notify_email: false, alert_notify_webhook_url: null };
 
 async function handler(req: Request): Promise<Response> {
   const cors = handleCors(req);
@@ -35,7 +35,7 @@ async function handler(req: Request): Promise<Response> {
     if (!viaCron) { const auth = await authorizeServiceOrAdmin(req, svc); if (!auth.ok) return fail(auth.error, auth.status); }
     let cfg = DEFAULTS;
     try {
-      const { data } = await svc.from('telemetry_settings').select('alerting_enabled,alert_error_rate_pct,alert_min_events,alert_lcp_p75_ms,alert_inp_p75_ms,alert_notify_inapp,alert_cron_enabled,alert_webhook_dead_letter,alert_ef_p95_ms,alert_ef_5xx_min,alert_cls_p75,alert_fcp_p75_ms,alert_ttfb_p75_ms,alert_ef_latency_exempt,alert_ef_5xx_window_hours,alert_notify_email,alert_notify_webhook_url').eq('id', 1).maybeSingle();
+      const { data } = await svc.from('telemetry_settings').select('alerting_enabled,alert_error_rate_pct,alert_min_events,alert_lcp_p75_ms,alert_inp_p75_ms,alert_notify_inapp,alert_cron_enabled,alert_webhook_dead_letter,alert_ef_p95_ms,alert_ef_5xx_min,alert_cls_p75,alert_fcp_p75_ms,alert_ttfb_p75_ms,alert_ef_latency_exempt,alert_ef_5xx_window_hours,alert_ef_p95_min_calls,alert_notify_email,alert_notify_webhook_url').eq('id', 1).maybeSingle();
       if (data) cfg = { ...DEFAULTS, ...data } as Settings;
     } catch { /* defaults */ }
     if (cfg.alerting_enabled === false) {
@@ -57,7 +57,17 @@ async function handler(req: Request): Promise<Response> {
     }
     try {
       const { data: health } = await svc.from('v_client_health_by_version').select('app_version,events,errors,error_rate_pct');
-      for (const h of (health || []) as Array<{app_version:string|null;events:number;errors:number;error_rate_pct:number|null}>) {
+      const rowsHealth = (health || []) as Array<{app_version:string|null;events:number;errors:number;error_rate_pct:number|null}>;
+      // v195/v234: so a versao VIVA (maior vNNN com volume >= alert_min_events) e mais novas alarmam
+      // error_rate. Clientes em cache de versoes antigas emitem chunk-stale e bugs ja corrigidos —
+      // nao acionaveis, re-abriam alerta de hora em hora. A janela da view e 7d, entao a versao
+      // anterior pode acumular MAIS eventos que a viva — por isso "mais nova com volume", nao "dominante".
+      const vnum = (v: string | null): number | null => { const m = /^v(\d+)$/.exec(String(v || '')); return m ? Number(m[1]) : null; };
+      let refNum: number | null = null;
+      for (const h of rowsHealth) { const n = vnum(h.app_version); if (n != null && h.events >= cfg.alert_min_events && (refNum == null || n > refNum)) refNum = n; }
+      for (const h of rowsHealth) {
+        const num = vnum(h.app_version);
+        if (refNum != null && num != null && num < refNum) continue;
         const rate = Number(h.error_rate_pct || 0);
         if (h.events >= cfg.alert_min_events && rate >= cfg.alert_error_rate_pct) {
           const ver = h.app_version || '-';
@@ -112,7 +122,7 @@ async function handler(req: Request): Promise<Response> {
       const windowH = Math.max(1, Number(cfg.alert_ef_5xx_window_hours || 6));
       const sinceIso = new Date(Date.now() - windowH * 3600000).toISOString();
       const { data: efs } = await svc.from('v_ef_metrics_hourly').select('fn_name,hour,calls,errors,errors_5xx,p95_ms').gte('hour', sinceIso).order('hour', { ascending: false }).limit(1000);
-      const latestEf = new Map<string, {fn_name:string;p95_ms:number}>();
+      const latestEf = new Map<string, {fn_name:string;p95_ms:number;calls:number}>();
       const sum5xxBy = new Map<string, number>(); const callsWindowBy = new Map<string, number>();
       for (const e of (efs || []) as Array<{fn_name:string;calls:number;errors_5xx:number;p95_ms:number}>) {
         if (!latestEf.has(e.fn_name)) latestEf.set(e.fn_name, e as never);
@@ -124,7 +134,8 @@ async function handler(req: Request): Promise<Response> {
         const p95 = Number(e.p95_ms || 0);
         const latencyExempt = (cfg.alert_ef_latency_exempt || []).some((pref) => e.fn_name.startsWith(pref));
         const over5xx = fivexx >= cfg.alert_ef_5xx_min;
-        const overP95 = !latencyExempt && p95 > cfg.alert_ef_p95_ms;
+        // v234: p95 de hora com 1-2 chamadas e o proprio cold start — gate de volume minimo na ultima hora.
+        const overP95 = !latencyExempt && p95 > cfg.alert_ef_p95_ms && Number(e.calls || 0) >= Math.max(1, Number(cfg.alert_ef_p95_min_calls || 3));
         if (over5xx || overP95) {
           const severity = (fivexx >= cfg.alert_ef_5xx_min * 3 || (overP95 && p95 > cfg.alert_ef_p95_ms * 2)) ? 'critical' : 'warning';
           const reasons: string[] = [];
