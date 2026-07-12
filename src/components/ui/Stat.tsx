@@ -6,7 +6,7 @@ export function Stat({ label, value, detail, onClick, active, valueStyle }: { la
   const inner = (
     <>
       <p className="kicker">{label}</p>
-      <strong className="mt-2 block text-2xl font-extrabold text-slate-950 dark:text-slate-50 tabular-nums" style={valueStyle}>{value}</strong>
+      <strong className="mt-2 block text-2xl font-bold text-slate-950 dark:text-slate-50 tabular-nums" style={{ fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em', ...valueStyle }}>{value}</strong>
       {detail && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{detail}</p>}
     </>
   );

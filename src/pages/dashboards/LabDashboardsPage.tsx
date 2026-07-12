@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, PieChart, Pie, Legend, ComposedChart, ReferenceLine } from 'recharts';
@@ -6,6 +6,7 @@ import { useAuth } from '../../lib/auth';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Stat } from '../../components/ui/Stat';
+import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, ErrorState } from '../../components/ui/State';
@@ -140,23 +141,24 @@ function Panel({ id, snapshot, qualidade, nav }: { id: DashId; snapshot: LabDash
   return <PanelPlaceholder title={String(id)}>Painel em preparação.</PanelPlaceholder>;
 }
 
-const sevTone: Record<string, string> = {
-  alto: 'border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200',
-  medio: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  baixo: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+// v237 (Concresoft DS): superficie de risco por tom semantico (tokens --tone-*), aplicada via style.
+const sevTone: Record<string, CSSProperties> = {
+  alto: { borderColor: 'var(--tone-danger-dot)', background: 'var(--tone-danger-bg)', color: 'var(--tone-danger-fg)' },
+  medio: { borderColor: 'var(--tone-warning-dot)', background: 'var(--tone-warning-bg)', color: 'var(--tone-warning-fg)' },
+  baixo: { borderColor: 'var(--tone-success-dot)', background: 'var(--tone-success-bg)', color: 'var(--tone-success-fg)' },
 };
 function diasBadge(dias: number | null) {
   if (dias == null) return <span className="text-xs text-slate-400">sem validade</span>;
-  if (dias < 0) return <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700 dark:bg-red-950/40 dark:text-red-300">vencido há {Math.abs(dias)}d</span>;
-  if (dias <= 30) return <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{dias}d</span>;
-  return <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{dias}d</span>;
+  if (dias < 0) return <span className="prazo prazo-venc">vencido há {Math.abs(dias)}d</span>;
+  if (dias <= 30) return <span className="prazo prazo-prox">{dias}d</span>;
+  return <span className="prazo prazo-ok">{dias}d</span>;
 }
 
 function OpsPanel({ id, ops, nav }: { id: DashId; ops: DashboardOps; nav: (to: string) => void }) {
   if (id === 'risco') {
     const itens = [...ops.risco.itens].sort((a, b) => (b.value > 0 ? 1 : 0) - (a.value > 0 ? 1 : 0) || (a.severity === 'alto' ? -1 : 1) - (b.severity === 'alto' ? -1 : 1) || b.value - a.value);
     return <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {itens.map((r) => <button key={r.key} type="button" onClick={() => nav(r.route)} className={'rounded-2xl border p-4 text-left transition hover:opacity-90 ' + (r.value > 0 ? sevTone[r.severity] : sevTone.baixo)}>
+      {itens.map((r) => <button key={r.key} type="button" onClick={() => nav(r.route)} className="rounded-2xl border p-4 text-left transition hover:opacity-90" style={r.value > 0 ? sevTone[r.severity] : sevTone.baixo}>
         <div className="flex items-start justify-between gap-3"><p className="text-sm font-bold">{r.label}</p><span className="text-2xl font-black tabular-nums">{r.value}</span></div>
         <p className="mt-1 text-xs opacity-80">{r.value === 0 ? 'Nenhuma ocorrência ✓' : r.amount != null ? money(r.amount) + ' em aberto' : r.severity === 'alto' ? 'Ação imediata recomendada' : 'Acompanhar'}</p>
       </button>)}
@@ -174,7 +176,7 @@ function OpsPanel({ id, ops, nav }: { id: DashId; ops: DashboardOps; nav: (to: s
       <ChartPanel title="Por classificação (período)" empty={!ops.nc.por_classificacao.length}><Bars data={ops.nc.por_classificacao as never} dataKey="value" /></ChartPanel>
     </div>
     <Card><CardHeader kicker="Qualidade" title="Ocorrências recentes" /><div className="grid gap-2 p-4 md:grid-cols-2">
-      {ops.nc.recentes.length ? ops.nc.recentes.map((r) => <button key={r.id} type="button" onClick={() => nav('/nc')} className="rounded-xl border border-slate-100 p-3 text-left transition hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-900 dark:text-slate-50">{r.numero ?? 'NC'} · {r.tipo ?? 'sem tipo'}</p><p className="mt-1 text-xs text-slate-500">{r.obra ?? 'Sem obra'} · {r.data_abertura ?? ''}</p></div><span className={'rounded-full px-2 py-0.5 text-xs font-bold ' + (r.severidade === 'alta' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300')}>{r.severidade ?? '—'}</span></div></button>) : <p className="text-sm text-emerald-700 dark:text-emerald-400">Nenhuma NC registrada. ✓</p>}
+      {ops.nc.recentes.length ? ops.nc.recentes.map((r) => <button key={r.id} type="button" onClick={() => nav('/nc')} className="rounded-xl border border-slate-100 p-3 text-left transition hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-900 dark:text-slate-50">{r.numero ?? 'NC'} · {r.tipo ?? 'sem tipo'}</p><p className="mt-1 text-xs text-slate-500">{r.obra ?? 'Sem obra'} · {r.data_abertura ?? ''}</p></div><Badge tone={r.severidade === 'alta' ? 'danger' : r.severidade === 'baixa' ? 'success' : 'warning'}>{r.severidade ?? '—'}</Badge></div></button>) : <p className="text-sm text-emerald-700 dark:text-emerald-400">Nenhuma NC registrada. ✓</p>}
     </div></Card>
   </>;
   if (id === 'equipamentos') return <>
@@ -229,7 +231,7 @@ function OpsPanel({ id, ops, nav }: { id: DashId; ops: DashboardOps; nav: (to: s
     <Card><CardHeader kicker="Financeiro" title="Balanço contratado × medido × faturado" /><div className="grid gap-2 p-4 md:grid-cols-2">
       {ops.contratos.balanco.length ? ops.contratos.balanco.map((c) => { const cons = Math.max(0, Math.min(100, c.consumo_pct ?? 0)); return <button key={c.id} type="button" onClick={() => nav('/gestao/contratos-v2')} className="rounded-xl border border-slate-100 p-3 text-left transition hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600">
         <div className="flex items-start justify-between gap-3"><div><p className="font-bold text-slate-900 dark:text-slate-50">{c.numero ?? 'Contrato'}</p><p className="mt-0.5 text-xs text-slate-500">{c.cliente ?? 'Sem cliente'} · vigência até {c.vigencia_fim ?? '—'}</p></div><span className="font-black tabular-nums">{c.consumo_pct != null ? pct(c.consumo_pct) : '—'}</span></div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={'h-full rounded-full ' + (cons >= 90 ? 'bg-red-500' : cons >= 70 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: cons + '%' }} /></div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full" style={{ width: cons + '%', background: cons >= 90 ? 'var(--tone-danger-dot)' : cons >= 70 ? 'var(--tone-warning-dot)' : 'var(--tone-success-dot)' }} /></div>
         <p className="mt-1.5 text-xs text-slate-500">Limite {money(c.valor_limite)} · medido {money(c.valor_medido)} · faturado {money(c.valor_faturado)} · saldo {money(c.saldo_a_medir)}</p>
       </button>; }) : <p className="text-sm text-slate-500">Nenhum contrato com valores cadastrados.</p>}
     </div></Card>
