@@ -12,6 +12,7 @@ import { useAuth } from '../../lib/auth';
 import { openDeferredTab } from '../../lib/pdf';
 import { listClientesRef } from '../../lib/api/obras';
 import {
+  duplicarProposta,
   gerarRevisaoProposta,
   getProposta,
   listPropostas,
@@ -30,7 +31,7 @@ import { convertProposalToContractWork } from '../../lib/api/proposalConversion'
 import { useToast } from '../../lib/toast';
 import { dateBr, money, Pill, TableShell, Td, Th } from './product/ProductUi';
 
-const blankItem = (): PropostaItem => ({ descricao: '', unidade: 'un', tipo_cobranca: 'avulso', quantidade: 1, preco_unitario: 0 });
+const blankItem = (): PropostaItem => ({ descricao: '', unidade: 'un', tipo_cobranca: 'avulso', quantidade: 1, preco_unitario: 0, desconto_pct: 0 });
 
 export function PropostasPage() {
   const { member, can } = useAuth();
@@ -74,7 +75,7 @@ export function PropostasPage() {
     setItems(row.itens);
   }, [detail.data]);
 
-  const total = useMemo(() => items.reduce((sum, item) => sum + item.quantidade * item.preco_unitario, 0), [items]);
+  const total = useMemo(() => items.reduce((sum, item) => sum + item.quantidade * item.preco_unitario * (1 - (item.desconto_pct ?? 0) / 100), 0), [items]);
   const proposalTemplates = useMemo(() => templates.data?.filter((template) => template.escopo === 'proposta') ?? [], [templates.data]);
 
   function startNew() {
@@ -104,7 +105,25 @@ export function PropostasPage() {
       tipo_cobranca: service.tipo_cobranca,
       quantidade: 1,
       preco_unitario: service.preco_sugerido,
+      desconto_pct: 0,
     }]);
+  }
+
+  function addAllCatalog() {
+    const all = (catalog.data ?? []).map((service) => ({
+      catalog_item_id: service.id,
+      descricao: service.nome,
+      unidade: service.unidade,
+      tipo_cobranca: service.tipo_cobranca,
+      quantidade: 1,
+      preco_unitario: service.preco_sugerido,
+      desconto_pct: 0,
+    }));
+    if (!all.length) {
+      toast('Nenhum serviço ativo no catálogo.', 'warning');
+      return;
+    }
+    setItems((current) => [...current, ...all]);
   }
 
   async function save() {
@@ -117,6 +136,7 @@ export function PropostasPage() {
       await salvarProposta({
         id: editId ?? undefined,
         ...form,
+        numero: form.numero.trim() || undefined,
         validade: form.validade || null,
         followup_at: form.followup_at || null,
         recipient_name: form.recipient_name || null,
@@ -217,6 +237,20 @@ export function PropostasPage() {
     }
   }
 
+  async function duplicate(id: string) {
+    setBusy(`dup:${id}`);
+    try {
+      const novoId = await duplicarProposta(id);
+      await queryClient.invalidateQueries({ queryKey: ['propostas'] });
+      toast('Proposta duplicada como novo rascunho.', 'success');
+      startEdit(novoId);
+    } catch (error) {
+      toast((error as Error).message, 'error');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function archive(id: string) {
     const accepted = await confirm({ title: 'Arquivar proposta', message: 'Apenas rascunhos podem ser arquivados diretamente.', danger: true, confirmLabel: 'Arquivar' });
     if (!accepted) return;
@@ -251,6 +285,7 @@ export function PropostasPage() {
                 <Td>
                   <div className="flex flex-wrap gap-2">
                     {proposal.status === 'rascunho' || proposal.status === 'enviada' ? <Button variant="ghost" onClick={() => startEdit(proposal.id)}>Editar</Button> : null}
+                    {can('proposta.gerenciar') ? <Button variant="ghost" disabled={busy !== null} onClick={() => void duplicate(proposal.id)}>{busy === `dup:${proposal.id}` ? 'Duplicando...' : 'Duplicar'}</Button> : null}
                     <Button variant="secondary" disabled={busy !== null} onClick={() => void generate(proposal.id)}>{busy === `pdf:${proposal.id}` ? 'Gerando...' : 'PDF'}</Button>
                     {can('proposta.enviar') && ['rascunho', 'enviada'].includes(proposal.status) ? <Button variant="secondary" disabled={busy !== null} onClick={() => void send(proposal.id, proposal.recipient_email)}>{busy === `send:${proposal.id}` ? 'Enviando...' : 'Enviar'}</Button> : null}
                     {can('proposta.converter') && proposal.status === 'aceita' && !proposal.contrato_id ? <Button disabled={busy !== null} onClick={() => openConversion(proposal)}>{busy === `convert:${proposal.id}` ? 'Convertendo...' : 'Criar contrato'}</Button> : null}
@@ -271,7 +306,7 @@ export function PropostasPage() {
                 <option value="">Selecione</option>
                 {(clients.data ?? []).map((client) => <option key={client.value} value={client.value}>{client.label}</option>)}
               </SelectField>
-              <Field label="Número" value={form.numero} onChange={(event) => setForm((current) => ({ ...current, numero: event.target.value }))} />
+              <Field label="Número" value={form.numero} placeholder="Automático ao salvar (PROP-AAAA-NNNNNN)" hint="Deixe em branco para numerar automaticamente." onChange={(event) => setForm((current) => ({ ...current, numero: event.target.value }))} />
               <Field label="Título" value={form.titulo} onChange={(event) => setForm((current) => ({ ...current, titulo: event.target.value }))} />
               <Field label="Validade" type="date" value={form.validade} onChange={(event) => setForm((current) => ({ ...current, validade: event.target.value }))} />
               <SelectField label="Status" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}>
@@ -294,19 +329,24 @@ export function PropostasPage() {
                 <div className="flex flex-wrap gap-2">
                   <SelectField label="Adicionar do catálogo" defaultValue="" onChange={(event) => { addCatalogItem(event.target.value); event.currentTarget.value = ''; }}>
                     <option value="">Selecione</option>
-                    {(catalog.data ?? []).map((service) => <option key={service.id} value={service.id}>{service.code} · {service.nome}</option>)}
+                    {(catalog.data ?? []).map((service) => <option key={service.id} value={service.id}>{service.code} · {service.nome} · {money(service.preco_sugerido)}</option>)}
                   </SelectField>
+                  <Button variant="secondary" disabled={!catalog.data?.length} onClick={addAllCatalog}>Todos do catálogo</Button>
                   <Button variant="secondary" onClick={() => setItems((current) => [...current, blankItem()])}>Item livre</Button>
                 </div>
               </div>
               <div className="mt-4 space-y-3">
                 {items.map((item, index) => (
                   <div key={`${item.id ?? 'new'}-${index}`} className="grid gap-3 rounded-lg bg-slate-50 p-3 md:grid-cols-12 dark:bg-slate-900/40">
-                    <div className="md:col-span-4"><Field label="Descrição" value={item.descricao} onChange={(event) => patchItem(index, { descricao: event.target.value })} /></div>
+                    <div className="md:col-span-3"><Field label="Descrição" value={item.descricao} onChange={(event) => patchItem(index, { descricao: event.target.value })} /></div>
                     <div className="md:col-span-2"><Field label="Unidade" value={item.unidade ?? ''} onChange={(event) => patchItem(index, { unidade: event.target.value })} /></div>
                     <div className="md:col-span-2"><NumField label="Quantidade" value={item.quantidade} onCommit={(n) => patchItem(index, { quantidade: n ?? 0 })} min={0} max={99999} dec={3} soft={[0, 10000]} /></div>
                     <div className="md:col-span-2"><NumField label="Preço unitário" value={item.preco_unitario} onCommit={(n) => patchItem(index, { preco_unitario: n ?? 0 })} min={0} max={9999999} dec={2} soft={[0, 100000]} /></div>
-                    <div className="flex items-end md:col-span-2"><Button variant="danger" onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remover</Button></div>
+                    <div className="md:col-span-1"><NumField label="Desc. %" value={item.desconto_pct ?? 0} onCommit={(n) => patchItem(index, { desconto_pct: n ?? 0 })} min={0} max={100} dec={2} /></div>
+                    <div className="flex items-end justify-between gap-2 md:col-span-2">
+                      <span className="text-sm font-semibold tabular-nums">{money(item.quantidade * item.preco_unitario * (1 - (item.desconto_pct ?? 0) / 100))}</span>
+                      <Button variant="danger" onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remover</Button>
+                    </div>
                   </div>
                 ))}
               </div>

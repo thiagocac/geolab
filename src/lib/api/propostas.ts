@@ -38,6 +38,13 @@ export async function salvarProposta(payload: Record<string, unknown>): Promise<
   return String(data);
 }
 
+// Duplica uma proposta como novo rascunho (cabeçalho + itens; número é gerado pela trigger).
+export async function duplicarProposta(id: string): Promise<string> {
+  const { data, error } = await db.rpc('duplicate_proposal', { p_proposal_id: id });
+  if (error) throw new Error(error.message);
+  return String(data);
+}
+
 export async function converterPropostaContrato(id: string, numero?: string | null): Promise<string> {
   const { data, error } = await db.rpc('convert_accepted_proposal_v2', { p_proposal_id: id, p_contract_number: numero ?? null });
   if (error) throw new Error(error.message);
