@@ -191,6 +191,9 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const rect = (x: number, y: number, w: number, h: number, c: unknown, border?: unknown) => page.drawRectangle({ x, y, width: w, height: h, color: c as undefined, borderColor: border as undefined, borderWidth: border ? 0.6 : 0 });
     const hline = (x1: number, y: number, x2: number, c = LINE, w = 0.6) => page.drawLine({ start: { x: x1, y }, end: { x: x2, y }, thickness: w, color: c });
     const clip = (str: string, size: number, maxw: number, f = F) => { let out = san(str); if (f.widthOfTextAtSize(out, size) <= maxw) return out; while (out.length > 1 && f.widthOfTextAtSize(out + '...', size) > maxw) out = out.slice(0, -1); return out + '...'; };
+    // Encolhe o valor (passo 0,25pt) do tamanho base até um piso p/ caber na largura — mostra o texto
+    // inteiro em vez de truncar; só recorta se ainda estourar no piso (piso 6pt = mínimo do kit).
+    const fitSize = (str: string, base: number, min: number, maxw: number, f = F) => { let s = base; const v = san(str); while (s > min && f.widthOfTextAtSize(v, s) > maxw) s -= 0.25; return s; };
 
     const topo = PH - 30;
     if (ON.logo_laboratorio && logoImg) { const iw = logoImg.width, ih = logoImg.height; const sc = Math.min(150 / iw, 30 / ih); page.drawImage(logoImg, { x: MX, y: topo - ih * sc, width: iw * sc, height: ih * sc }); }
@@ -206,7 +209,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     let y = PH - 108;
     const need = (h: number, contHeader = true) => { if (y - h < BOTTOM) { page = doc.addPage([PW, PH]); y = PH - 50; if (contHeader) { T('Relatório Nº ' + numero + ' (continuação)', MX, y, 8, FB, NAVY); y -= 16; } } };
     const sec = (label: string) => { need(20, false); T(label, MX, y, 8.5, FB, NAVY); y -= 4; hline(MX, y, RIGHT); y -= 10; };
-    const kv = (lbl: string, val: string, x: number, maxw?: number) => { T(lbl, x, y, 6.3, F, FAINT); T(maxw ? clip(val, 8.2, maxw, FB) : val, x, y - 10, 8.2, FB, INK); };
+    const kv = (lbl: string, val: string, x: number, maxw?: number) => { T(lbl, x, y, 6.3, F, FAINT); if (maxw) { const s = fitSize(val, 8.2, 6.4, maxw, FB); T(clip(val, s, maxw, FB), x, y - 10, s, FB, INK); } else T(val, x, y - 10, 8.2, FB, INK); };
 
     const W1 = CW * 0.34 - 10, W2 = CW * 0.28 - 10, W3 = CW * 0.22 - 10, W4 = CW * 0.16;
     kv('INTERESSADO', interessado, MX, W1); kv('OBRA', String(work?.nome || '-'), MX + CW * 0.34, W2); kv('COD. CONCRETAGEM', String(conc.codigo || '-'), MX + CW * 0.62, W3); kv('EMISSÃO', dbr(new Date().toISOString()), MX + CW * 0.84, W4);
@@ -246,7 +249,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       if (ON.dmax && om) pares.push(['Dmax agregado (mm)', om.dmax_agregado_mm != null ? fmt(Number(om.dmax_agregado_mm), 0) : '-']);
       if (ON.componentes && om?.componentes && typeof om.componentes === 'object') { for (const [ck, cv] of Object.entries(om.componentes as Record<string, unknown>)) { if (!cv) continue; const o = (typeof cv === 'object' ? cv : {}) as Record<string, unknown>; const txt = (o.marca || o.procedencia) ? [o.marca, o.procedencia].filter(Boolean).join(' / ') : String(cv); pares.push([ck.charAt(0).toUpperCase() + ck.slice(1), String(txt).slice(0, 28)]); } }
       const colW = CW / 4;
-      for (let i = 0; i < pares.length; i += 4) { need(20, false); for (let j = 0; j < 4 && i + j < pares.length; j++) { const [l, v] = pares[i + j]; const x = MX + j * colW; T(l, x, y, 6.2, F, FAINT); T(clip(v, 7.6, colW - 8), x, y - 9, 7.6, F, INK); } y -= 21; }
+      for (let i = 0; i < pares.length; i += 4) { need(20, false); for (let j = 0; j < 4 && i + j < pares.length; j++) { const [l, v] = pares[i + j]; const x = MX + j * colW; T(l, x, y, 6.2, F, FAINT); const vs = fitSize(v, 7.6, 6.2, colW - 8); T(clip(v, vs, colW - 8), x, y - 9, vs, F, INK); } y -= 21; }
       y -= 4;
     }
 
