@@ -124,3 +124,29 @@ export async function setColaboradorMember(colaboradorId: string, memberId: stri
   const { error } = await db.from('colaboradores').update({ member_id: memberId }).eq('id', colaboradorId);
   if (error) throw new Error(error.message);
 }
+
+// --- Vínculo colaborador ↔ equipamentos (M:N). Uso inicial: travar prensa no rompimento. ---
+export async function listColaboradorEquipamentos(colaboradorId: string): Promise<string[]> {
+  const { data, error } = await db.from('colaborador_equipamentos').select('equipamento_id').eq('colaborador_id', colaboradorId).is('deleted_at', null);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, any>[]).map((r) => String(r.equipamento_id));
+}
+
+// Substitui o conjunto de equipamentos do colaborador (soft-delete dos vivos + insert dos escolhidos).
+export async function setColaboradorEquipamentos(tenantId: string, colaboradorId: string, equipamentoIds: string[]): Promise<void> {
+  const { error: e0 } = await db.from('colaborador_equipamentos').update({ deleted_at: new Date().toISOString() }).eq('colaborador_id', colaboradorId).is('deleted_at', null);
+  if (e0) throw new Error(e0.message);
+  const unique = Array.from(new Set(equipamentoIds));
+  if (!unique.length) return;
+  const rows = unique.map((equipamento_id) => ({ tenant_id: tenantId, colaborador_id: colaboradorId, equipamento_id }));
+  const { error } = await db.from('colaborador_equipamentos').insert(rows);
+  if (error) throw new Error(error.message);
+}
+
+// Para o rompimento: equipamentos ligados ao colaborador do usuário logado (member.id → colaborador → equipamentos).
+export async function getColaboradorEquipamentosByMember(memberId: string): Promise<string[]> {
+  const { data: colab, error: ce } = await db.from('colaboradores').select('id').eq('member_id', memberId).is('deleted_at', null).limit(1).maybeSingle();
+  if (ce) throw new Error(ce.message);
+  if (!colab) return [];
+  return listColaboradorEquipamentos(String(colab.id));
+}

@@ -15,8 +15,9 @@ import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { openDeferredTab } from '../../lib/pdf';
 import type { Column, SortState } from '../../lib/api/types';
-import { FUNCOES, addCert, contarUsoColaborador, listColaboradores, listMembersForLink, saveColaborador, setColaboradorMember, signedCertAnexo, softDeleteCert, softDeleteColaborador, uploadCertAnexo, type ColaboradorRow } from '../../lib/api/colaboradores';
+import { FUNCOES, addCert, contarUsoColaborador, listColaboradorEquipamentos, listColaboradores, listMembersForLink, saveColaborador, setColaboradorEquipamentos, setColaboradorMember, signedCertAnexo, softDeleteCert, softDeleteColaborador, uploadCertAnexo, type ColaboradorRow } from '../../lib/api/colaboradores';
 import { inviteMember } from '../../lib/api/operacao';
+import { listEquipamentosRef, rotuloEquip, TIPOS_EQUIP } from '../../lib/api/equipamentos';
 
 const TIPOS = ['NBR 15146-1 (Moldagem)', 'NBR 15146-2 (Rompimento)', 'CREA', 'CRQ', 'TER', 'Outro'];
 const str = (v: unknown) => String(v ?? '').trim();
@@ -57,6 +58,11 @@ export function ColaboradoresPage() {
   const [senha, setSenha] = useState<string | null>(null);
   const q = useQuery({ queryKey: ['colaboradores'], queryFn: listColaboradores });
   const membersLink = useQuery({ queryKey: ['members-link'], queryFn: listMembersForLink });
+  const equipRefQ = useQuery({ queryKey: ['equipamentos-ref'], queryFn: listEquipamentosRef });
+  const [equipSel, setEquipSel] = useState<Set<string>>(new Set());
+  const colabEquipQ = useQuery({ queryKey: ['colab-equip', editId], queryFn: () => listColaboradorEquipamentos(editId!), enabled: !!editId && open });
+  useEffect(() => { if (editId && colabEquipQ.data) setEquipSel(new Set(colabEquipQ.data)); }, [editId, colabEquipQ.data]);
+  function toggleEquip(id: string) { setEquipSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
   const atual = editId ? (q.data ?? []).find((c) => c.id === editId) : null;
 
   const rows = q.data ?? [];
@@ -79,8 +85,8 @@ export function ColaboradoresPage() {
     return out;
   }, [rows, busca, fFuncao, fCert, soAtivos, sort]);
 
-  function novo() { setEditId(null); setF({ ativo: true, funcoes: [] as string[], vinc: 'none' }); setCf({}); setCertFile(null); setOpen(true); }
-  function editar(c: ColaboradorRow) { setEditId(c.id); setF({ nome: c.nome, documento: c.documento ?? '', registro_profissional: c.registro_profissional ?? '', funcoes: [...c.funcoes], ativo: c.ativo, vinc: c.member_id ?? 'none' }); setCf({}); setCertFile(null); setOpen(true); }
+  function novo() { setEditId(null); setF({ ativo: true, funcoes: [] as string[], vinc: 'none' }); setCf({}); setCertFile(null); setEquipSel(new Set()); setOpen(true); }
+  function editar(c: ColaboradorRow) { setEditId(c.id); setF({ nome: c.nome, documento: c.documento ?? '', registro_profissional: c.registro_profissional ?? '', funcoes: [...c.funcoes], ativo: c.ativo, vinc: c.member_id ?? 'none' }); setCf({}); setCertFile(null); setEquipSel(new Set()); setOpen(true); }
   function toggleFuncao(fn: string) {
     setF((s) => { const cur = Array.isArray(s.funcoes) ? (s.funcoes as string[]) : []; return { ...s, funcoes: cur.includes(fn) ? cur.filter((x) => x !== fn) : [...cur, fn] }; });
   }
@@ -109,10 +115,13 @@ export function ColaboradoresPage() {
       } else if (linked) {
         await setColaboradorMember(id, null); linked = null;
       }
+      await setColaboradorEquipamentos(member.tenant_id, id, [...equipSel]);
       await qc.invalidateQueries({ queryKey: ['colaboradores'] });
       await qc.invalidateQueries({ queryKey: ['colaboradores-ref'] });
       await qc.invalidateQueries({ queryKey: ['members-link'] });
       await qc.invalidateQueries({ queryKey: ['lab-members'] });
+      await qc.invalidateQueries({ queryKey: ['colab-equip', id] });
+      await qc.invalidateQueries({ queryKey: ['minhas-prensas'] });
       setEditId(id); setF((s) => ({ ...s, vinc: linked ?? 'none', nu_email: '' })); toast(msg, 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
@@ -207,6 +216,16 @@ export function ColaboradoresPage() {
               </div>
             ) : null}
             <span className="mt-1 block text-xs text-slate-500">Liga este colaborador a um login. Um usuário fica ligado a no máximo um colaborador.</span>
+          </div>
+          <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+            <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Equipamentos</strong>
+            <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '6px 0 0' }}>Prensas e demais equipamentos deste colaborador. Com 1 prensa vinculada, ela vem travada no rompimento; com várias, ele escolhe só entre as dele.</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+              {(equipRefQ.data ?? []).filter((e) => e.ativo).map((e) => { const on = equipSel.has(e.id); const tipo = TIPOS_EQUIP.find((t) => t.value === e.tipo)?.label ?? e.tipo; return (
+                <button key={e.id} type="button" onClick={() => toggleEquip(e.id)} aria-pressed={on} style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, padding: '6px 12px', minHeight: 32, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--magenta)' : 'var(--line)'), background: on ? 'var(--magenta)' : 'transparent', color: on ? '#fff' : 'var(--ink-soft)' }}>{tipo}: {rotuloEquip(e)}</button>
+              ); })}
+              {(equipRefQ.data ?? []).filter((e) => e.ativo).length === 0 ? <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>Nenhum equipamento ativo cadastrado.</span> : null}
+            </div>
           </div>
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
             <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Certificações</strong>

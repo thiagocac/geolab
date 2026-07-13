@@ -10,7 +10,7 @@ import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
-import { filtrarPorFuncao, listColaboradoresRef } from '../../lib/api/colaboradores';
+import { filtrarPorFuncao, getColaboradorEquipamentosByMember, listColaboradoresRef } from '../../lib/api/colaboradores';
 import { cpPorQr, cpPorNumeracao, type CpQr } from '../../lib/api/etiquetas';
 import { listEquipamentosRef, mapAlocacaoObras, rotuloEquip } from '../../lib/api/equipamentos';
 import { getConfigLab } from '../../lib/api/preferencias';
@@ -78,7 +78,7 @@ const RUPTURA_AF: ReadonlyArray<[string, string]> = [
 ];
 
 export function RompimentosPage() {
-  const { member } = useAuth();
+  const { member, hasRole } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const [tipoFiltro, setTipoFiltro] = useState('compressao');
@@ -138,6 +138,23 @@ export function RompimentosPage() {
   const cfgQ = useQuery({ queryKey: ['config_controle_laudo', member?.tenant_id ?? 'none'], enabled: !!member, queryFn: () => getConfigLab(member?.tenant_id ?? '') });
   const equipRef = useQuery({ queryKey: ['equipamentos-ref'], queryFn: listEquipamentosRef });
   const prensas = useMemo(() => (equipRef.data ?? []).filter((e) => e.tipo === 'prensa' && e.ativo), [equipRef.data]);
+  // Trava de prensa por colaborador (Fase 3): laboratorista com prensa(s) vinculada(s) fica restrito a elas.
+  // admin/admin_consulte/gestor_qualidade escolhem qualquer prensa; sem vínculo = livre (comportamento antigo).
+  const podeQualquerPrensa = hasRole('admin', 'admin_consulte', 'gestor_qualidade');
+  const minhasPrensasQ = useQuery({ queryKey: ['minhas-prensas', member?.id], enabled: !!member?.id && !podeQualquerPrensa, queryFn: () => getColaboradorEquipamentosByMember(member!.id) });
+  const minhasPrensas = useMemo(() => {
+    if (podeQualquerPrensa) return null;
+    const ids = new Set(minhasPrensasQ.data ?? []);
+    const mine = prensas.filter((p) => ids.has(p.id));
+    return mine.length ? mine : null;
+  }, [podeQualquerPrensa, minhasPrensasQ.data, prensas]);
+  const prensaTravada = !!minhasPrensas && minhasPrensas.length === 1;
+  const prensasDisponiveis = minhasPrensas ?? prensas;
+  useEffect(() => {
+    if (!minhasPrensas) return;
+    if (minhasPrensas.length === 1) { if (prensaId !== minhasPrensas[0].id) setPrensaId(minhasPrensas[0].id); }
+    else if (!minhasPrensas.some((p) => p.id === prensaId)) setPrensaId(minhasPrensas[0].id);
+  }, [minhasPrensas, prensaId]);
   // Prensa com unidade de carga cadastrada: pré-marca "Entrar carga" com a unidade dela.
   // Só liga (nunca desliga) — o usuário continua podendo desmarcar/trocar a unidade na sessão.
   useEffect(() => {
@@ -674,7 +691,7 @@ export function RompimentosPage() {
             <label className="flex items-center gap-2"><input type="checkbox" checked={entrarCarga} onChange={(e) => setEntrarCarga(e.target.checked)} /> Entrar carga (converte p/ MPa)</label>
           </div>
           {entrarCarga ? <div className="mt-3 grid gap-3 md:grid-cols-4"><label className="block space-y-1"><span className="text-sm font-bold">Unidade da carga</span><select className="input" value={cargaUnidade} onChange={(e) => setCargaUnidade(e.target.value as UnidadeCarga)}><option value="kn">kN</option><option value="tf">tf</option><option value="kgf">kgf</option></select></label><label className="block space-y-1"><span className="text-sm font-bold">Diâmetro (mm)</span><input className="input" type="number" min={50} max={300} step="1" value={diametro} onChange={(e) => setDiametro(Number(e.target.value) || 100)} onBlur={(e) => setDiametro(clampNum(e.target.value, { min: 50, max: 300, dec: 0 }) ?? 100)} /></label><label className="block space-y-1"><span className="text-sm font-bold">Altura (mm)</span><input className="input" type="number" min={50} max={600} step="1" value={altura} onChange={(e) => setAltura(Number(e.target.value) || 200)} onBlur={(e) => setAltura(clampNum(e.target.value, { min: 50, max: 600, dec: 0 }) ?? 200)} /></label><div className="flex flex-wrap items-end gap-2">{DIMENSOES_CP.map((d) => <button type="button" key={d.label} className="rounded-md border border-slate-200 px-2 py-2 text-xs font-bold" onClick={() => { setDiametro(d.diametroMm); setAltura(d.alturaMm); }}>{d.label}</button>)}</div></div> : null}
-          {(campoPrensa || campoCapeamento) ? <div className="mt-3 grid gap-3 md:grid-cols-2">{campoPrensa ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa utilizada</span><select className="input" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">-</option>{prensas.map((o) => <option key={o.id} value={o.id}>{rotuloEquip(o)}</option>)}</select>{prensaSel ? <span className="mt-1 block text-xs font-bold text-slate-500">{prensaSel.incerteza_mpa != null ? `Incerteza: ± ${nfmt(prensaSel.incerteza_mpa, 2)} MPa` : 'Incerteza não cadastrada'}{prensaSel.validade_calibracao ? ` · calibração até ${fmtDate(prensaSel.validade_calibracao)}` : ''}</span> : prensas.length > 1 ? <span className="mt-1 block text-xs text-slate-500">Selecione a prensa desta sessão — fica gravada em cada CP lançado.</span> : null}{calibVencida ? <span className="mt-1 block text-xs font-bold text-amber-600">⚠ Calibração vencida — o resultado gerará NC (T-14). Não bloqueia o lançamento.</span> : null}</label> : null}{campoCapeamento ? <label className="block space-y-1"><span className="text-sm font-bold">Capeamento / bases</span><select className="input" value={capeamento} onChange={(e) => setCapeamento(e.target.value)}><option value="">-</option>{['Retífica', 'Neoprene', 'Enxofre', 'Sem capeamento'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label> : null}</div> : null}
+          {(campoPrensa || campoCapeamento) ? <div className="mt-3 grid gap-3 md:grid-cols-2">{campoPrensa ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa utilizada</span><select className="input" value={prensaId} onChange={(e) => setPrensaId(e.target.value)} disabled={prensaTravada}><option value="">-</option>{prensasDisponiveis.map((o) => <option key={o.id} value={o.id}>{rotuloEquip(o)}</option>)}</select>{prensaSel ? <span className="mt-1 block text-xs font-bold text-slate-500">{prensaSel.incerteza_mpa != null ? `Incerteza: ± ${nfmt(prensaSel.incerteza_mpa, 2)} MPa` : 'Incerteza não cadastrada'}{prensaSel.validade_calibracao ? ` · calibração até ${fmtDate(prensaSel.validade_calibracao)}` : ''}</span> : prensasDisponiveis.length > 1 ? <span className="mt-1 block text-xs text-slate-500">Selecione a prensa desta sessão — fica gravada em cada CP lançado.</span> : null}{prensaTravada ? <span className="mt-1 block text-xs text-slate-500">Prensa fixada pelo seu cadastro de colaborador.</span> : null}{calibVencida ? <span className="mt-1 block text-xs font-bold text-amber-600">⚠ Calibração vencida — o resultado gerará NC (T-14). Não bloqueia o lançamento.</span> : null}</label> : null}{campoCapeamento ? <label className="block space-y-1"><span className="text-sm font-bold">Capeamento / bases</span><select className="input" value={capeamento} onChange={(e) => setCapeamento(e.target.value)}><option value="">-</option>{['Retífica', 'Neoprene', 'Enxofre', 'Sem capeamento'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label> : null}</div> : null}
           {campoOperador ? <div className="mt-3 grid gap-3 md:grid-cols-2"><label className="block space-y-1"><span className="text-sm font-bold">Operador (quem rompeu)</span><select className="input" value={operadorId} onChange={(e) => setOperadorId(e.target.value)} aria-label="Operador do rompimento"><option value="">-</option>{operadores.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}</select><span className="mt-1 block text-xs text-slate-500">Gravado em cada CP lançado nesta sessão.</span></label></div> : null}
         </div>
       </Card>
