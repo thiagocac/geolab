@@ -161,7 +161,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const usaLote = loteFckEst != null;
     const conforme = usaLote ? (fck > 0 ? (loteFckEst as number) >= fck : null) : (menorExemplar != null && fck > 0 ? menorExemplar >= fck : null);
     const statusTxt = conforme == null ? 'AGUARDANDO IDADE DE CONTROLE' : conforme ? 'CONFORME' : 'NÃO CONFORME';
-    const statusCor = conforme == null ? FAINT : conforme ? OKG : DANGER;
+    const statusCor = conforme == null ? FAINT : conforme ? OKG : MAG;
     const numero = String(conc.numero_relatorio ?? '').trim() || `${String(conc.codigo ?? '').replace(/[^0-9]/g, '').slice(-6).padStart(6, '0')}/${String(conc.data_real ?? conc.data_programada ?? '').slice(0, 4) || '2026'}`;
     const codVal = `LAU-${String(conc.codigo ?? 'XXXX')}`;
     const { data: _exTok } = await admin.from('lab_reports').select('validacao_token').eq('tenant_id', conc.tenant_id).eq('concretagem_id', conc.id).eq('escopo', 'concretagem').is('deleted_at', null).maybeSingle();
