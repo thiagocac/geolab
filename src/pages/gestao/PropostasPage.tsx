@@ -266,7 +266,7 @@ export function PropostasPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeader kicker="Comercial" title="Propostas comerciais v2" description="Catálogo de serviços, revisões imutáveis, PDF padronizado, envio e aceite por link seguro." />
+        <PageHeader kicker="Comercial" title="Propostas comerciais" description="Catálogo de serviços, revisões imutáveis, PDF padronizado, envio e aceite por link seguro." />
         {can('proposta.gerenciar') ? <Button onClick={startNew}>Nova proposta</Button> : null}
       </div>
 

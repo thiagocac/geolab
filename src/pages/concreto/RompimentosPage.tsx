@@ -84,7 +84,7 @@ export function RompimentosPage() {
   const [tipoFiltro, setTipoFiltro] = useState('compressao');
   const [idadeFiltro, setIdadeFiltro] = useState('todas');
   const [nfFiltro, setNfFiltro] = useState('');
-  const [janela, setJanela] = useState<'ate' | 'dia' | 'todos'>('ate');
+  const [janela, setJanela] = useState<'ate' | 'dia' | 'todos'>('dia');
   const [dataRef, setDataRef] = useState(hoje());
   const [adotarPrevista, setAdotarPrevista] = useState(false);
   const [adotarReferencia, setAdotarReferencia] = useState(false);
