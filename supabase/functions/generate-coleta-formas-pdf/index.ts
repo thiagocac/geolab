@@ -7,6 +7,7 @@ import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import QRCode from 'npm:qrcode@1.5.3';
 import { serverError } from '../_shared/response.ts';
+import { RK, drawFooter } from '../_shared/report-kit.ts';
 
 // --- Observabilidade (M1, auditoria 2026-07-07): registra cada invocacao em ef_invocation_log ---
 // (alimenta v_ef_metrics_hourly e o alarme de 5xx/p95 do telemetry-alarm). Best-effort: nunca
@@ -100,7 +101,7 @@ serveWithTelemetry('generate-coleta-formas-pdf', async (req) => {
       page.drawText('Roteiro de coleta de formas', { x: MX, y, size: 11, font: FB, color: INK }); y -= 14;
       page.drawText('Data: ' + dbr(rot.data) + (motorista ? '     Motorista: ' + motorista : '') , { x: MX, y, size: 9, font: F, color: MUTED }); y -= 12;
       page.drawText(paradas.length + ' parada(s)  ·  ' + totalFormas + ' forma(s) a coletar', { x: MX, y, size: 9, font: FB, color: NAVY }); y -= 8;
-      page.drawLine({ start: { x: MX, y }, end: { x: PW - MX, y }, thickness: 1, color: NAVY }); y -= 16;
+      page.drawLine({ start: { x: MX, y }, end: { x: PW - MX, y }, thickness: 1.2, color: RK.magenta }); y -= 16;
     };
     header();
 
@@ -132,6 +133,8 @@ serveWithTelemetry('generate-coleta-formas-pdf', async (req) => {
     // Assinatura do motorista no rodape da ultima pagina.
     page.drawText('Assinatura do motorista: ____________________________________', { x: MX, y: 34, size: 9, font: F, color: MUTED });
 
+    const pages = doc.getPages();
+    drawFooter(pages, F, { x0: MX, x1: PW - MX, y: 14, nota: labNome, hoje: dbr(new Date().toISOString()) });
     const bytes = await doc.save();
     return new Response(bytes, { headers: { 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="roteiro-coleta-formas.pdf"', ...cors } });
   } catch (e) {

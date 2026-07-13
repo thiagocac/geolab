@@ -7,6 +7,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import { serverError } from '../_shared/response.ts';
+import { RK, drawHeader, drawFooter } from '../_shared/report-kit.ts';
 
 // --- Observabilidade (M1, auditoria 2026-07-07): registra cada invocacao em ef_invocation_log ---
 // (alimenta v_ef_metrics_hourly e o alarme de 5xx/p95 do telemetry-alarm). Best-effort: nunca
@@ -128,16 +129,15 @@ serveWithTelemetry('generate-agenda-rompimento-pdf', async (req) => {
     };
 
     const headerBand = (): number => {
-      let y = H - M; const th = 40; fill(x0, y, Wu, th, navy);
-      txt(x0 + 10, y - 15, labName, 12, B, white);
-      txt(x0 + 10, y - 27, 'Controle Tecnologico de Materiais - Concreto', 6.5, F, rgb(0.78, 0.81, 0.9));
-      txtR(x1 - 8, y - 12, 'AGENDA DE ROMPIMENTOS', 11, B, white);
-      const refc = rgb(0.78, 0.81, 0.9);
-      txtR(x1 - 8, y - 23, 'NBR 5739 - 5738 - 16886 - 16889', 5.6, F, refc);
-      txtR(x1 - 8, y - 31, 'app.concresoft.io', 5.6, F, refc);
-      y -= th + 7;
-      txt(x0, y, 'Data de referencia: ' + dbr(ref) + '   |   CPs no recorte: ' + rows.length + (agruparPrensa ? '   |   agrupado por prensa' : '') + (entrarCarga ? '   |   campo: Carga (' + cargaUnidade + ')' : ''), 8.5, F, lbl);
-      return y - 9;
+      const y = drawHeader(page, F, B, {
+        x0, x1, yTop: H - M,
+        labName,
+        subtitle: 'Controle Tecnologico de Materiais - Concreto',
+        title: 'Agenda de rompimentos', kicker: 'Concreto',
+        rightLines: ['NBR 5739 - 5738 - 16886 - 16889', 'app.concresoft.io'],
+      });
+      txt(x0, y - 2, 'Data de referencia: ' + dbr(ref) + '   |   CPs no recorte: ' + rows.length + (agruparPrensa ? '   |   agrupado por prensa' : '') + (entrarCarga ? '   |   campo: Carga (' + cargaUnidade + ')' : ''), 8.5, F, lbl);
+      return y - 13;
     };
     const colHeader = (y: number): number => {
       const hh = 26; fill(x0, y, Wu, hh, navy);
@@ -162,7 +162,7 @@ serveWithTelemetry('generate-agenda-rompimento-pdf', async (req) => {
       txtC(colX(2) + colW(2) / 2, y - rowh + 8, String((r.material_receipts as Rel)?.nota_fiscal ?? '-'), 7, F, ink);
       txtC(colX(3) + colW(3) / 2, y - rowh + 8, String(r.idade_dias ?? '-') + (r.idade_unidade === 'hora' ? 'h' : 'd'), 7, F, ink);
       const atras = !!r.data_prevista_rompimento && String(r.data_prevista_rompimento) < ref && r.situacao === 'pendente';
-      txtC(colX(4) + colW(4) / 2, y - rowh + 8, dbr(r.data_prevista_rompimento) + (atras ? ' !' : ''), 7, F, atras ? rgb(0.78, 0.10, 0.10) : ink);
+      txtC(colX(4) + colW(4) / 2, y - rowh + 8, dbr(r.data_prevista_rompimento) + (atras ? ' !' : ''), 7, F, atras ? RK.warn : ink);
       hl(colX(5) + 6, colX(5) + colW(5) - 6, y - rowh + 6.5, writeline, 0.5);
       hl(colX(6) + 6, colX(6) + colW(6) - 6, y - rowh + 6.5, writeline, 0.5);
     };
@@ -216,7 +216,7 @@ serveWithTelemetry('generate-agenda-rompimento-pdf', async (req) => {
     if (!rows.length) txtC(W / 2, H - 150, 'Nenhum CP no recorte selecionado.', 9, F, lbl);
 
     const pages = doc.getPages();
-    pages.forEach((p, i) => { p.drawText(san(labName + ' - app.concresoft.io'), { x: M, y: 22, size: 6.5, font: F, color: lbl }); p.drawText(san('Pagina ' + (i + 1) + '/' + pages.length), { x: x1 - 52, y: 22, size: 6.5, font: F, color: lbl }); });
+    drawFooter(pages, F, { x0, x1, y: 20, nota: labName + ' - app.concresoft.io', hoje: dbr(ref) });
     const bytes = await doc.save();
     return new Response(bytes, { headers: { ...cors, 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="agenda-rompimentos-' + ref + '.pdf"' } });
   } catch (e) {

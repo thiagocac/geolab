@@ -6,6 +6,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import { serverError } from '../_shared/response.ts';
+import { RK, drawFooter } from '../_shared/report-kit.ts';
 
 // --- Observabilidade (M1): registra cada invocacao em ef_invocation_log. Best-effort. ---
 const _obsSvc = () => createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false } });
@@ -84,7 +85,7 @@ serveWithTelemetry('generate-cp-descarte-pdf', async (req) => {
       page.drawText('TERMO DE DESCARTE DE CORPOS DE PROVA', { x: MX, y, size: 12, font: FB, color: INK }); y -= 15;
       page.drawText('Lote ' + String(lote.numero ?? '-') + '   ·   Data: ' + dbr(lote.data_descarte) + (responsavel ? '   ·   Responsavel: ' + responsavel : ''), { x: MX, y, size: 9, font: F, color: MUTED }); y -= 12;
       page.drawText(fit(F, 'Motivo: ' + String(lote.motivo ?? 'Descarte programado pos-laudo') + '   ·   ' + rows.length + ' corpo(s) de prova', 9, PW - 2 * MX), { x: MX, y, size: 9, font: F, color: MUTED }); y -= 8;
-      page.drawLine({ start: { x: MX, y }, end: { x: PW - MX, y }, thickness: 1, color: NAVY }); y -= 14;
+      page.drawLine({ start: { x: MX, y }, end: { x: PW - MX, y }, thickness: 1.2, color: RK.magenta }); y -= 14;
       if (comCabecalhoTabela) {
         let cx = MX;
         for (const c of cols) { page.drawText(c.t, { x: cx, y, size: 8, font: FB, color: NAVY }); cx += c.w; }
@@ -96,7 +97,6 @@ serveWithTelemetry('generate-cp-descarte-pdf', async (req) => {
 
     rows.forEach((r, i) => {
       if (y < 120) {
-        page.drawText('pag. ' + pageNo, { x: PW - MX - 30, y: 28, size: 8, font: F, color: MUTED });
         page = doc.addPage([PW, PH]); y = PH - 46; pageNo += 1; header(true);
       }
       const conc = (r.concretagens ?? {}) as Record<string, unknown>;
@@ -112,7 +112,7 @@ serveWithTelemetry('generate-cp-descarte-pdf', async (req) => {
     });
 
     // Bloco de declaracao + assinaturas na ultima pagina (quebra se nao couber).
-    if (y < 150) { page.drawText('pag. ' + pageNo, { x: PW - MX - 30, y: 28, size: 8, font: F, color: MUTED }); page = doc.addPage([PW, PH]); y = PH - 60; pageNo += 1; }
+    if (y < 150) { page = doc.addPage([PW, PH]); y = PH - 60; pageNo += 1; }
     y -= 14;
     const decl = 'Declaro que os corpos de prova relacionados acima, ja ensaiados e com resultados constantes em laudo emitido, foram descartados conforme o procedimento interno do laboratorio.';
     // wrap simples da declaracao em ~2 linhas
@@ -127,8 +127,8 @@ serveWithTelemetry('generate-cp-descarte-pdf', async (req) => {
     y -= 11;
     page.drawText('Responsavel pelo descarte' + (responsavel ? ' — ' + fit(F, responsavel, 8, half - 130) : ''), { x: MX, y, size: 8, font: F, color: MUTED });
     page.drawText('Responsavel tecnico', { x: MX + half + 30, y, size: 8, font: F, color: MUTED });
-    page.drawText('pag. ' + pageNo, { x: PW - MX - 30, y: 28, size: 8, font: F, color: MUTED });
-
+    const pages = doc.getPages();
+    drawFooter(pages, F, { x0: MX, x1: PW - MX, y: 16, nota: labNome, hoje: dbr(new Date().toISOString()) });
     const bytes = await doc.save();
     return new Response(bytes, { headers: { 'content-type': 'application/pdf', 'content-disposition': 'inline; filename="termo-descarte-cps.pdf"', ...cors } });
   } catch (e) {
