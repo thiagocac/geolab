@@ -2,10 +2,9 @@
 // Modelo melhorado: logo dinamica do laboratorio (config_lab.logo_path), cabecalho branco, "Numero do relatorio",
 // faixa "Plano de moldagem por caminhao" (do traco), coluna "CP por idade" (qtd x idade), dosagem simplificada
 // (linha detalhada do traco so com concretagem_campos.ficha_dosagem; Contato/Equipe/Ref so com ficha_contato_equipe).
-// Self-contained. pdf-lib (Helvetica, sem WOFF2). QR do concretagem_id (casamento deterministico no OCR). verify_jwt=true.
+// Self-contained. pdf-lib (Helvetica, sem WOFF2). QR do topo removido (sem utilidade na ficha). verify_jwt=true.
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
-import QRCode from 'npm:qrcode@1.5.3';
 import { serverError } from '../_shared/response.ts';
 
 const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, x-client-info, apikey, content-type', 'access-control-allow-methods': 'GET,POST,OPTIONS' };
@@ -28,6 +27,18 @@ const cpPorIdade = (cps: Row[]): string => {
   for (const { d, u } of norm) { const k = d + u; const e = m.find((x) => x[0] === k); if (e) e[1]++; else m.push([k, 1]); }
   return m.map(([k, c]) => c + String.fromCharCode(215) + k).join(' ');
 };
+// --- faixa de numeracao fisica dos CPs de uma amostra (min-max) ---
+const cpTail = (code: string): string => { let i = code.length; while (i > 0 && code[i - 1] >= '0' && code[i - 1] <= '9') i--; return code.slice(i); };
+const isNum = (v: string): boolean => v.length > 0 && Array.from(v).every((ch) => ch >= '0' && ch <= '9');
+const cpRange = (cps: Row[]): string => {
+  const labs = cps.map((c) => s(c.numeracao_lab).trim()).filter((v) => v);
+  const srcv = labs.length ? labs : cps.map((c) => cpTail(s(c.codigo))).filter((v) => v);
+  if (!srcv.length) return '';
+  const uniq = Array.from(new Set(srcv));
+  if (uniq.every(isNum)) { const so = uniq.slice().sort((a, b) => Number(a) - Number(b)); return so[0] === so[so.length - 1] ? so[0] : so[0] + '-' + so[so.length - 1]; }
+  const ss = uniq.slice().sort();
+  return ss.length === 1 ? ss[0] : ss[0] + '-' + ss[ss.length - 1];
+};
 const planoFromPadrao = (p: unknown): { txt: string; total: number } | null => {
   if (!Array.isArray(p) || !p.length) return null;
   const parts: string[] = []; let total = 0;
@@ -49,12 +60,12 @@ const planoFromCps = (map: Map<string, Row[]>): { txt: string; total: number } |
 
 // ============================ DESENHO (puro) ============================
 export async function buildFichaPdf(input: {
-  blank: boolean; labName: string; rt: string; crea: string; qrData: string;
+  blank: boolean; labName: string; rt: string; crea: string;
   logoBytes: Uint8Array | null; logoPng: boolean;
   conc: Row | null; om: Row; cams: Row[]; cpsByReceipt: Map<string, Row[]>;
   showContatoEquipe: boolean; showDosagemDet: boolean;
 }): Promise<Uint8Array> {
-  const { blank, labName, rt, crea, qrData, logoBytes, logoPng, conc, om, cams, cpsByReceipt, showContatoEquipe, showDosagemDet } = input;
+  const { blank, labName, rt, crea, logoBytes, logoPng, conc, om, cams, cpsByReceipt, showContatoEquipe, showDosagemDet } = input;
 
   const pdf = await PDFDocument.create();
   const F = await pdf.embedFont(StandardFonts.Helvetica);
@@ -96,13 +107,9 @@ export async function buildFichaPdf(input: {
   else { txt(x0, y - 18, labName, 12, B, navy); }
   txtC(x0 + Wu / 2, y - 14, 'CONTROLE DE MOLDAGEM DE CORPOS DE PROVA', 13.5, B, navy);
   txtC(x0 + Wu / 2, y - 25, 'Ficha de moldagem de corpos de prova cilindricos - ABNT NBR 5739', 7, F, lbl);
-  // QR (canto sup. direito) + bloco Cod./NBR a esquerda do QR
-  const qb = 40; const qx = x1 - qb;
-  if (!blank && qrData) {
-    try { const qr = QRCode.create(qrData, { errorCorrectionLevel: 'M' }); const nn = qr.modules.size, d = qr.modules.data, qsz = qb, mod = qsz / nn, ox = qx, oy = y - qsz; for (let r = 0; r < nn; r++) for (let c2 = 0; c2 < nn; c2++) if (d[r * nn + c2]) page.drawRectangle({ x: ox + c2 * mod, y: oy + (nn - 1 - r) * mod, width: mod + 0.2, height: mod + 0.2, color: ink }); } catch { /* QR opcional */ }
-  } else { rect(qx, y, qb, qb, nl); txtC(qx + qb / 2, y - 16, 'QR', 5.2, F, lbl); txtC(qx + qb / 2, y - 24, 'concretagem', 4.4, F, lbl); }
+  // bloco Cod./NBR (canto sup. direito) - QR removido (sem utilidade na ficha)
   const codLines = ['Cod.: FO-CIV ____  Rev. ___', 'NBR 5738 / 5739 / 16886 / 16889', 'NBR 12655 / 16868-2'];
-  let cyc = y - 7; for (const ln of codLines) { page.drawText(ln, { x: qx - 8 - tW(F, ln, 5.4), y: cyc, size: 5.4, font: F, color: refc }); cyc -= 8; }
+  let cyc = y - 7; for (const ln of codLines) { page.drawText(ln, { x: x1 - tW(F, ln, 5.4), y: cyc, size: 5.4, font: F, color: refc }); cyc -= 8; }
   y -= 44;
   hl(x0, x1, y, navy, 1.5); y -= 7;
 
@@ -158,7 +165,7 @@ export async function buildFichaPdf(input: {
   type GNode = { label: string; w?: number | null; children?: GNode[] };
   const lf = (l: string, w: number): GNode => ({ label: l, w });
   const tree: GNode[] = [
-    { label: 'CARACTERISTICAS DAS AMOSTRAS', children: [lf('Serie no', 26), lf('Qtde CPs', 30), lf('Abat. (mm)', 34), lf('Nota Fiscal no', 74), lf('Horario moldagem', 54)] },
+    { label: 'CARACTERISTICAS DAS AMOSTRAS', children: [lf('Serie no', 24), lf('Qtde CPs', 26), lf('Numeracao CP', 74), lf('Abat. (mm)', 30), lf('Nota Fiscal no', 66), lf('Horario moldagem', 50)] },
     { label: 'DADOS DA MOLDAGEM', children: [
       { label: 'TRANSPORTE', children: [lf('Inicio da mistura', 50), lf('Chegada a obra', 50)] },
       { label: 'DESCARGA', children: [lf('Inicio', 46), lf('Termino', 46)] },
@@ -194,7 +201,7 @@ export async function buildFichaPdf(input: {
     const qtde = cps.length ? String(cps.length) : '';
     const cppi = cps.length ? cpPorIdade(cps) : '';
     const vol = cm.volume_m3 != null ? Number(cm.volume_m3) : null; if (vol != null) accVol += vol;
-    rowVals.push([s(cm.serie), qtde, s(cm.slump_medido_mm), s(cm.nota_fiscal), s(cm.hora_moldagem), s(cm.hora_saida_usina), s(cm.hora_chegada_obra), s(cm.hora_inicio_descarga), s(cm.hora_fim_descarga), '', vol != null ? String(vol) : '', vol != null ? accVol.toFixed(1) : '', s(cm.serie), s(cm.elementos_concretados), cppi]);
+    rowVals.push([s(cm.serie), qtde, cpRange(cps), s(cm.slump_medido_mm), s(cm.nota_fiscal), s(cm.hora_moldagem), s(cm.hora_saida_usina), s(cm.hora_chegada_obra), s(cm.hora_inicio_descarga), s(cm.hora_fim_descarga), '', vol != null ? String(vol) : '', vol != null ? accVol.toFixed(1) : '', s(cm.serie), s(cm.elementos_concretados), cppi]);
   }
   let yb = yRows;
   for (let i = 0; i < rows; i++) { rect(x0, yb, Wu, rowh); const rv = rowVals[i]; if (rv) for (let k = 0; k < allLeaves.length; k++) { const v = rv[k]; if (v) txt(leafX[k] + 2.5, yb - rowh + 5.5, v, 7, F, ink); } yb -= rowh; }
@@ -239,7 +246,7 @@ async function handler(req: Request): Promise<Response> {
     const db = userClient(req);
 
     let conc: Row | null = null; let cams: Row[] = []; const cpsByReceipt = new Map<string, Row[]>();
-    let labName = 'LABORATORIO'; let rt = ''; let crea = ''; let qrData = ''; let om: Row = {};
+    let labName = 'LABORATORIO'; let rt = ''; let crea = ''; let om: Row = {};
     let concCampos: Row = {}; let logoBytes: Uint8Array | null = null; let logoPng = true;
 
     const loadCfg = async (tenantId: string) => {
@@ -254,11 +261,11 @@ async function handler(req: Request): Promise<Response> {
         .eq('id', concId).is('deleted_at', null).maybeSingle();
       if (error) return done(fail(error.message, 500));
       if (!c) return done(fail('Concretagem nao encontrada (ou sem acesso).', 404));
-      conc = c as Row; labName = s(emb(conc.tenants).name) || labName; qrData = s(conc.id); om = emb(conc.operational_materials);
+      conc = c as Row; labName = s(emb(conc.tenants).name) || labName; om = emb(conc.operational_materials);
       await loadCfg(s(conc.tenant_id));
       const { data: mr } = await db.from('material_receipts').select('id, serie, nota_fiscal, slump_medido_mm, volume_m3, hora_moldagem, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, elementos_concretados').eq('concretagem_id', concId).is('deleted_at', null).order('serie');
       cams = (mr ?? []) as Row[];
-      const { data: cps } = await db.from('corpos_prova').select('receipt_id, idade_dias, idade_unidade').eq('concretagem_id', concId).is('deleted_at', null);
+      const { data: cps } = await db.from('corpos_prova').select('receipt_id, idade_dias, idade_unidade, codigo, numeracao_lab').eq('concretagem_id', concId).is('deleted_at', null);
       for (const cp of (cps ?? []) as Row[]) { const k = s(cp.receipt_id); const a = cpsByReceipt.get(k) ?? []; a.push(cp); cpsByReceipt.set(k, a); }
     } else {
       const { data: u } = await db.auth.getUser();
@@ -266,7 +273,7 @@ async function handler(req: Request): Promise<Response> {
     }
 
     const bytes = await buildFichaPdf({
-      blank, labName, rt, crea, qrData, logoBytes, logoPng, conc, om, cams, cpsByReceipt,
+      blank, labName, rt, crea, logoBytes, logoPng, conc, om, cams, cpsByReceipt,
       showContatoEquipe: onOff(concCampos, 'ficha_contato_equipe', false),
       showDosagemDet: onOff(concCampos, 'ficha_dosagem', false),
     });
