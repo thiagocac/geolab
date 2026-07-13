@@ -9,12 +9,14 @@ import { FilePicker } from '../../components/ui/FilePicker';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Drawer } from '../../components/ui/Drawer';
+import { Modal } from '../../components/ui/Modal';
 import { DataTable } from '../../components/ui/DataTable';
 import { Field, SelectField } from '../../components/ui/Field';
 import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State';
 import { openDeferredTab } from '../../lib/pdf';
 import type { Column, SortState } from '../../lib/api/types';
-import { FUNCOES, addCert, contarUsoColaborador, listColaboradores, saveColaborador, signedCertAnexo, softDeleteCert, softDeleteColaborador, uploadCertAnexo, type ColaboradorRow } from '../../lib/api/colaboradores';
+import { FUNCOES, addCert, contarUsoColaborador, listColaboradores, listMembersForLink, saveColaborador, setColaboradorMember, signedCertAnexo, softDeleteCert, softDeleteColaborador, uploadCertAnexo, type ColaboradorRow } from '../../lib/api/colaboradores';
+import { inviteMember } from '../../lib/api/operacao';
 
 const TIPOS = ['NBR 15146-1 (Moldagem)', 'NBR 15146-2 (Rompimento)', 'CREA', 'CRQ', 'TER', 'Outro'];
 const str = (v: unknown) => String(v ?? '').trim();
@@ -52,7 +54,9 @@ export function ColaboradoresPage() {
   const [soAtivos, setSoAtivos] = useState(true);
   const [sort, setSort] = useState<SortState>({ column: 'nome', direction: 'asc' });
 
+  const [senha, setSenha] = useState<string | null>(null);
   const q = useQuery({ queryKey: ['colaboradores'], queryFn: listColaboradores });
+  const membersLink = useQuery({ queryKey: ['members-link'], queryFn: listMembersForLink });
   const atual = editId ? (q.data ?? []).find((c) => c.id === editId) : null;
 
   const rows = q.data ?? [];
@@ -75,8 +79,8 @@ export function ColaboradoresPage() {
     return out;
   }, [rows, busca, fFuncao, fCert, soAtivos, sort]);
 
-  function novo() { setEditId(null); setF({ ativo: true, funcoes: [] as string[] }); setCf({}); setCertFile(null); setOpen(true); }
-  function editar(c: ColaboradorRow) { setEditId(c.id); setF({ nome: c.nome, documento: c.documento ?? '', registro_profissional: c.registro_profissional ?? '', funcoes: [...c.funcoes], ativo: c.ativo }); setCf({}); setCertFile(null); setOpen(true); }
+  function novo() { setEditId(null); setF({ ativo: true, funcoes: [] as string[], vinc: 'none' }); setCf({}); setCertFile(null); setOpen(true); }
+  function editar(c: ColaboradorRow) { setEditId(c.id); setF({ nome: c.nome, documento: c.documento ?? '', registro_profissional: c.registro_profissional ?? '', funcoes: [...c.funcoes], ativo: c.ativo, vinc: c.member_id ?? 'none' }); setCf({}); setCertFile(null); setOpen(true); }
   function toggleFuncao(fn: string) {
     setF((s) => { const cur = Array.isArray(s.funcoes) ? (s.funcoes as string[]) : []; return { ...s, funcoes: cur.includes(fn) ? cur.filter((x) => x !== fn) : [...cur, fn] }; });
   }
@@ -90,9 +94,26 @@ export function ColaboradoresPage() {
         nome: str(f.nome), documento: str(f.documento) || null, registro_profissional: str(f.registro_profissional) || null,
         funcoes: Array.isArray(f.funcoes) ? (f.funcoes as string[]) : [], ativo: f.ativo !== false,
       });
+      const vinc = String(f.vinc ?? 'none');
+      let linked: string | null = editId ? (atual?.member_id ?? null) : null;
+      let msg = 'Colaborador salvo.';
+      if (vinc === '__new') {
+        const email = str(f.nu_email);
+        if (!email) throw new Error('Informe o e-mail do novo usuário.');
+        const r = await inviteMember({ full_name: str(f.nome), email, role: str(f.nu_role) || 'operador_campo' });
+        if (r.member_id) { await setColaboradorMember(id, r.member_id); linked = r.member_id; }
+        if (r.temp_password) setSenha(r.temp_password);
+        msg = 'Colaborador salvo e usuário criado.';
+      } else if (vinc && vinc !== 'none') {
+        await setColaboradorMember(id, vinc); linked = vinc;
+      } else if (linked) {
+        await setColaboradorMember(id, null); linked = null;
+      }
       await qc.invalidateQueries({ queryKey: ['colaboradores'] });
       await qc.invalidateQueries({ queryKey: ['colaboradores-ref'] });
-      setEditId(id); toast('Colaborador salvo.', 'success');
+      await qc.invalidateQueries({ queryKey: ['members-link'] });
+      await qc.invalidateQueries({ queryKey: ['lab-members'] });
+      setEditId(id); setF((s) => ({ ...s, vinc: linked ?? 'none', nu_email: '' })); toast(msg, 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function adicionarCert() {
@@ -165,6 +186,29 @@ export function ColaboradoresPage() {
           </div>
           <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={f.ativo !== false} onChange={(e) => setF((s) => ({ ...s, ativo: e.target.checked }))} /> Ativo</label>
           <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+            <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Usuário (login)</strong>
+            <div style={{ marginTop: 8 }}>
+              <SelectField label="Vincular a usuário" value={String(f.vinc ?? 'none')} onChange={(e) => setF((s) => ({ ...s, vinc: e.target.value }))}>
+                <option value="none">— Sem usuário —</option>
+                <option value="__new">+ Criar novo usuário para este colaborador</option>
+                {(membersLink.data ?? []).filter((m) => m.colaborador_id === null || m.id === String(f.vinc)).map((m) => <option key={m.id} value={m.id}>{(m.full_name || m.email)} · {m.email}</option>)}
+              </SelectField>
+            </div>
+            {String(f.vinc) === '__new' ? (
+              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginTop: 8 }}>
+                <Field label="E-mail do usuário" type="email" value={String(f.nu_email ?? '')} onChange={(e) => setF((s) => ({ ...s, nu_email: e.target.value }))} />
+                <SelectField label="Papel" value={String(f.nu_role ?? 'operador_campo')} onChange={(e) => setF((s) => ({ ...s, nu_role: e.target.value }))}>
+                  <option value="operador_campo">Operador de campo</option>
+                  <option value="laboratorista">Laboratorista</option>
+                  <option value="gestor_qualidade">Gestor / RT</option>
+                  <option value="financeiro">Financeiro</option>
+                  <option value="admin">Admin</option>
+                </SelectField>
+              </div>
+            ) : null}
+            <span className="mt-1 block text-xs text-slate-500">Liga este colaborador a um login. Um usuário fica ligado a no máximo um colaborador.</span>
+          </div>
+          <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
             <strong style={{ fontSize: 13, color: 'var(--ink)' }}>Certificações</strong>
             {!editId ? <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: '6px 0 0' }}>Salve os dados primeiro para adicionar certificacoes.</p> : (
               <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
@@ -189,6 +233,10 @@ export function ColaboradoresPage() {
           </div>
         </div>
       </Drawer>
+      <Modal open={!!senha} title="Senha provisória" onClose={() => setSenha(null)} footer={<Button onClick={() => setSenha(null)}>Fechar</Button>}>
+        <p className="m-0 text-sm">Anote e repasse com segurança — não será exibida de novo:</p>
+        <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm dark:border-slate-700 dark:bg-slate-900">{senha}</div>
+      </Modal>
     </div>
   );
 }

@@ -25,8 +25,8 @@ export async function listMembers(): Promise<MemberRow[]> {
   if (error) throw new Error(error.message);
   return (data ?? []) as MemberRow[];
 }
-export async function inviteMember(input: { full_name: string; email: string; role: string; cargo?: string; telefone?: string }): Promise<{ temp_password?: string | null }> {
-  return callEF('admin-invite-member', input) as Promise<{ temp_password?: string | null }>;
+export async function inviteMember(input: { full_name: string; email: string; role: string; cargo?: string; telefone?: string }): Promise<{ member_id?: string; temp_password?: string | null }> {
+  return callEF('admin-invite-member', input) as Promise<{ member_id?: string; temp_password?: string | null }>;
 }
 export async function setMemberActive(id: string, active: boolean): Promise<void> {
   const { error } = await db.from('members').update({ active }).eq('id', id);

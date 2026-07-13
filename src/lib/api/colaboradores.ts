@@ -9,7 +9,9 @@ const db = supabase as unknown as { from: (t: string) => any };
 export const FUNCOES = ['Moldador', 'Laboratorista', 'Técnico', 'RT'] as const;
 
 export type Cert = { id: string; tipo: string; numero: string | null; validade: string | null; anexo_path: string | null };
-export type ColaboradorRow = { id: string; nome: string; documento: string | null; registro_profissional: string | null; funcoes: string[]; ativo: boolean; certs: Cert[] };
+export type ColaboradorRow = { id: string; nome: string; documento: string | null; registro_profissional: string | null; funcoes: string[]; ativo: boolean; member_id: string | null; certs: Cert[] };
+export type MemberLink = { id: string; full_name: string; email: string; colaborador_id: string | null };
+export type ColaboradorLink = { id: string; nome: string; member_id: string | null };
 export type ColaboradorRef = { id: string; nome: string; funcoes: string[]; ativo: boolean };
 export type UsoColaborador = { concretagens: number; rompimentos: number };
 
@@ -17,12 +19,12 @@ const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').t
 
 export async function listColaboradores(): Promise<ColaboradorRow[]> {
   const { data, error } = await db.from('colaboradores')
-    .select('id, nome, documento, registro_profissional, funcoes, ativo, colaborador_certificacoes(id, tipo, numero, validade, anexo_path, deleted_at)')
+    .select('id, nome, documento, registro_profissional, funcoes, ativo, member_id, colaborador_certificacoes(id, tipo, numero, validade, anexo_path, deleted_at)')
     .is('deleted_at', null).order('nome', { ascending: true });
   if (error) throw new Error(error.message);
   return ((data ?? []) as Record<string, any>[]).map((r) => ({
     id: String(r.id), nome: r.nome, documento: r.documento ?? null, registro_profissional: r.registro_profissional ?? null,
-    funcoes: Array.isArray(r.funcoes) ? r.funcoes.map(String) : [], ativo: r.ativo !== false,
+    funcoes: Array.isArray(r.funcoes) ? r.funcoes.map(String) : [], ativo: r.ativo !== false, member_id: r.member_id ? String(r.member_id) : null,
     certs: ((r.colaborador_certificacoes ?? []) as Record<string, any>[]).filter((c) => !c.deleted_at).map((c) => ({ id: String(c.id), tipo: c.tipo, numero: c.numero ?? null, validade: c.validade ?? null, anexo_path: c.anexo_path ?? null })),
   }));
 }
@@ -89,4 +91,36 @@ export async function signedCertAnexo(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('anexos').createSignedUrl(path, 300);
   if (error) throw new Error(error.message);
   return data.signedUrl;
+}
+
+// --- Vínculo colaborador ↔ usuário (member). 1:1 garantido por índice único parcial. ---
+export async function listMembersForLink(): Promise<MemberLink[]> {
+  const [mRes, cRes] = await Promise.all([
+    db.from('members').select('id, full_name, email, active').is('deleted_at', null).order('full_name', { ascending: true }),
+    db.from('colaboradores').select('id, member_id').is('deleted_at', null),
+  ]);
+  if (mRes.error) throw new Error(mRes.error.message);
+  if (cRes.error) throw new Error(cRes.error.message);
+  const byMember = new Map<string, string>();
+  for (const r of (cRes.data ?? []) as Record<string, any>[]) if (r.member_id) byMember.set(String(r.member_id), String(r.id));
+  return ((mRes.data ?? []) as Record<string, any>[])
+    .filter((r) => r.active !== false)
+    .map((r) => ({ id: String(r.id), full_name: String(r.full_name ?? ''), email: String(r.email ?? ''), colaborador_id: byMember.get(String(r.id)) ?? null }));
+}
+
+export async function listColaboradoresForLink(): Promise<ColaboradorLink[]> {
+  const { data, error } = await db.from('colaboradores').select('id, nome, member_id').is('deleted_at', null).order('nome', { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, any>[]).map((r) => ({ id: String(r.id), nome: String(r.nome ?? ''), member_id: r.member_id ? String(r.member_id) : null }));
+}
+
+// Define (ou limpa) o member vinculado a um colaborador, preservando 1:1: libera qualquer
+// outro colaborador que ainda aponte para este member antes de gravar.
+export async function setColaboradorMember(colaboradorId: string, memberId: string | null): Promise<void> {
+  if (memberId) {
+    const { error: e0 } = await db.from('colaboradores').update({ member_id: null }).eq('member_id', memberId).neq('id', colaboradorId).is('deleted_at', null);
+    if (e0) throw new Error(e0.message);
+  }
+  const { error } = await db.from('colaboradores').update({ member_id: memberId }).eq('id', colaboradorId);
+  if (error) throw new Error(error.message);
 }

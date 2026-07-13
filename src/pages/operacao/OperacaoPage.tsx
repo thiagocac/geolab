@@ -17,6 +17,7 @@ import {
 } from '../../lib/api/operacao';
 import { listRoles, listPermissionsCatalog } from '../../lib/api/rbac';
 import { getPortalPermissoes, setPortalFinancePermission } from '../../lib/api/portalFinance';
+import { listColaboradoresForLink, setColaboradorMember, saveColaborador } from '../../lib/api/colaboradores';
 
 function fmtLogin(v: string | null): string {
   if (!v) return 'nunca';
@@ -25,7 +26,7 @@ function fmtLogin(v: string | null): string {
 }
 
 export function OperacaoPage() {
-  const { hasRole, can } = useAuth();
+  const { hasRole, can, member } = useAuth();
   const toast = useToast();
   const qc = useQueryClient();
   const confirm = useConfirm();
@@ -49,6 +50,7 @@ export function OperacaoPage() {
   const [ovPerm, setOvPerm] = useState(''); const [ovAllowed, setOvAllowed] = useState('true');
 
   const membersQ = useQuery({ queryKey: ['lab-members'], queryFn: listLabMembers });
+  const colabLinkQ = useQuery({ queryKey: ['colab-link'], queryFn: listColaboradoresForLink });
   const rolesQ = useQuery({ queryKey: ['rbac', 'roles'], queryFn: listRoles });
   const obrasQ = useQuery({ queryKey: ['ref', 'obras', 'op'], queryFn: listObrasRef });
   const permsQ = useQuery({ queryKey: ['rbac', 'perms-catalog'], queryFn: listPermissionsCatalog });
@@ -101,7 +103,16 @@ export function OperacaoPage() {
     try {
       if (!f.full_name || !f.email) throw new Error('Nome e e-mail são obrigatórios.');
       const r = await inviteMember({ full_name: String(f.full_name), email: String(f.email), role: String(f.role || 'operador_campo'), cargo: f.cargo ? String(f.cargo) : undefined, telefone: f.telefone ? String(f.telefone) : undefined });
+      const cmode = String(f.colab_mode ?? 'none');
+      if (r.member_id && cmode === 'link' && f.colab_id) {
+        await setColaboradorMember(String(f.colab_id), r.member_id);
+      } else if (r.member_id && cmode === 'create' && member) {
+        await saveColaborador(member.tenant_id, null, { nome: String(f.full_name), documento: null, registro_profissional: null, funcoes: [], ativo: true, member_id: r.member_id });
+      }
       await qc.invalidateQueries({ queryKey: ['lab-members'] });
+      await qc.invalidateQueries({ queryKey: ['colaboradores'] });
+      await qc.invalidateQueries({ queryKey: ['colaboradores-ref'] });
+      await qc.invalidateQueries({ queryKey: ['colab-link'] });
       setInviteOpen(false); setF({}); setSenha(r.temp_password ?? null);
       toast('Usuário criado.', 'success');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
@@ -209,6 +220,21 @@ export function OperacaoPage() {
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Cargo" value={String(f.cargo ?? '')} onChange={(e) => setF((s) => ({ ...s, cargo: e.target.value }))} />
             <Field label="Telefone" value={String(f.telefone ?? '')} onChange={(e) => setF((s) => ({ ...s, telefone: e.target.value }))} />
+          </div>
+          <div className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+            <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Colaborador (operacional)</div>
+            <SelectField label="Vínculo" value={String(f.colab_mode ?? 'none')} onChange={(e) => setF((s) => ({ ...s, colab_mode: e.target.value }))}>
+              <option value="none">— Sem colaborador —</option>
+              <option value="create">Criar colaborador com este nome</option>
+              <option value="link">Vincular a colaborador existente</option>
+            </SelectField>
+            {String(f.colab_mode) === 'link' ? (
+              <SelectField label="Colaborador" value={String(f.colab_id ?? '')} onChange={(e) => setF((s) => ({ ...s, colab_id: e.target.value }))}>
+                <option value="">Selecione…</option>
+                {(colabLinkQ.data ?? []).filter((c) => c.member_id === null).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </SelectField>
+            ) : null}
+            <span className="block text-xs text-slate-500">O colaborador é o cadastro operacional (moldador/laboratorista/RT) usado em fichas e rompimentos.</span>
           </div>
           <p className="text-xs text-slate-500">Mais papéis e escopo de obras podem ser definidos na ficha após criar.</p>
         </div>
