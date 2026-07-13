@@ -32,6 +32,18 @@ const TITLES: Record<string, string> = {
   cp_atrasado: 'Corpo de prova atrasado',
   calibracao_vencendo: 'Calibracao de equipamento vencendo',
   laudo_disponivel_cliente: 'Laudo disponivel para o cliente',
+  laudo_reprovado: 'Laudo devolvido para revisao',
+  laudo_correcao_solicitada: 'Solicitacao de correcao do cliente',
+  medicao_gerada: 'Medicao aguardando aprovacao',
+  certificacao_vencendo: 'Certificacao de colaborador vencendo',
+  programacao_recebida_cliente: 'Recebemos sua programacao',
+  programacao_confirmada_cliente: 'Concretagem confirmada',
+  laudo_reemitido_cliente: 'Laudo revisado disponivel',
+  concretagem_programada: 'Concretagens do dia',
+  digest_executivo: 'Resumo do dia',
+  resultado_parcial_cliente: 'Novos resultados de ensaio',
+  boas_vindas: 'Bem-vindo(a) a Concresoft',
+  boas_vindas_cliente: 'Seu acesso ao portal esta pronto',
 };
 const KICKERS: Record<string, string> = {
   laudo_pronto: 'LAUDO',
@@ -39,6 +51,18 @@ const KICKERS: Record<string, string> = {
   cp_atrasado: 'AGENDA DE ROMPIMENTO',
   calibracao_vencendo: 'CALIBRACAO',
   laudo_disponivel_cliente: 'LAUDO',
+  laudo_reprovado: 'LAUDO',
+  laudo_correcao_solicitada: 'LAUDO',
+  medicao_gerada: 'MEDICAO',
+  certificacao_vencendo: 'CERTIFICACAO',
+  programacao_recebida_cliente: 'PROGRAMACAO',
+  programacao_confirmada_cliente: 'PROGRAMACAO',
+  laudo_reemitido_cliente: 'LAUDO',
+  concretagem_programada: 'AGENDA DE CONCRETAGEM',
+  digest_executivo: 'RESUMO EXECUTIVO',
+  resultado_parcial_cliente: 'RESULTADO',
+  boas_vindas: 'ACESSO',
+  boas_vindas_cliente: 'ACESSO',
 };
 const GRAD = 'linear-gradient(135deg,#182863 0%,#3E2D71 55%,#C5117E 100%)';
 const BRAND_LOGO = 'https://app.concresoft.io/brand/concresoft-lockup-white-2x.png';

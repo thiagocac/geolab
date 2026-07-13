@@ -234,6 +234,8 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .vt-tr{position:absolute;top:0;left:0;display:flex;width:100%;border-bottom:1px solid var(--line-soft);transition:background var(--dur-1) var(--ease-out)}
 .vt-tr:hover{background:var(--surface-2)}
 .vt-td{flex-shrink:0;padding:9px 12px;font-size:13.5px;color:var(--ink);display:flex;flex-direction:column;justify-content:center;min-width:0}
+/* v242: badge de status contido na coluna — quebra em vez de vazar sobre a coluna vizinha (ex.: "Aguardando confirmação") */
+.vt-td .badge{white-space:normal;max-width:100%}
 .vt-empty{padding:28px;text-align:center;color:var(--ink-faint);font-size:14px}
 
 /* ---- layout: sidebar + topbar ---- */

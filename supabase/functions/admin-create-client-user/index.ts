@@ -49,7 +49,38 @@ serveWithTelemetry('admin-create-client-user', async (req) => {
     const rows = workIds.map((work_id) => ({ tenant_id: caller.tenant_id, member_id: member.id, work_id }));
     const { error: eo } = await admin.from('member_obras').insert(rows);
     if (eo) return json({ ok: false, error: eo.message }, 400);
-    return json({ ok: true, member_id: member.id, username: email, temp_password: password });
+
+    // Boas-vindas branded (Concresoft Email Kit) via send-notification. Fail-safe: nunca bloqueia a criacao.
+    let welcomeSent = false;
+    if (clean(body.send_welcome ?? 'true') !== 'false') {
+      try {
+        const { data: settings } = await admin.from('notification_dispatch_settings').select('dispatch_secret').eq('id', true).maybeSingle();
+        const secret = clean(settings?.dispatch_secret);
+        const appUrl = Deno.env.get('APP_URL') ?? 'https://lab.consultegeo.org';
+        let actionLink = appUrl + '/entrar';
+        try {
+          const link = await admin.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: appUrl + '/redefinir-senha' } });
+          const al = (link.data as { properties?: { action_link?: string } } | null)?.properties?.action_link;
+          if (al) actionLink = String(al);
+        } catch (_e) { /* sem link: cai na tela de login */ }
+        if (secret) {
+          const { data: t } = await admin.from('tenants').select('name').eq('id', caller.tenant_id).maybeSingle();
+          await fetch(url + '/functions/v1/send-notification', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-notify-secret': secret },
+            body: JSON.stringify({
+              tenant_id: caller.tenant_id, event_type: 'boas_vindas_cliente', email,
+              dedupe_key: 'boas_vindas_cliente:' + member.id, entity_type: 'member', entity_id: member.id,
+              title: 'Seu acesso ao portal esta pronto', tenant_name: clean(t?.name),
+              body: 'Voce foi cadastrado no portal do cliente' + (clean(t?.name) ? ' de ' + clean(t?.name) : '') + '. Clique no botao abaixo para definir sua senha e acompanhar seus ensaios, laudos e programacoes.',
+              cta_label: 'Definir minha senha', deep_link: actionLink,
+            }),
+          });
+          welcomeSent = true;
+        }
+      } catch (_e) { /* boas-vindas nunca bloqueia a criacao do usuario */ }
+    }
+    return json({ ok: true, member_id: member.id, username: email, temp_password: password, welcome_sent: welcomeSent });
   } catch (e) {
     return json({ ok: false, error: (e as Error).message }, 500);
   }

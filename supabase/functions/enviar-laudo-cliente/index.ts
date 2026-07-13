@@ -74,12 +74,15 @@ serveWithTelemetry('enviar-laudo-cliente', async (req) => {
     let bin = ''; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
     const b64 = btoa(bin);
     const fname = pdfFilename(rep.numero);
-    const subject = 'Laudo ' + rep.numero + (Number(rep.revisao) > 0 ? ' (R' + rep.revisao + ')' : '');
-    const message = 'Segue em anexo o laudo de ensaio ' + rep.numero + ' (revisao R' + (rep.revisao ?? 0) + ').';
+    const isReemissao = Number(rep.revisao) > 0;
+    const subject = 'Laudo ' + rep.numero + (isReemissao ? ' (R' + rep.revisao + ') - revisado' : '');
+    const message = isReemissao
+      ? 'Segue em anexo a revisao R' + rep.revisao + ' do laudo de ensaio ' + rep.numero + ', com as correcoes aplicadas. Esta versao substitui as anteriores.'
+      : 'Segue em anexo o laudo de ensaio ' + rep.numero + ' (revisao R' + (rep.revisao ?? 0) + ').';
 
     const sendPayload = {
       tenant_id: rep.tenant_id,
-      event_type: 'laudo_disponivel_cliente',
+      event_type: isReemissao ? 'laudo_reemitido_cliente' : 'laudo_disponivel_cliente',
       email: to,
       dedupe_key: dedupe,
       entity_type: 'lab_report',
