@@ -2226,6 +2226,7 @@ export type Database = {
       }
       material_receipts: {
         Row: {
+          aditivo_obra: string | null
           agua_litros: number | null
           concretagem_id: string
           created_at: string
@@ -2237,6 +2238,7 @@ export type Database = {
           hora_inicio_descarga: string | null
           hora_moldagem: string | null
           hora_saida_usina: string | null
+          houve_adicao_aditivo: boolean
           houve_adicao_agua: boolean
           id: string
           motivo_rejeicao: string | null
@@ -2255,6 +2257,7 @@ export type Database = {
           volume_m3: number | null
         }
         Insert: {
+          aditivo_obra?: string | null
           agua_litros?: number | null
           concretagem_id: string
           created_at?: string
@@ -2266,6 +2269,7 @@ export type Database = {
           hora_inicio_descarga?: string | null
           hora_moldagem?: string | null
           hora_saida_usina?: string | null
+          houve_adicao_aditivo?: boolean
           houve_adicao_agua?: boolean
           id?: string
           motivo_rejeicao?: string | null
@@ -2284,6 +2288,7 @@ export type Database = {
           volume_m3?: number | null
         }
         Update: {
+          aditivo_obra?: string | null
           agua_litros?: number | null
           concretagem_id?: string
           created_at?: string
@@ -2295,6 +2300,7 @@ export type Database = {
           hora_inicio_descarga?: string | null
           hora_moldagem?: string | null
           hora_saida_usina?: string | null
+          houve_adicao_aditivo?: boolean
           houve_adicao_agua?: boolean
           id?: string
           motivo_rejeicao?: string | null

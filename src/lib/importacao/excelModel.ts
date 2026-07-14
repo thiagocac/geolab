@@ -81,7 +81,6 @@ export function fieldsForResource(resource: ImportResource, cfg?: { concretagem_
     { key: 'capeamento', header: 'capeamento', type: 'text', enabled: has(ec, 'capeamento'), example: 'retificado' },
     { key: 'equipamento_numero_serie', header: 'equipamento_numero_serie', type: 'text', enabled: has(ec, 'prensa') },
     { key: 'operador_nome', header: 'operador_nome', type: 'text', enabled: has(ec, 'operador') },
-    { key: 'massa_cp_g', header: 'massa_cp_g', type: 'number', enabled: has(ec, 'massa_cp_g') },
     { key: 'observacao', header: 'observacao', type: 'text' },
   ] as ImportField[]).filter((f) => f.enabled !== false);
 }

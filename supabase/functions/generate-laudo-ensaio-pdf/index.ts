@@ -114,7 +114,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const eqIds = [...new Set(tlist.map((t) => t.equipamento_id).filter(Boolean))] as string[];
     const [{ data: cps }, { data: receipts }, { data: equips }] = await Promise.all([
       cpIds.length ? sb.from('corpos_prova').select('id, codigo, data_moldagem').in('id', cpIds) : Promise.resolve({ data: [] }),
-      rcIds.length ? sb.from('material_receipts').select('id, nota_fiscal, serie, external_key, placa, motorista, volume_m3, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, slump_medido_mm, temperatura_concreto_c, houve_adicao_agua, agua_litros, rejeitado, motivo_rejeicao, elementos_concretados, observacoes').in('id', rcIds) : Promise.resolve({ data: [] }),
+      rcIds.length ? sb.from('material_receipts').select('id, nota_fiscal, serie, external_key, placa, motorista, volume_m3, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, slump_medido_mm, temperatura_concreto_c, houve_adicao_agua, agua_litros, houve_adicao_aditivo, aditivo_obra, rejeitado, motivo_rejeicao, elementos_concretados, observacoes').in('id', rcIds) : Promise.resolve({ data: [] }),
       eqIds.length ? sb.from('equipamentos').select('id, marca_modelo, numero_serie, classe, numero_certificado, validade_calibracao, lab_calibrador, incerteza_mpa').in('id', eqIds) : Promise.resolve({ data: [] }),
     ]);
     const cpById = new Map((cps ?? []).map((r: Record<string, unknown>) => [r.id, r]));
@@ -131,8 +131,10 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     const defCon = (k: string, d: boolean) => (CC[k] === undefined ? d : CC[k] !== false);
     ['dim_hd', 'tipo_ruptura', 'dados_concreto', 'cimento', 'cura', 'equipamentos', 'responsavel_tecnico', 'qr_validacao', 'logo_laboratorio', 'elemento', 'usina', 'recebimento', 'amostragem', 'aceitacao', 'norma_5739', 'norma_5738', 'norma_16889', 'norma_16886'].forEach((k) => (ON[k] = defOn(k, true)));
     ['aditivo', 'acreditacao', 'dmax', 'carga', 'temperatura', 'ficha_moldagem', 'observacoes', 'incerteza', 'moldador', 'contato', 'local_ensaio', 'componentes', 'certificacoes'].forEach((k) => (ON[k] = defOn(k, false)));
-    ['nota_fiscal', 'placa', 'motorista', 'volume_m3', 'horarios_transporte', 'horarios_descarga', 'hora_moldagem', 'slump', 'temperatura_concreto', 'agua_adicionada', 'rejeicao', 'elementos_concretados', 'observacoes_caminhao'].forEach((k) => (RON[k] = defRon(k, true)));
-    ['traco_fck', 'fornecedor', 'data_hora', 'local_peca', 'volume_programado', 'dimensao_cp', 'moldador', 'clima', 'temperatura_ambiente', 'bombeado', 'observacoes', 'padrao_moldagem'].forEach((k) => (CON[k] = defCon(k, true)));
+    ['nota_fiscal', 'placa', 'motorista', 'volume_m3', 'horarios_transporte', 'horarios_descarga', 'hora_moldagem', 'slump', 'temperatura_concreto', 'agua_adicionada', 'aditivo_adicionado', 'rejeicao', 'elementos_concretados', 'observacoes_caminhao'].forEach((k) => (RON[k] = defRon(k, true)));
+    ['traco_fck', 'fornecedor', 'data_hora', 'local_peca', 'volume_programado', 'dimensao_cp', 'moldador', 'bombeado', 'observacoes', 'padrao_moldagem'].forEach((k) => (CON[k] = defCon(k, true)));
+    // Clima e Temp. ambiente nascem desligados (revisão v247): só saem no bloco Dados do concreto se o lab habilitar.
+    ['clima', 'temperatura_ambiente'].forEach((k) => (CON[k] = defCon(k, false)));
     const EC = (cfg?.ensaio_campos ?? {}) as Record<string, unknown>;
     if (!(EC['tipo_ruptura'] === undefined ? false : EC['tipo_ruptura'] !== false)) ON.tipo_ruptura = false;
 
@@ -294,6 +296,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
         if (RON.slump && rc.slump_medido_mm != null) partes.push('Slump ' + fmt(Number(rc.slump_medido_mm), 0) + ' mm');
         if (ON.temperatura && rc.temperatura_concreto_c != null) partes.push('Temp. concreto ' + fmt(Number(rc.temperatura_concreto_c), 0) + ' °C');
         if (RON.agua_adicionada && rc.houve_adicao_agua) partes.push('Água adicionada ' + fmt(Number(rc.agua_litros ?? 0), 0) + ' L');
+        if (RON.aditivo_adicionado && rc.houve_adicao_aditivo) partes.push('Aditivo em obra' + (rc.aditivo_obra ? ' ' + String(rc.aditivo_obra) : ''));
         if (RON.rejeicao && rc.rejeitado) partes.push('Rejeitado: ' + String(rc.motivo_rejeicao || '-'));
         const line = partes.join('  |  ') || 'Sem campos opcionais habilitados';
         T(clip(line, 6.2, CW - 10), MX + 5, y - 7, 6.2, F, MUTED); y -= 11;

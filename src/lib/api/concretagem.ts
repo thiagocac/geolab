@@ -25,7 +25,7 @@ export type ConcretagemRow = {
 };
 export type CaminhaoRow = {
   id: string; serie: number | null; nota_fiscal: string; placa: string | null; motorista?: string | null; volume_m3: number | null;
-  slump_medido_mm: number | null; temperatura_concreto_c: number | null; hora_saida_usina?: string | null; hora_chegada_obra?: string | null; hora_inicio_descarga?: string | null; hora_fim_descarga?: string | null; hora_moldagem?: string | null; houve_adicao_agua?: boolean | null; agua_litros?: number | null; rejeitado?: boolean | null; motivo_rejeicao?: string | null; elementos_concretados?: string | null; observacoes?: string | null;
+  slump_medido_mm: number | null; temperatura_concreto_c: number | null; hora_saida_usina?: string | null; hora_chegada_obra?: string | null; hora_inicio_descarga?: string | null; hora_fim_descarga?: string | null; hora_moldagem?: string | null; houve_adicao_agua?: boolean | null; agua_litros?: number | null; houve_adicao_aditivo?: boolean | null; aditivo_obra?: string | null; rejeitado?: boolean | null; motivo_rejeicao?: string | null; elementos_concretados?: string | null; observacoes?: string | null;
 };
 
 const SEL = 'id, codigo, numero_relatorio, status, origem, data_programada, data_real, hora_programada, hora_inicio, hora_fim, fornecedor_texto, fck_previsto, traco_texto, dimensao_cp, local_texto, operational_material_id, volume_programado_m3, volume_lancado_m3, bombeado, clima, temperatura_ambiente_c, moldador_id, laboratorista_id, formas_previstas, observacoes, metadata, client_id, work_id, lab_clients(razao_social, nome_fantasia), client_works(nome, cidade, uf), operational_materials(nome, padrao_moldagem, fck_mpa, slump_previsto_cm, slump_tolerancia_cm, validade_concreto_minutos), moldador:colaboradores!moldador_id(nome), laboratorista:colaboradores!laboratorista_id(nome)';
@@ -115,7 +115,7 @@ export async function listEquipeColaboradores(): Promise<EquipeColab[]> {
   return ((data ?? []) as Record<string, any>[]).map((r) => ({ id: String(r.id), nome: String(r.nome ?? r.id), funcoes: Array.isArray(r.funcoes) ? r.funcoes.map(String) : [] }));
 }
 
-const SEL_CAM = 'id, serie, nota_fiscal, placa, motorista, volume_m3, slump_medido_mm, temperatura_concreto_c, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, houve_adicao_agua, agua_litros, rejeitado, motivo_rejeicao, elementos_concretados, observacoes';
+const SEL_CAM = 'id, serie, nota_fiscal, placa, motorista, volume_m3, slump_medido_mm, temperatura_concreto_c, hora_saida_usina, hora_chegada_obra, hora_inicio_descarga, hora_fim_descarga, hora_moldagem, houve_adicao_agua, agua_litros, houve_adicao_aditivo, aditivo_obra, rejeitado, motivo_rejeicao, elementos_concretados, observacoes';
 export async function listCaminhoes(concId: string): Promise<CaminhaoRow[]> {
   const { data, error } = await db.from('material_receipts').select(SEL_CAM).eq('concretagem_id', concId).is('deleted_at', null).order('serie');
   if (error) throw new Error(error.message);
@@ -154,10 +154,11 @@ export async function ultimoPadraoMoldagem(tenantId: string): Promise<PadraoMold
 }
 
 function sanitizeCaminhaoValues(values: Record<string, unknown>): Record<string, unknown> {
-  const allowed = ['nota_fiscal', 'placa', 'motorista', 'volume_m3', 'slump_medido_mm', 'temperatura_concreto_c', 'hora_saida_usina', 'hora_chegada_obra', 'hora_inicio_descarga', 'hora_fim_descarga', 'hora_moldagem', 'houve_adicao_agua', 'agua_litros', 'rejeitado', 'motivo_rejeicao', 'elementos_concretados', 'observacoes', 'external_key'];
+  const allowed = ['nota_fiscal', 'placa', 'motorista', 'volume_m3', 'slump_medido_mm', 'temperatura_concreto_c', 'hora_saida_usina', 'hora_chegada_obra', 'hora_inicio_descarga', 'hora_fim_descarga', 'hora_moldagem', 'houve_adicao_agua', 'agua_litros', 'houve_adicao_aditivo', 'aditivo_obra', 'rejeitado', 'motivo_rejeicao', 'elementos_concretados', 'observacoes', 'external_key'];
   const out: Record<string, unknown> = {};
   for (const key of allowed) if (values[key] !== undefined) out[key] = values[key];
   out.houve_adicao_agua = values.houve_adicao_agua === true;
+  out.houve_adicao_aditivo = values.houve_adicao_aditivo === true;
   out.rejeitado = values.rejeitado === true;
   return out;
 }

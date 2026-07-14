@@ -42,8 +42,8 @@ const fmtDate = (v: string | null | undefined) => !v ? '-' : v.split('-').revers
 const nfmt = (n: number | null | undefined, d = 1) => n == null || !Number.isFinite(n) ? '-' : n.toFixed(d).replace('.', ',');
 const normalize = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-type EditState = { valor?: string; carga?: string; data?: string; hora?: string; tipo_ruptura?: string; massa_cp_g?: string; numeracao?: string };
-type ImportLine = { key: string; numero: string; resultado: string; carga?: string; unidade?: string; massa?: string; data: string; hora: string; tipo: string; cp?: CpRompimento; ok: boolean; msg: string; conf?: number; origem?: string };
+type EditState = { valor?: string; carga?: string; data?: string; hora?: string; tipo_ruptura?: string; numeracao?: string };
+type ImportLine = { key: string; numero: string; resultado: string; carga?: string; unidade?: string; data: string; hora: string; tipo: string; cp?: CpRompimento; ok: boolean; msg: string; conf?: number; origem?: string };
 
 function cpNumero(c: CpRompimento): string {
   const md = c.metadata ?? {};
@@ -176,7 +176,6 @@ export function RompimentosPage() {
   const campoTipo = EC.tipo_ruptura !== false;
   const campoPrensa = EC.prensa !== false;
   const campoCapeamento = EC.capeamento !== false;
-  const campoMassa = EC.massa_cp_g !== false;
   const campoOperador = EC.operador !== false;
   const campoNumeracao = EC.numeracao_lab !== false;
 
@@ -352,7 +351,6 @@ export function RompimentosPage() {
   function effectiveValor(cp: CpRompimento): string { return edits[cp.id]?.valor ?? (resultadoAtual(cp)?.resultado_valor != null ? String(resultadoAtual(cp)?.resultado_valor) : ''); }
   function effectiveCarga(cp: CpRompimento): string { return edits[cp.id]?.carga ?? (resultadoAtual(cp)?.carga_ruptura_kn != null ? String(resultadoAtual(cp)?.carga_ruptura_kn) : ''); }
   function effectiveTipo(cp: CpRompimento): string { return edits[cp.id]?.tipo_ruptura ?? resultadoAtual(cp)?.tipo_ruptura ?? ''; }
-  function effectiveMassa(cp: CpRompimento): string { return edits[cp.id]?.massa_cp_g ?? (resultadoAtual(cp)?.massa_cp_g != null ? String(resultadoAtual(cp)?.massa_cp_g) : ''); }
 
   async function salvarLinhas(linhas: CpRompimento[]) {
     if (!member) return;
@@ -376,7 +374,6 @@ export function RompimentosPage() {
           cp_altura_mm: altura,
           tipo_ruptura: campoTipo ? effectiveTipo(cp) || null : null,
           capeamento: campoCapeamento ? capeamento || resultadoAtual(cp)?.capeamento || null : null,
-          massa_cp_g: campoMassa && effectiveMassa(cp) ? Number(effectiveMassa(cp)) : null,
           equipamento_id: campoPrensa ? prensaId || resultadoAtual(cp)?.equipamento_id || null : null,
           operador_id: campoOperador ? (operadorId || resultadoAtual(cp)?.operador_id || null) : null,
           data_rompimento: data,
@@ -439,7 +436,6 @@ export function RompimentosPage() {
       data_rompimento: effectiveData(r),
       hora_rompimento: effectiveHora(r),
       tipo_ruptura: effectiveTipo(r),
-      massa_cp_g: effectiveMassa(r),
     }));
     await exportExcel(
       { title: 'Modelo de rompimentos', filename: `modelo-rompimentos-${dataRef}.xlsx` },
@@ -459,7 +455,6 @@ export function RompimentosPage() {
           { key: 'data_rompimento', header: 'data_rompimento', align: 'center' },
           { key: 'hora_rompimento', header: 'hora_rompimento', align: 'center' },
           { key: 'tipo_ruptura', header: 'tipo_ruptura', align: 'center' },
-          { key: 'massa_cp_g', header: 'massa_cp_g', align: 'center' },
         ],
         rows: data,
       },
@@ -534,13 +529,12 @@ export function RompimentosPage() {
           const resultado = get('resultado_mpa', 'resultado', 'mpa');
           const carga = get('carga', 'carga_kn', 'carga_ruptura');
           const unidade = get('unidade_carga', 'unidade') || 'kn';
-          const massa = get('massa_cp_g', 'massa');
           const data = get('data_rompimento', 'data realizado', 'data_realizado', 'data');
           const hora = get('hora_rompimento', 'hora');
           const tipo = get('tipo_ruptura', 'ruptura');
           const cp = rows.find((c) => c.id === key || normalize(cpNumero(c)) === normalize(numero) || normalize(c.codigo) === normalize(numero));
           const temValor = !!resultado || !!carga;
-          return { key: key || `linha-${idx + 2}`, numero, resultado, carga, unidade, massa, data, hora, tipo, cp, ok: !!cp && temValor, msg: cp ? (temValor ? 'pronto' : 'sem resultado/carga') : 'CP não localizado' } satisfies ImportLine;
+          return { key: key || `linha-${idx + 2}`, numero, resultado, carga, unidade, data, hora, tipo, cp, ok: !!cp && temValor, msg: cp ? (temValor ? 'pronto' : 'sem resultado/carga') : 'CP não localizado' } satisfies ImportLine;
         });
         setImportLines(linhas);
       } catch (e) { toast((e as Error).message, 'error'); }
@@ -564,7 +558,7 @@ export function RompimentosPage() {
           const carga = l.carga != null ? String(l.carga) : undefined;
           const cp = rows.find((r) => normalize(cpNumero(r)) === normalize(numero) || normalize(r.codigo) === normalize(numero) || normalize(r.numeracao_lab ?? '') === normalize(numero));
           const temValor = !!resultado || !!carga;
-          return { key: numero || `linha-${idx + 1}`, numero, resultado, carga, unidade: 'kn', massa: '', data: l.data_rompimento ?? '', hora: l.hora ?? '', tipo: l.tipo_ruptura ?? '', cp, ok: !!cp && temValor, conf: l.conf ?? undefined, origem: 'importacao_agenda_ocr', msg: cp ? (temValor ? 'pronto' : 'sem resultado') : 'CP não localizado' } satisfies ImportLine;
+          return { key: numero || `linha-${idx + 1}`, numero, resultado, carga, unidade: 'kn', data: l.data_rompimento ?? '', hora: l.hora ?? '', tipo: l.tipo_ruptura ?? '', cp, ok: !!cp && temValor, conf: l.conf ?? undefined, origem: 'importacao_agenda_ocr', msg: cp ? (temValor ? 'pronto' : 'sem resultado') : 'CP não localizado' } satisfies ImportLine;
         });
         setImportLines(linhas); setImportOpen(true);
       } catch (e) { toast((e as Error).message, 'error'); } finally { setLendoAgenda(false); }
@@ -586,7 +580,6 @@ export function RompimentosPage() {
             resultado_valor: temResultado ? Number(String(l.resultado).replace(',', '.')) : null,
             carga_ruptura: l.carga ? Number(String(l.carga).replace(',', '.')) : null,
             carga_unidade: (l.unidade as UnidadeCarga) || 'kn',
-            massa_cp_g: l.massa ? Number(String(l.massa).replace(',', '.')) : null,
             cp_diametro_mm: diametro,
             cp_altura_mm: altura,
             tipo_ruptura: l.tipo || null,
@@ -726,7 +719,7 @@ export function RompimentosPage() {
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                 <tr>
                   <th className="px-3 py-2"><input type="checkbox" aria-label="Selecionar todos" checked={filtradas.length > 0 && selecionados.size === filtradas.length} onChange={toggleTodos} /></th>
-                  <th className="px-3 py-2">Numeração</th><th className="px-3 py-2">Data prevista</th><th className="px-3 py-2">Data realizado</th><th className="px-3 py-2">{entrarCarga ? `Carga (${cargaUnidade})` : 'Resultado (MPa)'}</th><th className="px-3 py-2">Esperado (MPa)</th><th className="px-3 py-2">Nota fiscal</th><th className="px-3 py-2">Idade controle</th>{campoPrensa ? <th className="px-3 py-2">Prensa</th> : null}{campoTipo ? <th className="px-3 py-2">Ruptura</th> : null}{campoMassa ? <th className="px-3 py-2">Massa (g)</th> : null}<th className="px-3 py-2">Descartar</th><th className="px-3 py-2">Ações</th>
+                  <th className="px-3 py-2">Numeração</th><th className="px-3 py-2">Data prevista</th><th className="px-3 py-2">Data realizado</th><th className="px-3 py-2">{entrarCarga ? `Carga (${cargaUnidade})` : 'Resultado (MPa)'}</th><th className="px-3 py-2">Esperado (MPa)</th><th className="px-3 py-2">Nota fiscal</th><th className="px-3 py-2">Idade controle</th>{campoPrensa ? <th className="px-3 py-2">Prensa</th> : null}{campoTipo ? <th className="px-3 py-2">Ruptura</th> : null}<th className="px-3 py-2">Descartar</th><th className="px-3 py-2">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -748,7 +741,6 @@ export function RompimentosPage() {
                       <td className="px-3 py-2 font-semibold">{nf(r)}{r.concretagens?.numero_relatorio ? <div className="text-[11px] font-normal text-slate-400">Rel. {r.concretagens.numero_relatorio}</div> : null}</td><td className="px-3 py-2 font-semibold">{idade(r)}</td>
                       {campoPrensa ? <td className="px-3 py-2 text-xs">{(() => { const eq = res?.equipamento_id ?? null; if (eq) return equipById.get(eq) ?? '—'; const al = prensasDaObra(r); if (al.length === 1) return <span className="text-slate-500" title="Prensa prevista pela alocação da obra">{equipById.get(al[0]) ?? '—'} <span className="text-slate-400">(prev.)</span></span>; if (al.length > 1) return <span className="text-slate-500" title="Várias prensas alocadas à obra">{al.length} prensas</span>; return <span className="text-slate-400">—</span>; })()}</td> : null}
                       {campoTipo ? <td className="px-3 py-2"><select className="input min-w-[82px]" value={effectiveTipo(r)} onChange={(e) => patch(r.id, { tipo_ruptura: e.target.value })}><option value="">-</option>{['A', 'B', 'C', 'D', 'E', 'F'].map((x) => <option key={x} value={x}>{x}</option>)}</select></td> : null}
-                      {campoMassa ? <td className="px-3 py-2"><input className="input max-w-[110px]" type="number" inputMode="numeric" min={0} max={99999} step="1" value={effectiveMassa(r)} onChange={(e) => patch(r.id, { massa_cp_g: e.target.value })} onBlur={(e) => patch(r.id, { massa_cp_g: clampNum(e.target.value, { min: 0, max: 99999, dec: 0 })?.toString() ?? '' })} /></td> : null}
                       <td className="px-3 py-2"><input type="checkbox" aria-label={`Descartar CP ${cpNumero(r)}`} checked={r.situacao === 'descartado'} onChange={(e) => void alterarSituacao(r, e.target.checked ? 'descartado' : 'pendente')} /></td>
                       <td className="px-3 py-2"><div className="flex flex-wrap gap-2"><button type="button" className="font-bold text-blue-700" onClick={() => setCurvaCp(r)}>Curva</button>{(r.situacao === 'falhou' || r.situacao === 'ausente') ? <button type="button" className="font-bold text-emerald-700" onClick={() => void alterarSituacao(r, 'pendente')}>Reativar</button> : <><button type="button" className="font-bold text-blue-700" onClick={() => void alterarSituacaoConfirm(r, 'falhou')}>Falha</button><button type="button" className="font-bold text-blue-700" onClick={() => void alterarSituacaoConfirm(r, 'ausente')}>Ausente</button></>}<button type="button" className="font-bold text-blue-700" onClick={() => void abrirAudit(r)}>Trilha</button><button type="button" className="font-bold text-blue-700" onClick={() => void contraprovaConfirm(r)}>Contraprova</button></div></td>
                     </tr>
@@ -781,7 +773,7 @@ export function RompimentosPage() {
       </Modal>
 
       <Modal open={importOpen} wide title="Importar resultados" onClose={() => setImportOpen(false)} footer={<><Button variant="ghost" onClick={() => setImportOpen(false)}>Cancelar</Button><Button onClick={() => void aplicarImportacao()} disabled={busy || !importLines.some((l) => l.ok)}>{busy ? 'Importando...' : 'Importar resultados'}</Button></>}>
-        <div className="space-y-4"><FilePicker label="Escolher planilha" accept=".xlsx,.xls,.csv" onFiles={(fs) => importarArquivo(fs[0] ?? null)} /><div className="rounded-xl border border-dashed border-slate-200 p-2 dark:border-slate-700"><div className="block space-y-1"><span className="text-sm font-bold">Ou leia a foto da agenda preenchida à caneta (OCR)</span><FilePicker label={lendoAgenda ? 'Lendo…' : 'Escolher foto da agenda'} accept="image/*" disabled={lendoAgenda} resetAfter onFiles={(fs) => importarAgendaFoto(fs[0] ?? null)} /></div><p className="mt-1 text-xs text-slate-500">Imprima a agenda (botão Agenda PDF), rompa e anote data/hora e MPa à caneta; o OCR casa o CP pela numeração impressa e traz os valores para conferência. Revise antes de importar.</p></div>{campoPrensa && prensas.length > 0 ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa destas leituras</span><select className="input max-w-xs" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">Manter a já registrada (se houver)</option>{prensas.map((p) => <option key={p.id} value={p.id}>{rotuloEquip(p)}</option>)}</select></label> : null}{importLines.length ? <div className="max-h-80 overflow-auto rounded-xl border border-slate-200"><table className="w-full text-left text-xs"><thead><tr className="bg-slate-50"><th className="p-2">Linha</th><th>CP</th><th>Resultado</th><th>Data</th><th>Conf.</th><th>Status</th></tr></thead><tbody>{importLines.map((l) => <tr key={l.key} className="border-t"><td className="p-2">{l.key}</td><td>{l.numero || l.cp?.codigo}</td><td>{l.resultado}</td><td>{l.data}</td><td className={l.conf != null && l.conf < 0.6 ? 'font-bold text-amber-600' : 'text-slate-500'}>{l.conf != null ? Math.round(l.conf * 100) + '%' : '—'}</td><td className={l.ok ? 'text-green-700' : 'text-red-700'}>{l.msg}</td></tr>)}</tbody></table></div> : <p className="text-sm text-slate-500">Use o modelo exportado pela tela. Colunas aceitas: corpo_prova_id, numeração/código, resultado_mpa <span className="italic">ou</span> carga + unidade_carga, massa_cp_g, data_rompimento, hora_rompimento, tipo_ruptura.</p>}</div>
+        <div className="space-y-4"><FilePicker label="Escolher planilha" accept=".xlsx,.xls,.csv" onFiles={(fs) => importarArquivo(fs[0] ?? null)} /><div className="rounded-xl border border-dashed border-slate-200 p-2 dark:border-slate-700"><div className="block space-y-1"><span className="text-sm font-bold">Ou leia a foto da agenda preenchida à caneta (OCR)</span><FilePicker label={lendoAgenda ? 'Lendo…' : 'Escolher foto da agenda'} accept="image/*" disabled={lendoAgenda} resetAfter onFiles={(fs) => importarAgendaFoto(fs[0] ?? null)} /></div><p className="mt-1 text-xs text-slate-500">Imprima a agenda (botão Agenda PDF), rompa e anote data/hora e MPa à caneta; o OCR casa o CP pela numeração impressa e traz os valores para conferência. Revise antes de importar.</p></div>{campoPrensa && prensas.length > 0 ? <label className="block space-y-1"><span className="text-sm font-bold">Prensa destas leituras</span><select className="input max-w-xs" value={prensaId} onChange={(e) => setPrensaId(e.target.value)}><option value="">Manter a já registrada (se houver)</option>{prensas.map((p) => <option key={p.id} value={p.id}>{rotuloEquip(p)}</option>)}</select></label> : null}{importLines.length ? <div className="max-h-80 overflow-auto rounded-xl border border-slate-200"><table className="w-full text-left text-xs"><thead><tr className="bg-slate-50"><th className="p-2">Linha</th><th>CP</th><th>Resultado</th><th>Data</th><th>Conf.</th><th>Status</th></tr></thead><tbody>{importLines.map((l) => <tr key={l.key} className="border-t"><td className="p-2">{l.key}</td><td>{l.numero || l.cp?.codigo}</td><td>{l.resultado}</td><td>{l.data}</td><td className={l.conf != null && l.conf < 0.6 ? 'font-bold text-amber-600' : 'text-slate-500'}>{l.conf != null ? Math.round(l.conf * 100) + '%' : '—'}</td><td className={l.ok ? 'text-green-700' : 'text-red-700'}>{l.msg}</td></tr>)}</tbody></table></div> : <p className="text-sm text-slate-500">Use o modelo exportado pela tela. Colunas aceitas: corpo_prova_id, numeração/código, resultado_mpa <span className="italic">ou</span> carga + unidade_carga, data_rompimento, hora_rompimento, tipo_ruptura.</p>}</div>
       </Modal>
     </section>
   );

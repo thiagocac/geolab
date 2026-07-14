@@ -171,7 +171,7 @@ export function ConcretagemDetalhePage() {
   function abrirCaminhao() {
     const p = padrao.length ? padrao : padraoMoldagemDaConcretagem(conc.data);
     setCamPadrao(p);
-    setCamForm({ nota_fiscal: '', houve_adicao_agua: false, rejeitado: false });
+    setCamForm({ nota_fiscal: '', houve_adicao_agua: false, houve_adicao_aditivo: false, rejeitado: false });
     setNumeracaoMap({});
     setPrimeiroNum('');
     setOpen(true);
@@ -372,6 +372,7 @@ export function ConcretagemDetalhePage() {
                       {onR('horarios_descarga') ? <div className="text-sm"><b>Descarga:</b> {cam.hora_inicio_descarga ?? '-'} {'->'} {cam.hora_fim_descarga ?? '-'}</div> : null}
                       {onR('hora_moldagem') ? <div className="text-sm"><b>Moldagem:</b> {cam.hora_moldagem ?? '-'}</div> : null}
                       {onR('agua_adicionada') ? <div className="text-sm"><b>Água:</b> {cam.houve_adicao_agua ? `${cam.agua_litros ?? '-'} L` : 'não'}</div> : null}
+                      {onR('aditivo_adicionado') ? <div className="text-sm"><b>Aditivo:</b> {cam.houve_adicao_aditivo ? (cam.aditivo_obra ?? 'sim') : 'não'}</div> : null}
                       {onR('motorista') ? <div className="text-sm"><b>Motorista:</b> {cam.motorista ?? '-'}</div> : null}
                       {onR('elementos_concretados') ? <div className="text-sm md:col-span-2"><b>Elementos:</b> {cam.elementos_concretados ?? '-'}</div> : null}
                       {onR('observacoes_caminhao') ? <div className="text-sm md:col-span-3"><b>Obs.:</b> {cam.observacoes ?? '-'}</div> : null}
@@ -419,6 +420,7 @@ export function ConcretagemDetalhePage() {
             {onR('horarios_descarga') ? <><Field label="Início descarga" type="time" value={val(camForm.hora_inicio_descarga)} onChange={(e) => patchCam('hora_inicio_descarga', e.target.value)} /><Field label="Fim descarga" type="time" value={val(camForm.hora_fim_descarga)} onChange={(e) => patchCam('hora_fim_descarga', e.target.value)} /></> : null}
             {onR('hora_moldagem') ? <Field label="Hora moldagem" type="time" value={val(camForm.hora_moldagem)} onChange={(e) => patchCam('hora_moldagem', e.target.value)} /> : null}
             {onR('agua_adicionada') ? <><label className="flex items-center gap-2 pt-7 text-sm font-bold"><input type="checkbox" checked={camForm.houve_adicao_agua === true} onChange={(e) => patchCam('houve_adicao_agua', e.target.checked)} /> Houve adição de água</label><NumField label="Água adicionada (L)" value={num(camForm.agua_litros)} onCommit={(n) => patchCam('agua_litros', n)} min={0} max={999} dec={1} soft={[0, 100]} /></> : null}
+            {onR('aditivo_adicionado') ? <><label className="flex items-center gap-2 pt-7 text-sm font-bold"><input type="checkbox" checked={camForm.houve_adicao_aditivo === true} onChange={(e) => patchCam('houve_adicao_aditivo', e.target.checked)} /> Houve adição de aditivo</label><Field label="Aditivo (tipo/dose)" value={val(camForm.aditivo_obra)} onChange={(e) => patchCam('aditivo_obra', e.target.value)} /></> : null}
             {onR('rejeicao') ? <><label className="flex items-center gap-2 pt-7 text-sm font-bold"><input type="checkbox" checked={camForm.rejeitado === true} onChange={(e) => patchCam('rejeitado', e.target.checked)} /> Caminhão rejeitado</label><Field label="Motivo rejeição" value={val(camForm.motivo_rejeicao)} onChange={(e) => patchCam('motivo_rejeicao', e.target.value)} /></> : null}
           </div>
           {onR('elementos_concretados') ? <TextArea label="Elementos concretados" value={val(camForm.elementos_concretados)} onChange={(e) => patchCam('elementos_concretados', e.target.value)} /> : null}

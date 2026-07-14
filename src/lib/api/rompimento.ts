@@ -18,7 +18,6 @@ export type MaterialTestResult = {
   cp_altura_mm: number | null;
   tipo_ruptura: string | null;
   capeamento: string | null;
-  massa_cp_g: number | null;
   equipamento_id: string | null;
   operador_id: string | null;
   created_at?: string | null;
@@ -58,7 +57,7 @@ export function resultadoAtual(cp: CpRompimento): MaterialTestResult | null {
   return [...arr].sort((a, b) => String(a.created_at ?? a.id).localeCompare(String(b.created_at ?? b.id))).at(-1) ?? null;
 }
 
-const SELECT_CP = 'id, codigo, numeracao_lab, external_key, amostra_id, idade_dias, idade_unidade, data_prevista_rompimento, data_real_rompimento, data_moldagem, situacao, motivo_descarte, valor_esperado, metadata, concretagem_id, receipt_id, material_test_type_id, contraprova, contraprova_de_id, material_tests(id, resultado_valor, carga_ruptura_kn, data_rompimento, hora_rompimento, cp_diametro_mm, cp_altura_mm, tipo_ruptura, capeamento, massa_cp_g, equipamento_id, operador_id, created_at), material_receipts(id, nota_fiscal, serie, external_key, volume_m3, slump_medido_mm, temperatura_concreto_c, elementos_concretados), material_test_types(id, codigo, nome, unidade_resultado, idade_controle, idade_controle_unidade, cp_diametro_padrao_mm, cp_altura_padrao_mm), concretagens(id, codigo, numero_relatorio, work_id, fck_previsto, fornecedor_texto, operational_materials(idade_controle_dias), client_works(nome), lab_clients(razao_social, nome_fantasia))';
+const SELECT_CP = 'id, codigo, numeracao_lab, external_key, amostra_id, idade_dias, idade_unidade, data_prevista_rompimento, data_real_rompimento, data_moldagem, situacao, motivo_descarte, valor_esperado, metadata, concretagem_id, receipt_id, material_test_type_id, contraprova, contraprova_de_id, material_tests(id, resultado_valor, carga_ruptura_kn, data_rompimento, hora_rompimento, cp_diametro_mm, cp_altura_mm, tipo_ruptura, capeamento, equipamento_id, operador_id, created_at), material_receipts(id, nota_fiscal, serie, external_key, volume_m3, slump_medido_mm, temperatura_concreto_c, elementos_concretados), material_test_types(id, codigo, nome, unidade_resultado, idade_controle, idade_controle_unidade, cp_diametro_padrao_mm, cp_altura_padrao_mm), concretagens(id, codigo, numero_relatorio, work_id, fck_previsto, fornecedor_texto, operational_materials(idade_controle_dias), client_works(nome), lab_clients(razao_social, nome_fantasia))';
 const SELECT_CP_SEM_NUM = SELECT_CP.replace('numeracao_lab, ', '');
 
 // Teto explicito da worklist: sem isto o PostgREST corta em 1000 SILENCIOSAMENTE.
@@ -109,7 +108,6 @@ export type LancamentoInput = {
   cp_altura_mm: number;
   tipo_ruptura?: string | null;
   capeamento?: string | null;
-  massa_cp_g?: number | null;
   equipamento_id?: string | null;
   operador_id?: string | null;
   data_rompimento: string;
@@ -159,7 +157,6 @@ async function directLancamento(tenantId: string, cp: CpRompimento, v: Lancament
       fck_referencia_mpa: cp.valor_esperado ?? cp.concretagens?.fck_previsto ?? null,
       tipo_ruptura: v.tipo_ruptura || null,
       capeamento: v.capeamento || null,
-      massa_cp_g: v.massa_cp_g ?? null,
       equipamento_id: v.equipamento_id || null,
       operador_id: v.operador_id || null,
       origem: v.origem_log || 'manual',

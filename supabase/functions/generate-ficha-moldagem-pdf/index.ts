@@ -58,7 +58,7 @@ const planoFromCps = (map: Map<string, Row[]>): { txt: string; total: number } |
   return null;
 };
 
-const FICHA_DEF: Record<string, boolean> = { logo:true, subtitulo_nbr:true, codigo_formulario:true, normas_ref:true, numero_relatorio:true, hora_agendada:true, horario_acompanhamento:true, servicos_normas:true, traco:true, responsavel_tecnico:true, contato_equipe:false, bloco_dosagem:true, central:true, lancamento:true, tipo:true, resist_caract:true, abatimento_espec:true, volume_total:true, amostragem:true, dosagem_detalhada:false, plano_moldagem:true, col_numeracao_cp:true, col_abatimento:true, col_transporte:true, col_descarga:true, col_tempo_total:true, col_qtd_concreto:true, col_cb:true, col_elementos:true, rodape_dimensoes:true, rodape_observacoes:true, rodape_vistos:true };
+const FICHA_DEF: Record<string, boolean> = { logo:true, subtitulo_nbr:true, codigo_formulario:true, normas_ref:true, numero_relatorio:true, numero_ficha:true, hora_agendada:true, horario_acompanhamento:true, servicos_normas:true, traco:true, responsavel_tecnico:true, contato_equipe:false, bloco_dosagem:true, central:true, lancamento:true, tipo:true, resist_caract:true, abatimento_espec:true, volume_total:true, amostragem:true, dosagem_detalhada:false, plano_moldagem:true, col_numeracao_cp:true, col_abatimento:true, col_transporte:true, col_descarga:true, col_tempo_total:true, col_qtd_concreto:true, col_cb:true, col_elementos:true, rodape_dimensoes:true, rodape_observacoes:true, rodape_vistos:true };
 
 // ============================ DESENHO (puro) ============================
 export async function buildFichaPdf(input: {
@@ -125,6 +125,7 @@ export async function buildFichaPdf(input: {
   const v_data = blank ? '' : ddmm(s(conc?.data_real || conc?.data_programada));
   const v_hora = blank ? '' : s(conc?.hora_programada);
   const v_rel = blank ? '' : s(conc?.numero_relatorio);
+  const v_ficha = blank ? '' : s(conc?.codigo);
   const v_central = blank ? '' : s(conc?.fornecedor_texto);
   const v_lanc = blank ? '' : (conc?.bombeado ? 'Bombeado' : conc?.bombeado === false ? 'Convencional' : '');
   const v_fck = blank ? '' : (s(om.fck_mpa) || '');
@@ -139,6 +140,7 @@ export async function buildFichaPdf(input: {
   if (on('hora_agendada')) r2.push(['Hora agendada', 1.2, v_hora]);
   if (on('horario_acompanhamento')) r2.push(['Horario do acompanhamento:  das ______ as ______ h', 3.0]);
   if (on('numero_relatorio')) r2.push(['Numero do relatorio', 1.8, v_rel]);
+  if (on('numero_ficha')) r2.push(['Ficha No', 1.4, v_ficha]);
   rowCells(x0, y, Wu, rh, r2); y -= rh;
   const r3: [string, number, string?][] = [];
   if (on('servicos_normas')) r3.push(['Servicos / normas', 2.4, v_serv]);
