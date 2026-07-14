@@ -2,15 +2,15 @@
 // Persistência: config_lab.ensaio_campos, laudo_campos, recebimento_campos e concretagem_campos.
 // Os defaults `on` espelham os defaults dos CONSUMIDORES (tela de rompimento e EF de laudo/ficha),
 // para que a tela de configuração reflita exatamente o que o sistema faz quando a chave não foi salva.
-export type CampoCatalogo = { key: string; label: string; hint?: string; on: boolean; indent?: boolean; required?: boolean };
+export type CampoCatalogo = { key: string; label: string; hint?: string; on: boolean; indent?: boolean; required?: boolean; requires?: { aba: string; key: string; label: string } };
 
 export const CAMPOS_ENSAIO: CampoCatalogo[] = [
   { key: 'tipo_ruptura', label: 'Tipo de ruptura (A-F, NBR 5739)', hint: 'Coluna por CP na tela de rompimento.', on: false },
   { key: 'prensa', label: 'Prensa utilizada (rastreabilidade)', hint: 'Seletor por leva; vincula o equipamento calibrado e alimenta o gate de calibração.', on: false },
   { key: 'capeamento', label: 'Capeamento / bases', hint: 'Retífica, enxofre ou neoprene; aplicado à leva.', on: false },
   { key: 'massa_cp_g', label: 'Massa do CP (g)', hint: 'Para densidade; coluna por CP. Em geral desligado.', on: false },
-  { key: 'operador', label: 'Operador (quem rompeu)', hint: 'Quem realizou o rompimento; gravado por CP e alimenta o gate de certificacao. Desligado por padrao.', on: false },
-  { key: 'numeracao_lab', label: 'Numeração do laboratório (por CP)', hint: 'Botão "+ numeração lab" em cada CP na tela de rompimento, para registrar a numeração interna do laboratório. Ligado por padrao.', on: true },
+  { key: 'operador', label: 'Operador (quem rompeu)', hint: 'Quem realizou o rompimento; gravado por CP e alimenta o gate de certificação. Desligado por padrão.', on: false },
+  { key: 'numeracao_lab', label: 'Numeração do laboratório (por CP)', hint: 'Botão "+ numeração lab" em cada CP na tela de rompimento, para registrar a numeração interna do laboratório. Ligado por padrão.', on: true },
 ];
 
 export const CAMPOS_RECEBIMENTO: CampoCatalogo[] = [
@@ -29,10 +29,8 @@ export const CAMPOS_RECEBIMENTO: CampoCatalogo[] = [
 ];
 
 export const CAMPOS_CONCRETAGEM: CampoCatalogo[] = [
-  { key: 'fornecedor', label: 'Fornecedor / concreteira / central', hint: 'Na v1 é da concretagem, não de cada caminhão.', on: true },
   { key: 'data_hora', label: 'Data e hora programada/real', hint: 'Base da agenda do laboratório e da ficha.', on: true },
   { key: 'local_peca', label: 'Local / peça concretada', hint: 'Texto livre ou peça da estrutura da obra.', on: true },
-  { key: 'volume_programado', label: 'Volume programado / lançado (m³)', on: true },
   { key: 'moldador', label: 'Moldador responsável', hint: 'Colaborador do laboratório que atende a obra.', on: true },
   { key: 'clima', label: 'Clima / condição no momento da moldagem', hint: 'Sai no bloco de dados do laudo.', on: true },
   { key: 'temperatura_ambiente', label: 'Temperatura ambiente (°C)', hint: 'Sai no bloco de dados do laudo.', on: true },
@@ -80,7 +78,7 @@ export const CAMPOS_FICHA: CampoCatalogo[] = [
 
 export const CAMPOS_LAUDO: CampoCatalogo[] = [
   { key: 'dim_hd', label: 'Dimensões d×h e relação h/d', hint: 'Colunas d×h e h/d na tabela de resultados.', on: true },
-  { key: 'tipo_ruptura', label: 'Coluna “Tipo de ruptura”', hint: 'Coluna A-F por CP (lançada no rompimento).', on: true },
+  { key: 'tipo_ruptura', label: 'Coluna “Tipo de ruptura”', hint: 'Coluna A-F por CP (lançada no rompimento).', on: true, requires: { aba: 'ensaio', key: 'tipo_ruptura', label: "'Tipo de ruptura' em Ensaio" } },
   { key: 'dados_concreto', label: 'Bloco “Dados do concreto”', hint: 'Cimento, consumo, brita, a/c, cura, dimensão do CP, clima.', on: true },
   { key: 'cimento', label: '— Tipo e consumo de cimento', on: true, indent: true },
   { key: 'aditivo', label: '— Aditivo', on: false, indent: true },
@@ -113,9 +111,9 @@ export const CAMPOS_LAUDO: CampoCatalogo[] = [
 ];
 
 export const CAMPOS_PORTAL: CampoCatalogo[] = [
-  { key: 'correcao_habilitada', label: 'Permitir solicitacao de correcao de laudo', hint: 'Mostra o botao "Solicitar correcao" no portal do cliente (peca/resultado). O laboratorio sempre aprova antes de reemitir.', on: true },
-  { key: 'correcao_auto_edicao_peca', label: 'Cliente ajusta o texto da peca/elementos', hint: 'Quando ligado, o cliente digita o novo texto de Local/peca e Elementos concretados; ainda depende de aprovacao do lab. Desligado: o cliente apenas descreve o pedido.', on: false },
-  { key: 'correcao_resultado', label: 'Permitir contestar um resultado', hint: 'Cliente pode sinalizar um resultado que julga incorreto. O RT reavalia e re-lanca o valor pelo fluxo do laboratorio.', on: true },
+  { key: 'correcao_habilitada', label: 'Permitir solicitação de correção de laudo', hint: 'Mostra o botão "Solicitar correção" no portal do cliente (peça/resultado). O laboratório sempre aprova antes de reemitir.', on: true },
+  { key: 'correcao_auto_edicao_peca', label: 'Cliente ajusta o texto da peça/elementos', hint: 'Quando ligado, o cliente digita o novo texto de Local/peça e Elementos concretados; ainda depende de aprovação do lab. Desligado: o cliente apenas descreve o pedido.', on: false },
+  { key: 'correcao_resultado', label: 'Permitir contestar um resultado', hint: 'Cliente pode sinalizar um resultado que julga incorreto. O RT reavalia e re-lança o valor pelo fluxo do laboratório.', on: true },
 ];
 
 export function initCampoState(cat: CampoCatalogo[], cfg: Record<string, unknown> | null | undefined): Record<string, boolean> {

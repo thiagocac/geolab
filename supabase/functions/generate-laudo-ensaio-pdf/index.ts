@@ -89,7 +89,7 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
       sb.from('lab_clients').select('razao_social, nome_fantasia, email, telefone').eq('id', conc.client_id).maybeSingle(),
       sb.from('tenants').select('name').eq('id', conc.tenant_id).maybeSingle(),
       conc.operational_material_id ? sb.from('operational_materials').select('nome, fck_mpa, condicao_preparo, cimento_tipo, consumo_cimento_kg_m3, brita, fator_ac, metodo_cura, aditivo_tipo, dmax_agregado_mm, slump_previsto_mm, slump_tolerancia_mm, bombeado, componentes, idade_controle_dias').eq('id', conc.operational_material_id).maybeSingle() : Promise.resolve({ data: null }),
-      sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes, idade_controle_default').eq('tenant_id', conc.tenant_id).maybeSingle(),
+      sb.from('config_lab').select('laudo_campos, recebimento_campos, concretagem_campos, ensaio_campos, responsavel_tecnico, crea_rt, acreditacao_inmetro, logo_path, nota_rodape, local_ensaio, art_numero, gerente_qualidade, crea_gq, certificacoes, idade_controle_default').eq('tenant_id', conc.tenant_id).maybeSingle(),
       conc.moldador_id ? sb.from('colaboradores').select('nome').eq('id', conc.moldador_id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
 
@@ -133,6 +133,8 @@ _ctServeWithTelemetry('generate-laudo-ensaio-pdf', async (req) => {
     ['aditivo', 'acreditacao', 'dmax', 'carga', 'temperatura', 'ficha_moldagem', 'observacoes', 'incerteza', 'moldador', 'contato', 'local_ensaio', 'componentes', 'certificacoes'].forEach((k) => (ON[k] = defOn(k, false)));
     ['nota_fiscal', 'placa', 'motorista', 'volume_m3', 'horarios_transporte', 'horarios_descarga', 'hora_moldagem', 'slump', 'temperatura_concreto', 'agua_adicionada', 'rejeicao', 'elementos_concretados', 'observacoes_caminhao'].forEach((k) => (RON[k] = defRon(k, true)));
     ['traco_fck', 'fornecedor', 'data_hora', 'local_peca', 'volume_programado', 'dimensao_cp', 'moldador', 'clima', 'temperatura_ambiente', 'bombeado', 'observacoes', 'padrao_moldagem'].forEach((k) => (CON[k] = defCon(k, true)));
+    const EC = (cfg?.ensaio_campos ?? {}) as Record<string, unknown>;
+    if (!(EC['tipo_ruptura'] === undefined ? false : EC['tipo_ruptura'] !== false)) ON.tipo_ruptura = false;
 
     const idade = (t: Record<string, unknown>) => Number(t.idade_dias ?? 0);
     // Idade de controle: traco (operational_materials.idade_controle_dias, mig 135) > config_lab.idade_controle_default > 28.

@@ -128,15 +128,19 @@ export function ConfigCamposPage() {
       <Card>
         <CardHeader title={atual.titulo}>{atual.desc}</CardHeader>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {atual.cat.map((f) => (
-            <label key={f.key} className={'flex cursor-pointer items-start gap-3 p-4 ' + (f.indent ? 'pl-8' : '')}>
-              <input type="checkbox" className="mt-1" checked={state[aba][f.key] !== false} disabled={!podeEditar} onChange={() => toggleCampo(f.key)} />
+          {atual.cat.map((f) => {
+            const depOff = f.requires ? (state[f.requires.aba as AbaKey]?.[f.requires.key] === false) : false;
+            return (
+            <label key={f.key} className={'flex items-start gap-3 p-4 ' + (f.indent ? 'pl-8 ' : '') + (depOff ? 'cursor-not-allowed opacity-60' : 'cursor-pointer')}>
+              <input type="checkbox" className="mt-1" checked={state[aba][f.key] !== false && !depOff} disabled={!podeEditar || depOff} onChange={() => toggleCampo(f.key)} />
               <span className="text-sm">
                 <span className="font-bold text-slate-900 dark:text-slate-100">{f.label}</span>
                 {f.hint ? <span className="mt-0.5 block text-xs text-slate-500">{f.hint}</span> : null}
+                {depOff ? <span className="mt-0.5 block text-xs font-semibold" style={{ color: 'var(--magenta)' }}>Requer {f.requires?.label} ligado na aba correspondente.</span> : null}
               </span>
             </label>
-          ))}
+            );
+          })}
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-slate-100 p-4 dark:border-slate-800">
           <Button onClick={() => void salvar()} disabled={!podeEditar || busy}>{busy ? 'Salvando...' : 'Salvar campos de ' + atual.label.toLowerCase()}</Button>
