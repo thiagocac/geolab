@@ -118,6 +118,7 @@ export async function buildFichaPdf(input: {
   const v_interessado = blank ? '' : (s(cli.razao_social) || s(cli.nome_fantasia));
   const v_obra = blank ? '' : s(obra.nome);
   const v_serv = blank ? '' : 'Moldagem e ensaio a compressao (NBR 5739)';
+  const v_traco = blank ? '' : (s(om.nome) || s(conc?.traco_texto));
   const v_data = blank ? '' : ddmm(s(conc?.data_real || conc?.data_programada));
   const v_hora = blank ? '' : s(conc?.hora_programada);
   const v_rel = blank ? '' : s(conc?.numero_relatorio);
@@ -133,12 +134,12 @@ export async function buildFichaPdf(input: {
   y -= rh;
   rowCells(x0, y, Wu, rh, [['Obra', 3.0, v_obra], ['Hora agendada', 1.2, v_hora], ['Horario do acompanhamento:  das ______ as ______ h', 3.0], ['Numero do relatorio', 1.8, v_rel]]);
   y -= rh;
-  rowCells(x0, y, Wu, rh, [['Servicos / normas', 3.0, v_serv], ['Laboratorio', 2.0, labName], ['Responsavel tecnico / CREA', 2.5, (rt ? rt + (crea ? ' - ' + crea : '') : '')]]);
+  rowCells(x0, y, Wu, rh, [['Servicos / normas', 2.4, v_serv], ['Traço', 2.4, v_traco], ['Laboratorio', 1.5, labName], ['Responsavel tecnico / CREA', 2.0, (rt ? rt + (crea ? ' - ' + crea : '') : '')]]);
   y -= rh;
 
   // ---------- dados da dosagem (linha simples) ----------
   const bh = 13; fill(x0, y, Wu, bh, band); rect(x0, y, Wu, bh); txt(x0 + 5, y - bh + 3.6, 'DADOS DA DOSAGEM', 6.6, B, navy); y -= bh;
-  const g = rowCells(x0, y, Wu, rh, [['Central', 1.8, v_central], ['Lancamento', 1.3, v_lanc], ['Tipo', 1.7], ['Resist. caract. (MPa)', 1.3, v_fck], ['Abatimento espec. (mm)', 1.6], ['Volume total (m3)', 1.2, v_vol], ['Amostragem', 1.5]]);
+  const g = rowCells(x0, y, Wu, rh, [['Central', 1.8, v_central], ['Lancamento', 1.3, v_lanc], ['Tipo', 1.7], ['Resist. caract. (MPa)', 1.3, v_fck], ['Abatimento espec. (mm)', 1.6], ['Volume total (m³)', 1.2, v_vol], ['Amostragem', 1.5]]);
   { const c = g[2]; let cxk = checkbox(c.x + 3, y - rh + 5.5, 'FCK concreto', !blank, 7, 5.8); cxk = checkbox(cxk - 3, y - rh + 5.5, 'FAK arg.', false, 7, 5.8); checkbox(cxk - 3, y - rh + 5.5, 'FGK graute', false, 7, 5.8); }
   { const c = g[4]; txt(c.x + 6, y - rh + 6, v_slump, 8.5, F, ink); }
   { const c = g[6]; let cxa = checkbox(c.x + 4, y - rh + 6, 'Total', false, 7, 6.0); checkbox(cxa - 2, y - rh + 6, 'Parcial', false, 7, 6.0); }
@@ -147,7 +148,7 @@ export async function buildFichaPdf(input: {
   // ---------- dosagem detalhada (so com ficha_dosagem) ----------
   if (showDosagemDet) {
     const v_cim = blank ? '' : s(om.cimento_tipo);
-    const v_cons = (om.consumo_cimento_kg_m3 != null) ? s(om.consumo_cimento_kg_m3) + ' kg/m3' : '';
+    const v_cons = (om.consumo_cimento_kg_m3 != null) ? s(om.consumo_cimento_kg_m3) + ' kg/m³' : '';
     const v_ac = (om.fator_ac != null) ? s(om.fator_ac) : '';
     const v_brita = blank ? '' : s(om.brita);
     const v_dmax = (om.dmax_agregado_mm != null) ? s(om.dmax_agregado_mm) + ' mm' : '';
@@ -165,13 +166,13 @@ export async function buildFichaPdf(input: {
   type GNode = { label: string; w?: number | null; children?: GNode[] };
   const lf = (l: string, w: number): GNode => ({ label: l, w });
   const tree: GNode[] = [
-    { label: 'CARACTERISTICAS DAS AMOSTRAS', children: [lf('Serie no', 24), lf('Qtde CPs', 26), lf('Numeracao CP', 74), lf('Abat. (mm)', 30), lf('Nota Fiscal no', 66), lf('Horario moldagem', 50)] },
+    { label: 'CARACTERISTICAS DAS AMOSTRAS', children: [lf('Serie Nº', 24), lf('Qtde CPs', 26), lf('Numeracao CP', 74), lf('Abat. (mm)', 30), lf('Nota Fiscal Nº', 66), lf('Horario moldagem', 50)] },
     { label: 'DADOS DA MOLDAGEM', children: [
-      { label: 'TRANSPORTE', children: [lf('Inicio da mistura', 50), lf('Chegada a obra', 50)] },
+      { label: 'TRANSPORTE', children: [lf('Início mistura', 50), lf('Chegada a obra', 50)] },
       { label: 'DESCARGA', children: [lf('Inicio', 46), lf('Termino', 46)] },
       lf('Tempo total (h:min)', 46),
-      { label: 'Concreto aplicado (m3)', children: [lf('Unit.', 38), lf('Acum.', 38)] }] },
-    lf('C.B. no', 36),
+      lf('Qtd Concreto (m³)', 62)] },
+    lf('C.B. Nº', 36),
     { label: 'Amostragem ( ) Total ( ) Parcial - Elementos concretados', w: null },
     lf('CP por idade', 62),
   ];
@@ -194,14 +195,13 @@ export async function buildFichaPdf(input: {
   const yRows = y - hdrH;
   const leafX = [x0]; let acc = x0; for (const l of allLeaves) { acc += (l as Row)._w as number; leafX.push(acc); }
   const rows = showDosagemDet ? 12 : 14, rowh = 20.5;
-  let accVol = 0;
   const rowVals: string[][] = [];
   for (let i = 0; i < cams.length && i < rows; i++) {
     const cm = cams[i]; const cps = cpsByReceipt.get(s(cm.id)) ?? [];
     const qtde = cps.length ? String(cps.length) : '';
     const cppi = cps.length ? cpPorIdade(cps) : '';
-    const vol = cm.volume_m3 != null ? Number(cm.volume_m3) : null; if (vol != null) accVol += vol;
-    rowVals.push([s(cm.serie), qtde, cpRange(cps), s(cm.slump_medido_mm), s(cm.nota_fiscal), s(cm.hora_moldagem), s(cm.hora_saida_usina), s(cm.hora_chegada_obra), s(cm.hora_inicio_descarga), s(cm.hora_fim_descarga), '', vol != null ? String(vol) : '', vol != null ? accVol.toFixed(1) : '', s(cm.serie), s(cm.elementos_concretados), cppi]);
+    const vol = cm.volume_m3 != null ? Number(cm.volume_m3) : null;
+    rowVals.push([s(cm.serie), qtde, cpRange(cps), s(cm.slump_medido_mm), s(cm.nota_fiscal), s(cm.hora_moldagem), s(cm.hora_saida_usina), s(cm.hora_chegada_obra), s(cm.hora_inicio_descarga), s(cm.hora_fim_descarga), '', vol != null ? String(vol) : '', s(cm.serie), s(cm.elementos_concretados), cppi]);
   }
   let yb = yRows;
   for (let i = 0; i < rows; i++) { rect(x0, yb, Wu, rowh); const rv = rowVals[i]; if (rv) for (let k = 0; k < allLeaves.length; k++) { const v = rv[k]; if (v) txt(leafX[k] + 2.5, yb - rowh + 5.5, v, 7, F, ink); } yb -= rowh; }
