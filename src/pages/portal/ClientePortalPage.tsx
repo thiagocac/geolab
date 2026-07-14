@@ -25,7 +25,7 @@ type LinhaProg = PortalProgramacaoInput & { key: string; padrao?: PadraoMoldagem
 const blank = (): LinhaProg => ({ key: Math.random().toString(36).slice(2), work_id: '', data_programada: '', hora_programada: '', local_texto: '', traco_texto: '', fck_previsto: null, fornecedor_texto: '', volume_programado_m3: null, observacoes: '' });
 // Resumo curto do padrão de moldagem para o botão da linha (ex.: "2×7d + 4×28d").
 const resumoPadrao = (p?: PadraoMoldagem[]): string => {
-  if (!p?.length) return 'Padrão do laboratório';
+  if (!p?.length) return 'Padrão Lab';
   return p.map((i) => `${i.quantidadeCp || 0}×${i.idadeControle}${i.unidadeIdade === 'horas' ? 'h' : 'd'}`).join(' + ');
 };
 const str = (v: unknown) => String(v ?? '').trim();
@@ -135,7 +135,7 @@ export function ClientePortalPage() {
                       <td><PortalLocalCell workId={r.work_id} value={r.local_texto ?? ''} onChange={(v) => patch(r.key, 'local_texto', v)} /></td>
                       <td><input className="input min-w-[220px]" value={r.traco_texto ?? ''} onChange={(e) => patch(r.key, 'traco_texto', e.target.value)} placeholder="FCK 30 | BRITA 1 | SLUMP 10±2" /></td>
                       <td><input className="input w-24" type="number" inputMode="numeric" min={1} max={150} step="1" value={r.fck_previsto ?? ''} onChange={(e) => patch(r.key, 'fck_previsto', e.target.value)} onBlur={(e) => patch(r.key, 'fck_previsto', clampNum(e.target.value, { min: 1, max: 150, dec: 0 })?.toString() ?? '')} /></td>
-                      <td><button type="button" onClick={() => abrirMoldagem(r)} title="Corpos de prova por idade desta concretagem" className={'min-h-9 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ' + (r.padrao?.length ? 'border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800' : 'border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800')}>{resumoPadrao(r.padrao)}</button></td>
+                      <td><button type="button" onClick={() => abrirMoldagem(r)} title="Padrão de moldagem do laboratório — clique para carregar e ajustar os corpos de prova por idade desta concretagem" className={'min-h-9 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ' + (r.padrao?.length ? 'border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800' : 'border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800')}>{resumoPadrao(r.padrao)}</button></td>
                       <td><input className="input min-w-[160px]" value={r.fornecedor_texto ?? ''} onChange={(e) => patch(r.key, 'fornecedor_texto', e.target.value)} /></td>
                       <td><input className="input w-24" type="number" inputMode="decimal" min={0} max={999} step="0.01" value={r.volume_programado_m3 ?? ''} onChange={(e) => patch(r.key, 'volume_programado_m3', e.target.value)} onBlur={(e) => patch(r.key, 'volume_programado_m3', clampNum(e.target.value, { min: 0, max: 999, dec: 2 })?.toString() ?? '')} /></td>
                       <td><input className="input min-w-[180px]" value={r.observacoes ?? ''} onChange={(e) => patch(r.key, 'observacoes', e.target.value)} /></td>
@@ -146,10 +146,10 @@ export function ClientePortalPage() {
               </table>
             </div>
             <div className="flex flex-wrap justify-between gap-2 border-t border-slate-100 p-4 dark:border-slate-800"><Button variant="secondary" onClick={() => setRows((r) => [...r, blank()])}>+ Adicionar linha</Button><Button onClick={() => void enviar()} disabled={busy}>{busy ? 'Enviando...' : 'Enviar programações ao laboratório'}</Button></div>
-          <Modal open={!!moldKey} title="Padrão de moldagem da concretagem" onClose={() => setMoldKey(null)}
-            footer={<><Button variant="ghost" onClick={limparMoldagem}>Usar padrão do laboratório</Button><Button variant="ghost" onClick={() => setMoldKey(null)}>Cancelar</Button><Button onClick={salvarMoldagem}>Aplicar à linha</Button></>}>
+          <Modal open={!!moldKey} wide title="Padrão de moldagem da concretagem" onClose={() => setMoldKey(null)}
+            footer={<><Button variant="ghost" onClick={limparMoldagem}>Usar Padrão Lab</Button><Button variant="ghost" onClick={() => setMoldKey(null)}>Cancelar</Button><Button onClick={salvarMoldagem}>Aplicar à linha</Button></>}>
             <div className="grid gap-3">
-              <p className="text-sm text-slate-600 dark:text-slate-300">Informe quantos corpos de prova moldar por idade nesta concretagem (ex.: 2×7d + 4×28d). Se não informar, o laboratório aplica o padrão do traço.</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">Informe quantos corpos de prova moldar por idade nesta concretagem (ex.: 2×7d + 4×28d). Deixe em branco para usar o <b>Padrão Lab</b> — o padrão de moldagem do laboratório (aplicado a partir do traço). Você pode carregá-lo aqui e ajustar como quiser.</p>
               <MoldingStandardEditor value={moldDraft} onChange={setMoldDraft} fck={moldKey ? num(rows.find((r) => r.key === moldKey)?.fck_previsto) : null} />
             </div>
           </Modal>

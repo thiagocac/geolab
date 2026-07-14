@@ -85,7 +85,7 @@ export function FormasModal({ row, onClose }: { row: ConcretagemRow; onClose: ()
   }
 
   return (
-    <Modal open title={'Provisionar fôrmas' + (row.numero_relatorio ? ' — ' + row.numero_relatorio : '')} onClose={onClose}
+    <Modal open wide title={'Provisionar fôrmas' + (row.numero_relatorio ? ' — ' + row.numero_relatorio : '')} onClose={onClose}
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy || formasNecessarias <= 0}>{busy ? 'Salvando…' : 'Salvar provisão'}</Button></>}>
       <div className="space-y-4">
         <p className="text-sm text-slate-500 dark:text-slate-400">As fôrmas (moldes de CP) são calculadas a partir do padrão de moldagem do traço: <b>CPs por amostra × nº de amostras (caminhões) = formas necessárias</b>.</p>
