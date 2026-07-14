@@ -74,7 +74,7 @@ export async function buildFichaPdf(input: {
   const page = pdf.addPage([W, H]);
   const navy = rgb(0.094, 0.157, 0.388), grid = rgb(0.13, 0.17, 0.23);
   const lbl = rgb(0.36, 0.42, 0.5), ink = rgb(0.06, 0.09, 0.13), band = rgb(0.93, 0.945, 0.965), nl = rgb(0.45, 0.52, 0.72);
-  const refc = rgb(0.5, 0.55, 0.62);
+  const refc = rgb(0.5, 0.55, 0.62), hdrbg = rgb(0.86, 0.9, 0.96);
   const lw = 0.8;
   const x0 = M, x1 = W - M, Wu = x1 - x0;
 
@@ -188,8 +188,8 @@ export async function buildFichaPdf(input: {
   const bandH = 12.5; const hdrH = depth * bandH;
   const drawNode = (n: GNode, x: number, ytop: number, lvl: number) => {
     const w = (n as Row)._w as number;
-    if (n.children) { fill(x, ytop, w, bandH, navy); rect(x, ytop, w, bandH, nl); for (const ln of wrap(B, n.label, 6, w)) { txtC(x + w / 2, ytop - bandH / 2 - 1.5, ln, 6, B, rgb(1, 1, 1)); break; } let cx = x; for (const c of n.children) { drawNode(c, cx, ytop - bandH, lvl + 1); cx += (c as Row)._w as number; } }
-    else { const h = (depth - lvl) * bandH; fill(x, ytop, w, h, navy); rect(x, ytop, w, h, nl); const ls = wrap(B, n.label, 6, w); let yy = ytop - h / 2 + (ls.length * 7) / 2 - 5.4; for (const ln of ls) { txtC(x + w / 2, yy, ln, 6, B, rgb(1, 1, 1)); yy -= 7; } }
+    if (n.children) { fill(x, ytop, w, bandH, hdrbg); rect(x, ytop, w, bandH, nl); for (const ln of wrap(B, n.label, 6, w)) { txtC(x + w / 2, ytop - bandH / 2 - 1.5, ln, 6, B, navy); break; } let cx = x; for (const c of n.children) { drawNode(c, cx, ytop - bandH, lvl + 1); cx += (c as Row)._w as number; } }
+    else { const h = (depth - lvl) * bandH; fill(x, ytop, w, h, hdrbg); rect(x, ytop, w, h, nl); const ls = wrap(B, n.label, 6, w); let yy = ytop - h / 2 + (ls.length * 7) / 2 - 5.4; for (const ln of ls) { txtC(x + w / 2, yy, ln, 6, B, navy); yy -= 7; } }
   };
   let cxn = x0; for (const n of tree) { drawNode(n, cxn, y, 0); cxn += (n as Row)._w as number; }
   const yRows = y - hdrH;
