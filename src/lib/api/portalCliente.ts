@@ -124,3 +124,30 @@ export async function downloadPortalAnexo(path: string): Promise<string> {
   const r = await callAnexo({ action: 'download', path });
   return String(r.url);
 }
+
+
+// ---- Traços da obra e da construtora do cliente (exclui o catálogo do laboratório) ----
+export type PortalTraco = { value: string; label: string; fck: number | null; padrao_moldagem: Record<string, unknown>[]; work_id: string | null; client_id: string | null };
+export async function listPortalTracos(): Promise<PortalTraco[]> {
+  const works = await listPortalWorks();
+  if (!works.length) return [];
+  const workIds = [...new Set(works.map((w) => w.id).filter(Boolean))];
+  const clientIds = [...new Set(works.map((w) => w.client_id).filter(Boolean))];
+  const ors: string[] = [];
+  if (workIds.length) ors.push(`work_id.in.(${workIds.join(',')})`);
+  if (clientIds.length) ors.push(`and(work_id.is.null,client_id.in.(${clientIds.join(',')}))`);
+  if (!ors.length) return [];
+  const { data, error } = await db.from('operational_materials')
+    .select('id, nome, fck_mpa, padrao_moldagem, work_id, client_id')
+    .eq('material_kind', 'concreto').is('deleted_at', null)
+    .or(ors.join(','))
+    .order('nome', { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Rec[]).map((r) => ({
+    value: String(r.id), label: String(r.nome ?? r.id),
+    fck: r.fck_mpa != null ? Number(r.fck_mpa) : null,
+    padrao_moldagem: Array.isArray(r.padrao_moldagem) ? r.padrao_moldagem as Record<string, unknown>[] : [],
+    work_id: r.work_id != null ? String(r.work_id) : null,
+    client_id: r.client_id != null ? String(r.client_id) : null,
+  }));
+}

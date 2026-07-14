@@ -10,7 +10,7 @@ import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State'
 import { FileText } from '../../components/ui/icons';
 import { useToast } from '../../lib/toast';
 import { LaudosResultadosPanel } from '../../components/portal/LaudosResultadosPanel';
-import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, openPortalLaudo, uploadPortalAnexo, downloadPortalAnexo, type PortalProgramacaoInput, type PortalAnexo } from '../../lib/api/portalCliente';
+import { listPortalWorks, submitPortalProgramacoes, listPortalConcretagens, openPortalLaudo, uploadPortalAnexo, downloadPortalAnexo, listPortalTracos, type PortalTraco, type PortalProgramacaoInput, type PortalAnexo } from '../../lib/api/portalCliente';
 import { listPortalResultados, listPortalLaudosView } from '../../lib/api/portalResultados';
 import { submitPortalCorrecao, getPortalCorrecaoConfig, listMeusPedidosCorrecao } from '../../lib/api/portalCorrecao';
 import type { PortalCorrecaoInput } from '../../lib/portal/types';
@@ -55,6 +55,24 @@ function PortalLocalCell({ workId, value, onChange }: { workId: string; value: s
   );
 }
 
+function PortalTracoCell({ workId, workClientId, tracos, value, onText, onPick }: { workId: string; workClientId: string; tracos: PortalTraco[]; value: string; onText: (v: string) => void; onPick: (t: PortalTraco) => void }) {
+  const daObra = tracos.filter((t) => !!t.work_id && t.work_id === workId);
+  const daConstr = tracos.filter((t) => !t.work_id && !!t.client_id && t.client_id === workClientId);
+  const rot = (t: PortalTraco) => t.label + (t.fck != null ? ' · FCK ' + t.fck : '');
+  return (
+    <div className="min-w-[240px] space-y-1">
+      {(daObra.length || daConstr.length) ? (
+        <select className="input !min-h-9 px-2 text-xs" value="" disabled={!workId} aria-label="Selecionar traço" onChange={(e) => { const t = [...daObra, ...daConstr].find((x) => x.value === e.target.value); if (t) onPick(t); }}>
+          <option value="">Selecionar traço…</option>
+          {daObra.length ? <optgroup label="Desta obra">{daObra.map((t) => <option key={t.value} value={t.value}>{rot(t)}</option>)}</optgroup> : null}
+          {daConstr.length ? <optgroup label="Da construtora">{daConstr.map((t) => <option key={t.value} value={t.value}>{rot(t)}</option>)}</optgroup> : null}
+        </select>
+      ) : null}
+      <input className="input min-w-[220px]" value={value} onChange={(e) => onText(e.target.value)} placeholder="FCK 30 | BRITA 1 | SLUMP 10±2" />
+    </div>
+  );
+}
+
 export function ClientePortalPage() {
   const toast = useToast();
   const qc = useQueryClient();
@@ -66,6 +84,7 @@ export function ClientePortalPage() {
   const [anexBusy, setAnexBusy] = useState<string | null>(null);
 
   const works = useQuery({ queryKey: ['portal-works'], queryFn: listPortalWorks });
+  const tracos = useQuery({ queryKey: ['portal-tracos'], queryFn: listPortalTracos, enabled: (works.data ?? []).length > 0 });
   const concretagens = useQuery({ queryKey: ['portal-concretagens-status'], queryFn: () => listPortalConcretagens('') });
   const laudos = useQuery({ queryKey: ['portal-laudos-view'], queryFn: () => listPortalLaudosView(), enabled: tab === 'resultados' });
   const resultados = useQuery({ queryKey: ['portal-resultados'], queryFn: () => listPortalResultados(), enabled: tab === 'resultados' });
@@ -74,8 +93,9 @@ export function ClientePortalPage() {
   async function solicitarCorrecao(input: PortalCorrecaoInput) { await submitPortalCorrecao(input); await qc.invalidateQueries({ queryKey: ['portal-meus-pedidos'] }); toast('Pedido de correção enviado ao laboratório.', 'success'); }
 
   function patch(key: string, field: keyof PortalProgramacaoInput, value: unknown) { setRows((list) => list.map((r) => r.key === key ? { ...r, [field]: value } : r)); }
+  function aplicarTraco(key: string, t: PortalTraco) { setRows((list) => list.map((r) => r.key === key ? { ...r, traco_texto: t.label, fck_previsto: t.fck != null ? t.fck : r.fck_previsto, padrao: t.padrao_moldagem.length ? normalizePadroes(t.padrao_moldagem, t.fck) : r.padrao } : r)); }
   function abrirMoldagem(r: LinhaProg) {
-    setMoldDraft(r.padrao?.length ? r.padrao : normalizePadroes([], num(r.fck_previsto)));
+    setMoldDraft(r.padrao?.length ? r.padrao : normalizePadroes([{ idade: 28, unidade: 'dia', quantidade: 2 }], num(r.fck_previsto)));
     setMoldKey(r.key);
   }
   function salvarMoldagem() {
@@ -133,9 +153,9 @@ export function ClientePortalPage() {
                       <td><input className="input min-w-[140px]" type="date" value={r.data_programada} onChange={(e) => patch(r.key, 'data_programada', e.target.value)} /></td>
                       <td><input className="input min-w-[100px]" type="time" value={r.hora_programada ?? ''} onChange={(e) => patch(r.key, 'hora_programada', e.target.value)} /></td>
                       <td><PortalLocalCell workId={r.work_id} value={r.local_texto ?? ''} onChange={(v) => patch(r.key, 'local_texto', v)} /></td>
-                      <td><input className="input min-w-[220px]" value={r.traco_texto ?? ''} onChange={(e) => patch(r.key, 'traco_texto', e.target.value)} placeholder="FCK 30 | BRITA 1 | SLUMP 10±2" /></td>
+                      <td><PortalTracoCell workId={r.work_id} workClientId={(works.data ?? []).find((w) => w.id === r.work_id)?.client_id ?? ''} tracos={tracos.data ?? []} value={r.traco_texto ?? ''} onText={(v) => patch(r.key, 'traco_texto', v)} onPick={(t) => aplicarTraco(r.key, t)} /></td>
                       <td><input className="input w-24" type="number" inputMode="numeric" min={1} max={150} step="1" value={r.fck_previsto ?? ''} onChange={(e) => patch(r.key, 'fck_previsto', e.target.value)} onBlur={(e) => patch(r.key, 'fck_previsto', clampNum(e.target.value, { min: 1, max: 150, dec: 0 })?.toString() ?? '')} /></td>
-                      <td><button type="button" onClick={() => abrirMoldagem(r)} title="Padrão de moldagem do laboratório — clique para carregar e ajustar os corpos de prova por idade desta concretagem" className={'min-h-9 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ' + (r.padrao?.length ? 'border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800' : 'border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800')}>{resumoPadrao(r.padrao)}</button></td>
+                      <td><button type="button" onClick={() => abrirMoldagem(r)} title="Padrão de moldagem: quantos corpos de prova moldar por caminhão em cada idade de controle (ex.: 1×7 dias; 2×28 dias; 1×63 dias). Se não alterar, usa o Padrão Lab: 2×28 dias." className={'min-h-9 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ' + (r.padrao?.length ? 'border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800' : 'border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800')}>{resumoPadrao(r.padrao)}</button></td>
                       <td><input className="input min-w-[160px]" value={r.fornecedor_texto ?? ''} onChange={(e) => patch(r.key, 'fornecedor_texto', e.target.value)} /></td>
                       <td><input className="input w-24" type="number" inputMode="decimal" min={0} max={999} step="0.01" value={r.volume_programado_m3 ?? ''} onChange={(e) => patch(r.key, 'volume_programado_m3', e.target.value)} onBlur={(e) => patch(r.key, 'volume_programado_m3', clampNum(e.target.value, { min: 0, max: 999, dec: 2 })?.toString() ?? '')} /></td>
                       <td><input className="input min-w-[180px]" value={r.observacoes ?? ''} onChange={(e) => patch(r.key, 'observacoes', e.target.value)} /></td>
@@ -149,7 +169,7 @@ export function ClientePortalPage() {
           <Modal open={!!moldKey} wide title="Padrão de moldagem da concretagem" onClose={() => setMoldKey(null)}
             footer={<><Button variant="ghost" onClick={limparMoldagem}>Usar Padrão Lab</Button><Button variant="ghost" onClick={() => setMoldKey(null)}>Cancelar</Button><Button onClick={salvarMoldagem}>Aplicar à linha</Button></>}>
             <div className="grid gap-3">
-              <p className="text-sm text-slate-600 dark:text-slate-300">Informe quantos corpos de prova moldar por idade nesta concretagem (ex.: 2×7d + 4×28d). Deixe em branco para usar o <b>Padrão Lab</b> — o padrão de moldagem do laboratório (aplicado a partir do traço). Você pode carregá-lo aqui e ajustar como quiser.</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">O padrão de moldagem define <b>quantos corpos de prova são moldados por caminhão em cada idade de controle</b> (ex.: 1×7 dias; 2×28 dias; 1×63 dias). Se você não alterar, o laboratório aplica o <b>Padrão Lab</b> (2×28 dias).</p>
               <MoldingStandardEditor value={moldDraft} onChange={setMoldDraft} fck={moldKey ? num(rows.find((r) => r.key === moldKey)?.fck_previsto) : null} />
             </div>
           </Modal>

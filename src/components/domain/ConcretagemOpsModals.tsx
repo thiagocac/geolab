@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../../lib/toast';
 import { Modal } from '../ui/Modal';
@@ -55,7 +55,8 @@ export function FormasModal({ row, onClose }: { row: ConcretagemRow; onClose: ()
   const toast = useToast();
   const qc = useQueryClient();
   const [cap, setCap] = useState('8');
-  const [nAmostrasManual, setNAmostrasManual] = useState('');
+  const [nAmostrasStr, setNAmostrasStr] = useState(() => { const v = row.volume_programado_m3 ?? null; return v && v > 0 ? String(Math.max(1, Math.ceil(v / 8))) : '1'; });
+  const [nAmostrasTouched, setNAmostrasTouched] = useState(false);
   // Margem extra (%) de segurança — semeia do provisionamento anterior (metadata.formas.extra_pct).
   const metaFormas = ((row.metadata as Record<string, unknown> | null | undefined)?.formas ?? null) as { extra_pct?: number } | null;
   const [margem, setMargem] = useState(metaFormas?.extra_pct != null ? String(metaFormas.extra_pct) : '0');
@@ -66,7 +67,8 @@ export function FormasModal({ row, onClose }: { row: ConcretagemRow; onClose: ()
   const capNum = Math.max(1, toNumber(cap) ?? 8);
   const volume = row.volume_programado_m3 ?? null;
   const estAmostras = volume && volume > 0 ? Math.max(1, Math.ceil(volume / capNum)) : 1;
-  const nAmostras = nAmostrasManual.trim() !== '' ? Math.max(1, Math.floor(toNumber(nAmostrasManual) ?? 1)) : estAmostras;
+  useEffect(() => { if (!nAmostrasTouched) setNAmostrasStr(String(estAmostras)); }, [estAmostras, nAmostrasTouched]);
+  const nAmostras = Math.max(1, Math.floor(toNumber(nAmostrasStr) ?? estAmostras));
   const tracoRegistrado = !!row.operational_material_id;
   const padraoAtivo = tracoRegistrado ? padraoMoldagemDaConcretagem(row) : padraoEdit;
   const cpsAmostra = padraoAtivo.reduce((s, p) => s + (toNumber(p.quantidadeCp) ?? 0), 0);
@@ -108,7 +110,7 @@ export function FormasModal({ row, onClose }: { row: ConcretagemRow; onClose: ()
           <Field label="Capacidade/caminhão (m³)" type="number" min={1} max={20} step="0.01" value={cap} onChange={(e) => setCap(e.target.value)} onBlur={(e) => setCap(clampNum(e.target.value, { min: 1, max: 20, dec: 2 })?.toString() ?? '')} hint="Base da estimativa de caminhões." />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Nº de amostras / caminhões" type="number" min={1} max={99} step="1" value={nAmostrasManual.trim() !== '' ? nAmostrasManual : String(estAmostras)} onChange={(e) => setNAmostrasManual(e.target.value)} onBlur={(e) => setNAmostrasManual(clampNum(e.target.value, { min: 1, max: 99, dec: 0 })?.toString() ?? '')} hint={volume ? ('Estimado: ' + volume + ' m³ ÷ ' + capNum + ' = ' + estAmostras + ' caminhão(ões). Edite se necessário.') : 'Informe o nº de amostras.'} />
+          <Field label="Nº de amostras / caminhões" type="number" min={1} max={99} step="1" value={nAmostrasStr} onChange={(e) => { setNAmostrasTouched(true); setNAmostrasStr(e.target.value); }} onBlur={(e) => { const c = clampNum(e.target.value, { min: 1, max: 99, dec: 0 }); if (c == null) { setNAmostrasTouched(false); setNAmostrasStr(String(estAmostras)); } else { setNAmostrasStr(c.toString()); } }} hint={volume ? ('Estimado: ' + volume + ' m³ ÷ ' + capNum + ' = ' + estAmostras + ' caminhão(ões). Ajuste se amostrar menos caminhões.') : 'Informe o nº de amostras.'} />
           <Field label="Margem extra (%)" type="number" min={0} max={100} step="1" value={margem} onChange={(e) => setMargem(e.target.value)} onBlur={(e) => setMargem(clampNum(e.target.value, { min: 0, max: 100, dec: 0 })?.toString() ?? '0')} hint="Fôrmas a mais, por segurança (arredonda para cima)." />
         </div>
         <div className="rounded-xl p-4 text-center" style={{ background: 'var(--surface-2)' }}>
