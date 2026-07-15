@@ -179,7 +179,7 @@ export function PreferenciasPage() {
           </div>
         </div>
       </Card>
-      {podeEditar ? <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar preferencias'}</Button></div> : null}
+      {podeEditar ? <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button onClick={() => void salvar()} busy={busy}>{busy ? 'Salvando...' : 'Salvar preferencias'}</Button></div> : null}
     </div>
   );
 }

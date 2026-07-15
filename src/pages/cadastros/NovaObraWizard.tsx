@@ -99,7 +99,7 @@ export function NovaObraWizard() {
             <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>O traco inicial sai com padrao 28d x 2 CP (NBR 5739); ajuste depois em Cadastros &gt; Materiais e ensaios.</p>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Button variant="ghost" onClick={() => setStep(1)}>Voltar</Button>
-              <Button onClick={() => void finalizar()} disabled={busy}>{busy ? 'Criando...' : 'Criar obra'}</Button>
+              <Button onClick={() => void finalizar()} busy={busy}>{busy ? 'Criando...' : 'Criar obra'}</Button>
             </div>
           </div>
         </Card>

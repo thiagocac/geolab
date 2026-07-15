@@ -69,7 +69,7 @@ export function CorrecoesStaffPanel() {
         ))}
       </div>
 
-      <Modal open={!!acao} title={acao?.modo === 'aprovar' ? 'Aprovar correção' : 'Rejeitar correção'} onClose={() => setAcao(null)} footer={<><Button variant="ghost" onClick={() => setAcao(null)}>Cancelar</Button><Button onClick={() => void confirmar()} disabled={busy}>{busy ? 'Processando...' : (acao?.modo === 'aprovar' ? 'Aprovar' : 'Rejeitar')}</Button></>}>
+      <Modal open={!!acao} title={acao?.modo === 'aprovar' ? 'Aprovar correção' : 'Rejeitar correção'} onClose={() => setAcao(null)} footer={<><Button variant="ghost" onClick={() => setAcao(null)}>Cancelar</Button><Button onClick={() => void confirmar()} busy={busy}>{busy ? 'Processando...' : (acao?.modo === 'aprovar' ? 'Aprovar' : 'Rejeitar')}</Button></>}>
         {acao ? (
           <div className="space-y-3 text-sm">
             <p className="text-xs text-slate-500">{(TIPO_LABEL[acao.p.tipo] ?? acao.p.tipo) + ' · ' + (acao.p.lab_report_numero ? 'Laudo ' + acao.p.lab_report_numero : (acao.p.concretagem_codigo ?? ''))}</p>

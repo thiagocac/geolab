@@ -165,7 +165,7 @@ export function ClientePortalPage() {
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-wrap justify-between gap-2 border-t border-slate-100 p-4 dark:border-slate-800"><Button variant="secondary" onClick={() => setRows((r) => [...r, blank()])}>+ Adicionar linha</Button><Button onClick={() => void enviar()} disabled={busy}>{busy ? 'Enviando...' : 'Enviar programações ao laboratório'}</Button></div>
+            <div className="flex flex-wrap justify-between gap-2 border-t border-slate-100 p-4 dark:border-slate-800"><Button variant="secondary" onClick={() => setRows((r) => [...r, blank()])}>+ Adicionar linha</Button><Button onClick={() => void enviar()} busy={busy}>{busy ? 'Enviando...' : 'Enviar programações ao laboratório'}</Button></div>
           <Modal open={!!moldKey} wide title="Padrão de moldagem da concretagem" onClose={() => setMoldKey(null)}
             footer={<><Button variant="ghost" onClick={limparMoldagem}>Usar Padrão Lab</Button><Button variant="ghost" onClick={() => setMoldKey(null)}>Cancelar</Button><Button onClick={salvarMoldagem}>Aplicar à linha</Button></>}>
             <div className="grid gap-3">

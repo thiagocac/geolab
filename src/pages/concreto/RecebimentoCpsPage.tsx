@@ -69,7 +69,7 @@ export function RecebimentoCpsPage() {
         <div className="max-w-[260px]"><Field label="Localização no lab (aplicada aos OK)" value={localizacao} onChange={(e) => setLocalizacao(e.target.value)} placeholder="Ex.: Tanque 2 · prateleira B" /></div>
         <div className="ml-auto flex items-center gap-3">
           {nSel ? <span className="text-sm text-slate-600 dark:text-slate-300"><strong>{nSel}</strong> selecionado(s){nDiv ? ` · ${nDiv} divergência(s)` : ''}</span> : null}
-          <Button disabled={!nSel || busy} onClick={() => void confirmar()}>{busy ? 'Recebendo...' : 'Receber selecionados'}</Button>
+          <Button busy={busy} disabled={!nSel} onClick={() => void confirmar()}>{busy ? 'Recebendo...' : 'Receber selecionados'}</Button>
         </div>
       </div>
 

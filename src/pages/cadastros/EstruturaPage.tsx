@@ -82,7 +82,7 @@ export function EstruturaPage() {
         </div>
       )}
 
-      <Modal open={open} wide title={editId ? 'Editar estrutura' : 'Nova estrutura'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy || !nome.trim()}>{busy ? 'Salvando…' : 'Salvar estrutura'}</Button></>}>
+      <Modal open={open} wide title={editId ? 'Editar estrutura' : 'Nova estrutura'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} busy={busy} disabled={!nome.trim()}>{busy ? 'Salvando…' : 'Salvar estrutura'}</Button></>}>
         <EstruturaEditor nome={nome} pecas={pecas} onNome={setNome} onPecas={setPecas} />
       </Modal>
     </section>

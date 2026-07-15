@@ -205,7 +205,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
             <Field label="Descrição (opcional)" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
             <TextArea label="Anotacao" value={anotacao} onChange={(e) => setAnotacao(e.target.value)} />
             <div className="block space-y-1"><span className="text-sm font-bold text-slate-700 dark:text-slate-200">Anexo (opcional)</span><FilePicker onFiles={(fs) => setFile(fs[0] ?? null)} /></div>
-            <div><Button onClick={() => void registrar()} disabled={busy || !tmpl}>{busy ? 'Registrando...' : 'Registrar acao'}</Button></div>
+            <div><Button onClick={() => void registrar()} busy={busy} disabled={!tmpl}>{busy ? 'Registrando...' : 'Registrar acao'}</Button></div>
           </div>
         ) : concluida ? <p className="text-sm" style={{ color: 'var(--success)', fontWeight: 700 }}>NC concluida.</p> : null}
       </div>
@@ -236,7 +236,7 @@ function NovaNcModal({ tenantId, onClose, onSaved }: { tenantId: string; onClose
   }
 
   return (
-    <Modal open title="Nova NC manual" onClose={onClose} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Abrindo...' : 'Abrir NC'}</Button></>}>
+    <Modal open title="Nova NC manual" onClose={onClose} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} busy={busy}>{busy ? 'Abrindo...' : 'Abrir NC'}</Button></>}>
       <div style={{ display: 'grid', gap: 12 }}>
         <SelectField label="Obra" required value={work} onChange={(e) => setWork(e.target.value)}>
           <option value="">-</option>{(obras.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}

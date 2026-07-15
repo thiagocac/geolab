@@ -138,9 +138,11 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .input.input-num{-moz-appearance:textfield;appearance:textfield}
 .btn{min-height:44px;border-radius:14px;border:1px solid transparent;padding:10px 14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),box-shadow var(--dur-3) var(--ease-out),transform var(--dur-1) var(--ease-out)}
 .btn:disabled{cursor:not-allowed;opacity:.55}
+.btn[aria-busy='true']{cursor:progress;opacity:.55}
 .btn-primary{background:var(--grad-brand);color:white}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:var(--shadow-pop)}
 .btn:active{transform:translateY(0)}
+.btn[aria-busy='true']:hover{transform:none;box-shadow:none}
 .btn-secondary{background:var(--surface);color:var(--btn-sec-fg);border-color:var(--line-strong)}
 .btn-secondary:hover{background:var(--surface-2)}
 .badge{display:inline-flex;align-items:center;gap:7px;min-height:28px;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;line-height:1.4;white-space:nowrap}

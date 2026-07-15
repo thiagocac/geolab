@@ -299,7 +299,7 @@ export function MateriaisPage() {
         </Card>
       )}
 
-      <Modal open={open} wide title={editId ? 'Editar traço de concreto' : 'Novo traço de concreto'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar traço'}</Button></>}>
+      <Modal open={open} wide title={editId ? 'Editar traço de concreto' : 'Novo traço de concreto'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} busy={busy}>{busy ? 'Salvando...' : 'Salvar traço'}</Button></>}>
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
             <SelectField label="Escopo do traço" value={f.escopo} onChange={(e) => { const v = e.target.value as FormState['escopo']; setF((s) => ({ ...s, escopo: v, client_id: v === 'lab' ? '' : s.client_id, work_id: v === 'obra' ? s.work_id : '' })); }}><option value="lab">Catálogo do laboratório (todas as obras)</option><option value="construtora">Construtora (reutilizável nas obras dela)</option><option value="obra">Obra específica</option></SelectField>

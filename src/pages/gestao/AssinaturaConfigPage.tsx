@@ -156,7 +156,7 @@ export function AssinaturaConfigPage() {
           ) : null}
 
           {pode ? (
-            <div><Button onClick={() => void salvar()} disabled={busy || !draft}>{busy ? 'Salvando...' : 'Salvar assinatura'}</Button></div>
+            <div><Button onClick={() => void salvar()} busy={busy} disabled={!draft}>{busy ? 'Salvando...' : 'Salvar assinatura'}</Button></div>
           ) : (
             <p className="text-sm" style={{ color: 'var(--ink-faint)' }}>Configuracao restrita a quem tem a permissao de configurar assinatura.</p>
           )}

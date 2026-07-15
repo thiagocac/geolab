@@ -71,7 +71,7 @@ export function RotaDiaPage() {
         <div className="flex flex-wrap items-end gap-3">
           <div style={{ minWidth: 200 }}><SelectField label="Moldador" value={moldadorId} onChange={(e) => { setMoldadorId(e.target.value); setOrdem(null); }}><option value="">Selecione…</option>{(colabs.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectField></div>
           <div style={{ maxWidth: 170 }}><Field label="Dia" type="date" value={data} onChange={(e) => { setData(e.target.value); setOrdem(null); }} /></div>
-          {paradas.length ? <Button disabled={busy} onClick={() => void otimizar()}>{busy ? 'Otimizando…' : 'Otimizar rota'}</Button> : null}
+          {paradas.length ? <Button busy={busy} onClick={() => void otimizar()}>{busy ? 'Otimizando…' : 'Otimizar rota'}</Button> : null}
           {ordenadas.length ? <Button variant="secondary" onClick={abrirMaps}>Abrir no Google Maps</Button> : null}
         </div>
         <p className="mt-2 text-xs text-slate-500">Ponto de partida: {origemQ.data?.endereco ? <b style={{ color: 'var(--ink)' }}>{origemQ.data.endereco}</b> : 'não definido (configure em Preferências)'}.</p>

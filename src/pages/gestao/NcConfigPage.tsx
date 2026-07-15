@@ -52,7 +52,7 @@ export function NcConfigPage() {
             <Field label="Tolerância de lancamento (min)" type="number" value={cur.tolerancia_lancamento_min} onChange={(e) => set('tolerancia_lancamento_min', e.target.value)} disabled={!podeTol} />
           </div>
         ) : null}
-        {podeTol ? <div style={{ marginTop: 14 }}><Button onClick={() => void salvar()} disabled={busy || !p}>{busy ? 'Salvando...' : 'Salvar tolerancias'}</Button></div> : null}
+        {podeTol ? <div style={{ marginTop: 14 }}><Button onClick={() => void salvar()} busy={busy} disabled={!p}>{busy ? 'Salvando...' : 'Salvar tolerancias'}</Button></div> : null}
       </Card>
 
       <Card className="p-5">
@@ -134,7 +134,7 @@ function FluxoClassificacao({ cls, tenantId, podeEditar }: { cls: string; tenant
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 10 }}>
             <div style={{ minWidth: 200 }}><SelectField label="De" value={from} onChange={(e) => setFrom(e.target.value)}><option value="">-</option>{lista.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</SelectField></div>
             <div style={{ minWidth: 200 }}><SelectField label="Para" value={to} onChange={(e) => setTo(e.target.value)}><option value="">-</option>{lista.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</SelectField></div>
-            <Button variant="secondary" onClick={() => void add()} disabled={busy || !from || !to}>Adicionar transicao</Button>
+            <Button variant="secondary" onClick={() => void add()} busy={busy} disabled={!from || !to}>Adicionar transicao</Button>
           </div>
         ) : null}
       </div>
@@ -157,7 +157,7 @@ function EditTemplate({ t, onClose, onSaved }: { t: TemplateFull; onClose: () =>
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   return (
-    <Modal open title={'Editar acao — ' + t.nome} onClose={onClose} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
+    <Modal open title={'Editar acao — ' + t.nome} onClose={onClose} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} busy={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
       <div style={{ display: 'grid', gap: 12 }}>
         <Field label="Nome da acao" value={nome} onChange={(e) => setNome(e.target.value)} />
         <TextArea label="Mensagem (orientacao ao tratar)" value={msg} onChange={(e) => setMsg(e.target.value)} />

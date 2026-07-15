@@ -143,7 +143,7 @@ export function ConfigCamposPage() {
           })}
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-slate-100 p-4 dark:border-slate-800">
-          <Button onClick={() => void salvar()} disabled={!podeEditar || busy}>{busy ? 'Salvando...' : 'Salvar campos de ' + atual.label.toLowerCase()}</Button>
+          <Button onClick={() => void salvar()} busy={busy} disabled={!podeEditar}>{busy ? 'Salvando...' : 'Salvar campos de ' + atual.label.toLowerCase()}</Button>
         </div>
       </Card>
     </section>

@@ -170,7 +170,7 @@ export function EquipamentosPage() {
         : vistos.length === 0 ? <Card className="p-8 text-center text-sm text-slate-600 dark:text-slate-300">Nenhum equipamento para os filtros — ajuste a busca ou os filtros acima.</Card>
         : <DataTable rows={vistos} columns={columns} rowKey={(e) => e.id} sort={sort} onSort={setSort} />}
 
-      <Drawer wide open={open} title={editId ? 'Editar equipamento' : 'Novo equipamento'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
+      <Drawer wide open={open} title={editId ? 'Editar equipamento' : 'Novo equipamento'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button><Button onClick={() => void salvar()} busy={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
             <SelectField label="Tipo" required value={String(f.tipo ?? 'prensa')} onChange={(e) => setF((s) => ({ ...s, tipo: e.target.value }))}>{TIPOS_EQUIP.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</SelectField>

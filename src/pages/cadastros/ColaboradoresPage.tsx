@@ -177,7 +177,7 @@ export function ColaboradoresPage() {
         : vistos.length === 0 ? <Card className="p-8 text-center text-sm text-slate-600 dark:text-slate-300">Nenhum colaborador para os filtros — ajuste a busca ou os filtros acima.</Card>
         : <DataTable rows={vistos} columns={columns} rowKey={(c) => c.id} sort={sort} onSort={setSort} />}
 
-      <Drawer wide open={open} title={editId ? 'Editar colaborador' : 'Novo colaborador'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar dados'}</Button></>}>
+      <Drawer wide open={open} title={editId ? 'Editar colaborador' : 'Novo colaborador'} onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Fechar</Button><Button onClick={() => void salvar()} busy={busy}>{busy ? 'Salvando...' : 'Salvar dados'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           <Field label="Nome" required value={String(f.nome ?? '')} onChange={(e) => setF((s) => ({ ...s, nome: e.target.value }))} />
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>

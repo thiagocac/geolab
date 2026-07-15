@@ -285,7 +285,7 @@ function FindingsPanel({ rows, loading, error, busy, onConvert }: { rows: Generi
             <Td>{String(row.requirement_code ?? '')} · {String(row.requisito ?? '')}</Td>
             <Td>{dateBr(row.prazo)}</Td>
             <Td><Pill tone={row.severidade === 'critica' || row.severidade === 'alta' ? 'bad' : 'warn'}>{String(row.status ?? '')}</Pill></Td>
-            <Td>{row.nc_id ? <span className="text-xs">NC vinculada</span> : <Button disabled={busy} variant="secondary" onClick={() => void onConvert(String(row.id))}>Converter em NC</Button>}</Td>
+            <Td>{row.nc_id ? <span className="text-xs">NC vinculada</span> : <Button busy={busy} variant="secondary" onClick={() => void onConvert(String(row.id))}>Converter em NC</Button>}</Td>
           </tr>
         ))}
       </tbody>

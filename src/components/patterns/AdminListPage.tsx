@@ -143,7 +143,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
           <Button variant="ghost" disabled={page * PAGE >= total} onClick={() => setPage((p) => p + 1)}>Próxima</Button>
         </span>
       </div>
-      <Drawer open={editing !== undefined} title={editing ? 'Editar - ' + title : 'Novo - ' + title} onClose={close} footer={<><Button variant="ghost" onClick={close}>Cancelar</Button><Button onClick={() => void handleSubmit(onValid)()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
+      <Drawer open={editing !== undefined} title={editing ? 'Editar - ' + title : 'Novo - ' + title} onClose={close} footer={<><Button variant="ghost" onClick={close}>Cancelar</Button><Button onClick={() => void handleSubmit(onValid)()} busy={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           {fields.map((f) => (
             <Controller key={f.key} name={f.key} control={control} render={({ field }) => f.lookup ? (

@@ -98,7 +98,7 @@ function EmitirModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   return (
-    <Modal open title="Emitir fatura" onClose={onClose} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Emitindo...' : 'Emitir'}</Button></>}>
+    <Modal open title="Emitir fatura" onClose={onClose} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} busy={busy}>{busy ? 'Emitindo...' : 'Emitir'}</Button></>}>
       <div style={{ display: 'grid', gap: 12 }}>
         <SelectField label="Medicao fechada" value={medId} onChange={(e) => setMedId(e.target.value)}>
           <option value="">{meds.isLoading ? 'Carregando...' : 'Selecione...'}</option>
@@ -122,7 +122,7 @@ function BaixarModal({ fatura, onClose, onSaved }: { fatura: FaturaRow; onClose:
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   return (
-    <Modal open title={'Baixar fatura ' + fatura.numero} onClose={onClose} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Confirmar pagamento'}</Button></>}>
+    <Modal open title={'Baixar fatura ' + fatura.numero} onClose={onClose} footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={() => void salvar()} busy={busy}>{busy ? 'Salvando...' : 'Confirmar pagamento'}</Button></>}>
       <div style={{ display: 'grid', gap: 12 }}>
         <div className="text-sm">Valor: <b>{BRL(fatura.valor)}</b> · Cliente: {fatura.cliente || '—'}</div>
         <Field label="Data do pagamento" type="date" value={data} onChange={(e) => setData(e.target.value)} />

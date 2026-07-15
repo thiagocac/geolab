@@ -170,7 +170,7 @@ export function ColetaFormasPage() {
                   </SelectField>
                 </div>
                 <TextArea label="Observação (opcional)" value={obsRot} onChange={(e) => setObsRot(e.target.value)} />
-                <div><Button onClick={() => void gerar()} disabled={busy}>{busy ? 'Gerando…' : 'Gerar roteiro do dia'}</Button></div>
+                <div><Button onClick={() => void gerar()} busy={busy}>{busy ? 'Gerando…' : 'Gerar roteiro do dia'}</Button></div>
               </div>
             </Card>
           ) : null}

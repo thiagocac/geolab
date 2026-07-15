@@ -152,7 +152,7 @@ export function RbacPage() {
         </Card>
       )}
 
-      <Modal open={!!pModal} title={pModal?.mode === 'clonar' ? 'Clonar papel' : pModal?.mode === 'editar' ? 'Editar papel' : 'Novo papel'} onClose={() => setPModal(null)} footer={<><Button variant="ghost" onClick={() => setPModal(null)}>Cancelar</Button><Button onClick={() => void salvarPapel()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
+      <Modal open={!!pModal} title={pModal?.mode === 'clonar' ? 'Clonar papel' : pModal?.mode === 'editar' ? 'Editar papel' : 'Novo papel'} onClose={() => setPModal(null)} footer={<><Button variant="ghost" onClick={() => setPModal(null)}>Cancelar</Button><Button onClick={() => void salvarPapel()} busy={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
         {pModal ? (
           <div className="space-y-3">
             <Field label="Nome do papel" required value={pModal.nome} onChange={(e) => setPModal({ ...pModal, nome: e.target.value })} />

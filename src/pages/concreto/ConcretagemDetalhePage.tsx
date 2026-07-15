@@ -403,7 +403,7 @@ export function ConcretagemDetalhePage() {
         </div>
       )}
 
-      <Modal open={open} wide title="Adicionar caminhão + CPs" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvarCaminhao()} disabled={busy}>{busy ? 'Salvando…' : 'Salvar caminhão e gerar CPs'}</Button></>}>
+      <Modal open={open} wide title="Adicionar caminhão + CPs" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvarCaminhao()} busy={busy}>{busy ? 'Salvando…' : 'Salvar caminhão e gerar CPs'}</Button></>}>
         <div className="space-y-4">
           <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
             <div className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Ler NF (foto):</span><FilePicker label="Escolher foto" accept="image/*" disabled={lendoNf} resetAfter onFiles={(fs) => { if (fs[0]) void lerNf(fs[0]); }} />{lendoNf ? <span className="text-xs text-slate-500">lendo...</span> : null}</div>

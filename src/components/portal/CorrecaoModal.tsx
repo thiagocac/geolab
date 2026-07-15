@@ -59,7 +59,7 @@ export function CorrecaoModal({ open, onClose, laudo, cps, config, onSubmit }: {
   const isPeca = tipo === 'local_peca' || tipo === 'elementos_caminhao';
 
   return (
-    <Modal open={open} title={'Solicitar correção' + (laudo ? ' — ' + laudo.numero : '')} onClose={fechar} footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button onClick={() => void enviar()} disabled={busy}>{busy ? 'Enviando...' : 'Enviar ao laboratório'}</Button></>}>
+    <Modal open={open} title={'Solicitar correção' + (laudo ? ' — ' + laudo.numero : '')} onClose={fechar} footer={<><Button variant="ghost" onClick={fechar}>Cancelar</Button><Button onClick={() => void enviar()} busy={busy}>{busy ? 'Enviando...' : 'Enviar ao laboratório'}</Button></>}>
       <div className="space-y-3 text-sm">
         <p className="text-xs text-slate-500">O laboratório analisa o pedido e, se aprovado, emite uma nova revisão do laudo (R+1). Correções de resultado são reavaliadas e re-lançadas pelo responsável técnico.</p>
         <label className="block"><span className="text-xs font-semibold text-slate-500">O que corrigir?</span>
