@@ -113,10 +113,10 @@ export function ImportacoesPage() {
                 <div key={cp.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 620 }}>
                   <span style={{ width: 150, fontSize: 13 }}>{cp.codigo ?? cp.id.slice(0, 8)}</span>
                   <span style={{ width: 70, fontSize: 12, color: 'var(--ink-faint)' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
-                  <input type="number" className="input" style={{ width: 90 }} value={r.carga} onChange={(e) => setRow(cp.id, { carga: e.target.value })} />
-                  <input type="number" className="input" style={{ width: 70 }} value={r.d} onChange={(e) => setRow(cp.id, { d: e.target.value })} />
-                  <input type="number" className="input" style={{ width: 70 }} value={r.h} onChange={(e) => setRow(cp.id, { h: e.target.value })} />
-                  <input className="input" style={{ width: 70 }} value={r.tipo} onChange={(e) => setRow(cp.id, { tipo: e.target.value })} />
+                  <input aria-label={`Carga de ruptura (kN) do CP ${cp.codigo ?? cp.id.slice(0, 8)}`} type="number" className="input" style={{ width: 90 }} value={r.carga} onChange={(e) => setRow(cp.id, { carga: e.target.value })} />
+                  <input aria-label={`Diâmetro (mm) do CP ${cp.codigo ?? cp.id.slice(0, 8)}`} type="number" className="input" style={{ width: 70 }} value={r.d} onChange={(e) => setRow(cp.id, { d: e.target.value })} />
+                  <input aria-label={`Altura (mm) do CP ${cp.codigo ?? cp.id.slice(0, 8)}`} type="number" className="input" style={{ width: 70 }} value={r.h} onChange={(e) => setRow(cp.id, { h: e.target.value })} />
+                  <input aria-label={`Tipo de ruptura do CP ${cp.codigo ?? cp.id.slice(0, 8)}`} className="input" style={{ width: 70 }} value={r.tipo} onChange={(e) => setRow(cp.id, { tipo: e.target.value })} />
                   <span style={{ width: 80, fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{prev != null ? prev : '-'}</span>
                 </div>
               );
@@ -143,7 +143,7 @@ export function ImportacoesPage() {
                 <div key={cp.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 400 }}>
                   <span style={{ width: 180, fontSize: 13 }}>{cp.codigo ?? cp.id.slice(0, 8)}</span>
                   <span style={{ width: 80, fontSize: 12, color: 'var(--ink-faint)' }}>{cp.idade_dias ?? '-'} {cp.idade_unidade === 'hora' ? 'h' : 'd'}</span>
-                  <input type="number" className="input" style={{ width: 110 }} value={ocrVals[cp.id] ?? ''} onChange={(e) => setOcrVals((s) => ({ ...s, [cp.id]: e.target.value }))} />
+                  <input aria-label={`Resultado em MPa do CP ${cp.codigo ?? cp.id.slice(0, 8)}`} type="number" className="input" style={{ width: 110 }} value={ocrVals[cp.id] ?? ''} onChange={(e) => setOcrVals((s) => ({ ...s, [cp.id]: e.target.value }))} />
                 </div>
               ))}
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}><Button onClick={() => void importarOcr()} disabled={busy}>{busy ? 'Importando...' : 'Importar resultados'}</Button></div>

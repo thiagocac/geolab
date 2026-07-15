@@ -97,7 +97,7 @@ export function ProgramacoesPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <input className="input" placeholder="Filtrar por Nº relatório, código, cliente ou obra" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 380 }} />
+        <input aria-label="Filtrar programações" className="input" placeholder="Filtrar por Nº relatório, código, cliente ou obra" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 380 }} />
         <Button onClick={() => nav('/programacoes/nova', { viewTransition: true })}>Nova programação</Button>
       </div>
 

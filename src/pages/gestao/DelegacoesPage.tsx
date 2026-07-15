@@ -100,7 +100,7 @@ export function DelegacoesPage() {
       </Card>
       <Card>
         <CardHeader kicker="Delegações" title="Histórico e vigência">Lista tenant-scoped com soft-delete lógico.</CardHeader>
-        <div className="flex items-center gap-2 p-5 pt-0 text-sm font-semibold"><input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} /> Mostrar apenas ativas</div>
+        <label className="flex w-fit cursor-pointer items-center gap-2 p-5 pt-0 text-sm font-semibold"><input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} /> Mostrar apenas ativas</label>
         <div className="p-5 pt-0">
           {delegations.isLoading ? <LoadingState /> : delegations.error ? <ErrorState message={(delegations.error as Error).message} /> : (delegations.data ?? []).length === 0 ? <EmptyState /> : (
             <div className="table-scroll"><table className="table"><thead><tr><th>Delegante</th><th>Delegado</th><th>Permissão</th><th>Obra</th><th>Janela</th><th>Status</th><th></th></tr></thead><tbody>{(delegations.data ?? []).map((d) => <tr key={d.id}><td>{d.delegator_name}</td><td>{d.delegatee_name}</td><td><span className="badge bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200">{d.permission_key}</span></td><td>{d.work_nome ?? 'Todas'}</td><td>{fmtTs(d.starts_at)} → {fmtTs(d.ends_at)}</td><td>{d.active ? <span className="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">ativa</span> : <span className="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">inativa</span>}</td><td>{d.active ? <Button variant="secondary" onClick={() => revoke(d.id)} disabled={busy}>Revogar</Button> : null}</td></tr>)}</tbody></table></div>

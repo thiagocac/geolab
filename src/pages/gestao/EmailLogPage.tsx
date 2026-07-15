@@ -377,7 +377,7 @@ export function EmailLogPage() {
         <CardHeader kicker="Histórico" title="Envios recentes">Últimos registros do notification_dispatch_log do laboratório.</CardHeader>
         <div className="p-5">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <input className="input max-w-[280px]" placeholder="Buscar e-mail, evento ou resend_id" value={logBusca} onChange={(e) => setLogBusca(e.target.value)} />
+            <input aria-label="Buscar no log de e-mail" className="input max-w-[280px]" placeholder="Buscar e-mail, evento ou resend_id" value={logBusca} onChange={(e) => setLogBusca(e.target.value)} />
             <span className="text-xs font-bold text-slate-500">Periodo:</span>
             {[7, 30, 90].map((d) => (
               <button key={d} type="button" onClick={() => { setLogDias(d); setLogPage(0); }} className={`rounded-full px-3 py-1 text-xs font-semibold ${logDias === d ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{d}d</button>

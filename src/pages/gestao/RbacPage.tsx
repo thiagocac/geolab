@@ -88,7 +88,7 @@ export function RbacPage() {
       {loading ? <LoadingState /> : erro ? <ErrorState message={(erro as Error).message} /> : tab === 'matriz' ? (
         <Card>
           <div className="flex flex-wrap items-center gap-2 p-4">
-            <input className="input max-w-[280px]" placeholder="Buscar permissão…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            <input aria-label="Buscar permissão" className="input max-w-[280px]" placeholder="Buscar permissão…" value={busca} onChange={(e) => setBusca(e.target.value)} />
             <span className="text-xs text-slate-500">{perms.length} permissões · {roles.length} papéis</span>
           </div>
           {perms.length === 0 ? <div className="p-4"><EmptyState /></div> : (
@@ -110,7 +110,7 @@ export function RbacPage() {
                           {roles.map((r) => {
                             const checked = enabled.get(r.id)?.has(p.key) ?? false;
                             const k = r.id + ':' + p.key;
-                            return <td key={r.id} className="text-center"><input type="checkbox" checked={checked} disabled={!podeGerenciar || saving === k} onChange={(e) => void toggle(r.id, p.key, e.target.checked)} /></td>;
+                            return <td key={r.id} className="text-center"><input aria-label={`${p.name} para ${r.name}`} type="checkbox" checked={checked} disabled={!podeGerenciar || saving === k} onChange={(e) => void toggle(r.id, p.key, e.target.checked)} /></td>;
                           })}
                         </tr>
                       ))}

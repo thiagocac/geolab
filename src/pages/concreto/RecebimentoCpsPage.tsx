@@ -65,7 +65,7 @@ export function RecebimentoCpsPage() {
     <div className="space-y-5">
       <PageHeader kicker="Concreto" title="Recebimento de CPs" description="Check-in físico dos corpos de prova que chegam do campo: confirme, aponte quebra ou falta e informe onde ficam curando." />
       <div className="flex flex-wrap items-end gap-3">
-        <input className="input max-w-[280px]" placeholder="Buscar por numeração, CP, concretagem ou obra" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <input aria-label="Buscar CP" className="input max-w-[280px]" placeholder="Buscar por numeração, CP, concretagem ou obra" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <div className="max-w-[260px]"><Field label="Localização no lab (aplicada aos OK)" value={localizacao} onChange={(e) => setLocalizacao(e.target.value)} placeholder="Ex.: Tanque 2 · prateleira B" /></div>
         <div className="ml-auto flex items-center gap-3">
           {nSel ? <span className="text-sm text-slate-600 dark:text-slate-300"><strong>{nSel}</strong> selecionado(s){nDiv ? ` · ${nDiv} divergência(s)` : ''}</span> : null}

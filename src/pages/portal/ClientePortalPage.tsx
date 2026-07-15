@@ -50,7 +50,7 @@ function PortalLocalCell({ workId, value, onChange }: { workId: string; value: s
           <select className="input !min-h-9 w-1/2 px-1 text-xs" value={pecaId} disabled={!cur} onChange={(e) => { const id = e.target.value; setPecaId(id); const p = cur?.pecas.find((x) => x.id === id); if (p && cur) onChange(cur.nome + ' · ' + p.nome); }} aria-label="Peça"><option value="">Peça</option>{(cur?.pecas ?? []).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select>
         </div>
       ) : null}
-      <input className="input min-w-[180px]" value={value} onChange={(e) => onChange(e.target.value)} placeholder="Ex.: laje torre A" />
+      <input aria-label="Local da concretagem" className="input min-w-[180px]" value={value} onChange={(e) => onChange(e.target.value)} placeholder="Ex.: laje torre A" />
     </div>
   );
 }
@@ -68,7 +68,7 @@ function PortalTracoCell({ workId, workClientId, tracos, value, onText, onPick }
           {daConstr.length ? <optgroup label="Da construtora">{daConstr.map((t) => <option key={t.value} value={t.value}>{rot(t)}</option>)}</optgroup> : null}
         </select>
       ) : null}
-      <input className="input min-w-[220px]" value={value} onChange={(e) => onText(e.target.value)} placeholder="FCK 30 | BRITA 1 | SLUMP 10±2" />
+      <input aria-label="Traço" className="input min-w-[220px]" value={value} onChange={(e) => onText(e.target.value)} placeholder="FCK 30 | BRITA 1 | SLUMP 10±2" />
     </div>
   );
 }
@@ -149,16 +149,16 @@ export function ClientePortalPage() {
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.key} className="border-t border-slate-100 dark:border-slate-800">
-                      <td className="p-2"><select className="input min-w-[190px]" value={r.work_id} onChange={(e) => patch(r.key, 'work_id', e.target.value)}><option value="">Selecione</option>{(works.data ?? []).map((w) => <option key={w.id} value={w.id}>{w.nome}</option>)}</select></td>
-                      <td><input className="input min-w-[140px]" type="date" value={r.data_programada} onChange={(e) => patch(r.key, 'data_programada', e.target.value)} /></td>
-                      <td><input className="input min-w-[100px]" type="time" value={r.hora_programada ?? ''} onChange={(e) => patch(r.key, 'hora_programada', e.target.value)} /></td>
+                      <td className="p-2"><select aria-label="Obra" className="input min-w-[190px]" value={r.work_id} onChange={(e) => patch(r.key, 'work_id', e.target.value)}><option value="">Selecione</option>{(works.data ?? []).map((w) => <option key={w.id} value={w.id}>{w.nome}</option>)}</select></td>
+                      <td><input aria-label="Data programada" className="input min-w-[140px]" type="date" value={r.data_programada} onChange={(e) => patch(r.key, 'data_programada', e.target.value)} /></td>
+                      <td><input aria-label="Hora programada" className="input min-w-[100px]" type="time" value={r.hora_programada ?? ''} onChange={(e) => patch(r.key, 'hora_programada', e.target.value)} /></td>
                       <td><PortalLocalCell workId={r.work_id} value={r.local_texto ?? ''} onChange={(v) => patch(r.key, 'local_texto', v)} /></td>
                       <td><PortalTracoCell workId={r.work_id} workClientId={(works.data ?? []).find((w) => w.id === r.work_id)?.client_id ?? ''} tracos={tracos.data ?? []} value={r.traco_texto ?? ''} onText={(v) => patch(r.key, 'traco_texto', v)} onPick={(t) => aplicarTraco(r.key, t)} /></td>
-                      <td><input className="input w-24" type="number" inputMode="numeric" min={1} max={150} step="1" value={r.fck_previsto ?? ''} onChange={(e) => patch(r.key, 'fck_previsto', e.target.value)} onBlur={(e) => patch(r.key, 'fck_previsto', clampNum(e.target.value, { min: 1, max: 150, dec: 0 })?.toString() ?? '')} /></td>
+                      <td><input aria-label="FCK previsto (MPa)" className="input w-24" type="number" inputMode="numeric" min={1} max={150} step="1" value={r.fck_previsto ?? ''} onChange={(e) => patch(r.key, 'fck_previsto', e.target.value)} onBlur={(e) => patch(r.key, 'fck_previsto', clampNum(e.target.value, { min: 1, max: 150, dec: 0 })?.toString() ?? '')} /></td>
                       <td><button type="button" onClick={() => abrirMoldagem(r)} title="Padrão de moldagem: quantos corpos de prova moldar por caminhão em cada idade de controle (ex.: 1×7 dias; 2×28 dias; 1×63 dias). Se não alterar, usa o Padrão Lab: 2×28 dias." className={'min-h-9 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ' + (r.padrao?.length ? 'border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800' : 'border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800')}>{resumoPadrao(r.padrao)}</button></td>
-                      <td><input className="input min-w-[160px]" value={r.fornecedor_texto ?? ''} onChange={(e) => patch(r.key, 'fornecedor_texto', e.target.value)} /></td>
-                      <td><input className="input w-24" type="number" inputMode="decimal" min={0} max={999} step="0.01" value={r.volume_programado_m3 ?? ''} onChange={(e) => patch(r.key, 'volume_programado_m3', e.target.value)} onBlur={(e) => patch(r.key, 'volume_programado_m3', clampNum(e.target.value, { min: 0, max: 999, dec: 2 })?.toString() ?? '')} /></td>
-                      <td><input className="input min-w-[180px]" value={r.observacoes ?? ''} onChange={(e) => patch(r.key, 'observacoes', e.target.value)} /></td>
+                      <td><input aria-label="Fornecedor" className="input min-w-[160px]" value={r.fornecedor_texto ?? ''} onChange={(e) => patch(r.key, 'fornecedor_texto', e.target.value)} /></td>
+                      <td><input aria-label="Volume programado (m³)" className="input w-24" type="number" inputMode="decimal" min={0} max={999} step="0.01" value={r.volume_programado_m3 ?? ''} onChange={(e) => patch(r.key, 'volume_programado_m3', e.target.value)} onBlur={(e) => patch(r.key, 'volume_programado_m3', clampNum(e.target.value, { min: 0, max: 999, dec: 2 })?.toString() ?? '')} /></td>
+                      <td><input aria-label="Observações" className="input min-w-[180px]" value={r.observacoes ?? ''} onChange={(e) => patch(r.key, 'observacoes', e.target.value)} /></td>
                       <td className="p-2"><button type="button" className="text-slate-400 hover:text-red-600" onClick={() => setRows((list) => list.length === 1 ? [blank()] : list.filter((x) => x.key !== r.key))}>×</button></td>
                     </tr>
                   ))}

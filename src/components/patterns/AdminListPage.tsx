@@ -132,7 +132,7 @@ export function AdminListPage<T extends DomainRow = DomainRow>({ title, kicker, 
     <div style={{ display: 'grid', gap: 16 }}>
       <PageHeader kicker={kicker} title={title} description={description} />
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input className="input" placeholder="Buscar..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} style={{ maxWidth: 280 }} />
+        <input aria-label={`Buscar em ${title}`} className="input" placeholder="Buscar..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} style={{ maxWidth: 280 }} />
         {canCreate === false ? null : <Button onClick={openNew}>Novo</Button>}
       </div>
       {query.isLoading ? <LoadingState /> : query.isError ? <ErrorState message={(query.error as Error).message} /> : <DataTable rows={rows} columns={cols} rowKey={(r) => r.id} sort={sort} onSort={setSort} />}

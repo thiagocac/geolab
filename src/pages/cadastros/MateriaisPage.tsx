@@ -390,10 +390,10 @@ export function MateriaisPage() {
                     {padrao.map((p, i) => (
                       <tr key={p.id}>
                         <td className="px-3 py-2 text-xs font-bold text-slate-500">{i + 1}</td>
-                        <td className="px-3 py-2"><input className="input input-num" type="number" value={String(p.idadeControle)} onChange={(e) => setPm(i, { idadeControle: e.target.value })} /></td>
-                        <td className="px-3 py-2"><select className="input" value={p.unidadeIdade} onChange={(e) => setPm(i, { unidadeIdade: e.target.value as UnidadeIdade })}>{UNIDADE_IDADE_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
-                        <td className="px-3 py-2"><select className="input" value={p.tipoEnsaio} onChange={(e) => setPm(i, { tipoEnsaio: e.target.value as TipoEnsaioPadrao })}>{TIPO_ENSAIO_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
-                        <td className="px-3 py-2"><input className="input input-num" type="number" value={String(p.quantidadeCp)} onChange={(e) => setPm(i, { quantidadeCp: e.target.value })} /></td>
+                        <td className="px-3 py-2"><input aria-label="Idade de controle" className="input input-num" type="number" value={String(p.idadeControle)} onChange={(e) => setPm(i, { idadeControle: e.target.value })} /></td>
+                        <td className="px-3 py-2"><select aria-label="Unidade da idade" className="input" value={p.unidadeIdade} onChange={(e) => setPm(i, { unidadeIdade: e.target.value as UnidadeIdade })}>{UNIDADE_IDADE_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
+                        <td className="px-3 py-2"><select aria-label="Tipo de ensaio" className="input" value={p.tipoEnsaio} onChange={(e) => setPm(i, { tipoEnsaio: e.target.value as TipoEnsaioPadrao })}>{TIPO_ENSAIO_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
+                        <td className="px-3 py-2"><input aria-label="Quantidade de CPs" className="input input-num" type="number" value={String(p.quantidadeCp)} onChange={(e) => setPm(i, { quantidadeCp: e.target.value })} /></td>
                         <td className="px-3 py-2"><button type="button" className="text-slate-400 hover:text-red-600" onClick={() => rmPm(i)}>×</button></td>
                       </tr>
                     ))}

@@ -173,9 +173,9 @@ export function OperacaoPage() {
       {tab === 'usuarios' ? (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <input className="input max-w-[240px]" placeholder="Buscar por nome ou e-mail" value={busca} onChange={(e) => setBusca(e.target.value)} />
-            <select className="input max-w-[200px]" value={filtroPapel} onChange={(e) => setFiltroPapel(e.target.value)}><option value="">Todos os papéis</option>{rolesAtivos.map((r) => <option key={r.id} value={r.key}>{r.name}</option>)}</select>
-            <select className="input max-w-[150px]" value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}><option value="">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option></select>
+            <input aria-label="Buscar pessoa" className="input max-w-[240px]" placeholder="Buscar por nome ou e-mail" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            <select aria-label="Filtrar por papel" className="input max-w-[200px]" value={filtroPapel} onChange={(e) => setFiltroPapel(e.target.value)}><option value="">Todos os papéis</option>{rolesAtivos.map((r) => <option key={r.id} value={r.key}>{r.name}</option>)}</select>
+            <select aria-label="Filtrar por status" className="input max-w-[150px]" value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}><option value="">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option></select>
             <div className="ml-auto">{podeGerenciar ? <Button onClick={() => { setF({ role: 'operador_campo' }); setInviteOpen(true); }}>Novo usuário</Button> : null}</div>
           </div>
           {membersQ.isLoading ? <LoadingState /> : membersQ.isError ? <ErrorState message={(membersQ.error as Error).message} /> : view.length === 0 ? <EmptyState /> : (
@@ -292,8 +292,8 @@ export function OperacaoPage() {
                   </div>
                 ) : <p className="text-xs text-slate-500">Sem exceções.</p>}
                 <div className="flex flex-wrap items-end gap-2">
-                  <select className="input max-w-[260px]" value={ovPerm} onChange={(e) => setOvPerm(e.target.value)}><option value="">Escolher permissão…</option>{(permsQ.data ?? []).map((p) => <option key={p.key} value={p.key}>{p.category} · {p.name}</option>)}</select>
-                  <select className="input max-w-[130px]" value={ovAllowed} onChange={(e) => setOvAllowed(e.target.value)}><option value="true">Permitir</option><option value="false">Negar</option></select>
+                  <select aria-label="Permissão da exceção" className="input max-w-[260px]" value={ovPerm} onChange={(e) => setOvPerm(e.target.value)}><option value="">Escolher permissão…</option>{(permsQ.data ?? []).map((p) => <option key={p.key} value={p.key}>{p.category} · {p.name}</option>)}</select>
+                  <select aria-label="Efeito da exceção" className="input max-w-[130px]" value={ovAllowed} onChange={(e) => setOvAllowed(e.target.value)}><option value="true">Permitir</option><option value="false">Negar</option></select>
                   <Button variant="secondary" onClick={() => void aplicarOverride(false)} disabled={!ovPerm}>Aplicar exceção</Button>
                 </div>
               </div>
