@@ -128,7 +128,7 @@ export function NovaProgramacaoPage() {
 
       <div className="form-actions">
         <Button variant="ghost" onClick={() => nav('/programacoes', { viewTransition: true })}>Cancelar</Button>
-        <Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar programação'}</Button>
+        <Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando…' : 'Salvar programação'}</Button>
       </div>
 
       <Modal open={padraoOpen} wide title="Padrão de moldagem" onClose={() => setPadraoOpen(false)} footer={<Button onClick={() => setPadraoOpen(false)}>Concluir</Button>}>

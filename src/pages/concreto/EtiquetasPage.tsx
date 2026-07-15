@@ -95,7 +95,7 @@ export function EtiquetasPage() {
             <div style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
               <Field label="Quantidade de etiquetas" required type="number" min={1} step={1} value={qtd} onChange={(e) => setQtd(e.target.value)} hint="Uma grande sequência sem vinculo a obra/concretagem." />
               <TextArea label="Observação (opcional)" value={obs} onChange={(e) => setObs(e.target.value)} />
-              <div><Button onClick={() => void gerar()} disabled={busy}>{busy ? 'Gerando...' : 'Gerar ' + totalAvulsa + ' etiqueta(s)'}</Button></div>
+              <div><Button onClick={() => void gerar()} disabled={busy}>{busy ? 'Gerando…' : 'Gerar ' + totalAvulsa + ' etiqueta(s)'}</Button></div>
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 12, maxWidth: 640 }}>
@@ -113,7 +113,7 @@ export function EtiquetasPage() {
                   <div className="text-sm" style={{ color: 'var(--ink-faint)' }}>
                     Previsto {baseConc} + folga {folgaConc} = <strong style={{ color: 'var(--ink)' }}>{totalConc} etiqueta(s)</strong> ({nPrev + nExtra} caminhões x {nCpc} CP)
                   </div>
-                  <div><Button onClick={() => void gerar()} disabled={busy}>{busy ? 'Gerando...' : 'Gerar ' + totalConc + ' etiqueta(s)'}</Button></div>
+                  <div><Button onClick={() => void gerar()} disabled={busy}>{busy ? 'Gerando…' : 'Gerar ' + totalConc + ' etiqueta(s)'}</Button></div>
                 </>
               ) : concs.isLoading ? <LoadingState /> : null}
             </div>

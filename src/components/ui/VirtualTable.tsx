@@ -1,3 +1,5 @@
+// biome-ignore-all lint/a11y/useSemanticElements: a virtualizacao (translateY em linhas absolutas) quebra o layout de <table> nativo — o markup e em divs por necessidade. Os roles ARIA (table/rowgroup/row/columnheader/cell) sao o equivalente correto pela WAI-ARIA e restauram a semantica de tabela p/ leitor de tela.
+// biome-ignore-all lint/a11y/useFocusableInteractive: row/columnheader so precisam ser focaveis em role="grid" (celula navegavel por setas). Aqui e role="table" (dados estaticos, acoes por <button> dentro da celula) — a regra e falso-positivo.
 import { useRef, useState } from 'react';
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, type ColumnDef, type SortingState } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -27,26 +29,26 @@ export function VirtualTable<T>({ data, columns, rowId, height = 560, estimateRo
     <>
       {/* Desktop / tablet: tabela virtualizada */}
       <div className="vt-scroll hidden md:block" ref={parentRef} style={{ height }}>
-        <div className="vt" style={{ width: totalW, minWidth: '100%' }}>
-          <div className="vt-head">
+        <div className="vt" role="table" aria-rowcount={rows.length} style={{ width: totalW, minWidth: '100%' }}>
+          <div className="vt-head" role="rowgroup">
             {table.getHeaderGroups().map((hg) => hg.headers.map((h) => {
               const content = <>{flexRender(h.column.columnDef.header, h.getContext())}{arrow[h.column.getIsSorted() as string] ?? ''}</>;
-              if (!h.column.getCanSort()) return <div key={h.id} className="vt-th" style={{ width: h.getSize() }}>{content}</div>;
+              if (!h.column.getCanSort()) return <div key={h.id} className="vt-th" role="columnheader" style={{ width: h.getSize() }}>{content}</div>;
               return (
-                <button key={h.id} type="button" className="vt-th vt-sortable" style={{ width: h.getSize() }} onClick={h.column.getToggleSortingHandler()}>
+                <button key={h.id} type="button" className="vt-th vt-sortable" role="columnheader" aria-sort={({ asc: 'ascending', desc: 'descending' } as Record<string, 'ascending' | 'descending'>)[h.column.getIsSorted() as string] ?? 'none'} style={{ width: h.getSize() }} onClick={h.column.getToggleSortingHandler()}>
                   {content}
                 </button>
               );
             }))}
           </div>
           {rows.length === 0 ? <div className="vt-empty">{emptyLabel}</div> : (
-            <div className="vt-body" style={{ height: virt.getTotalSize() }}>
+            <div className="vt-body" role="rowgroup" style={{ height: virt.getTotalSize() }}>
               {virt.getVirtualItems().map((vi) => {
                 const row = rows[vi.index];
                 return (
-                  <div key={row.id} className={'vt-tr' + (rowClassName ? ' ' + rowClassName(row.original) : '')} data-index={vi.index} ref={virt.measureElement} style={{ transform: `translateY(${vi.start}px)` }}>
+                  <div key={row.id} className={'vt-tr' + (rowClassName ? ' ' + rowClassName(row.original) : '')} role="row" aria-rowindex={vi.index + 2} data-index={vi.index} ref={virt.measureElement} style={{ transform: `translateY(${vi.start}px)` }}>
                     {row.getVisibleCells().map((cell) => (
-                      <div key={cell.id} className="vt-td" style={{ width: cell.column.getSize() }}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+                      <div key={cell.id} className="vt-td" role="cell" style={{ width: cell.column.getSize() }}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
                     ))}
                   </div>
                 );

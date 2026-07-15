@@ -120,24 +120,23 @@ html.dark{
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 button,input,select,textarea{font:inherit}
+.btn,.icon-btn,.nav-link,.input,.vt-th.vt-sortable{touch-action:manipulation}
 button,a,input,select,textarea{outline-color:var(--magenta)}
 :focus-visible{outline:2px solid var(--magenta);outline-offset:2px}
 
-.skip-link{position:absolute;left:-999px;top:8px;z-index:90;background:var(--surface);color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--line)}
-.skip-link:focus{left:8px}
 .kicker{font-family:var(--font-mono);font-size:10px;line-height:1.2;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:var(--magenta)}
 
 /* ---- primitivos (tokenizados → respondem ao tema) ---- */
 .input{width:100%;min-height:44px;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);padding:10px 12px}
 .input::placeholder{color:var(--ink-faint)}
-.input:focus{border-color:var(--magenta);box-shadow:0 0 0 3px rgb(197 17 126 / .16);outline:none}
+.input:focus-visible{border-color:var(--magenta);box-shadow:0 0 0 3px color-mix(in oklch,var(--magenta) 40%,transparent);outline:none}
 .input[aria-invalid="true"]{border-color:var(--magenta)}
 /* Campo numerico compacto (idade de controle / qtd CP em tabelas de padrao de moldagem):
    largura fixa + sem setas nativas para o valor ficar sempre visivel. Especificidade .input.input-num vence .input{width:100%} */
 .input.input-num{width:5.5rem;min-width:5.5rem;text-align:center}
 .input.input-num::-webkit-outer-spin-button,.input.input-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .input.input-num{-moz-appearance:textfield;appearance:textfield}
-.btn{min-height:44px;border-radius:14px;border:1px solid transparent;padding:10px 14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2),box-shadow var(--dur-3),transform var(--dur-1) var(--ease-out)}
+.btn{min-height:44px;border-radius:14px;border:1px solid transparent;padding:10px 14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),box-shadow var(--dur-3) var(--ease-out),transform var(--dur-1) var(--ease-out)}
 .btn:disabled{cursor:not-allowed;opacity:.55}
 .btn-primary{background:var(--grad-brand);color:white}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:var(--shadow-pop)}
@@ -160,7 +159,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .table-scroll{overflow-x:auto}
 .table{width:100%;border-collapse:collapse;font-size:14px}
 .table th{text-align:left;font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line);padding:12px;white-space:nowrap}
-.table td{border-bottom:1px solid var(--line);padding:12px;vertical-align:top;color:var(--ink)}
+.table td{border-bottom:1px solid var(--line);padding:12px;vertical-align:top;color:var(--ink);font-variant-numeric:tabular-nums}
 .table tbody tr:hover{background:var(--surface-2)}
 .card{border:1px solid var(--line);background:var(--surface);border-radius:24px;box-shadow:var(--shadow-card);transition:box-shadow var(--dur-3) var(--ease-out),border-color var(--dur-3)}
 
@@ -187,7 +186,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .bui-drawer-wide{width:min(680px,100vw)}
 .bui-drawer[data-starting-style],.bui-drawer[data-ending-style]{transform:translateX(100%)}
 .bui-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line);flex-shrink:0}
-.bui-drawer-body{flex:1;overflow-y:auto;padding:20px;min-height:0}
+.bui-drawer-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:20px;min-height:0}
 .bui-drawer-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line);background:var(--surface-2);flex-shrink:0}
 
 /* ---- Modal central (Base UI Dialog; mesma API do Modal antigo) ---- */
@@ -195,7 +194,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .bui-modal-wide{max-width:860px}
 .bui-modal[data-starting-style],.bui-modal[data-ending-style]{opacity:0;transform:translate(-50%,-48%) scale(.98)}
 .bui-modal-head{padding:18px 20px;border-bottom:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.bui-modal-body{flex:1 1 auto;overflow-y:auto;padding:20px;min-height:0}
+.bui-modal-body{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;padding:20px;min-height:0}
 .bui-modal-foot{padding:14px 20px;border-top:1px solid var(--line);background:var(--surface-2);flex-shrink:0;display:flex;justify-content:flex-end;gap:8px}
 
 /* ---- backdrop do confirm: acima de qualquer dialog (z-90) ---- */
@@ -215,7 +214,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .cmdk-popup[data-starting-style],.cmdk-popup[data-ending-style]{opacity:0;transform:translateX(-50%) translateY(-8px)}
 .cmdk-input{width:100%;border:none;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);font-size:15px;padding:16px 18px;outline:none}
 .cmdk-input::placeholder{color:var(--ink-faint)}
-.cmdk-list{max-height:50vh;overflow-y:auto;padding:6px}
+.cmdk-list{max-height:50vh;overflow-y:auto;overscroll-behavior:contain;padding:6px}
 .cmdk-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:10px 12px;border-radius:10px;background:transparent;border:none;cursor:pointer;color:var(--ink);font-size:14px;font-weight:600}
 .cmdk-item.active{background:var(--surface-2)}
 .cmdk-group{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint)}
@@ -233,7 +232,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .vt-body{position:relative;width:100%}
 .vt-tr{position:absolute;top:0;left:0;display:flex;width:100%;border-bottom:1px solid var(--line-soft);transition:background var(--dur-1) var(--ease-out)}
 .vt-tr:hover{background:var(--surface-2)}
-.vt-td{flex-shrink:0;padding:9px 12px;font-size:13.5px;color:var(--ink);display:flex;flex-direction:column;justify-content:center;min-width:0}
+.vt-td{flex-shrink:0;padding:9px 12px;font-size:13.5px;color:var(--ink);display:flex;flex-direction:column;justify-content:center;min-width:0;font-variant-numeric:tabular-nums}
 /* v242: badge de status contido na coluna — quebra em vez de vazar sobre a coluna vizinha (ex.: "Aguardando confirmação") */
 .vt-td .badge{white-space:normal;max-width:100%}
 .vt-empty{padding:28px;text-align:center;color:var(--ink-faint);font-size:14px}
@@ -276,7 +275,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .dd-backdrop{position:fixed;inset:0;z-index:45}
 .notif-pop{position:absolute;top:calc(100% + 8px);right:0;width:340px;max-width:calc(100vw - 28px);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-pop);z-index:46;overflow:hidden}
 .notif-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
-.notif-list{max-height:min(60vh,440px);overflow-y:auto}
+.notif-list{max-height:min(60vh,440px);overflow-y:auto;overscroll-behavior:contain}
 .notif-item{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);background:transparent;cursor:pointer;color:var(--ink)}
 .notif-item:last-child{border-bottom:none}
 .notif-item:hover{background:var(--surface-2)}
@@ -341,7 +340,7 @@ button,a,input,select,textarea{outline-color:var(--magenta)}
 .recharts-reference-line line{stroke:var(--ink-faint)}
 
 /* ---- v229: chips semanticos tokenizados (dot + bg suave + texto; nunca cor sozinha) ---- */
-.chip-ok{background:var(--success-bg);color:var(--success)}
-.chip-warn{background:var(--warning-bg);color:var(--warning)}
-.chip-danger{background:var(--danger-bg);color:var(--danger)}
-.chip-info{background:var(--info-bg);color:var(--info)}
+.chip-ok{background:var(--success-bg);color:var(--tone-success-fg)}
+.chip-warn{background:var(--warning-bg);color:var(--tone-warning-fg)}
+.chip-danger{background:var(--danger-bg);color:var(--tone-danger-fg)}
+.chip-info{background:var(--info-bg);color:var(--tone-info-fg)}

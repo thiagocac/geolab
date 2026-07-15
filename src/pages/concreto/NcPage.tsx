@@ -167,7 +167,7 @@ function NcDetalhe({ nc, situ, podeTratar, onClose, onChange }: { nc: NcRow; sit
   }
 
   return (
-    <Modal open title={'NC ' + nc.numero} onClose={onClose} wide footer={<><Button variant="ghost" onClick={onClose}>Fechar</Button><Button variant="ghost" onClick={() => void gerarRac()} disabled={racBusy}>{racBusy ? 'Gerando...' : 'RAC (PDF)'}</Button>{podeTratar ? <Button variant="ghost" onClick={() => void excluir()}>Excluir NC</Button> : null}</>}>
+    <Modal open title={'NC ' + nc.numero} onClose={onClose} wide footer={<><Button variant="ghost" onClick={onClose}>Fechar</Button><Button variant="ghost" onClick={() => void gerarRac()} disabled={racBusy}>{racBusy ? 'Gerando…' : 'RAC (PDF)'}</Button>{podeTratar ? <Button variant="ghost" onClick={() => void excluir()}>Excluir NC</Button> : null}</>}>
       <div style={{ display: 'grid', gap: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
           <KV k="Tipo" v={nc.tipo_nome ?? nc.tipo_code ?? '—'} />

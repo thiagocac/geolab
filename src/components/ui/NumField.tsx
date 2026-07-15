@@ -19,7 +19,7 @@ type NumFieldProps = {
 // faixa usual). O clamp corrige o valor absurdo ao sair do campo; o aviso nao bloqueia.
 export function NumField({ label, value, onCommit, min = 0, max = 999999, dec = 0, soft, softMsg, hint, disabled }: NumFieldProps) {
   const step = dec > 0 ? String(1 / 10 ** dec) : '1';
-  const error = soft && foraDaFaixa(value, soft[0], soft[1]) ? (softMsg ?? `Fora da faixa usual (${soft[0]}-${soft[1]})`) : undefined;
+  const warning = soft && foraDaFaixa(value, soft[0], soft[1]) ? (softMsg ?? `Fora da faixa usual (${soft[0]}-${soft[1]})`) : undefined;
   return (
     <Field
       label={label}
@@ -30,7 +30,7 @@ export function NumField({ label, value, onCommit, min = 0, max = 999999, dec = 
       step={step}
       disabled={disabled}
       hint={hint}
-      error={error}
+      warning={warning}
       value={value == null ? '' : String(value)}
       onChange={(e) => onCommit(e.target.value === '' ? null : Number(e.target.value))}
       onBlur={(e) => onCommit(clampNum(e.target.value, { min, max, dec }))}

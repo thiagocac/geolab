@@ -1,4 +1,4 @@
 import { Card } from './Card';
 export function LoadingState() { return <Card className="p-6 space-y-3"><div className="skeleton h-5 w-2/5" /><div className="skeleton h-3 w-full" /><div className="skeleton h-3 w-11/12" /><div className="skeleton h-3 w-9/12" /></Card>; }
 export function EmptyState({ title = 'Nenhum registro encontrado.', description }: { title?: string; description?: string } = {}) { return <Card className="p-8 text-center"><p className="text-sm font-bold text-slate-800 dark:text-slate-100">{title}</p>{description ? <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{description}</p> : null}</Card>; }
-export function ErrorState({ message }: { message: string }) { return <Card className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/40 p-5 text-red-800 dark:text-red-300">{message}</Card>; }
+export function ErrorState({ message }: { message: string }) { return <Card role="alert" className="p-5" style={{ background: 'var(--tone-danger-bg)', color: 'var(--tone-danger-fg)', borderColor: 'var(--tone-danger-dot)' }}>{message}</Card>; }

@@ -206,10 +206,10 @@ export function ConcretagensPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <input className="input" placeholder="Buscar por Nº relatório, código, fornecedor, cliente ou obra" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 320 }} />
-        <select className="input" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 200 }}><option value="">Todos os clientes</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
-        <select className="input" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 200 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
-        <select className="input" value={statusFiltro} onChange={(e) => { setStatusFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 170 }} title="Status técnico"><option value="">Todos os status</option><option value="programado">Programado</option><option value="moldado">Moldado</option><option value="em_andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="rompido">Rompido</option><option value="laudado">Laudado</option><option value="cancelada">Cancelada</option></select>
+        <input className="input" aria-label="Buscar concretagem" placeholder="Buscar por Nº relatório, código, fornecedor, cliente ou obra…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 320 }} />
+        <select className="input" aria-label="Filtrar por cliente" value={clienteFiltro} onChange={(e) => { setClienteFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 200 }}><option value="">Todos os clientes</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+        <select className="input" aria-label="Filtrar por obra" value={obraFiltro} onChange={(e) => { setObraFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 200 }}><option value="">Todas as obras</option>{(worksFiltro.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+        <select className="input" aria-label="Filtrar por status" value={statusFiltro} onChange={(e) => { setStatusFiltro(e.target.value); setPage(0); }} style={{ maxWidth: 170 }} title="Status técnico"><option value="">Todos os status</option><option value="programado">Programado</option><option value="moldado">Moldado</option><option value="em_andamento">Em andamento</option><option value="atrasado">Atrasado</option><option value="rompido">Rompido</option><option value="laudado">Laudado</option><option value="cancelada">Cancelada</option></select>
         <label className="block space-y-1"><span className="text-xs font-bold" style={{ color: 'var(--ink-faint)' }}>De</span><input className="input" type="date" value={dataDe} onChange={(e) => { setDataDe(e.target.value); setPage(0); }} style={{ maxWidth: 150 }} /></label>
         <label className="block space-y-1"><span className="text-xs font-bold" style={{ color: 'var(--ink-faint)' }}>Até</span><input className="input" type="date" value={dataAte} onChange={(e) => { setDataAte(e.target.value); setPage(0); }} style={{ maxWidth: 150 }} /></label>
       </div>
@@ -228,7 +228,7 @@ export function ConcretagensPage() {
         </div>
       ) : null}
 
-      <Modal open={open} title="Nova concretagem" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar'}</Button></>}>
+      <Modal open={open} title="Nova concretagem" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvar()} disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</Button></>}>
         <div style={{ display: 'grid', gap: 12 }}>
           <SelectField label="Tipo" value={String(form.origem ?? 'programada')} onChange={(e) => setForm((s) => ({ ...s, origem: e.target.value }))}><option value="programada">Programada</option><option value="retroativa">Retroativa (registro de evento passado)</option></SelectField>
           <SelectField label="Cliente" required value={String(form.client_id ?? '')} onChange={(e) => setForm((s) => ({ ...s, client_id: e.target.value || null, work_id: null }))}><option value="">-</option>{(clientes.data ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</SelectField>

@@ -346,7 +346,7 @@ export function ConcretagemDetalhePage() {
             </div>
             {onC('observacoes') ? <TextArea label="Observações gerais" value={val(form.observacoes)} onChange={(e) => patch('observacoes', e.target.value)} /> : null}
             {onC('padrao_moldagem') ? <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-black text-slate-950 dark:text-slate-50">Padrão de moldagem da concretagem</h3><p className="text-xs text-slate-500">Use quando o cadastro for manual ou quando quiser ajustar o padrão do traço para este atendimento.</p></div><Button variant="secondary" onClick={carregarPadraoTraco}>Buscar padrão do traço</Button></div><MoldingStandardEditor value={padrao} onChange={setPadrao} fck={fckAtual} /></div> : null}
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800"><Button variant="ghost" onClick={() => nav('/concretagens')}>Voltar</Button><Button onClick={() => void salvarStep1()} disabled={busyStep}>{busyStep ? 'Salvando...' : 'Salvar e ir para caminhões'}</Button></div>
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800"><Button variant="ghost" onClick={() => nav('/concretagens')}>Voltar</Button><Button onClick={() => void salvarStep1()} disabled={busyStep}>{busyStep ? 'Salvando…' : 'Salvar e ir para caminhões'}</Button></div>
           </div>
         </Card>
       ) : (
@@ -388,7 +388,7 @@ export function ConcretagemDetalhePage() {
             <CardHeader kicker="Registro fotográfico" title="Evidências">Fotos do local, dos CPs ou da ficha física. Visíveis só para a equipe do laboratório.</CardHeader>
             <div className="space-y-3 p-4">
               <div className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Adicionar foto:</span><FilePicker label="Escolher foto" accept="image/*" disabled={upEvi} resetAfter onFiles={(fs) => void onUploadEvidencia(fs[0] ?? null)} />{upEvi ? <span className="text-xs text-slate-500">enviando...</span> : null}</div>
-              {evidencias.isLoading ? <p className="text-sm text-slate-500">Carregando...</p> : (evidencias.data?.length ?? 0) === 0 ? <p className="text-sm text-slate-500">Nenhuma evidência ainda.</p> : (
+              {evidencias.isLoading ? <p className="text-sm text-slate-500">Carregando…</p> : (evidencias.data?.length ?? 0) === 0 ? <p className="text-sm text-slate-500">Nenhuma evidência ainda.</p> : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {(evidencias.data ?? []).map((ev) => (
                     <div key={ev.id} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
@@ -403,7 +403,7 @@ export function ConcretagemDetalhePage() {
         </div>
       )}
 
-      <Modal open={open} wide title="Adicionar caminhão + CPs" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvarCaminhao()} disabled={busy}>{busy ? 'Salvando...' : 'Salvar caminhão e gerar CPs'}</Button></>}>
+      <Modal open={open} wide title="Adicionar caminhão + CPs" onClose={() => setOpen(false)} footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => void salvarCaminhao()} disabled={busy}>{busy ? 'Salvando…' : 'Salvar caminhão e gerar CPs'}</Button></>}>
         <div className="space-y-4">
           <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
             <div className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Ler NF (foto):</span><FilePicker label="Escolher foto" accept="image/*" disabled={lendoNf} resetAfter onFiles={(fs) => { if (fs[0]) void lerNf(fs[0]); }} />{lendoNf ? <span className="text-xs text-slate-500">lendo...</span> : null}</div>
@@ -445,7 +445,7 @@ export function ConcretagemDetalhePage() {
         </div>
       </Modal>
 
-      <Modal open={fichaOpen} wide title="Importar ficha de moldagem (OCR)" onClose={() => setFichaOpen(false)} footer={<><Button variant="ghost" onClick={() => setFichaOpen(false)}>Fechar</Button>{fichaRows.length ? <Button onClick={() => void onCriarDetectados()} disabled={gravandoFicha || !fichaRows.some((r) => r.criar && str(r.nota_fiscal))}>{gravandoFicha ? 'Criando...' : 'Criar ' + fichaRows.filter((r) => r.criar && str(r.nota_fiscal)).length + ' caminhão(ões) + CPs'}</Button> : null}</>}>
+      <Modal open={fichaOpen} wide title="Importar ficha de moldagem (OCR)" onClose={() => setFichaOpen(false)} footer={<><Button variant="ghost" onClick={() => setFichaOpen(false)}>Fechar</Button>{fichaRows.length ? <Button onClick={() => void onCriarDetectados()} disabled={gravandoFicha || !fichaRows.some((r) => r.criar && str(r.nota_fiscal))}>{gravandoFicha ? 'Criando…' : 'Criar ' + fichaRows.filter((r) => r.criar && str(r.nota_fiscal)).length + ' caminhão(ões) + CPs'}</Button> : null}</>}>
         <div className="space-y-4">
           <div className="rounded-2xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
             <div className="flex flex-wrap items-center gap-3 text-sm"><span className="font-bold">Foto ou scan da ficha preenchida:</span><FilePicker label="Escolher imagem" accept="image/*" disabled={lendoFicha} resetAfter onFiles={(fs) => { if (fs[0]) void onLerFicha(fs[0]); }} />{lendoFicha ? <span className="text-xs text-slate-500">lendo…</span> : null}</div>
