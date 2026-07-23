@@ -55,6 +55,27 @@ serveWithTelemetry('notify-event', async (req) => {
       if (Number(calls ?? 0) > 120) return fail('limite de eventos por hora atingido', 429);
     }
 
+    // [W5] destinatário DIRETO (ex.: solicitante do workflow em workflow_aprovado/reprovado/devolvido):
+    // payload.target_member_id ignora o fan-out por papel e envia só ao membro, respeitando opt-out.
+    const targetMemberId = asStr(body.target_member_id);
+    if (targetMemberId) {
+      const done = async (recipients: number, results: Array<{ email: string; status: number; ok: boolean }>, reason?: string) => {
+        if (body.outbox_id) await svc.from('notify_event_outbox').update({ status: 'processed', processed_at: new Date().toISOString(), attempts: 1 }).eq('id', asStr(body.outbox_id));
+        return json({ ok: true, event_type: eventType, recipients, results, ...(reason ? { reason } : {}) });
+      };
+      const { data: tm } = await svc.from('members').select('id, email').eq('id', targetMemberId).eq('tenant_id', tenantId).eq('active', true).is('deleted_at', null).maybeSingle();
+      if (!tm || !lower(tm.email)) return done(0, [], 'target_member sem e-mail');
+      const { data: pref } = await svc.from('member_notification_prefs').select('channel').eq('member_id', tm.id).eq('event_type', eventType).maybeSingle();
+      if (pref && ['off', 'none', 'disabled'].includes(asStr(pref.channel))) return done(0, [], 'opt-out do membro');
+      const payload = { ...body, tenant_id: tenantId, event_type: eventType, member_id: tm.id, email: tm.email, dedupe_key: asStr(body.dedupe_key, `${eventType}:direct:${String(tm.id)}`) };
+      try {
+        const res = await fetch(`${url}/functions/v1/send-notification`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-notify-secret': settings?.dispatch_secret ?? '' }, body: JSON.stringify(payload) });
+        return done(1, [{ email: asStr(tm.email), status: res.status, ok: res.ok }]);
+      } catch (_e) {
+        return done(1, [{ email: asStr(tm.email), status: 0, ok: false }]);
+      }
+    }
+
     const { data: roleRows } = await svc.from('role_notification_types').select('role_code').eq('event_type', eventType).eq('enabled', true).eq('channel', 'email');
     const roleCodes = [...new Set((roleRows ?? []).map((r: Record<string, unknown>) => asStr(r.role_code)).filter(Boolean))];
     if (!roleCodes.length) {

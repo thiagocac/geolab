@@ -22,9 +22,9 @@ export const FLOW_CATALOG: FlowDef[] = [
   { key: 'premiacao', label: 'Aprovação de premiação', entity: 'bonus_cycle', permission: 'premiacao.gerenciar', hint: 'Ciclo calculado vai por "Enviar para aprovação"; o fluxo efetiva o ciclo ao aprovar. Com o gatilho ligado, aprovar direto é bloqueado.' },
   { key: 'portal_solicitacao', label: 'Solicitação do portal do cliente', entity: 'portal_correcao_pedido', permission: 'portal.gerenciar', hint: 'Pedido criado no portal entra em aprovação interna; a equipe só decide/aplica após o fluxo aprovar (reprovar rejeita o pedido).' },
   { key: 'documento', label: 'Aprovação documental', entity: 'lab_document', permission: 'docgate.gerenciar', hint: 'Documento em análise entra no fluxo; aprovar/recusar direto fica bloqueado — o desfecho do fluxo aplica o status.' },
-  { key: 'resultado_retificacao', label: 'Retificação de resultado', entity: 'material_test', permission: 'resultado.aprovar', hint: 'Editar resultado já lançado exige aprovação de segunda pessoa (gate entra na Leva W5).' },
-  { key: 'laudo_reemissao', label: 'Reemissão de laudo', entity: 'lab_report', permission: 'laudo.aprovar', hint: 'Reemitir revisão de laudo já enviado ao cliente exige aprovação (gate entra na Leva W5).' },
-  { key: 'cp_descarte', label: 'Descarte de corpos de prova', entity: 'cp_descarte_lote', permission: 'nc.gerenciar', hint: 'Lote de descarte com CP pendente exige aprovação do gestor (gate entra na Leva W5).' },
+  { key: 'resultado_retificacao', label: 'Retificação de resultado', entity: 'material_test', permission: 'resultado.aprovar', hint: 'Retificar resultado já lançado inicia a aprovação; enquanto pendente, o laudo que o contém não emite. Reprovar descarta a versão nova.' },
+  { key: 'laudo_reemissao', label: 'Reemissão de laudo', entity: 'lab_report', permission: 'laudo.aprovar', hint: 'Reabrir laudo já ENVIADO ao cliente inicia a aprovação e bloqueia até aprovar; a autorização vale para uma reabertura.' },
+  { key: 'cp_descarte', label: 'Descarte de corpos de prova', entity: 'cp_descarte_lote', permission: 'nc.gerenciar', hint: 'Descarte com CP sem rompimento é bloqueado e vai por aprovação; ao aprovar, o sistema executa o descarte do lote.' },
 ];
 
 export const WORKFLOW_ROLES: { value: string; label: string }[] = [

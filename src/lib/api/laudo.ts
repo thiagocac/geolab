@@ -147,6 +147,16 @@ export async function aprovarLaudo(id: string): Promise<void> {
   }
 }
 export async function reabrirLaudo(id: string): Promise<void> {
+  // [W5] laudo já ENVIADO ao cliente: o gate inicia o fluxo de reemissão quando ligado (mig wf08)
+  const { data: g0, error: ge } = await rpc.rpc('laudo_reemissao_gate', { p_lab_report_id: id });
+  if (ge) throw new Error(ge.message);
+  const g = (g0 ?? {}) as Record<string, unknown>;
+  if (g.liberado !== true) {
+    trackDomainEvent('laudo.reemissao_bloqueada', { lab_report_id: id, iniciado: g.iniciado === true });
+    throw new Error(g.iniciado === true
+      ? 'Laudo já enviado ao cliente: fluxo de reemissão iniciado — aprove em Aprovações e reabra novamente.'
+      : 'Reemissão em aprovação no workflow — decida em Aprovações.');
+  }
   const { error } = await rpc.rpc('reabrir_laudo', { p_lab_report_id: id });
   if (error) throw new Error(error.message);
 }

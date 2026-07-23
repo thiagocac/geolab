@@ -44,6 +44,15 @@ const TITLES: Record<string, string> = {
   resultado_parcial_cliente: 'Novos resultados de ensaio',
   boas_vindas: 'Bem-vindo(a) a Concresoft',
   boas_vindas_cliente: 'Seu acesso ao portal esta pronto',
+  workflow_pendente_admin: 'Aprovacao de workflow pendente',
+  workflow_pendente_gestor_qualidade: 'Aprovacao de workflow pendente',
+  workflow_pendente_laboratorista: 'Aprovacao de workflow pendente',
+  workflow_pendente_financeiro: 'Aprovacao de workflow pendente',
+  workflow_pendente_operador_campo: 'Aprovacao de workflow pendente',
+  workflow_aprovado: 'Workflow aprovado',
+  workflow_reprovado: 'Workflow reprovado',
+  workflow_devolvido: 'Workflow devolvido para ajuste',
+  workflow_sla_vencido: 'Aprovacao com SLA vencido',
 };
 const KICKERS: Record<string, string> = {
   laudo_pronto: 'LAUDO',
@@ -63,6 +72,15 @@ const KICKERS: Record<string, string> = {
   resultado_parcial_cliente: 'RESULTADO',
   boas_vindas: 'ACESSO',
   boas_vindas_cliente: 'ACESSO',
+  workflow_pendente_admin: 'APROVACAO',
+  workflow_pendente_gestor_qualidade: 'APROVACAO',
+  workflow_pendente_laboratorista: 'APROVACAO',
+  workflow_pendente_financeiro: 'APROVACAO',
+  workflow_pendente_operador_campo: 'APROVACAO',
+  workflow_aprovado: 'APROVACAO',
+  workflow_reprovado: 'APROVACAO',
+  workflow_devolvido: 'APROVACAO',
+  workflow_sla_vencido: 'SLA DE APROVACAO',
 };
 const GRAD = 'linear-gradient(135deg,#182863 0%,#3E2D71 55%,#C5117E 100%)';
 const BRAND_LOGO = 'https://app.concresoft.io/brand/concresoft-lockup-white-2x.png';
