@@ -17,6 +17,8 @@ import { temDelegacaoAprovacao } from '../../lib/api/delegacoes';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ParcialFinalBadge } from '../../components/portal/ParcialFinalBadge';
 import { CorrecoesStaffPanel } from '../../components/portal/CorrecoesStaffPanel';
+import { ApprovalFlowPanel } from '../../components/ApprovalFlowPanel';
+import { listOpenWorkflowEntities } from '../../lib/api/workflows';
 import type { ParcialFinal } from '../../lib/portal/types';
 import { captureException, trackDomainEvent } from '../../lib/telemetry';
 
@@ -27,10 +29,13 @@ export function LaudosPage() {
   const confirm = useConfirm();
   const podeAprovar = can('laudo.aprovar');
   const delegQ = useQuery({ queryKey: ['deleg-aprovacao', member?.id], queryFn: temDelegacaoAprovacao, staleTime: 60_000 });
+  // [W3] laudos com workflow de aprovação em andamento (badge na linha + painel)
+  const wfAbertos = useQuery({ queryKey: ['wf-abertos-laudo'], queryFn: () => listOpenWorkflowEntities('lab_report'), staleTime: 30_000 });
   const podeEmitir = podeAprovar || (delegQ.data ?? false);
   const [novo, setNovo] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [verConc, setVerConc] = useState<{ codigo: string; idade: number; exemplares: ExemplarControle[] } | null>(null);
+  const [wfLaudo, setWfLaudo] = useState<{ id: string; numero: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null);
   const init = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -119,7 +124,13 @@ export function LaudosPage() {
           toast('Laudo Final emitido. Falha ao enviar ao cliente.', 'warning');
         }
       } else { toast('Laudo emitido.', 'success'); }
-    } catch (e) { toast((e as Error).message, 'error'); }
+      void qc.invalidateQueries({ queryKey: ['wf-abertos-laudo'] });
+    } catch (e) {
+      toast((e as Error).message, 'error');
+      // [W3] o gate pode ter iniciado o workflow de liberação — atualiza badge da linha e inbox
+      void qc.invalidateQueries({ queryKey: ['wf-abertos-laudo'] });
+      void qc.invalidateQueries({ queryKey: ['wf-badge'] });
+    }
   }
   async function reabrir(id: string) {
     if (!(await confirm({ title: 'Reabrir laudo', message: 'Reabrir este laudo emitido? Ele volta a rascunho e precisará ser emitido novamente.', danger: true, confirmLabel: 'Reabrir' }))) return;
@@ -163,6 +174,7 @@ export function LaudosPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                   <ParcialFinalBadge value={(cls.data?.[r.id] ?? 'sem_resultados') as ParcialFinal} />
                   <StatusBadge status={r.status} />
+                  {wfAbertos.data?.[r.id] ? <button type="button" className="badge bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200" style={{ cursor: 'pointer', border: 0 }} onClick={() => setWfLaudo({ id: r.id, numero: r.numero })}>Aprovação pendente</button> : null}
                   {r.assinatura_status === 'assinado' ? <Badge tone="success">Assinado</Badge> : (r.assinatura_status === 'pendente' || r.assinatura_status === 'em_processo') ? <Badge tone="info">Assinatura pendente</Badge> : null}
                   <Button variant="ghost" onClick={() => void baixar(r.id, r.storage_path)}>Baixar</Button>
                   {podeEmitir && r.status !== 'emitido' ? <Button onClick={() => void aprovar(r.id)}>Emitir</Button> : null}
@@ -219,6 +231,10 @@ export function LaudosPage() {
             </table>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal open={!!wfLaudo} wide title={'Aprovações do laudo' + (wfLaudo ? ' · ' + wfLaudo.numero : '')} onClose={() => setWfLaudo(null)} footer={<Button onClick={() => setWfLaudo(null)}>Fechar</Button>}>
+        {wfLaudo ? <ApprovalFlowPanel entityType="lab_report" entityId={wfLaudo.id} /> : null}
       </Modal>
     </div>
   );

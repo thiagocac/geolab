@@ -278,3 +278,16 @@ export async function listDecisionHistory(limit = 100): Promise<DecisionRow[]> {
     };
   });
 }
+
+// [W3] entidades com instância de workflow ABERTA (badge nas listas de domínio)
+export async function listOpenWorkflowEntities(entityType: string): Promise<Record<string, number>> {
+  const { data, error } = await db.from('workflow_instances')
+    .select('entity_id').eq('entity_type', entityType).eq('status', 'aberto').is('deleted_at', null);
+  if (error) throw new Error(error.message);
+  const map: Record<string, number> = {};
+  for (const r of ((data ?? []) as Record<string, unknown>[])) {
+    const k = String(r.entity_id);
+    map[k] = (map[k] ?? 0) + 1;
+  }
+  return map;
+}

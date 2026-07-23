@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { captureException, trackDomainEvent } from '../telemetry';
 import { invokeEdgeFunction } from '../telemetry/edge';
 import { env } from '../env';
+import { flowLabel } from './workflows';
 
 // Camada de laudos. Emissão/persistencia ficam na EF generate-laudo-ensaio-pdf
 // (grava lab_reports status 'rascunho' + laudo_resultados). Aprovação 1-etapa via
@@ -118,8 +119,25 @@ export async function baixarLaudoUrl(labReportId: string, fallbackPath: string |
   return downloadUrl(path);
 }
 
+// [W3] Gate de emissão (mig wf05): detecta resultado insatisfatório/inconsistente,
+// INICIA o workflow de liberação (notifica os aprovadores) e informa os bloqueios.
+export type LaudoEmissaoBloqueio = { flow_key: string; status: string; iniciado?: boolean };
+export async function laudoEmissaoGate(id: string): Promise<{ liberado: boolean; bloqueios: LaudoEmissaoBloqueio[] }> {
+  const { data, error } = await rpc.rpc('laudo_emissao_gate', { p_lab_report_id: id });
+  if (error) throw new Error(error.message);
+  const r = (data ?? {}) as Record<string, unknown>;
+  return { liberado: r.liberado === true, bloqueios: Array.isArray(r.bloqueios) ? (r.bloqueios as LaudoEmissaoBloqueio[]) : [] };
+}
+
 export async function aprovarLaudo(id: string): Promise<void> {
   try {
+    // [W3] gate primeiro: se bloqueado, o fluxo de aprovação já fica iniciado e o erro orienta o usuário
+    const gate = await laudoEmissaoGate(id);
+    if (!gate.liberado) {
+      trackDomainEvent('laudo.emissao_bloqueada', { lab_report_id: id, fluxos: gate.bloqueios.map((b) => b.flow_key).join(',') });
+      const labels = gate.bloqueios.map((b) => flowLabel(b.flow_key) + ' (' + (b.status === 'pendente' ? (b.iniciado ? 'fluxo iniciado — aguardando aprovação' : 'aguardando aprovação') : b.status) + ')').join('; ');
+      throw new Error('Emissão bloqueada por workflow de aprovação: ' + labels + '. Acompanhe e decida em Aprovações.');
+    }
     const { error } = await rpc.rpc('aprovar_laudo', { p_lab_report_id: id });
     if (error) throw new Error(error.message);
     trackDomainEvent('laudo.aprovado', { lab_report_id: id });
