@@ -741,6 +741,8 @@ export async function listBonusResults(cycleId: string): Promise<BonusResult[]> 
 }
 export async function calculateBonusCycle(id: string): Promise<JsonObject> { return rpc('calculate_bonus_cycle', { p_cycle_id: id }); }
 export async function approveBonusCycle(id: string, comment?: string): Promise<JsonObject> { return rpc('approve_bonus_cycle', { p_cycle_id: id, p_observacao: comment ?? null }); }
+// [W4] envia o ciclo calculado para o workflow de aprovação (mig wf07); ao aprovar no fluxo, o ciclo é efetivado.
+export async function submitBonusCycle(id: string, comment?: string): Promise<JsonObject> { return rpc('submit_bonus_cycle_for_approval', { p_cycle_id: id, p_observacao: comment ?? null }); }
 
 // Shared commercial delivery and public decision flows.
 export async function sendCommercialDocument(
