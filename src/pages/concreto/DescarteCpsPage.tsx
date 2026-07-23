@@ -17,7 +17,8 @@ import { listCpsDescartaveis, descartarCpsLote, listDescarteLotes, termoDescarte
 const dbr = (s: string | null) => { if (!s) return '—'; const [y, m, d] = s.slice(0, 10).split('-'); return `${d}/${m}/${y}`; };
 
 export function DescarteCpsPage() {
-  const { member } = useAuth();
+  const { member, can } = useAuth();
+  const podeDescartar = can('rompimento.descartar');
   const toast = useToast();
   const confirm = useConfirm();
   const qc = useQueryClient();
@@ -60,7 +61,7 @@ export function DescarteCpsPage() {
         <div className="max-w-[360px] grow"><Field label="Motivo do descarte" value={motivo} onChange={(e) => setMotivo(e.target.value)} /></div>
         <div className="ml-auto flex items-center gap-3">
           {sel.size ? <span className="text-sm text-slate-600 dark:text-slate-300"><strong>{sel.size}</strong> selecionado(s)</span> : null}
-          <Button variant="danger" disabled={!sel.size || busy} onClick={() => void descartar()}>{busy ? 'Descartando...' : 'Descartar selecionados'}</Button>
+          <Button variant="danger" disabled={!sel.size || busy || !podeDescartar} onClick={() => void descartar()}>{busy ? 'Descartando...' : 'Descartar selecionados'}</Button>
         </div>
       </div>
 

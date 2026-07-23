@@ -66,7 +66,7 @@ const atalhos: { to: string; label: string; grupo: string; roles?: string[]; per
   { to: '/rota-dia', label: 'Rota do dia', grupo: 'Agenda', roles: labRoles },
   { to: '/recebimento-cps', label: 'Recebimento de CPs', grupo: 'CPs', roles: labRoles },
   { to: '/etiquetas', label: 'Etiquetas', grupo: 'CPs', perm: 'etiqueta.ver' },
-  { to: '/descarte-cps', label: 'Descarte de CPs', grupo: 'CPs', roles: labRoles },
+  { to: '/descarte-cps', label: 'Descarte de CPs', grupo: 'CPs', perm: 'rompimento.descartar' },
   { to: '/nao-conformidades', label: 'Não-conformidades', grupo: 'Qualidade', roles: labRoles },
   { to: '/diario-cura', label: 'Diário de cura', grupo: 'Qualidade', perm: 'cura.ver' },
   { to: '/gestao/iso-17025', label: 'ISO 17025', grupo: 'Qualidade', perm: 'iso17025.ver' },

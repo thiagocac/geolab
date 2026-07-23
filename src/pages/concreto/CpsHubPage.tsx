@@ -13,7 +13,7 @@ export function CpsHubPage({ inicial = 'recebimento' }: { inicial?: 'recebimento
     <TabShell inicial={inicial} vazio="Sem acesso aos CPs." tabs={[
       { key: 'recebimento', label: 'Recebimento', ok: lab, render: () => <RecebimentoCpsPage /> },
       { key: 'etiquetas', label: 'Etiquetas', ok: can('etiqueta.ver'), render: () => <EtiquetasPage /> },
-      { key: 'descarte', label: 'Descarte', ok: lab, render: () => <DescarteCpsPage /> },
+      { key: 'descarte', label: 'Descarte', ok: can('rompimento.descartar'), render: () => <DescarteCpsPage /> },
     ]} />
   );
 }
