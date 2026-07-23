@@ -9,10 +9,16 @@ import { LoadingState, ErrorState, EmptyState } from '../../components/ui/State'
 import { formatDate } from '../../lib/format';
 import { createApprovalDelegation, listApprovalDelegations, listMembersForDelegation, listWorksForDelegation, revokeApprovalDelegation } from '../../lib/api/delegacoes';
 
+// [W2] Permissões delegáveis — cobrem os fluxos do motor de aprovação (wf_flow_permission).
+// O delegante precisa TER a permissão (validação no banco, mig wf03).
 const PERMISSIONS = [
   { value: 'laudo.aprovar', label: 'Aprovar laudo' },
   { value: 'resultado.aprovar', label: 'Aprovar resultado' },
   { value: 'docgate.gerenciar', label: 'Gerenciar documentos' },
+  { value: 'medicao.decidir', label: 'Decidir medição' },
+  { value: 'premiacao.gerenciar', label: 'Aprovar premiação' },
+  { value: 'portal.gerenciar', label: 'Decidir solicitações do portal' },
+  { value: 'nc.gerenciar', label: 'Aprovar descarte / NC' },
 ];
 
 function toLocalInput(date: Date): string {

@@ -44,6 +44,7 @@ const FormasHubPage = lazy(() => import('./pages/gestao/FormasHubPage').then((m)
 const EquipePage = lazy(() => import('./pages/gestao/EquipePage').then((m) => ({ default: m.EquipePage })));
 const PortalHubPage = lazy(() => import('./pages/portal/PortalHubPage').then((m) => ({ default: m.PortalHubPage })));
 const OperacaoHubPage = lazy(() => import('./pages/operacao/OperacaoHubPage').then((m) => ({ default: m.OperacaoHubPage })));
+const AprovacoesPage = lazy(() => import('./pages/AprovacoesPage').then((m) => ({ default: m.AprovacoesPage })));
 const ValidarPage = lazy(() => import('./pages/ValidarPage').then((m) => ({ default: m.ValidarPage })));
 const LaudoAprovarPage = lazy(() => import('./pages/LaudoAprovarPage').then((m) => ({ default: m.LaudoAprovarPage })));
 const PortalPublicoPage = lazy(() => import('./pages/portal/PortalPublicoPage').then((m) => ({ default: m.PortalPublicoPage })));
@@ -215,6 +216,7 @@ export function App() {
             <Route path="/operacao" element={<OperacaoHubPage />} />
             <Route path="/gestao/rbac" element={<OperacaoHubPage inicial="rbac" />} />
             <Route path="/gestao/delegacoes" element={<OperacaoHubPage inicial="delegacoes" />} />
+            <Route path="/gestao/workflows" element={<OperacaoHubPage inicial="delegacoes" />} />
             <Route path="/gestao/backups" element={<OperacaoHubPage inicial="backups" />} />
             <Route path="/gestao/emails" element={<OperacaoHubPage inicial="emails" />} />
             <Route path="/gestao/timeline" element={<OperacaoHubPage inicial="timeline" />} />
@@ -224,6 +226,8 @@ export function App() {
             <Route path="/gestao/webhooks" element={<OperacaoHubPage inicial="webhooks" />} />
             <Route path="/observabilidade" element={<OperacaoHubPage inicial="observabilidade" />} />
             <Route path="/gestao/pendencias" element={<PendenciasPage />} />
+            {/* [W2] Inbox do motor de aprovação (deep_link das notificações workflow_*) */}
+            <Route path="/aprovacoes" element={<AprovacoesPage />} />
             <Route path="/gestao/produto" element={<ProductOverviewPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

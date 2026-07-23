@@ -10,6 +10,7 @@ import { Modal } from './ui/Modal';
 import { useToast } from '../lib/toast';
 import { getPendenciasResumo } from '../lib/api/pendencias';
 import { getOnboardingSnapshot } from '../lib/api/onboarding';
+import { pendingCount as wfPendingCount } from '../lib/api/workflows';
 import { PEND_SECOES } from '../lib/pendenciasNav';
 import { Home, MixerTruck, Compress, FileText, Import, Gauge, Boxes, Layers, Beaker, ShieldAlert, LogOut, Sun, Moon, Menu, Building2, Clock, CheckCircle, AlertTriangle, Settings, Receipt, Mold, Users, CalendarDays } from './ui/icons';
 
@@ -25,6 +26,7 @@ const sections: Section[] = [
     { to: '/agenda', label: 'Agenda', icon: CalendarDays, roles: labRoles },
     { to: '/dashboards', label: 'Dashboards', icon: Gauge, roles: labRoles, perm: 'dashboard.ver' },
     { to: '/gestao/pendencias', label: 'Pendências', icon: AlertTriangle, roles: labRoles },
+    { to: '/aprovacoes', label: 'Aprovações', icon: CheckCircle, roles: labRoles },
   ] },
   { title: 'Concreto', items: [
     { to: '/programacoes', label: 'Programações', icon: Clock, roles: labRoles },
@@ -88,6 +90,7 @@ const atalhos: { to: string; label: string; grupo: string; roles?: string[]; per
   { to: '/implantacao', label: 'Implantação do laboratório', grupo: 'Configurações', perm: 'onboarding.ver' },
   { to: '/gestao/seguranca-conta', label: 'Segurança da conta', grupo: 'Configurações', roles: labRoles },
   { to: '/gestao/rbac', label: 'Permissões', grupo: 'Operação', perm: 'rbac.gerenciar' },
+  { to: '/gestao/workflows', label: 'Workflows e delegações', grupo: 'Operação', perm: 'workflow.gerenciar' },
   { to: '/gestao/delegacoes', label: 'Delegações', grupo: 'Operação', perm: 'workflow.delegar' },
   { to: '/gestao/backups', label: 'Backups', grupo: 'Operação', perm: 'backup.executar' },
   { to: '/gestao/emails', label: 'E-mails', grupo: 'Operação', perm: 'email.gerenciar' },
@@ -118,6 +121,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const [labBusy, setLabBusy] = useState(false);
   // T13: badge de pendencias no menu (mesma RPC da tela; contagem filtrada pelo papel).
   const pendQ = useQuery({ queryKey: ['pendencias-badge', member?.tenant_id ?? 'none'], enabled: !!member, staleTime: 5 * 60 * 1000, refetchInterval: 5 * 60 * 1000, queryFn: () => getPendenciasResumo(member!.tenant_id) });
+  // [W2] Badge de aprovações de workflow pendentes para MIM (RPC wf_pending_count, Leva W1).
+  const wfQ = useQuery({ queryKey: ['wf-badge', member?.tenant_id ?? 'none'], enabled: !!member, staleTime: 60 * 1000, refetchInterval: 2 * 60 * 1000, queryFn: wfPendingCount });
+  const wfTotal = wfQ.data ?? 0;
   // [v238] Gate de implantação (uma consulta por carga; snapshot roda seed+auto-detecção no banco).
   const implQ = useQuery({ queryKey: ['implantacao-gate', member?.tenant_id ?? 'none'], enabled: !!member && can('onboarding.gerenciar') && !implantacaoChecada, staleTime: Infinity, queryFn: getOnboardingSnapshot });
   useEffect(() => {
@@ -171,7 +177,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   const Icon = it.icon;
                   return (
                     <NavLink key={it.to} to={it.to} end={it.end} viewTransition onClick={() => setOpen(false)} className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
-                      <Icon size={18} /> {it.label}{it.to === '/gestao/pendencias' && pendTotal > 0 ? <span className="nav-count">{pendTotal > 99 ? '99+' : pendTotal}</span> : null}
+                      <Icon size={18} /> {it.label}{it.to === '/gestao/pendencias' && pendTotal > 0 ? <span className="nav-count">{pendTotal > 99 ? '99+' : pendTotal}</span> : null}{it.to === '/aprovacoes' && wfTotal > 0 ? <span className="nav-count">{wfTotal > 99 ? '99+' : wfTotal}</span> : null}
                     </NavLink>
                   );
                 })}

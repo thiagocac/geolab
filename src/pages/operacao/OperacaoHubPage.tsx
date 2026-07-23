@@ -2,7 +2,7 @@ import { useAuth } from '../../lib/auth';
 import { TabShell } from '../../components/patterns/TabShell';
 import { OperacaoPage } from './OperacaoPage';
 import { RbacPage } from '../gestao/RbacPage';
-import { DelegacoesPage } from '../gestao/DelegacoesPage';
+import { WorkflowsPage } from '../gestao/WorkflowsPage';
 import { BackupsPage } from '../gestao/BackupsPage';
 import { EmailLogPage } from '../gestao/EmailLogPage';
 import { TimelinePage } from '../gestao/TimelinePage';
@@ -21,7 +21,7 @@ export function OperacaoHubPage({ inicial = 'usuarios' }: { inicial?: Aba }) {
     <TabShell inicial={inicial} vazio="Sem acesso à operação interna." tabs={[
       { key: 'usuarios', label: 'Usuários e labs', ok: can('operacao.interna'), render: () => <OperacaoPage /> },
       { key: 'rbac', label: 'Permissões', ok: can('rbac.gerenciar'), render: () => <RbacPage /> },
-      { key: 'delegacoes', label: 'Delegações', ok: can('workflow.delegar'), render: () => <DelegacoesPage /> },
+      { key: 'delegacoes', label: 'Workflows e delegações', ok: can('workflow.delegar') || can('workflow.gerenciar'), render: () => <WorkflowsPage /> },
       { key: 'backups', label: 'Backups', ok: can('backup.executar'), render: () => <BackupsPage /> },
       { key: 'emails', label: 'E-mails', ok: can('email.gerenciar'), render: () => <EmailLogPage /> },
       { key: 'timeline', label: 'Linha do tempo', ok: can('auditoria.ver'), render: () => <TimelinePage /> },
